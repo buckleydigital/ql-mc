@@ -1047,10 +1047,11 @@ td.red { color:var(--red); }
         <div class="chat-window">
           <div class="chat-header">
             <div class="chat-avatar" id="chat-header-avatar" style="background:linear-gradient(135deg,var(--accent),var(--blue))">👥</div>
-            <div>
+            <div style="flex:1">
               <div class="chat-header-name" id="chat-header-name">All Agents — Group Chat</div>
               <div class="chat-header-status">4 agents online · Supabase context loaded</div>
             </div>
+            <button onclick="clearChatHistory()" title="Clear chat history" style="background:none;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--txt-3);font-size:11px;padding:5px 10px;cursor:pointer;transition:.15s;font-family:var(--font-ui);" onmouseover="this.style.color='var(--red)';this.style.borderColor='rgba(255,69,96,.4)'" onmouseout="this.style.color='var(--txt-3)';this.style.borderColor='var(--border)'">🗑 Clear</button>
           </div>
           <div class="chat-messages scrollbar" id="chat-messages">
             <div class="msg ai">
@@ -1697,7 +1698,101 @@ function getSystemPrompt(agentId, snapshot) {
   return `${base[agentId]}\n\n${snapshot}`;
 }
 
-function switchAgent(id) {
+// ============================================================
+//  CHAT HISTORY — persisted per agent in Supabase chat_history
+//  50 messages per agent max. Loads on switchAgent, saves on send.
+// ============================================================
+
+// In-memory history per agent for the Anthropic messages array
+// (keeps conversation context alive within a session)
+const sessionHistory = { group:[], marketing:[], finance:[], operations:[], strategy:[] };
+
+function formatTime(iso) {
+  if (!iso) return 'Just now';
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = now - d;
+  if (diff < 60000) return 'Just now';
+  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+  if (diff < 86400000) return d.toLocaleTimeString('en-AU', {hour:'2-digit',minute:'2-digit'});
+  return d.toLocaleDateString('en-AU', {day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
+}
+
+function renderMessages(messages) {
+  const messagesEl = document.getElementById('chat-messages');
+  if (!messages || messages.length === 0) return;
+  messagesEl.innerHTML = '';
+  messages.forEach(m => {
+    const isUser = m.role === 'user';
+    messagesEl.innerHTML += `<div class="msg ${isUser?'user':'ai'}">
+      <div class="msg-bubble">${esc(m.content)}</div>
+      <div class="msg-meta">${isUser ? 'You' : AGENT_DEFS[m.agent_id||currentAgent]?.name||'Agent'} · ${formatTime(m.created_at)}</div>
+    </div>`;
+  });
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+async function loadChatHistory(agentId) {
+  try {
+    const { data, error } = await sb()
+      .from('chat_history')
+      .select('*')
+      .eq('agent_id', agentId)
+      .order('created_at', { ascending: true })
+      .limit(50);
+
+    if (error || !data || data.length === 0) return null;
+
+    // Rebuild session history for Anthropic context (last 20 messages)
+    sessionHistory[agentId] = data.slice(-20).map(m => ({
+      role: m.role,
+      content: m.content
+    }));
+
+    return data;
+  } catch(e) {
+    console.warn('Could not load chat history:', e.message);
+    return null;
+  }
+}
+
+async function saveChatMessage(agentId, role, content) {
+  try {
+    await sb().from('chat_history').insert({
+      agent_id: agentId,
+      role: role,
+      content: content
+    });
+
+    // Keep only last 50 rows per agent — trim old ones
+    const { data: rows } = await sb()
+      .from('chat_history')
+      .select('id')
+      .eq('agent_id', agentId)
+      .order('created_at', { ascending: true });
+
+    if (rows && rows.length > 50) {
+      const toDelete = rows.slice(0, rows.length - 50).map(r => r.id);
+      await sb().from('chat_history').delete().in('id', toDelete);
+    }
+  } catch(e) {
+    console.warn('Could not save message:', e.message);
+  }
+}
+
+async function clearChatHistory() {
+  if (!confirm(`Clear all chat history for ${AGENT_DEFS[currentAgent].name}?`)) return;
+  try {
+    await sb().from('chat_history').delete().eq('agent_id', currentAgent);
+    sessionHistory[currentAgent] = [];
+    const a = AGENT_DEFS[currentAgent];
+    document.getElementById('chat-messages').innerHTML = `<div class="msg ai"><div class="msg-bubble">History cleared. Hi, I'm your ${a.name}. What would you like to analyse?</div><div class="msg-meta">${a.name} · Just now</div></div>`;
+  } catch(e) {
+    alert('Could not clear history: ' + e.message);
+  }
+}
+
+async function switchAgent(id) {
   currentAgent = id;
   const a = AGENT_DEFS[id];
   document.querySelectorAll('.chat-sidebar-item').forEach(i => i.classList.remove('active'));
@@ -1706,7 +1801,16 @@ function switchAgent(id) {
   document.getElementById('chat-header-name').textContent = a.name;
   document.getElementById('chat-header-avatar').textContent = a.avatar;
   document.getElementById('chat-header-avatar').style.background = a.color;
-  document.getElementById('chat-messages').innerHTML = `<div class="msg ai"><div class="msg-bubble">Hi, I'm your ${a.name}. I have live access to your Supabase data. What would you like to analyse?</div><div class="msg-meta">${a.name} · Just now</div></div>`;
+
+  // Show loading state
+  document.getElementById('chat-messages').innerHTML = `<div style="padding:32px 0;text-align:center;color:var(--txt-3);font-size:13px">Loading history...</div>`;
+
+  const history = await loadChatHistory(id);
+  if (history && history.length > 0) {
+    renderMessages(history);
+  } else {
+    document.getElementById('chat-messages').innerHTML = `<div class="msg ai"><div class="msg-bubble">Hi, I'm your ${a.name}. I have live access to your Supabase data. What would you like to analyse?</div><div class="msg-meta">${a.name} · Just now</div></div>`;
+  }
 }
 
 async function sendMessage() {
@@ -1717,14 +1821,23 @@ async function sendMessage() {
 
   const agent = AGENT_DEFS[currentAgent];
   const messagesEl = document.getElementById('chat-messages');
+  const now = new Date().toISOString();
 
+  // Show user message immediately
   messagesEl.innerHTML += `<div class="msg user"><div class="msg-bubble">${esc(msg)}</div><div class="msg-meta">You · Just now</div></div>`;
   messagesEl.scrollTop = messagesEl.scrollHeight;
   document.getElementById('typing-indicator').style.display = 'block';
   document.getElementById('chat-send-btn').disabled = true;
 
+  // Save user message to Supabase (fire and forget)
+  saveChatMessage(currentAgent, 'user', msg);
+
+  // Add to session history for context
+  sessionHistory[currentAgent].push({ role: 'user', content: msg });
+  if (sessionHistory[currentAgent].length > 20) sessionHistory[currentAgent].shift();
+
   try {
-    const apiKey  = CFG['anthropic_api_key'];
+    const apiKey = CFG['anthropic_api_key'];
     if (!apiKey) throw new Error('Anthropic API key not found in Supabase app_config');
 
     const snapshot     = await getLiveSnapshot();
@@ -1742,15 +1855,23 @@ async function sendMessage() {
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1024,
         system: systemPrompt,
-        messages: [{ role: 'user', content: msg }]
+        messages: sessionHistory[currentAgent]  // full context, not just last message
       })
     });
 
     const data      = await res.json();
     const replyText = data.content?.[0]?.text || 'No response.';
 
+    // Add to session history
+    sessionHistory[currentAgent].push({ role: 'assistant', content: replyText });
+    if (sessionHistory[currentAgent].length > 20) sessionHistory[currentAgent].shift();
+
+    // Save agent reply to Supabase
+    saveChatMessage(currentAgent, 'assistant', replyText);
+
     document.getElementById('typing-indicator').style.display = 'none';
     messagesEl.innerHTML += `<div class="msg ai"><div class="msg-bubble">${esc(replyText)}</div><div class="msg-meta">${agent.name} · Just now</div></div>`;
+
   } catch(e) {
     document.getElementById('typing-indicator').style.display = 'none';
     const errMsg = e.message.includes('app_config')
