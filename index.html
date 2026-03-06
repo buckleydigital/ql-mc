@@ -241,6 +241,14 @@ body {
   padding:12px 0; border-bottom:1px solid var(--border);
 }
 .task-item:last-child { border-bottom:none; }
+.task-delete {
+  width:22px; height:22px; border-radius:4px; flex-shrink:0; margin-top:0px;
+  border:none; background:transparent; cursor:pointer;
+  color:var(--txt-3); font-size:15px; display:flex; align-items:center;
+  justify-content:center; opacity:0; transition:.15s; padding:0; line-height:1;
+}
+.task-item:hover .task-delete { opacity:1; }
+.task-delete:hover { color:var(--red); background:rgba(255,69,96,.12); }
 .task-check {
   width:18px; height:18px; border-radius:4px; flex-shrink:0; margin-top:1px;
   border:2px solid var(--border-hi); cursor:pointer; transition:.15s;
@@ -816,7 +824,9 @@ td.red { color:var(--red); }
                 <div class="task-name">Review and approve AI-drafted email to Lamm Solar</div>
                 <div class="task-meta">Due: Today · Assigned: You</div>
                 <div class="task-tags"><span class="tag urgent">Urgent</span><span class="tag human">Human</span></div>
-              </div>
+              
+              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
+            </div>
             </div>
             <div class="task-item">
               <div class="task-check" onclick="toggleTask(this)"></div>
@@ -824,7 +834,9 @@ td.red { color:var(--red); }
                 <div class="task-name">Onboard new roofing client — AB Built</div>
                 <div class="task-meta">Due: Tomorrow · Campaign setup required</div>
                 <div class="task-tags"><span class="tag human">Human</span></div>
-              </div>
+              
+              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
+            </div>
             </div>
             <div class="task-item">
               <div class="task-check" onclick="toggleTask(this)"></div>
@@ -832,7 +844,9 @@ td.red { color:var(--red); }
                 <div class="task-name">Review Solar PPL campaign budget allocation</div>
                 <div class="task-meta">Due: This week · Finance Agent flagged overspend</div>
                 <div class="task-tags"><span class="tag urgent">Urgent</span><span class="tag human">Human</span></div>
-              </div>
+              
+              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
+            </div>
             </div>
             <div class="task-item">
               <div class="task-check" onclick="toggleTask(this)"></div>
@@ -840,7 +854,9 @@ td.red { color:var(--red); }
                 <div class="task-name">Approve new ad creative for HVAC niche</div>
                 <div class="task-meta">Due: This week · Marketing Agent submitted draft</div>
                 <div class="task-tags"><span class="tag human">Human</span></div>
-              </div>
+              
+              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
+            </div>
             </div>
             <div class="task-item">
               <div class="task-check" onclick="toggleTask(this)"></div>
@@ -848,7 +864,9 @@ td.red { color:var(--red); }
                 <div class="task-name">Monthly client reporting — all managed accounts</div>
                 <div class="task-meta">Due: End of month · Reports auto-drafted by agents</div>
                 <div class="task-tags"><span class="tag human">Human</span></div>
-              </div>
+              
+              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
+            </div>
             </div>
           </div>
           <button class="add-task-btn">＋ Add human task</button>
@@ -864,7 +882,9 @@ td.red { color:var(--red); }
                 <div class="task-name done">Pull Meta Ads CPL data for all niches</div>
                 <div class="task-meta">Strategy Agent · Completed 09:14 · Auto via Make.com</div>
                 <div class="task-tags"><span class="tag ai">AI: Strategy</span></div>
-              </div>
+              
+              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
+            </div>
             </div>
             <div class="task-item">
               <div class="task-check done" onclick="toggleTask(this)">✓</div>
@@ -872,7 +892,9 @@ td.red { color:var(--red); }
                 <div class="task-name done">Calculate true CPL vs Meta CPL for solar PPL</div>
                 <div class="task-meta">Strategy Agent · Completed 09:15 · Supabase updated</div>
                 <div class="task-tags"><span class="tag ai">AI: Strategy</span></div>
-              </div>
+              
+              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
+            </div>
             </div>
             <div class="task-item">
               <div class="task-check" onclick="toggleTask(this)"></div>
@@ -880,7 +902,9 @@ td.red { color:var(--red); }
                 <div class="task-name">Draft weekly performance report for all clients</div>
                 <div class="task-meta">Operations Agent · In progress · Est. complete: 10 min</div>
                 <div class="task-tags"><span class="tag ai">AI: Operations</span></div>
-              </div>
+              
+              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
+            </div>
             </div>
             <div class="task-item">
               <div class="task-check" onclick="toggleTask(this)"></div>
@@ -888,7 +912,9 @@ td.red { color:var(--red); }
                 <div class="task-name">Classify and triage all incoming emails</div>
                 <div class="task-meta">Marketing Agent · Scheduled · Next run: 10:00</div>
                 <div class="task-tags"><span class="tag ai">AI: Marketing</span></div>
-              </div>
+              
+              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
+            </div>
             </div>
             <div class="task-item">
               <div class="task-check" onclick="toggleTask(this)"></div>
@@ -896,7 +922,9 @@ td.red { color:var(--red); }
                 <div class="task-name">Reconcile subscription costs vs expense sheet</div>
                 <div class="task-meta">Finance Agent · Scheduled · Next run: Daily 6 AM</div>
                 <div class="task-tags"><span class="tag ai">AI: Finance</span></div>
-              </div>
+              
+              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
+            </div>
             </div>
             <div class="task-item">
               <div class="task-check" onclick="toggleTask(this)"></div>
@@ -904,7 +932,9 @@ td.red { color:var(--red); }
                 <div class="task-name">Scrape competitor solar lead pricing (web)</div>
                 <div class="task-meta">Strategy Agent · Scheduled · Weekly</div>
                 <div class="task-tags"><span class="tag ai">AI: Strategy</span></div>
-              </div>
+              
+              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
+            </div>
             </div>
           </div>
           <button class="add-task-btn">＋ Add agent task</button>
@@ -1388,8 +1418,19 @@ const sb = () => {
   return _sb;
 };
 
-// Config loaded from Supabase after login
-// Keys stored in app_config table: anthropic_api_key, make_webhook_url
+// ============================================================
+//  API KEYS — stored in Supabase, never in this file
+//
+//  To set your Anthropic key:
+//  1. Go to Supabase → Table Editor → app_config
+//  2. Find the row where key = 'anthropic_api_key'
+//  3. Edit the 'value' column → paste your key → save
+//
+//  If the row doesn't exist yet, run this in SQL Editor:
+//  INSERT INTO app_config (key, value, note)
+//  VALUES ('anthropic_api_key', 'sk-ant-...', 'Dashboard chat key')
+//  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+// ============================================================
 let CFG = {};
 
 async function loadConfig() {
@@ -1523,6 +1564,33 @@ function toggleTask(el) {
   el.textContent = el.classList.contains('done') ? '✓' : '';
   const n = el.nextElementSibling.querySelector('.task-name');
   if (n) n.classList.toggle('done');
+}
+
+async function deleteTask(btn) {
+  const item = btn.closest('.task-item');
+  if (!item) return;
+
+  // Animate out
+  item.style.transition = 'opacity .2s, max-height .3s, padding .3s';
+  item.style.overflow = 'hidden';
+  item.style.opacity = '0';
+  item.style.maxHeight = item.offsetHeight + 'px';
+  await new Promise(r => setTimeout(r, 20));
+  item.style.maxHeight = '0';
+  item.style.padding = '0';
+
+  // Delete from Supabase if this task has a db id
+  const taskId = item.dataset.id;
+  if (taskId) {
+    try {
+      await sb().from('tasks').delete().eq('id', taskId);
+    } catch(e) {
+      console.warn('Supabase delete failed:', e.message);
+    }
+  }
+
+  // Remove from DOM after animation
+  setTimeout(() => item.remove(), 320);
 }
 function toggleFile(id) {
   const box = document.getElementById('file-'+id);
