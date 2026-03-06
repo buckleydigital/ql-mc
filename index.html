@@ -1376,8 +1376,8 @@ System prompt: Assembled from soul.md + user.md + agents.md + live Supabase data
 //  Everything else — Anthropic key, Make webhook URLs, Meta
 //  token — lives in Supabase > app_config and loads after login.
 // ============================================================
-const SUPABASE_URL      = 'YOUR_SUPABASE_PROJECT_URL';  // https://xxxx.supabase.co
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';     // safe to expose — read-only anon key
+const SUPABASE_URL      = 'https://unzjsengxddveesiavzs.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_1DtZXXUOIxELMAB2_ozvcQ_gipBhtr9';
 
 // ============================================================
 //  SUPABASE CLIENT
@@ -1405,7 +1405,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (session) await onLogin(session.user);
 
   sb().auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN')  await onLogin(session.user);
+    // SIGNED_IN handled directly in doLogin() to avoid stuck button
+    // This only catches session restore on page reload and sign out
     if (event === 'SIGNED_OUT') showLoginScreen();
   });
 
@@ -1428,13 +1429,38 @@ async function doLogin() {
   const password = document.getElementById('login-password').value;
   const btn      = document.getElementById('login-btn');
   const errEl    = document.getElementById('login-error');
+
   if (!email || !password) { errEl.textContent = 'Enter your email and password.'; return; }
+
+  // Guard: make sure Supabase CDN loaded
+  if (typeof supabase === 'undefined') {
+    errEl.textContent = 'Auth library failed to load. Check your internet connection and refresh.';
+    return;
+  }
+
   btn.textContent = 'Signing in...';
   btn.disabled = true;
   errEl.textContent = '';
-  const { error } = await sb().auth.signInWithPassword({ email, password });
-  if (error) {
-    errEl.textContent = error.message === 'Invalid login credentials' ? 'Incorrect email or password.' : error.message;
+
+  try {
+    const { data, error } = await sb().auth.signInWithPassword({ email, password });
+
+    if (error) {
+      errEl.textContent = error.message === 'Invalid login credentials'
+        ? 'Incorrect email or password.'
+        : error.message;
+      btn.textContent = 'Sign In';
+      btn.disabled = false;
+      return;
+    }
+
+    // Success — handle directly rather than waiting for onAuthStateChange
+    if (data?.user) {
+      await onLogin(data.user);
+    }
+
+  } catch(e) {
+    errEl.textContent = 'Connection error: ' + e.message;
     btn.textContent = 'Sign In';
     btn.disabled = false;
   }
