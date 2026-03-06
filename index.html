@@ -650,7 +650,7 @@ td.red { color:var(--red); }
         <span class="icon">⚡</span> Pay Per Lead
       </button>
       <button class="nav-item" onclick="showPage('managed')">
-        <span class="icon">📡</span> Managed Ads
+        <span class="icon">📡</span> Agency B2B
       </button>
     </div>
     <div class="sidebar-section">
@@ -675,7 +675,7 @@ td.red { color:var(--red); }
       <div class="topbar-chips">
         <div class="chip"><span class="dot"></span> Supabase Live</div>
         <div class="chip"><span class="dot" style="background:var(--blue)"></span> 4 Agents Active</div>
-        <div class="chip"><span class="dot" style="background:var(--orange)"></span> Make.com Running</div>
+        <div class="chip"><span class="dot" style="background:var(--orange)"></span> Make.com Syncing</div>
       </div>
       <span id="user-email-display" style="font-size:11px;color:var(--txt-3);margin-left:8px;"></span>
       <button class="btn" onclick="logout()" style="margin-left:8px;font-size:11px;padding:6px 12px">🔓 Logout</button>
@@ -688,7 +688,7 @@ td.red { color:var(--red); }
       <div class="section-header">
         <div>
           <div class="section-title">Agency <span>Dashboard</span></div>
-          <div class="page-subtitle">Real-time data from Supabase · Meta · Spreadsheets</div>
+          <div class="page-subtitle">PPL Solar (B2C) + Agency B2B · Powered by Supabase + Claude</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
           <span class="supabase-badge">● Supabase</span>
@@ -949,7 +949,7 @@ td.red { color:var(--red); }
       <div class="section-header">
         <div>
           <div class="section-title">AI Agent <span>Hub</span></div>
-          <div class="page-subtitle">4 agents running · Powered by Claude · Connected via Supabase + Make.com</div>
+          <div class="page-subtitle">4 agents running · PPL Solar (B2C) + Agency B2B · Powered by Claude</div>
         </div>
       </div>
       <div class="grid-4">
@@ -1169,10 +1169,11 @@ Location: Australia
    - True CPL = Meta CPL ÷ sell-through rate
    - Target: CPL under $55 for profitability
    
-2. Managed Advertising — All niches
-   - Monthly retainer clients
+2. Agency B2B Lead Gen — QuoteLeads own pipeline
+   - Agency Meta account generates B2B leads for QuoteLeads itself
    - Niches: Solar, Roofing, Carpentry, Landscaping, Renovations, HVAC, Painting
    - Target ROAS: 4x minimum
+   - Tracks: leads → consultations → closes for the agency business
 
 ## Ad Accounts
 - Agency Ad Account: All managed advertising clients
@@ -1180,8 +1181,8 @@ Location: Australia
 
 ## Goals
 - Scale Solar PPL to 200 leads/month at sub-$45 CPL
-- Grow managed advertising MRR to $80k
-- Maintain 45%+ net margin
+- Scale Agency B2B to consistent consultation pipeline via agency Meta account
+- Maintain 45%+ net margin across both streams
 </div>
 
         <div class="file-item" onclick="toggleFile('tools')">
@@ -1197,7 +1198,7 @@ Location: Australia
 |-------------------|---------------------|------------------|
 | Meta Ads API      | meta_campaigns      | Every 15 min     |
 | PPL Spreadsheet   | ppl_leads           | On new row       |
-| Agency Spreadsheet| agency_clients      | On change        |
+| Agency B2B Sheet  | daily_snapshot      | Daily 7am        |
 | Gmail/Email       | emails              | Every 5 min      |
 | Expense Sheet     | expenses            | Daily            |
 | Revenue Sheet     | revenue             | Daily            |
@@ -1294,23 +1295,23 @@ System prompt: Assembled from soul.md + user.md + agents.md + live Supabase data
     <div class="page" id="page-managed">
       <div class="section-header">
         <div>
-          <div class="section-title">Managed Advertising <span>Clients</span></div>
-          <div class="page-subtitle">Agency ad account · All niches · Monthly retainers</div>
+          <div class="section-title">Agency B2B <span>Lead Gen</span></div>
+          <div class="page-subtitle">Agency Meta account · B2B leads for QuoteLeads · Consultations + closes</div>
         </div>
         <span class="meta-platform">f Agency Account</span>
       </div>
       <div class="grid-4">
-        <div class="stat-card"><div class="stat-label">Active Clients</div><div class="stat-value green">—</div><div class="stat-delta">Awaiting data</div></div>
-        <div class="stat-card"><div class="stat-label">Total MRR</div><div class="stat-value blue">—</div><div class="stat-delta">Awaiting data</div></div>
+        <div class="stat-card"><div class="stat-label">Consultations Booked</div><div class="stat-value green">—</div><div class="stat-delta">Awaiting data</div></div>
+        <div class="stat-card"><div class="stat-label">B2B Revenue MTD</div><div class="stat-value blue">—</div><div class="stat-delta">Awaiting data</div></div>
         <div class="stat-card"><div class="stat-label">Agency Ad Spend</div><div class="stat-value orange">—</div><div class="stat-delta">Agency account only</div></div>
-        <div class="stat-card"><div class="stat-label">Avg Client ROAS</div><div class="stat-value green">—</div><div class="stat-delta">Awaiting data</div></div>
+        <div class="stat-card"><div class="stat-label">Agency ROAS</div><div class="stat-value green">—</div><div class="stat-delta">Awaiting data</div></div>
       </div>
       <div class="spacer"></div>
       <div class="card">
         <div class="card-title">📋 Client Delivery Pipeline</div>
         <div style="padding:40px 0;text-align:center;color:var(--txt-3);font-size:13px;">
           <div style="font-size:28px;margin-bottom:10px">📡</div>
-          Client pipeline will populate from the <strong style="color:var(--txt-2)">agency_clients</strong> table in Supabase<br>once the Google Sheets → Supabase sync is configured in Make.com
+          Agency B2B pipeline will populate from Supabase once Make.com daily snapshot sync is running.<br>Tracks: leads generated → consultations booked → closes from your agency Meta account.
         </div>
       </div>
     </div>
@@ -1333,16 +1334,16 @@ System prompt: Assembled from soul.md + user.md + agents.md + live Supabase data
         <div class="stat-card"><div class="stat-label">True CPL (PPL Solar)</div><div class="stat-value red">—</div><div class="stat-delta">Meta CPL ÷ sell-through</div></div>
         <div class="stat-card"><div class="stat-label">PPL Spend MTD</div><div class="stat-value orange">—</div><div class="stat-delta">Awaiting Meta sync</div></div>
       </div>
-      <div class="split-label">Agency Account — Managed Clients</div>
+      <div class="split-label">Agency B2B Account — QuoteLeads Own Pipeline</div>
       <div class="grid-4">
-        <div class="stat-card"><div class="stat-label">Avg Agency CPL</div><div class="stat-value green">—</div><div class="stat-delta">Awaiting Meta sync</div></div>
-        <div class="stat-card"><div class="stat-label">Avg Agency ROAS</div><div class="stat-value blue">—</div><div class="stat-delta">Awaiting Meta sync</div></div>
-        <div class="stat-card"><div class="stat-label">Agency Spend MTD</div><div class="stat-value orange">—</div><div class="stat-delta">Awaiting Meta sync</div></div>
-        <div class="stat-card"><div class="stat-label">Leads Delivered MTD</div><div class="stat-value green">—</div><div class="stat-delta">Awaiting data</div></div>
+        <div class="stat-card"><div class="stat-label">Agency B2B Avg CPL</div><div class="stat-value green">—</div><div class="stat-delta">Awaiting Meta sync</div></div>
+        <div class="stat-card"><div class="stat-label">Agency B2B ROAS</div><div class="stat-value blue">—</div><div class="stat-delta">Awaiting Meta sync</div></div>
+        <div class="stat-card"><div class="stat-label">Agency B2B Spend MTD</div><div class="stat-value orange">—</div><div class="stat-delta">Awaiting Meta sync</div></div>
+        <div class="stat-card"><div class="stat-label">B2B Leads Generated MTD</div><div class="stat-value green">—</div><div class="stat-delta">Awaiting data</div></div>
       </div>
       <div class="spacer"></div>
       <div class="card">
-        <div class="card-title">📊 CPL by Niche — Agency Account</div>
+        <div class="card-title">📊 CPL by Niche — Agency B2B Account</div>
         <div style="padding:32px 0;text-align:center;color:var(--txt-3);font-size:13px;">
           <div style="font-size:24px;margin-bottom:8px">📊</div>
           Niche CPL data will populate once Meta Ads API sync is running in Make.com (Scenario 1)<br>
@@ -1540,7 +1541,7 @@ function showLoginScreen() {
 const PAGE_TITLES = {
   dashboard:'Mission Control', finance:'Finance Overview', tasks:'Task Manager',
   emails:'Email Review', agents:'AI Agent Hub', chat:'Agent Chat',
-  'agent-files':'Agent Files', ppl:'Pay Per Lead', managed:'Managed Ads',
+  'agent-files':'Agent Files', ppl:'Pay Per Lead', managed:'Agency B2B',
   cpl:'CPL Analytics', niches:'Niche Performance'
 };
 function showPage(id) {
@@ -1635,7 +1636,7 @@ async function getLiveSnapshot() {
     const margin = d.revenue_total > 0
       ? Math.round(d.net_profit / d.revenue_total * 100) : 0;
 
-    // Also pull client list for context
+    // Pull agency_clients as optional reference (seed manually in Supabase if needed)
     const { data: clients } = await sb()
       .from('agency_clients')
       .select('client_name,niche,status,monthly_fee')
@@ -1645,13 +1646,13 @@ async function getLiveSnapshot() {
 ## LIVE DATA SNAPSHOT — ${new Date(d.date).toLocaleDateString('en-AU')} (last synced from spreadsheet)
 
 ### Revenue MTD
-Managed Advertising: $${Number(d.revenue_managed_ads).toLocaleString('en-AU')}
+Agency B2B Revenue: $${Number(d.revenue_managed_ads).toLocaleString('en-AU')}
 PPL Solar: $${Number(d.revenue_ppl_solar).toLocaleString('en-AU')}
 Other: $${Number(d.revenue_other).toLocaleString('en-AU')}
 TOTAL REVENUE: $${Number(d.revenue_total).toLocaleString('en-AU')}
 
 ### Expenses MTD
-Agency Meta Ad Spend: $${Number(d.exp_agency_ad_spend).toLocaleString('en-AU')}
+Agency B2B Meta Ad Spend: $${Number(d.exp_agency_ad_spend).toLocaleString('en-AU')}
 PPL Solar Meta Ad Spend: $${Number(d.exp_ppl_ad_spend).toLocaleString('en-AU')}
 Subscriptions: $${Number(d.exp_subscriptions).toLocaleString('en-AU')}
 Contractors: $${Number(d.exp_contractors).toLocaleString('en-AU')}
@@ -1669,15 +1670,15 @@ Sell-Through Rate: ${d.ppl_sell_through_pct}%
 Meta CPL: $${d.ppl_meta_cpl}
 True CPL (spend ÷ sold): $${d.ppl_true_cpl}
 
-### Managed Advertising
-Active Clients: ${d.agency_active_clients}
-MRR: $${Number(d.agency_mrr).toLocaleString('en-AU')}
-Total Leads Delivered MTD: ${d.agency_leads_total}
+### Agency B2B Lead Gen (QuoteLeads own pipeline)
+Consultations Booked MTD: ${d.agency_active_clients}
+Revenue Attributed: $${Number(d.agency_mrr).toLocaleString('en-AU')}
+B2B Leads Generated MTD: ${d.agency_leads_total}
 Avg CPL: $${d.agency_avg_cpl}
 Avg ROAS: ${d.agency_avg_roas}x
 
-### Client List
-${(clients||[]).map(c => `${c.client_name} | ${c.niche} | $${c.monthly_fee}/mo`).join('\n')}
+### Agency Clients (reference only)
+${(clients||[]).map(c => `${c.client_name} | ${c.niche} | $${c.monthly_fee}/mo`).join('\n') || 'None seeded yet'}
 
 ${d.notes ? `### Notes\n${d.notes}` : ''}
 `.trim();
@@ -1691,9 +1692,9 @@ function getSystemPrompt(agentId, snapshot) {
   const base = {
     group: `You are a panel of 4 AI agents for QuoteLeads (quoteleads.com.au), an Australian lead generation agency for trade businesses. Agents: Marketing, Finance, Operations, Strategy. Prefix each section with the agent name in caps. All figures AUD. Be direct, data-driven, end with a recommended next action.`,
     marketing:  `You are the Marketing Agent for QuoteLeads (quoteleads.com.au). You handle email triage, ad creative direction, lead gen messaging, and client communications. Australian English, AUD. End with a clear next action.`,
-    finance:    `You are the Finance Agent for QuoteLeads (quoteleads.com.au). You track revenue, expenses, ad spend (Agency and PPL Solar separately), subscriptions, P&L and margins. All figures AUD. Flag anomalies immediately.`,
-    operations: `You are the Operations Agent for QuoteLeads (quoteleads.com.au). You manage lead delivery pipeline, client onboarding, and SLA monitoring across all 7 niches. Be systematic and reliability-focused.`,
-    strategy:   `You are the Strategy Agent for QuoteLeads (quoteleads.com.au). You analyse CPL trends, ROAS by niche, PPL sell-through rates, and recommend budget allocation. Monitor PPL Solar and Agency accounts separately. Be analytically sharp.`
+    finance:    `You are the Finance Agent for QuoteLeads (quoteleads.com.au). You track revenue, expenses, ad spend (Agency B2B account and PPL Solar account separately), subscriptions, P&L and margins. Agency account spend generates B2B leads for QuoteLeads itself — not client retainers. All figures AUD. Flag anomalies immediately.`,
+    operations: `You are the Operations Agent for QuoteLeads (quoteleads.com.au). You manage lead delivery pipelines for both revenue streams: PPL Solar (B2C leads sold to buyers) and Agency B2B (leads generated for QuoteLeads' own agency business via the agency Meta account). Be systematic and reliability-focused.`,
+    strategy:   `You are the Strategy Agent for QuoteLeads (quoteleads.com.au). You analyse CPL trends, ROAS by niche, PPL sell-through rates, and recommend budget allocation. Track PPL Solar (B2C, sell leads to buyers) and Agency B2B (leads for QuoteLeads own business) as two completely separate accounts and revenue streams. Be analytically sharp.`
   };
   return `${base[agentId]}\n\n${snapshot}`;
 }
