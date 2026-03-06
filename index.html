@@ -809,135 +809,48 @@ td.red { color:var(--red); }
       <div class="section-header">
         <div>
           <div class="section-title">Task <span>Manager</span></div>
-          <div class="page-subtitle">Human tasks · AI agent tasks · Prioritised queue</div>
+          <div class="page-subtitle">Persisted in Supabase · Survives refresh</div>
         </div>
-        <button class="btn primary">+ New Task</button>
       </div>
-      <div class="grid-2">
-        <!-- Human Tasks -->
-        <div class="card">
-          <div class="card-title">👤 Human Tasks <span style="margin-left:auto;background:rgba(255,124,56,.15);color:var(--orange);padding:2px 8px;border-radius:20px;font-size:10px">5 pending</span></div>
-          <div id="human-tasks">
-            <div class="task-item">
-              <div class="task-check" onclick="toggleTask(this)"></div>
-              <div class="task-body">
-                <div class="task-name">Review and approve AI-drafted email to Lamm Solar</div>
-                <div class="task-meta">Due: Today · Assigned: You</div>
-                <div class="task-tags"><span class="tag urgent">Urgent</span><span class="tag human">Human</span></div>
-              
-              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
-            </div>
-            </div>
-            <div class="task-item">
-              <div class="task-check" onclick="toggleTask(this)"></div>
-              <div class="task-body">
-                <div class="task-name">Onboard new roofing client — AB Built</div>
-                <div class="task-meta">Due: Tomorrow · Campaign setup required</div>
-                <div class="task-tags"><span class="tag human">Human</span></div>
-              
-              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
-            </div>
-            </div>
-            <div class="task-item">
-              <div class="task-check" onclick="toggleTask(this)"></div>
-              <div class="task-body">
-                <div class="task-name">Review Solar PPL campaign budget allocation</div>
-                <div class="task-meta">Due: This week · Finance Agent flagged overspend</div>
-                <div class="task-tags"><span class="tag urgent">Urgent</span><span class="tag human">Human</span></div>
-              
-              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
-            </div>
-            </div>
-            <div class="task-item">
-              <div class="task-check" onclick="toggleTask(this)"></div>
-              <div class="task-body">
-                <div class="task-name">Approve new ad creative for HVAC niche</div>
-                <div class="task-meta">Due: This week · Marketing Agent submitted draft</div>
-                <div class="task-tags"><span class="tag human">Human</span></div>
-              
-              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
-            </div>
-            </div>
-            <div class="task-item">
-              <div class="task-check" onclick="toggleTask(this)"></div>
-              <div class="task-body">
-                <div class="task-name">Monthly client reporting — all managed accounts</div>
-                <div class="task-meta">Due: End of month · Reports auto-drafted by agents</div>
-                <div class="task-tags"><span class="tag human">Human</span></div>
-              
-              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
-            </div>
-            </div>
-          </div>
-          <button class="add-task-btn">＋ Add human task</button>
-        </div>
 
-        <!-- AI Agent Tasks -->
-        <div class="card">
-          <div class="card-title">🤖 AI Agent Tasks <span style="margin-left:auto;background:var(--accent-dim);color:var(--accent);padding:2px 8px;border-radius:20px;font-size:10px">Running</span></div>
-          <div id="ai-tasks">
-            <div class="task-item">
-              <div class="task-check done" onclick="toggleTask(this)">✓</div>
-              <div class="task-body">
-                <div class="task-name done">Pull Meta Ads CPL data for all niches</div>
-                <div class="task-meta">Strategy Agent · Completed 09:14 · Auto via Make.com</div>
-                <div class="task-tags"><span class="tag ai">AI: Strategy</span></div>
-              
-              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
-            </div>
-            </div>
-            <div class="task-item">
-              <div class="task-check done" onclick="toggleTask(this)">✓</div>
-              <div class="task-body">
-                <div class="task-name done">Calculate true CPL vs Meta CPL for solar PPL</div>
-                <div class="task-meta">Strategy Agent · Completed 09:15 · Supabase updated</div>
-                <div class="task-tags"><span class="tag ai">AI: Strategy</span></div>
-              
-              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
-            </div>
-            </div>
-            <div class="task-item">
-              <div class="task-check" onclick="toggleTask(this)"></div>
-              <div class="task-body">
-                <div class="task-name">Draft weekly performance report for all clients</div>
-                <div class="task-meta">Operations Agent · In progress · Est. complete: 10 min</div>
-                <div class="task-tags"><span class="tag ai">AI: Operations</span></div>
-              
-              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
-            </div>
-            </div>
-            <div class="task-item">
-              <div class="task-check" onclick="toggleTask(this)"></div>
-              <div class="task-body">
-                <div class="task-name">Classify and triage all incoming emails</div>
-                <div class="task-meta">Marketing Agent · Scheduled · Next run: 10:00</div>
-                <div class="task-tags"><span class="tag ai">AI: Marketing</span></div>
-              
-              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
-            </div>
-            </div>
-            <div class="task-item">
-              <div class="task-check" onclick="toggleTask(this)"></div>
-              <div class="task-body">
-                <div class="task-name">Reconcile subscription costs vs expense sheet</div>
-                <div class="task-meta">Finance Agent · Scheduled · Next run: Daily 6 AM</div>
-                <div class="task-tags"><span class="tag ai">AI: Finance</span></div>
-              
-              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
-            </div>
-            </div>
-            <div class="task-item">
-              <div class="task-check" onclick="toggleTask(this)"></div>
-              <div class="task-body">
-                <div class="task-name">Scrape competitor solar lead pricing (web)</div>
-                <div class="task-meta">Strategy Agent · Scheduled · Weekly</div>
-                <div class="task-tags"><span class="tag ai">AI: Strategy</span></div>
-              
-              <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
-            </div>
-            </div>
+      <!-- Add task form -->
+      <div class="card" style="margin-bottom:16px;">
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+          <div style="flex:2;min-width:200px;">
+            <div style="font-size:11px;color:var(--txt-3);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Task</div>
+            <input id="new-task-title" type="text" placeholder="What needs doing..." style="width:100%;background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;color:var(--txt-1);font-family:var(--font-ui);font-size:13px;outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'" onkeydown="if(event.key==='Enter')addTask()" />
           </div>
-          <button class="add-task-btn">＋ Add agent task</button>
+          <div style="min-width:130px;">
+            <div style="font-size:11px;color:var(--txt-3);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Assigned to</div>
+            <select id="new-task-assigned" style="width:100%;background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;color:var(--txt-1);font-family:var(--font-ui);font-size:13px;outline:none;">
+              <option value="human">👤 Me</option>
+              <option value="marketing">📣 Marketing</option>
+              <option value="finance">💰 Finance</option>
+              <option value="operations">⚙️ Operations</option>
+              <option value="strategy">🧠 Strategy</option>
+            </select>
+          </div>
+          <div style="min-width:110px;">
+            <div style="font-size:11px;color:var(--txt-3);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Priority</div>
+            <select id="new-task-priority" style="width:100%;background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;color:var(--txt-1);font-family:var(--font-ui);font-size:13px;outline:none;">
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <button class="btn primary" onclick="addTask()" style="height:40px;padding:0 20px;white-space:nowrap;">＋ Add Task</button>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">👤 My Tasks <span id="human-count" style="margin-left:auto;background:rgba(255,124,56,.15);color:var(--orange);padding:2px 8px;border-radius:20px;font-size:10px">—</span></div>
+          <div id="human-tasks"><div style="padding:24px 0;text-align:center;color:var(--txt-3);font-size:13px;">Loading...</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">🤖 Agent Tasks <span id="agent-count" style="margin-left:auto;background:var(--accent-dim);color:var(--accent);padding:2px 8px;border-radius:20px;font-size:10px">—</span></div>
+          <div id="ai-tasks"><div style="padding:24px 0;text-align:center;color:var(--txt-3);font-size:13px;">Loading...</div></div>
         </div>
       </div>
     </div>
@@ -1460,8 +1373,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function onLogin(user) {
-  await loadConfig();   // pull keys from Supabase first
+  await loadConfig();
   showApp(user);
+  loadTasks(); // pre-load tasks in background
 }
 
 // ============================================================
@@ -1554,6 +1468,8 @@ function showPage(id) {
   const t = PAGE_TITLES[id] || id;
   document.getElementById('topbar-title').innerHTML = t.replace(/(\w+)$/, '<span>$1</span>');
   closeSidebar();
+  // Load dynamic content for relevant pages
+  if (id === 'tasks') loadTasks();
 }
 function openSidebar()  { document.getElementById('sidebar').classList.add('open');    document.getElementById('overlay').classList.add('show');    }
 function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
@@ -1561,16 +1477,119 @@ function closeSidebar() { document.getElementById('sidebar').classList.remove('o
 // ============================================================
 //  TASK + FILE TOGGLES
 // ============================================================
-function toggleTask(el) {
+// ============================================================
+//  TASKS — fully persisted in Supabase
+// ============================================================
+
+function renderTaskItem(t) {
+  const isDone = t.status === 'completed';
+  const priorityTag = t.priority === 'urgent'
+    ? '<span class="tag urgent">Urgent</span>'
+    : t.priority === 'high'
+    ? '<span class="tag" style="background:rgba(251,191,36,.12);color:var(--yellow);border-color:rgba(251,191,36,.3)">High</span>'
+    : '';
+  const assignedTag = t.assigned_to === 'human'
+    ? '<span class="tag human">Me</span>'
+    : `<span class="tag ai">AI: ${t.assigned_to.charAt(0).toUpperCase()+t.assigned_to.slice(1)}</span>`;
+
+  return `<div class="task-item" data-id="${t.id}">
+    <div class="task-check ${isDone?'done':''}" onclick="toggleTask(this)">${isDone?'✓':''}</div>
+    <div class="task-body">
+      <div class="task-name ${isDone?'done':''}">${escHtml(t.title)}</div>
+      <div class="task-meta">${t.due_date ? 'Due: '+new Date(t.due_date).toLocaleDateString('en-AU')+' · ' : ''}${t.assigned_to === 'human' ? 'Assigned: You' : t.assigned_to.charAt(0).toUpperCase()+t.assigned_to.slice(1)+' Agent'}</div>
+      <div class="task-tags">${priorityTag}${assignedTag}</div>
+    </div>
+    <button class="task-delete" onclick="deleteTask(this)" title="Delete task">✕</button>
+  </div>`;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function loadTasks() {
+  try {
+    const { data, error } = await sb()
+      .from('tasks')
+      .select('*')
+      .in('status', ['pending','in_progress','completed'])
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const human = (data||[]).filter(t => t.assigned_to === 'human');
+    const agents = (data||[]).filter(t => t.assigned_to !== 'human');
+
+    const humanEl = document.getElementById('human-tasks');
+    const agentEl = document.getElementById('ai-tasks');
+    const humanCount = document.getElementById('human-count');
+    const agentCount = document.getElementById('agent-count');
+
+    const pendingHuman = human.filter(t => t.status !== 'completed').length;
+    const pendingAgent = agents.filter(t => t.status !== 'completed').length;
+
+    humanCount.textContent = pendingHuman + ' pending';
+    agentCount.textContent = pendingAgent + ' pending';
+
+    humanEl.innerHTML = human.length
+      ? human.map(renderTaskItem).join('')
+      : '<div style="padding:24px 0;text-align:center;color:var(--txt-3);font-size:13px;">No tasks yet — add one above</div>';
+
+    agentEl.innerHTML = agents.length
+      ? agents.map(renderTaskItem).join('')
+      : '<div style="padding:24px 0;text-align:center;color:var(--txt-3);font-size:13px;">No agent tasks yet</div>';
+
+  } catch(e) {
+    document.getElementById('human-tasks').innerHTML = `<div style="padding:16px;color:var(--red);font-size:12px">Error loading tasks: ${e.message}</div>`;
+  }
+}
+
+async function addTask() {
+  const title    = document.getElementById('new-task-title').value.trim();
+  const assigned = document.getElementById('new-task-assigned').value;
+  const priority = document.getElementById('new-task-priority').value;
+  if (!title) { document.getElementById('new-task-title').focus(); return; }
+
+  try {
+    const { error } = await sb().from('tasks').insert({
+      title,
+      assigned_to: assigned,
+      priority,
+      status: 'pending'
+    });
+    if (error) throw error;
+    document.getElementById('new-task-title').value = '';
+    await loadTasks();
+  } catch(e) {
+    alert('Could not add task: ' + e.message);
+  }
+}
+
+async function toggleTask(el) {
+  const item = el.closest('.task-item');
+  const taskId = item?.dataset.id;
+  const isDone = el.classList.contains('done');
+  const newStatus = isDone ? 'pending' : 'completed';
+
   el.classList.toggle('done');
   el.textContent = el.classList.contains('done') ? '✓' : '';
-  const n = el.nextElementSibling.querySelector('.task-name');
+  const n = item?.querySelector('.task-name');
   if (n) n.classList.toggle('done');
+
+  if (taskId) {
+    try {
+      await sb().from('tasks').update({ status: newStatus }).eq('id', taskId);
+    } catch(e) {
+      console.warn('Could not update task status:', e.message);
+    }
+  }
 }
 
 async function deleteTask(btn) {
   const item = btn.closest('.task-item');
   if (!item) return;
+
+  const taskId = item.dataset.id;
 
   // Animate out
   item.style.transition = 'opacity .2s, max-height .3s, padding .3s';
@@ -1580,9 +1599,8 @@ async function deleteTask(btn) {
   await new Promise(r => setTimeout(r, 20));
   item.style.maxHeight = '0';
   item.style.padding = '0';
+  setTimeout(() => item.remove(), 320);
 
-  // Delete from Supabase if this task has a db id
-  const taskId = item.dataset.id;
   if (taskId) {
     try {
       await sb().from('tasks').delete().eq('id', taskId);
@@ -1590,9 +1608,6 @@ async function deleteTask(btn) {
       console.warn('Supabase delete failed:', e.message);
     }
   }
-
-  // Remove from DOM after animation
-  setTimeout(() => item.remove(), 320);
 }
 function toggleFile(id) {
   const box = document.getElementById('file-'+id);
