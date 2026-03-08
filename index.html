@@ -1826,6 +1826,10 @@ window.addEventListener('load', () => {
 
 function initSupabase() {
   try {
+    if (!window.supabase) {
+      document.getElementById('login-error').textContent = 'Supabase library failed to load. Check your internet connection.';
+      return;
+    }
     db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     db.auth.onAuthStateChange((event, session) => {
       if (session) {
@@ -1841,8 +1845,8 @@ function initSupabase() {
       }
     });
   } catch(e) {
-    console.warn('Supabase init failed — running in demo mode');
-    showDemoMode();
+    document.getElementById('login-error').textContent = 'Init error: ' + e.message;
+    console.error('Supabase init error:', e);
   }
 }
 
@@ -1862,6 +1866,11 @@ async function doLogin() {
 
   if (!email || !pass) { err.textContent = 'Email and password required.'; return; }
 
+  if (!db) {
+    err.textContent = 'Database not initialised. Refresh the page and try again.';
+    return;
+  }
+
   btn.disabled = true;
   btn.textContent = 'AUTHENTICATING...';
   err.textContent = '';
@@ -1872,9 +1881,14 @@ async function doLogin() {
       err.textContent = error.message;
       btn.disabled = false;
       btn.textContent = 'AUTHENTICATE →';
+    } else if (!data?.session) {
+      err.textContent = 'Login failed — no session returned. Check your Supabase Auth settings.';
+      btn.disabled = false;
+      btn.textContent = 'AUTHENTICATE →';
     }
   } catch(e) {
-    err.textContent = 'Connection error. Check Supabase config.';
+    err.textContent = 'Error: ' + e.message;
+    console.error('Login error:', e);
     btn.disabled = false;
     btn.textContent = 'AUTHENTICATE →';
   }
