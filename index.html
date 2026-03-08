@@ -2203,49 +2203,6 @@ try {
   addMsg('agent', '⚠️', `Proxy error: ${e.message}`);
 }
 
-  try {
-    const history = (chatHistory[curChat] || []).slice(-20);
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key': ANTHROPIC_KEY,
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: sys,
-        messages: history,
-      })
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error?.message || `HTTP ${res.status}`);
-    }
-
-    const data  = await res.json();
-    const reply = data.content?.map(c => c.text || '').join('') || 'No response.';
-
-    $('typing-area').style.display = 'none';
-    chatHistory[curChat].push({role:'assistant', content:reply});
-    addMsg('agent', p.emoji, reply);
-
-    try {
-      await db.from('chat_memory').insert([{agent:curChat, user_id:currentUser.id, role:'assistant', content:reply, created_at:now()}]);
-      const cnt = (chatHistory[curChat] || []).length;
-      setText('mem-status',    `Memory active — ${cnt} messages saved`);
-      setText('chat-mem-info', `${cnt} messages in memory`);
-    } catch(e) {}
-
-  } catch(e) {
-    $('typing-area').style.display = 'none';
-    addMsg('agent', '⚠️', `Error: ${e.message}. Check your API key or use a Supabase Edge Function proxy.`);
-  }
-}
-
 function addMsg(type, avatar, text, time) {
   const msgs = $('chat-msgs');
   const ts   = (time || new Date()).toLocaleTimeString('en-AU', {hour:'2-digit',minute:'2-digit'});
