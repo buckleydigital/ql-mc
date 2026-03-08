@@ -757,11 +757,7 @@ td strong{font-weight:500}
         <div class="ph">
           <div><h1>Financials</h1><p>Real-time P&amp;L from Supabase</p></div>
           <div class="ph-right">
-            <select class="fi" id="fin-month" onchange="loadFinance()" style="width:auto;font-size:12px;padding:5px 10px">
-              <option value="2026-03">Mar 2026</option>
-              <option value="2026-02">Feb 2026</option>
-              <option value="2026-01">Jan 2026</option>
-            </select>
+            <select class="fi" id="fin-month" onchange="loadFinance()" style="width:auto;font-size:12px;padding:5px 10px"></select>
           </div>
         </div>
         <div class="kg c4 mb4">
@@ -1082,7 +1078,7 @@ td strong{font-weight:500}
 'use strict';
 /* ── CONFIG — replace with your credentials ── */
 const SUPABASE_URL = 'https://wmegoygrancfwxagqskh.supabase.co';
-const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_KEY = 'sb_publishable_UHQNxVCjHJnFjssYwTiwcQ_3FYovX8I';
 
 let db, currentUser;
 let curAgent = 'marketing', curMd = 'agents.md', curChat = 'all';
@@ -1133,6 +1129,19 @@ window.addEventListener('load', () => {
   initSupabase();
   setInterval(updateClock, 1000); updateClock();
   $('task-date').textContent = new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  // Build finance month dropdown dynamically — last 12 months, current selected
+  const sel = $('fin-month');
+  const now2 = new Date();
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now2.getFullYear(), now2.getMonth() - i, 1);
+    const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const lbl = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    const opt = document.createElement('option');
+    opt.value = val; opt.textContent = lbl;
+    if (i === 0) opt.selected = true;
+    sel.appendChild(opt);
+  }
   // Set daily date to today
   $('daily-date').value = new Date().toISOString().split('T')[0];
   buildKanban('crm-kanban', CRM_STAGES, 'crm');
@@ -1235,27 +1244,27 @@ function renderTaskList(id, list, type) {
     </div>`).join('');
 }
 async function toggleTask(id, currentDone) {
-  try { await db.from('tasks').update({done:!currentDone,updated_at:now()}).eq('id',id); loadTasks(); }
-  catch(e) { toast('Could not update task', true); }
+  const {error} = await db.from('tasks').update({done:!currentDone,updated_at:now()}).eq('id',id);
+  if (error) { toast('Update failed: '+error.message, true); return; }
+  loadTasks();
 }
 async function quickAdd(type) {
   const inp = $('q-'+type);
   const title = inp.value.trim();
   if (!title) return;
-  try {
-    await db.from('tasks').insert([{title,assigned_to:type==='human'?'human':type,priority:type==='ai'?'ai':'normal',done:false,created_at:now()}]);
-    inp.value=''; loadTasks();
-  } catch(e) { toast('Error: '+e.message, true); }
+  const {error} = await db.from('tasks').insert([{title,assigned_to:type==='human'?'human':type,priority:type==='ai'?'ai':'normal',done:false,created_at:now()}]);
+  if (error) { toast('DB error: '+error.message, true); return; }
+  inp.value=''; loadTasks();
 }
 async function addTask() {
   const title=$('t-title').value.trim(), assignee=$('t-assignee').value;
   const priority=$('t-priority').value, notes=$('t-notes').value;
   if (!title) { toast('Title required', true); return; }
-  try {
-    await db.from('tasks').insert([{title,assigned_to:assignee,priority:assignee!=='human'?'ai':priority,notes,done:false,created_at:now()}]);
-    closeModal('m-task'); $('t-title').value=''; $('t-notes').value='';
-    loadTasks(); toast('Task created');
-  } catch(e) { toast('Error: '+e.message, true); }
+  const {error} = await db.from('tasks').insert([{title,assigned_to:assignee,priority:assignee!=='human'?'ai':priority,notes,done:false,created_at:now()}]);
+  if (error) { toast('DB error: '+error.message, true); return; }
+  $('t-title').value=''; $('t-notes').value='';
+  closeModal('m-task');
+  loadTasks(); toast('Task created ✓');
 }
 
 /* ══════════════════
@@ -1285,11 +1294,10 @@ function renderEmails(emails) {
     </div>`).join('');
 }
 async function actionEmail(id, status) {
-  try {
-    await db.from('flagged_emails').update({status,actioned_at:now()}).eq('id',id);
-    $('em-'+id)?.remove();
-    toast(status==='discarded'?'Discarded':'Approved');
-  } catch(e) { toast('Error: '+e.message, true); }
+  const {error} = await db.from('flagged_emails').update({status,actioned_at:now()}).eq('id',id);
+  if (error) { toast('Error: '+error.message, true); return; }
+  $('em-'+id)?.remove();
+  toast(status==='discarded'?'Discarded':'Approved ✓');
 }
 
 /* ══════════════════════════════════════
@@ -1329,14 +1337,12 @@ async function drop(e, prefix, newStage) {
   if (!draggedCard || draggedPrefix !== prefix) return;
   const id = draggedId;
   const table = prefix === 'crm' ? 'leads' : 'clients';
-  const field = prefix === 'crm' ? 'stage' : 'stage';
-  try {
-    await db.from(table).update({[field]: newStage, updated_at: now()}).eq('id', id);
-    toast('Moved to ' + newStage.replace(/_/g,' '));
-    if (prefix==='crm') loadCRM();
-    else if (prefix==='ppl') loadPPL();
-    else loadManaged();
-  } catch(e) { toast('Could not move card: '+e.message, true); }
+  const {error} = await db.from(table).update({stage: newStage, updated_at: now()}).eq('id', id);
+  if (error) { toast('Move failed: '+error.message, true); return; }
+  toast('Moved → '+newStage.replace(/_/g,' '));
+  if (prefix==='crm') loadCRM();
+  else if (prefix==='ppl') loadPPL();
+  else loadManaged();
 }
 
 /* ══════════════════
@@ -1398,12 +1404,11 @@ async function saveLead() {
     source:$('l-source').value,notes:$('l-notes').value.trim(),created_at:now(),
   };
   if (!d.name) { toast('Contact name required', true); return; }
-  try {
-    await db.from('leads').insert([d]);
-    closeModal('m-lead');
-    ['l-name','l-company','l-email','l-phone','l-value','l-notes'].forEach(id=>{$(id).value='';});
-    loadCRM(); toast('Lead saved');
-  } catch(e) { toast('Error: '+e.message, true); }
+  const {error} = await db.from('leads').insert([d]);
+  if (error) { toast('DB error: '+error.message, true); return; }
+  ['l-name','l-company','l-email','l-phone','l-value','l-notes'].forEach(id=>{$(id).value='';});
+  closeModal('m-lead');
+  loadCRM(); toast('Lead saved ✓');
 }
 
 /* ══════════════════
@@ -1467,12 +1472,18 @@ async function saveClient(type) {
       stage:$('mg-stage').value,created_at:now()};
     if (!d.company_name) { toast('Company name required', true); return; }
   }
-  try {
-    await db.from('clients').insert([d]);
-    closeModal('m-'+type);
-    toast('Client saved');
-    type==='ppl'?loadPPL():loadManaged();
-  } catch(e) { toast('Error: '+e.message, true); }
+  // BUG FIX: was swallowing Supabase errors silently — now checks error from insert
+  const {error} = await db.from('clients').insert([d]);
+  if (error) { toast('DB error: '+error.message, true); return; }
+  // Clear form fields
+  if (type==='ppl') {
+    ['ppl-co','ppl-cn','ppl-em','ppl-price'].forEach(id=>{$(id).value='';});
+  } else {
+    ['mg-co','mg-cn','mg-em','mg-acc','mg-budget','mg-fee'].forEach(id=>{$(id).value='';});
+  }
+  closeModal('m-'+type);
+  toast('Client saved ✓');
+  type==='ppl' ? loadPPL() : loadManaged();
 }
 
 /* ══════════════════
@@ -1530,17 +1541,16 @@ const nextMonth = m => { const [y,mo]=m.split('-').map(Number); return mo===12?`
 async function loadFinance() {
   const month=$('fin-month').value;
   const next=nextMonth(month);
-  try {
-    const [revR,expR,spR,subR,pplR] = await Promise.all([
-      db.from('revenue').select('*').gte('date',`${month}-01`).lt('date',next),
-      db.from('expenses').select('*').gte('date',`${month}-01`).lt('date',next),
-      db.from('ad_spend_daily').select('*').gte('date',`${month}-01`).lt('date',next),
-      // FIX: subscriptions pulled from DB only — no hardcoded values
-      db.from('subscriptions').select('monthly_cost').eq('active',true),
-      db.from('clients').select('leads_mtd,pct_sold,lead_price,meta_cpl,true_cpl').eq('type','ppl').eq('stage','active_client'),
-    ]);
-    renderFinance(revR.data||[], expR.data||[], spR.data||[], subR.data||[], pplR.data||[]);
-  } catch(e) { renderFinance([],[],[],[],[]); }
+  const [revR,expR,spR,subR,pplR] = await Promise.all([
+    db.from('revenue').select('*').gte('date',`${month}-01`).lt('date',next),
+    db.from('expenses').select('*').gte('date',`${month}-01`).lt('date',next),
+    db.from('ad_spend_daily').select('*').gte('date',`${month}-01`).lt('date',next),
+    db.from('subscriptions').select('monthly_cost').eq('active',true),
+    db.from('clients').select('leads_mtd,pct_sold,lead_price,meta_cpl,true_cpl').eq('type','ppl').eq('stage','active_client'),
+  ]);
+  // Log any individual table errors without blocking the whole render
+  [revR,expR,spR,subR,pplR].forEach((r,i)=>{ if(r.error) console.warn('Finance query '+i+' error:',r.error.message); });
+  renderFinance(revR.data||[], expR.data||[], spR.data||[], subR.data||[], pplR.data||[]);
 }
 
 function renderFinance(revenue, expenses, adSpend, subs, pplClients) {
@@ -1739,17 +1749,16 @@ function switchMd(filename, el) {
 async function loadAgentFile() {
   if (!db) return;
   const ta=$('md-content'); ta.value='Loading…';
-  try {
-    const {data}=await db.from('agent_files').select('content').eq('agent',curAgent).eq('filename',curMd).single();
-    ta.value=data?.content||DEFAULT_MD[curMd]||'';
-  } catch(e) { ta.value=DEFAULT_MD[curMd]||''; }
+  // .single() throws if 0 rows — use maybeSingle() instead to avoid false error
+  const {data, error}=await db.from('agent_files').select('content').eq('agent',curAgent).eq('filename',curMd).maybeSingle();
+  if (error) { ta.value=DEFAULT_MD[curMd]||''; return; }
+  ta.value=data?.content||DEFAULT_MD[curMd]||'';
 }
 async function saveAgentFile() {
   const content=$('md-content').value;
-  try {
-    await db.from('agent_files').upsert({agent:curAgent,filename:curMd,content,updated_at:now()},{onConflict:'agent,filename'});
-    toast('File saved');
-  } catch(e) { toast('Save failed: '+e.message, true); }
+  const {error} = await db.from('agent_files').upsert({agent:curAgent,filename:curMd,content,updated_at:now()},{onConflict:'agent,filename'});
+  if (error) { toast('Save failed: '+error.message, true); return; }
+  toast('File saved ✓');
 }
 
 /* ══════════════════════════════════════════════════════════════════
