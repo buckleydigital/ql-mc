@@ -2202,7 +2202,7 @@ try {
   $('typing-area').style.display = 'none';
   addMsg('agent', '⚠️', `Proxy error: ${e.message}`);
 }
-
+}
 function addMsg(type, avatar, text, time) {
   const msgs = $('chat-msgs');
   const ts   = (time || new Date()).toLocaleTimeString('en-AU', {hour:'2-digit',minute:'2-digit'});
