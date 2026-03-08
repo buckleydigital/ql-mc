@@ -1204,8 +1204,7 @@ td strong{font-weight:500}
 'use strict';
 const SUPABASE_URL = 'https://wmegoygrancfwxagqskh.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_UHQNxVCjHJnFjssYwTiwcQ_3FYovX8I';
-// Set your Anthropic API key here (or inject via environment / Supabase Edge Function)
-const ANTHROPIC_KEY = '';  // <-- paste key here, or use proxy below
+// Chat calls the Supabase Edge Function proxy (no key needed in browser)
 
 let db, currentUser;
 let curAgent = 'marketing', curMd = 'agents.md', curChat = 'all';
@@ -2165,12 +2164,44 @@ async function sendChat() {
   const p   = PERSONAS[curChat];
   const sys = `You are the QuoteLeads ${p.name} for QuoteLeads.com.au — an Australian solar lead generation and managed advertising agency.\n\n## Business\n- PPL solar clients (Active/Paused/Churned) and Managed Advertising clients\n- Ad accounts: Solar PPL (owned), Agency acquisition (owned), Managed client (clients' own)\n- Sales pipeline: New Lead → No Answer → Call-Back → Proposal → Closed Won/Lost\n- Key metrics: Meta CPL, True CPL (after % sold), managed spend, net profit${dailyCtx}\n\n## Instructions\nBe concise and data-driven. Reference the daily snapshot for recent numbers. You have persistent memory. Never invent figures.`;
 
-  // Call Anthropic API directly
-  if (!ANTHROPIC_KEY) {
-    $('typing-area').style.display = 'none';
-    addMsg('agent', '⚠️', 'No Anthropic API key set. Add your key to the ANTHROPIC_KEY constant at the top of the script, or set up a Supabase Edge Function proxy.');
-    return;
+// Call via Supabase Edge Function proxy — no API key in browser
+try {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) throw new Error('Not authenticated — please sign in again.');
+
+  const history = (chatHistory[curChat] || []).slice(-20);
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/anthropic-proxy`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ system: sys, messages: history }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok || data.error) {
+    throw new Error(data.error?.message || `Proxy error ${res.status}`);
   }
+
+  const reply = data.content?.map(c => c.text || '').join('') || 'No response.';
+
+  $('typing-area').style.display = 'none';
+  chatHistory[curChat].push({role:'assistant', content:reply});
+  addMsg('agent', p.emoji, reply);
+
+  try {
+    await db.from('chat_memory').insert([{agent:curChat, user_id:currentUser.id, role:'assistant', content:reply, created_at:now()}]);
+    const cnt = (chatHistory[curChat] || []).length;
+    setText('mem-status',    `Memory active — ${cnt} messages saved`);
+    setText('chat-mem-info', `${cnt} messages in memory`);
+  } catch(e) {}
+
+} catch(e) {
+  $('typing-area').style.display = 'none';
+  addMsg('agent', '⚠️', `Proxy error: ${e.message}`);
+}
 
   try {
     const history = (chatHistory[curChat] || []).slice(-20);
