@@ -1805,7 +1805,7 @@ Format:
 // Replace these with your actual Supabase credentials post-generation
 const SUPABASE_URL = 'YOUR_SUPABASE_URL';
 const SUPABASE_KEY = 'YOUR_SUPABASE_PUBLISHABLE_KEY';
-const ANTHROPIC_API_KEY = 'YOUR_ANTHROPIC_API_KEY'; // inject securely post-generation
+// Anthropic calls are proxied through Supabase Edge Function — no key in browser
 
 let db;
 let currentUser = null;
@@ -2111,15 +2111,14 @@ Business context:
 You have access to live Supabase data. Be concise, data-driven, and practical. Always reference real business context. Avoid generic advice.`;
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const { data: { session } } = await db.auth.getSession();
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/anthropic-proxy`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: chatHistory,
-      })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ system: systemPrompt, messages: chatHistory }),
     });
 
     const data = await response.json();
