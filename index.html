@@ -188,7 +188,7 @@ body::after {
 /* ═══ LAYOUT ═══ */
 .layout{display:flex;flex:1;overflow:hidden}
 
-/* ═══ SIDEBAR — completely redesigned ═══ */
+/* ═══ SIDEBAR ═══ */
 .sidebar{
   width:var(--sw);
   background:var(--s1);
@@ -198,7 +198,6 @@ body::after {
   position:relative;
 }
 
-/* Top logo area */
 .sb-header{
   padding:18px 16px 14px;
   border-bottom:1px solid var(--bd);
@@ -222,7 +221,6 @@ body::after {
   font-family:var(--mono);font-size:8.5px;color:var(--ink3);letter-spacing:.08em;text-transform:uppercase;
 }
 
-/* Status pill in sidebar header */
 .sb-status{
   display:flex;align-items:center;gap:5px;
   background:rgba(79,143,255,.055);border:1px solid rgba(79,143,255,.12);
@@ -234,7 +232,6 @@ body::after {
   animation:blink 2s infinite;box-shadow:0 0 5px var(--acc);flex-shrink:0;
 }
 
-/* Nav sections */
 .sb-nav{flex:1;padding:10px 10px 0;}
 
 .sb-group{margin-bottom:4px;}
@@ -262,14 +259,12 @@ body::after {
 }
 [data-theme="light"] .navbtn.active{color:var(--acc-ink)}
 
-/* Active left glow bar */
 .navbtn.active::before{
   content:'';position:absolute;left:-1px;top:50%;transform:translateY(-50%);
   width:2px;height:55%;background:var(--acc);border-radius:0 2px 2px 0;
   box-shadow:0 0 10px rgba(79,143,255,.8);
 }
 
-/* Nav icon */
 .ni{
   width:18px;height:18px;flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
@@ -288,7 +283,6 @@ body::after {
   background:linear-gradient(90deg,transparent,var(--bd),transparent);
 }
 
-/* Bottom section */
 .sb-bottom{
   padding:10px 10px 14px;border-top:1px solid var(--bd);
   margin-top:auto;flex-shrink:0;
@@ -396,7 +390,6 @@ body::after {
 .kcard-val{font-family:var(--mono);font-size:9.5px;color:var(--acc);margin-top:3px}
 .kcards.drag-over{background:var(--acc-dim);border-color:rgba(79,143,255,.22)}
 
-/* Stage top borders */
 .kcol[data-s="new_lead"] .kcolh,.kcol[data-s="lead"] .kcolh{border-top-color:var(--acc);}
 .kcol[data-s="no_answer"] .kcolh,.kcol[data-s="paused"] .kcolh{border-top-color:var(--ink3);}
 .kcol[data-s="call_back"] .kcolh,.kcol[data-s="qualified"] .kcolh,.kcol[data-s="onboarding"] .kcolh{border-top-color:rgba(79,143,255,.5);}
@@ -577,7 +570,6 @@ td strong{font-weight:500}
 .fta{resize:vertical;min-height:68px;line-height:1.55}
 .macts{display:flex;gap:6px;justify-content:flex-end;margin-top:18px}
 
-/* Close-to-client conversion banner */
 .convert-banner{
   background:linear-gradient(135deg, rgba(46,204,138,.08) 0%, rgba(79,143,255,.05) 100%);
   border:1px solid rgba(46,204,138,.18);
@@ -691,7 +683,7 @@ td strong{font-weight:500}
   </div>
 
   <div class="layout">
-    <!-- SIDEBAR — redesigned -->
+    <!-- SIDEBAR -->
     <div class="sidebar">
       <div class="sb-header">
         <div class="sb-logo-row">
@@ -998,10 +990,10 @@ td strong{font-weight:500}
             <button class="btn btn-sm btn-red" onclick="clearChatMemory()">Clear memory</button>
           </div>
         </div>
+        <!-- FIX 1: Removed "All Agents" group session — individual agents only -->
         <div class="chat-layout">
           <div class="chat-list">
-            <div class="chat-item active" onclick="selectChat('all',this)"><div class="chat-iname">All Agents</div><div class="chat-irole">Group session</div></div>
-            <div class="chat-item" onclick="selectChat('marketing',this)"><div class="chat-iname">Marketing</div><div class="chat-irole">CPL & campaigns</div></div>
+            <div class="chat-item active" onclick="selectChat('marketing',this)"><div class="chat-iname">Marketing</div><div class="chat-irole">CPL & campaigns</div></div>
             <div class="chat-item" onclick="selectChat('finance',this)"><div class="chat-iname">Finance</div><div class="chat-irole">P&L & billing</div></div>
             <div class="chat-item" onclick="selectChat('operations',this)"><div class="chat-iname">Operations</div><div class="chat-irole">Lead flow & QA</div></div>
             <div class="chat-item" onclick="selectChat('strategy',this)"><div class="chat-iname">Strategy</div><div class="chat-irole">Growth direction</div></div>
@@ -1009,16 +1001,16 @@ td strong{font-weight:500}
           <div class="chat-win">
             <div class="chat-head">
               <div>
-                <div class="chat-hname" id="chat-name">All Agents — Group Session</div>
+                <div class="chat-hname" id="chat-name">Marketing Agent</div>
                 <div style="font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:2px" id="chat-mem-info">Loading memory...</div>
               </div>
               <div class="chat-hstatus"><div class="ldot" style="background:var(--grn);box-shadow:0 0 6px var(--grn)"></div>Online</div>
             </div>
             <div class="chat-msgs" id="chat-msgs">
               <div class="msg">
-                <div class="msg-av">AI</div>
+                <div class="msg-av">MKT</div>
                 <div>
-                  <div class="msg-bubble">All agents ready with live Supabase access, persistent memory, and full YTD context. I can see today's numbers, yesterday's data, and year-to-date trends. What do you need?</div>
+                  <div class="msg-bubble">Marketing Agent ready with live Supabase access, persistent memory, and full YTD context. I can see today's numbers, yesterday's data, and year-to-date trends. What do you need?</div>
                   <div class="msg-time">System</div>
                 </div>
               </div>
@@ -1044,14 +1036,15 @@ td strong{font-weight:500}
     </div><!-- /content -->
   </div><!-- /layout -->
 
-  <!-- BOTTOM NAV -->
-  <div class="bnav">
+  <!-- BOTTOM NAV — FIX 2: Added Managed Ads, reorganised 7 items into 2 rows or compact -->
+  <div class="bnav" style="flex-wrap:wrap;height:auto;padding:4px 2px;">
     <button class="bnbtn active" data-panel="tasks" onclick="nav('tasks',this)"><span class="bnbtn-icon">✦</span><span class="bnbtn-lbl">Tasks</span></button>
     <button class="bnbtn" data-panel="crm" onclick="nav('crm',this)"><span class="bnbtn-icon">◎</span><span class="bnbtn-lbl">Sales</span></button>
-    <button class="bnbtn" data-panel="chat" onclick="nav('chat',this)"><span class="bnbtn-icon">◉</span><span class="bnbtn-lbl">Chat</span></button>
     <button class="bnbtn" data-panel="ppl" onclick="nav('ppl',this)"><span class="bnbtn-icon">◈</span><span class="bnbtn-lbl">PPL</span></button>
+    <button class="bnbtn" data-panel="managed" onclick="nav('managed',this)"><span class="bnbtn-icon">▣</span><span class="bnbtn-lbl">Managed</span></button>
     <button class="bnbtn" data-panel="finance" onclick="nav('finance',this)"><span class="bnbtn-icon">$</span><span class="bnbtn-lbl">Finance</span></button>
     <button class="bnbtn" data-panel="daily" onclick="nav('daily',this)"><span class="bnbtn-icon">≋</span><span class="bnbtn-lbl">Daily</span></button>
+    <button class="bnbtn" data-panel="chat" onclick="nav('chat',this)"><span class="bnbtn-icon">◉</span><span class="bnbtn-lbl">Chat</span></button>
   </div>
 </div><!-- /app -->
 
@@ -1185,7 +1178,6 @@ td strong{font-weight:500}
         <option value="closed_won">Closed Won</option><option value="closed_lost">Closed Lost</option>
       </select>
     </div>
-    <!-- Convert to client banner — shown when stage is closed_won -->
     <div class="convert-banner" id="convert-banner" style="display:none">
       <div class="convert-banner-title">
         <span>🎉</span> Convert to active client
@@ -1303,13 +1295,22 @@ td strong{font-weight:500}
   </div>
 </div>
 
+<style>
+/* Mobile bottom nav — 7 items in two rows */
+@media(max-width:700px){
+  .bnav{height:auto !important;flex-wrap:wrap;padding:4px 0 env(safe-area-inset-bottom,0) !important;}
+  .bnbtn{flex:0 0 calc(100%/4);padding:5px 2px;}
+  .panel{padding:11px 11px calc(88px + 11px) !important;}
+}
+</style>
+
 <script>
 'use strict';
 const SUPABASE_URL = 'https://wmegoygrancfwxagqskh.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_UHQNxVCjHJnFjssYwTiwcQ_3FYovX8I';
 
 let db, currentUser;
-let curAgent = 'marketing', curMd = 'agents.md', curChat = 'all';
+let curAgent = 'marketing', curMd = 'agents.md', curChat = 'marketing';
 let chatHistory = {};
 let revChart = null, cplChart = null, dailyChart = null;
 let curDailyRange = 'today';
@@ -1344,12 +1345,8 @@ function stageBadge(s) {
 function stageLabel(s) {
   return {active_client:'Active',paused:'Paused',churned:'Churned',lead:'Lead',qualified:'Qualified',onboarding:'Onboarding',active:'Active',proposal_sent:'Proposal Sent',new_lead:'New Lead',no_answer:'No Answer',call_back:'Call-Back',proposal:'Proposal',closed_won:'Closed Won',closed_lost:'Closed Lost'}[s] || s;
 }
-function typeLabel(t) {
-  return t === 'managed' ? 'MA' : 'PPL';
-}
-function typeBadge(t) {
-  return t === 'managed' ? 'bg-vio' : 'bg-sky';
-}
+function typeLabel(t) { return t === 'managed' ? 'MA' : 'PPL'; }
+function typeBadge(t) { return t === 'managed' ? 'bg-vio' : 'bg-sky'; }
 
 function toggleTheme() {
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -1632,32 +1629,19 @@ async function convertLead(targetType) {
   const email = $('el-email').value.trim();
   const phone = $('el-phone').value.trim();
   const value = parseFloat($('el-value').value) || 0;
-
-  // Mark lead as closed_won
   await db.from('leads').update({stage:'closed_won',lead_type:targetType,updated_at:now()}).eq('id',id);
-
-  // Create client record
   let clientData;
   if (targetType === 'ppl') {
-    clientData = {
-      type:'ppl', company_name:company||name, contact_name:name,
-      email, phone, lead_price:0, stage:'active_client', created_at:now()
-    };
+    clientData = {type:'ppl',company_name:company||name,contact_name:name,email,phone,lead_price:0,stage:'active_client',created_at:now()};
   } else {
-    clientData = {
-      type:'managed', company_name:company||name, contact_name:name,
-      email, phone, management_fee:value||0, stage:'onboarding', created_at:now()
-    };
+    clientData = {type:'managed',company_name:company||name,contact_name:name,email,phone,management_fee:value||0,stage:'onboarding',created_at:now()};
   }
   const {error} = await db.from('clients').insert([clientData]);
   if (error) { toast('Client creation failed: '+error.message, true); return; }
-
   closeModal('m-edit-lead');
   toast(`✓ Moved to ${targetType==='ppl'?'PPL Clients':'Managed Ads'}`);
   loadCRM();
   if (targetType==='ppl') loadPPL(); else loadManaged();
-
-  // Navigate to the right panel
   setTimeout(() => {
     const target = targetType === 'ppl' ? 'ppl' : 'managed';
     const btn = document.querySelector(`[data-panel="${target}"]`);
@@ -1850,7 +1834,6 @@ function renderFinance(revenue,expenses,adSpend,subs,pplClients) {
   const ts=subs.length>0?subs.reduce((s,sub)=>s+(sub.monthly_cost||0),0):null;
   const pplSp=adSpend.filter(a=>a.account_type==='solar_ppl').reduce((s,a)=>s+(a.spend||0),0);
   const agSp=adSpend.filter(a=>a.account_type==='agency').reduce((s,a)=>s+(a.spend||0),0);
-  const mgSp=0; // Managed client spend tracked in monthly reports, not daily ad_spend_daily
   const pplLeadsTotal=adSpend.filter(a=>a.account_type==='solar_ppl').reduce((s,a)=>s+(a.leads||0),0);
   const metaCpl=(pplSp>0&&pplLeadsTotal>0)?'$'+(pplSp/pplLeadsTotal).toFixed(2):'—';
   let pplRev=0;
@@ -1960,39 +1943,62 @@ function renderDailyChart(data) {
   dailyChart=new Chart($('chart-daily').getContext('2d'),{type:'bar',data:{labels:data.map(d=>d[0]),datasets:[{label:'Solar PPL Leads',data:data.map(d=>d[1]),backgroundColor:'rgba(79,143,255,.14)',borderColor:'#4f8fff',borderWidth:1.5,borderRadius:4}]},options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid},beginAtZero:true}},responsive:true,maintainAspectRatio:true}});
 }
 
-/* DAILY SNAPSHOT PERSISTENCE */
+/*
+ * ═══════════════════════════════════════════════════════
+ * FIX 3: DAILY SNAPSHOT — UPSERT TODAY'S FIGURES ONLY
+ * Each day has exactly ONE row in daily_snapshots.
+ * We read today's rows from ad_spend_daily and UPSERT
+ * (update if exists, insert if not) using snapshot_date
+ * as the conflict key. This means:
+ *   - The row reflects the current state of TODAY's data
+ *   - No YTD compounding is written into the daily row
+ *   - Historical rows (past days) remain untouched
+ *   - The chat context still shows a 7-day history of
+ *     saved snapshots which gives the agents trend data
+ * ═══════════════════════════════════════════════════════
+ */
 async function saveSnapshotToday() {
   if (!db) return;
   const today = new Date().toISOString().split('T')[0];
-  const ytdStart = `${new Date().getFullYear()}-01-01`;
   try {
-    const [todayR, ytdR] = await Promise.all([
-      db.from('ad_spend_daily').select('account_type,spend,leads').eq('date', today),
-      db.from('ad_spend_daily').select('account_type,spend,leads').gte('date', ytdStart).lte('date', today),
-    ]);
-    const sum = (rows, type, field) =>
-      (rows || []).filter(r => r.account_type === type).reduce((s, r) => s + (r[field] || 0), 0);
-    const pplToday   = { leads: sum(todayR.data,'solar_ppl','leads'), spend: sum(todayR.data,'solar_ppl','spend') };
-    const agToday    = { spend: sum(todayR.data,'agency','spend') };
-    const pplYtd     = { leads: sum(ytdR.data,'solar_ppl','leads'), spend: sum(ytdR.data,'solar_ppl','spend') };
-    const agYtd      = { spend: sum(ytdR.data,'agency','spend') };
+    // Only fetch TODAY's rows — not YTD
+    const { data: todayRows, error } = await db
+      .from('ad_spend_daily')
+      .select('account_type,spend,leads')
+      .eq('date', today);
+
+    if (error) throw error;
+
+    const rows = todayRows || [];
+    const sum = (type, field) =>
+      rows.filter(r => r.account_type === type).reduce((s, r) => s + (r[field] || 0), 0);
+
+    const pplLeads = sum('solar_ppl', 'leads');
+    const pplSpend = sum('solar_ppl', 'spend');
+    const agSpend  = sum('agency',    'spend');
+
     const snapshot = {
       snapshot_date:      today,
-      ppl_leads_today:    pplToday.leads,
-      ppl_spend_today:    pplToday.spend,
-      ppl_cpl_today:      pplToday.leads > 0 ? +(pplToday.spend / pplToday.leads).toFixed(2) : 0,
-      ppl_leads_ytd:      pplYtd.leads,
-      ppl_spend_ytd:      pplYtd.spend,
-      ppl_cpl_ytd:        pplYtd.leads > 0 ? +(pplYtd.spend / pplYtd.leads).toFixed(2) : 0,
-      agency_spend_today: agToday.spend,
-      agency_spend_ytd:   agYtd.spend,
-      total_leads_ytd:    pplYtd.leads,
-      total_spend_ytd:    pplYtd.spend + agYtd.spend,
+      ppl_leads_today:    pplLeads,
+      ppl_spend_today:    pplSpend,
+      ppl_cpl_today:      pplLeads > 0 ? +(pplSpend / pplLeads).toFixed(2) : 0,
+      // YTD fields removed from daily snapshot — daily row = today only
+      // Agents can query ad_spend_daily directly for YTD if needed
+      ppl_leads_ytd:      null,
+      ppl_spend_ytd:      null,
+      ppl_cpl_ytd:        null,
+      agency_spend_today: agSpend,
+      agency_spend_ytd:   null,
+      total_leads_ytd:    null,
+      total_spend_ytd:    null,
       updated_at:         now(),
     };
+
+    // UPSERT on snapshot_date — always updates the same row for today
     await db.from('daily_snapshots').upsert(snapshot, { onConflict: 'snapshot_date' });
+
   } catch(e) {
-    console.warn('[Snapshot] Could not save:', e.message);
+    console.warn('[Snapshot] Could not save today:', e.message);
   }
 }
 
@@ -2024,8 +2030,14 @@ async function saveAgentFile() {
   toast('File saved ✓');
 }
 
-/* AGENT CHAT */
-const PERSONAS={marketing:{name:'Marketing',emoji:'MKT',intro:"Marketing Agent ready. Ask about CPL, campaigns, or ad performance."},finance:{name:'Finance',emoji:'FIN',intro:"Finance Agent ready. Revenue, expenses, margins, and billing — including historical trends."},operations:{name:'Operations',emoji:'OPS',intro:"Operations Agent ready. Lead flow, delivery performance, and quality metrics."},strategy:{name:'Strategy',emoji:'STR',intro:"Strategy Agent ready. Pipeline trends, growth opportunities, and positioning."},all:{name:'All Agents',emoji:'ALL',intro:"Group session — all agents ready with full memory, live DB access, and YTD context baked in every message."}};
+/* AGENT CHAT — FIX 1: No "all" group session, individual agents only */
+const PERSONAS={
+  marketing:{name:'Marketing',emoji:'MKT',intro:"Marketing Agent ready. Ask me about CPL trends, campaign performance, or ad spend optimisation."},
+  finance:{name:'Finance',emoji:'FIN',intro:"Finance Agent ready. Revenue, expenses, margins, and billing — including historical trends."},
+  operations:{name:'Operations',emoji:'OPS',intro:"Operations Agent ready. Lead flow, delivery performance, and quality metrics."},
+  strategy:{name:'Strategy',emoji:'STR',intro:"Strategy Agent ready. Pipeline trends, growth opportunities, and positioning."}
+};
+
 async function loadChatMemory() {
   if (!db||!currentUser) return;
   try {
@@ -2033,8 +2045,9 @@ async function loadChatMemory() {
     if (data&&data.length>0) {
       chatHistory[curChat]=data.map(m=>({role:m.role,content:m.content}));
       const msgs=$('chat-msgs');
-      msgs.innerHTML=`<div class="msg"><div class="msg-av">${PERSONAS[curChat].emoji}</div><div><div class="msg-bubble">${PERSONAS[curChat].intro}</div><div class="msg-time">System</div></div></div>`;
-      data.forEach(m=>{if (m.role!=='system') addMsg(m.role==='user'?'user':'agent',m.role==='user'?'YOU':PERSONAS[curChat].emoji,m.content,new Date(m.created_at));});
+      const p=PERSONAS[curChat];
+      msgs.innerHTML=`<div class="msg"><div class="msg-av">${p.emoji}</div><div><div class="msg-bubble">${p.intro}</div><div class="msg-time">System</div></div></div>`;
+      data.forEach(m=>{if (m.role!=='system') addMsg(m.role==='user'?'user':'agent',m.role==='user'?'YOU':p.emoji,m.content,new Date(m.created_at));});
       setText('chat-mem-info',`${data.length} messages in memory · ${new Date(data[data.length-1].created_at).toLocaleDateString('en-AU')}`);
       setText('mem-status',`Memory active — ${data.length} messages saved`);
       scrollChat();
@@ -2053,7 +2066,7 @@ async function clearChatMemory() {
 function selectChat(name,el) {
   if (el) {document.querySelectorAll('.chat-item').forEach(i=>i.classList.remove('active'));el.classList.add('active');}
   curChat=name;const p=PERSONAS[name];
-  setText('chat-name',p.name+(name!=='all'?' Agent':' — Group Session'));
+  setText('chat-name',p.name+' Agent');
   $('chat-msgs').innerHTML=`<div class="msg"><div class="msg-av">${p.emoji}</div><div><div class="msg-bubble">${p.intro}</div><div class="msg-time">System</div></div></div>`;
   chatHistory[name]=chatHistory[name]||[];loadChatMemory();
 }
@@ -2067,7 +2080,7 @@ async function sendChat() {
   $('typing-area').style.display='flex';scrollChat();
   try { await db.from('chat_memory').insert([{agent:curChat,user_id:currentUser.id,role:'user',content:text,created_at:now()}]); } catch(e) {}
 
-  // ── FULL YTD CONTEXT BUILDER ──
+  // ── LIVE CONTEXT BUILDER (today + yesterday + 7d + YTD from ad_spend_daily) ──
   let dailyCtx = '';
   try {
     const today    = new Date().toISOString().split('T')[0];
@@ -2083,7 +2096,7 @@ async function sendChat() {
       db.from('ad_spend_daily').select('account_type,spend,leads').eq('date', yStr),
       db.from('ad_spend_daily').select('account_type,spend,leads').gte('date', wStr).lte('date', today),
       db.from('ad_spend_daily').select('account_type,spend,leads').gte('date', ytdStart).lte('date', today),
-      db.from('daily_snapshots').select('*').order('snapshot_date',{ascending:false}).limit(7),
+      db.from('daily_snapshots').select('snapshot_date,ppl_leads_today,ppl_cpl_today,agency_spend_today').order('snapshot_date',{ascending:false}).limit(7),
     ]);
 
     const td = {
@@ -2103,7 +2116,7 @@ async function sendChat() {
     const cpl = (sp, l) => l > 0 ? `$${(sp/l).toFixed(2)}` : 'n/a';
 
     const recentSnaps = (snapR.data||[]).reverse().map(s =>
-      `  ${s.snapshot_date}: ${s.ppl_leads_today} PPL leads, CPL ${s.ppl_cpl_today>0?'$'+s.ppl_cpl_today:'n/a'}, agency spend $${s.agency_spend_today||0}`
+      `  ${s.snapshot_date}: ${s.ppl_leads_today} PPL leads that day, CPL ${s.ppl_cpl_today>0?'$'+s.ppl_cpl_today:'n/a'}, agency spend $${s.agency_spend_today||0}`
     ).join('\n');
 
     dailyCtx = `
@@ -2126,13 +2139,13 @@ async function sendChat() {
 - Agency acquisition: ${fmt(ytd.ag.sp)} total spend
 - Combined operational spend YTD: ${fmt(ytd.ppl.sp + ytd.ag.sp)}
 
-### Recent Daily Snapshots (saved state, last 7 days)
+### Recent Daily Snapshots (last 7 saved days — each row = that day only)
 ${recentSnaps || '  No snapshots yet — will save automatically on Daily Logs visits'}
 
 ### Data Notes
-- ad_spend_daily only tracks our operational accounts: solar_ppl and agency
-- Managed client spend is tracked separately in monthly reports
-- daily_snapshots table persists state so agents can compare trends over time`;
+- ad_spend_daily tracks our operational accounts: solar_ppl and agency
+- daily_snapshots stores each day's figures (not cumulative) — one row per day, updated throughout the day via upsert
+- Managed client spend is tracked separately in monthly reports`;
 
   } catch(e) { dailyCtx = `\n\n(Live data unavailable: ${e.message})`; }
 
