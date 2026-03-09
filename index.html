@@ -453,7 +453,7 @@ body::after {
 .email-acts{display:flex;gap:4px;flex-wrap:wrap}
 
 /* ═══ AGENTS ═══ */
-.agent-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:12px}
+.agent-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:12px}
 .agent-card{
   background:var(--s1);border:1px solid var(--bd);
   border-radius:var(--r2);padding:14px;cursor:pointer;
@@ -629,7 +629,7 @@ td strong{font-weight:500}
 /* ═══ RESPONSIVE ═══ */
 @media(max-width:960px){
   .kg.c4,.kg.c3{grid-template-columns:repeat(2,1fr)}
-  .agent-grid{grid-template-columns:repeat(2,1fr)}
+  .agent-grid{grid-template-columns:repeat(3,1fr)}
   .md-layout{grid-template-columns:1fr;height:auto}
   .md-files{flex-direction:row;flex-wrap:wrap}
   .chat-layout{grid-template-columns:1fr}
@@ -738,6 +738,9 @@ td strong{font-weight:500}
           <button class="navbtn" data-panel="chat" onclick="nav('chat',this)">
             <span class="ni">◉</span>Agent Chat
           </button>
+          <button class="navbtn" data-panel="sales-agent" onclick="nav('sales-agent',this)">
+            <span class="ni">⚑</span>Sales Agent
+          </button>
         </div>
       </div>
 
@@ -823,8 +826,8 @@ td strong{font-weight:500}
         <div class="sl">All PPL Clients <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Client</th><th>Stage</th><th>Niche</th><th>Leads MTD</th><th>Meta CPL</th><th>True CPL</th><th>% Sold</th><th>Balance</th><th></th></tr></thead>
-            <tbody id="ppl-tbody"><tr><td colspan="9" class="empty">Loading...</td></tr></tbody>
+            <thead><tr><th>Client</th><th>Stage</th><th>Niche</th><th>Leads MTD</th><th>Leads Delivered</th><th>Total Purchased</th><th>Meta CPL</th><th>True CPL</th><th>% Sold</th><th>Balance</th><th></th></tr></thead>
+            <tbody id="ppl-tbody"><tr><td colspan="11" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -864,7 +867,7 @@ td strong{font-weight:500}
           <div class="kpi"><div class="klabel">Total Revenue</div><div class="kval blu" id="fin-rev">—</div></div>
           <div class="kpi"><div class="klabel">Total Expenses</div><div class="kval red" id="fin-exp">—</div></div>
           <div class="kpi"><div class="klabel">Net Profit</div><div class="kval" id="fin-profit">—</div><div class="ksub" id="fin-margin"></div></div>
-          <div class="kpi"><div class="klabel">Subscriptions</div><div class="kval" id="fin-subs">—</div><div class="ksub">from DB only</div></div>
+          <div class="kpi"><div class="klabel">Monthly Subscriptions</div><div class="kval" id="fin-subs">—</div><div class="ksub">from DB only</div></div>
         </div>
         <div class="sl">Ad Spend <div class="sl-line"></div></div>
         <div class="kg c3 mb4">
@@ -950,6 +953,11 @@ td strong{font-weight:500}
             <div class="agent-name">Strategy</div><div class="agent-role">Growth Direction</div>
             <div class="row ac gap6" style="margin-top:9px"><div class="adot"></div><span class="agent-stxt">Active</span></div>
           </div>
+          <div class="agent-card" onclick="selectAgent('sales',this)">
+            <div class="agent-icon">SLS</div>
+            <div class="agent-name">Sales</div><div class="agent-role">Pipeline & Lead Priority</div>
+            <div class="row ac gap6" style="margin-top:9px"><div class="adot"></div><span class="agent-stxt">Active</span></div>
+          </div>
         </div>
         <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:14px">
           <div class="row-btw mb3">
@@ -996,6 +1004,7 @@ td strong{font-weight:500}
             <div class="chat-item" onclick="selectChat('finance',this)"><div class="chat-iname">Finance</div><div class="chat-irole">P&L & billing</div></div>
             <div class="chat-item" onclick="selectChat('operations',this)"><div class="chat-iname">Operations</div><div class="chat-irole">Lead flow & QA</div></div>
             <div class="chat-item" onclick="selectChat('strategy',this)"><div class="chat-iname">Strategy</div><div class="chat-irole">Growth direction</div></div>
+            <div class="chat-item" onclick="selectChat('sales',this)"><div class="chat-iname">Sales</div><div class="chat-irole">Pipeline & priority</div></div>
           </div>
           <div class="chat-win">
             <div class="chat-head">
@@ -1032,6 +1041,58 @@ td strong{font-weight:500}
         </div>
       </div>
 
+      <!-- ══ SALES AGENT ══ -->
+      <div class="panel" id="panel-sales-agent">
+        <div class="ph">
+          <div class="ph-left"><h1>Sales Agent</h1><p>Pipeline analysis · lead prioritisation · persistent memory</p></div>
+          <div class="ph-right">
+            <button class="btn btn-sm" onclick="refreshSalesContext()">↻ Refresh pipeline</button>
+            <button class="btn btn-sm btn-red" onclick="clearSalesMemory()">Clear memory</button>
+          </div>
+        </div>
+        <div class="kg c4 mb4">
+          <div class="kpi"><div class="klabel">Active Leads</div><div class="kval blu" id="sa-active">—</div></div>
+          <div class="kpi"><div class="klabel">Call-Backs Due</div><div class="kval grn" id="sa-callbacks">—</div></div>
+          <div class="kpi"><div class="klabel">Proposals Out</div><div class="kval" id="sa-proposals">—</div></div>
+          <div class="kpi"><div class="klabel">Pipeline Value</div><div class="kval blu" id="sa-value">—</div></div>
+        </div>
+        <div class="sl">Priority Leads Today <div class="sl-line"></div></div>
+        <div id="sa-priority-list" class="mb4"><div class="empty">Loading pipeline...</div></div>
+        <div class="sl">Sales Agent Chat <div class="sl-line"></div></div>
+        <div class="chat-win" style="height:calc(100vh - 460px);min-height:280px">
+          <div class="chat-head">
+            <div>
+              <div class="chat-hname">Sales Agent</div>
+              <div style="font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:2px" id="sa-mem-info">Loading memory...</div>
+            </div>
+            <div class="chat-hstatus"><div class="ldot" style="background:var(--grn);box-shadow:0 0 6px var(--grn)"></div>Online</div>
+          </div>
+          <div class="chat-msgs" id="sa-msgs">
+            <div class="msg">
+              <div class="msg-av">SLS</div>
+              <div>
+                <div class="msg-bubble">Sales Agent ready. I have full access to your pipeline, all lead notes, contact history, and deal values. Ask me who to call today, which leads to prioritise, or for a full pipeline review.</div>
+                <div class="msg-time">System</div>
+              </div>
+            </div>
+          </div>
+          <div id="sa-typing" style="display:none" class="typing-row">
+            <div class="msg-av" style="width:22px;height:22px;font-size:8.5px">SLS</div>
+            <div class="dots"><span></span><span></span><span></span></div>
+            <span>analysing pipeline...</span>
+          </div>
+          <div class="chat-memory-bar">
+            <div class="mem-dot"></div>
+            <span id="sa-mem-status">Memory active — conversation saved to Supabase</span>
+          </div>
+          <div class="chat-foot">
+            <textarea class="chat-inp" id="sa-inp" placeholder="Who should I call today? Analyse my pipeline. Which leads are closest to closing?..." rows="1"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendSalesChat();}"></textarea>
+            <button class="btn btn-p btn-sm" onclick="sendSalesChat()" style="height:36px;padding:0 13px">Send →</button>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /content -->
   </div><!-- /layout -->
 
@@ -1043,6 +1104,7 @@ td strong{font-weight:500}
     <button class="bnbtn" data-panel="finance" onclick="nav('finance',this)"><span class="bnbtn-icon">$</span><span class="bnbtn-lbl">Finance</span></button>
     <button class="bnbtn" data-panel="daily" onclick="nav('daily',this)"><span class="bnbtn-icon">≋</span><span class="bnbtn-lbl">Daily</span></button>
     <button class="bnbtn" data-panel="chat" onclick="nav('chat',this)"><span class="bnbtn-icon">◉</span><span class="bnbtn-lbl">Chat</span></button>
+    <button class="bnbtn" data-panel="sales-agent" onclick="nav('sales-agent',this)"><span class="bnbtn-icon">⚑</span><span class="bnbtn-lbl">Sales AI</span></button>
   </div>
 </div><!-- /app -->
 
@@ -1058,6 +1120,7 @@ td strong{font-weight:500}
         <option value="finance">Finance Agent</option>
         <option value="operations">Operations Agent</option>
         <option value="strategy">Strategy Agent</option>
+        <option value="sales">Sales Agent</option>
       </select>
     </div>
     <div class="frow"><label class="flabel">Priority</label>
@@ -1120,6 +1183,8 @@ td strong{font-weight:500}
       </select>
     </div>
     <div class="frow"><label class="flabel">Lead Price (AUD)</label><input class="fi" id="ppl-price" type="number" placeholder="e.g. 85"></div>
+    <div class="frow"><label class="flabel">Leads Delivered</label><input class="fi" id="ppl-ld" type="number" placeholder="0"></div>
+    <div class="frow"><label class="flabel">Total Leads Purchased</label><input class="fi" id="ppl-tlp" type="number" placeholder="0"></div>
     <div class="frow"><label class="flabel">Status</label>
       <select class="fs" id="ppl-stage">
         <option value="active_client">Active</option><option value="paused">Paused</option><option value="churned">Churned</option>
@@ -1221,6 +1286,8 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Lead Price (AUD)</label><input class="fi" id="ep-price" type="number"></div>
     <div class="frow"><label class="flabel">% Sold</label><input class="fi" id="ep-pct" type="number" placeholder="e.g. 70"></div>
     <div class="frow"><label class="flabel">Balance (AUD)</label><input class="fi" id="ep-balance" type="number"></div>
+    <div class="frow"><label class="flabel">Leads Delivered</label><input class="fi" id="ep-ld" type="number" placeholder="0"></div>
+    <div class="frow"><label class="flabel">Total Leads Purchased</label><input class="fi" id="ep-tlp" type="number" placeholder="0"></div>
     <div class="frow"><label class="flabel">Status</label>
       <select class="fs" id="ep-stage">
         <option value="active_client">Active</option><option value="paused">Paused</option><option value="churned">Churned</option>
@@ -1276,6 +1343,7 @@ td strong{font-weight:500}
         <option value="finance">Finance Agent</option>
         <option value="operations">Operations Agent</option>
         <option value="strategy">Strategy Agent</option>
+        <option value="sales">Sales Agent</option>
       </select>
     </div>
     <div class="frow"><label class="flabel">Priority</label>
@@ -1311,6 +1379,10 @@ let curAgent = 'marketing', curMd = 'agents.md', curChat = 'marketing';
 let chatHistory = {};
 let revChart = null, cplChart = null, dailyChart = null;
 let curDailyRange = 'today';
+
+/* Record caches — avoids embedding JSON blobs in onclick attributes */
+const LEAD_CACHE = {};
+const CLIENT_CACHE = {};
 
 const $ = id => document.getElementById(id);
 const setText = (id, v) => { const e = $(id); if (e) e.textContent = v; };
@@ -1421,6 +1493,7 @@ function nav(panel, el) {
   document.querySelectorAll(`[data-panel="${panel}"]`).forEach(b => b.classList.add('active'));
   if (panel === 'chat') loadChatMemory();
   if (panel === 'daily') loadDailyLogs();
+  if (panel === 'sales-agent') loadSalesPanel();
 }
 
 function updateClock() {
@@ -1579,8 +1652,9 @@ function renderCRM(leads) {
     const sl=leads.filter(l=>l.stage===s.id);
     if (cnt) cnt.textContent=sl.length;
     if (col) {
+      sl.forEach(l => { LEAD_CACHE[l.id] = l; });
       col.innerHTML=sl.map(l=>`
-        <div class="kcard" id="kc-crm-${l.id}">
+        <div class="kcard" id="kc-crm-${esc(String(l.id))}" data-lead-id="${esc(String(l.id))}">
           <div class="kcard-name">${esc(l.name||'—')}</div>
           <div class="kcard-meta">${esc(l.company||'—')}</div>
           <div style="display:flex;gap:4px;margin-top:3px">
@@ -1588,13 +1662,18 @@ function renderCRM(leads) {
             ${l.value?`<span class="kcard-val">${fmt(l.value)}/mo</span>`:''}
           </div>
         </div>`).join('');
-      col.querySelectorAll('.kcard').forEach((card,i)=>{initCardDrag(card,sl[i].id,'crm');card.addEventListener('click',()=>openEditLead(sl[i]));});
+      col.querySelectorAll('.kcard').forEach(card=>{
+        const id=card.dataset.leadId;
+        initCardDrag(card,id,'crm');
+        card.addEventListener('click',()=>{ if (LEAD_CACHE[id]) openEditLead(LEAD_CACHE[id]); });
+      });
     }
   });
   const tb=$('crm-tbody');
   if (!leads.length) { tb.innerHTML='<tr><td colspan="9" class="empty">No leads yet.</td></tr>'; return; }
+  leads.forEach(l => { LEAD_CACHE[l.id] = l; });
   tb.innerHTML=leads.map(l=>`
-    <tr style="cursor:pointer" onclick="openEditLead(${JSON.stringify(l).replace(/"/g,'&quot;')})">
+    <tr style="cursor:pointer" data-lead-id="${esc(l.id)}" class="lead-row">
       <td><strong>${esc(l.name||'—')}</strong></td>
       <td>${esc(l.company||'—')}</td>
       <td><span class="badge ${typeBadge(l.lead_type)}">${typeLabel(l.lead_type)}</span></td>
@@ -1603,8 +1682,22 @@ function renderCRM(leads) {
       <td>${esc(l.source||'—')}</td>
       <td>${l.last_contact?new Date(l.last_contact).toLocaleDateString('en-AU'):'—'}</td>
       <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink2)">${esc(l.notes||'—')}</td>
-      <td onclick="event.stopPropagation()"><button class="btn btn-xs" onclick="openEditLead(${JSON.stringify(l).replace(/"/g,'&quot;')})">Edit</button></td>
+      <td><button class="btn btn-xs edit-lead-btn" data-lead-id="${esc(l.id)}">Edit</button></td>
     </tr>`).join('');
+  tb.querySelectorAll('.lead-row').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.classList.contains('edit-lead-btn')) { e.stopPropagation(); }
+      const id = row.dataset.leadId;
+      if (LEAD_CACHE[id]) openEditLead(LEAD_CACHE[id]);
+    });
+  });
+  tb.querySelectorAll('.edit-lead-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const id = btn.dataset.leadId;
+      if (LEAD_CACHE[id]) openEditLead(LEAD_CACHE[id]);
+    });
+  });
 }
 function checkConvertBanner() {
   const stage = $('el-stage').value;
@@ -1686,29 +1779,51 @@ function renderPPL(clients) {
     const sl=clients.filter(c=>c.stage===s.id);
     if (cnt) cnt.textContent=sl.length;
     if (col) {
+      sl.forEach(c => { CLIENT_CACHE[c.id] = c; });
       col.innerHTML=sl.map(c=>`
-        <div class="kcard" id="kc-ppl-${c.id}">
+        <div class="kcard" id="kc-ppl-${esc(String(c.id))}" data-client-id="${esc(String(c.id))}" data-client-type="ppl">
           <div class="kcard-name">${esc(c.company_name)}</div>
           <div class="kcard-meta">${esc(c.niche||'Solar')} · ${c.leads_mtd||0} leads MTD</div>
           ${c.meta_cpl?`<div class="kcard-val">CPL $${Number(c.meta_cpl).toFixed(2)}</div>`:''}
         </div>`).join('');
-      col.querySelectorAll('.kcard').forEach((card,i)=>{initCardDrag(card,sl[i].id,'ppl');card.addEventListener('click',()=>openEditClient('ppl',sl[i]));});
+      col.querySelectorAll('.kcard').forEach(card=>{
+        const id=card.dataset.clientId;
+        initCardDrag(card,id,'ppl');
+        card.addEventListener('click',()=>{ if (CLIENT_CACHE[id]) openEditClient('ppl',CLIENT_CACHE[id]); });
+      });
     }
   });
   const tb=$('ppl-tbody');
-  if (!clients.length) { tb.innerHTML='<tr><td colspan="9" class="empty">No PPL clients yet.</td></tr>'; return; }
+  if (!clients.length) { tb.innerHTML='<tr><td colspan="11" class="empty">No PPL clients yet.</td></tr>'; return; }
+  clients.forEach(c => { CLIENT_CACHE[c.id] = c; });
   tb.innerHTML=clients.map(c=>`
-    <tr style="cursor:pointer" onclick="openEditClient('ppl',${JSON.stringify(c).replace(/"/g,'&quot;')})">
+    <tr style="cursor:pointer" data-client-id="${esc(String(c.id))}" data-client-type="ppl" class="client-row">
       <td><strong>${esc(c.company_name)}</strong></td>
       <td><span class="badge ${stageBadge(c.stage)}">${stageLabel(c.stage)}</span></td>
       <td>${esc(c.niche||'—')}</td>
       <td>${c.leads_mtd||0}</td>
+      <td style="color:var(--grn);font-weight:500">${c.leads_delivered||0}</td>
+      <td>${c.total_leads_purchased||0}</td>
       <td>${fmtCpl(c.meta_cpl)}</td>
       <td>${fmtCpl(c.true_cpl)}</td>
       <td>${c.pct_sold?Number(c.pct_sold).toFixed(1)+'%':'—'}</td>
       <td>${c.balance?fmt(c.balance):'—'}</td>
-      <td onclick="event.stopPropagation()"><button class="btn btn-xs" onclick="openEditClient('ppl',${JSON.stringify(c).replace(/"/g,'&quot;')})">Edit</button></td>
+      <td><button class="btn btn-xs client-edit-btn" data-client-id="${esc(String(c.id))}" data-client-type="ppl">Edit</button></td>
     </tr>`).join('');
+  tb.querySelectorAll('.client-row').forEach(row=>{
+    row.addEventListener('click',e=>{
+      if (e.target.classList.contains('client-edit-btn')) return;
+      const id=row.dataset.clientId,type=row.dataset.clientType;
+      if (CLIENT_CACHE[id]) openEditClient(type,CLIENT_CACHE[id]);
+    });
+  });
+  tb.querySelectorAll('.client-edit-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const id=btn.dataset.clientId,type=btn.dataset.clientType;
+      if (CLIENT_CACHE[id]) openEditClient(type,CLIENT_CACHE[id]);
+    });
+  });
 }
 
 /* MANAGED */
@@ -1729,19 +1844,25 @@ function renderManaged(clients) {
     const sl=clients.filter(c=>c.stage===s.id);
     if (cnt) cnt.textContent=sl.length;
     if (col) {
+      sl.forEach(c => { CLIENT_CACHE[c.id] = c; });
       col.innerHTML=sl.map(c=>`
-        <div class="kcard" id="kc-mg-${c.id}">
+        <div class="kcard" id="kc-mg-${esc(String(c.id))}" data-client-id="${esc(String(c.id))}" data-client-type="managed">
           <div class="kcard-name">${esc(c.company_name)}</div>
           <div class="kcard-meta">${fmt(c.spend_mtd||0)} MTD</div>
           ${c.management_fee?`<div class="kcard-val">${fmt(c.management_fee)}/mo fee</div>`:''}
         </div>`).join('');
-      col.querySelectorAll('.kcard').forEach((card,i)=>{initCardDrag(card,sl[i].id,'mg');card.addEventListener('click',()=>openEditClient('managed',sl[i]));});
+      col.querySelectorAll('.kcard').forEach(card=>{
+        const id=card.dataset.clientId;
+        initCardDrag(card,id,'mg');
+        card.addEventListener('click',()=>{ if (CLIENT_CACHE[id]) openEditClient('managed',CLIENT_CACHE[id]); });
+      });
     }
   });
   const tb=$('mg-tbody');
   if (!clients.length) { tb.innerHTML='<tr><td colspan="9" class="empty">No managed clients yet.</td></tr>'; return; }
+  clients.forEach(c => { CLIENT_CACHE[c.id] = c; });
   tb.innerHTML=clients.map(c=>`
-    <tr style="cursor:pointer" onclick="openEditClient('managed',${JSON.stringify(c).replace(/"/g,'&quot;')})">
+    <tr style="cursor:pointer" data-client-id="${esc(String(c.id))}" data-client-type="managed" class="client-row">
       <td><strong>${esc(c.company_name)}</strong></td>
       <td><span class="badge ${stageBadge(c.stage)}">${stageLabel(c.stage)}</span></td>
       <td style="font-family:var(--mono);font-size:10px;color:var(--ink2)">${esc(c.ad_account_id||'—')}</td>
@@ -1750,14 +1871,29 @@ function renderManaged(clients) {
       <td>${fmtCpl(c.cpl_7d_avg)}</td>
       <td>${c.leads_mtd||0}</td>
       <td>${fmt(c.management_fee||0)}</td>
-      <td onclick="event.stopPropagation()"><button class="btn btn-xs" onclick="openEditClient('managed',${JSON.stringify(c).replace(/"/g,'&quot;')})">Edit</button></td>
+      <td><button class="btn btn-xs client-edit-btn" data-client-id="${esc(String(c.id))}" data-client-type="managed">Edit</button></td>
     </tr>`).join('');
+  tb.querySelectorAll('.client-row').forEach(row=>{
+    row.addEventListener('click',e=>{
+      if (e.target.classList.contains('client-edit-btn')) return;
+      const id=row.dataset.clientId,type=row.dataset.clientType;
+      if (CLIENT_CACHE[id]) openEditClient(type,CLIENT_CACHE[id]);
+    });
+  });
+  tb.querySelectorAll('.client-edit-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const id=btn.dataset.clientId,type=btn.dataset.clientType;
+      if (CLIENT_CACHE[id]) openEditClient(type,CLIENT_CACHE[id]);
+    });
+  });
 }
 function openEditClient(type,c) {
   if (type==='ppl') {
     setVal('ep-id',c.id);setVal('ep-co',c.company_name);setVal('ep-cn',c.contact_name);
     setVal('ep-em',c.email);setVal('ep-ph',c.phone);setVal('ep-niche',c.niche);
     setVal('ep-price',c.lead_price);setVal('ep-pct',c.pct_sold);setVal('ep-balance',c.balance);
+    setVal('ep-ld',c.leads_delivered||0);setVal('ep-tlp',c.total_leads_purchased||0);
     setVal('ep-stage',c.stage||'active_client');setVal('ep-notes',c.notes);
     setText('edit-ppl-sub',c.company_name||'');openModal('m-edit-ppl');
   } else {
@@ -1772,7 +1908,7 @@ async function updateClient(type) {
   let id,d;
   if (type==='ppl') {
     id=$('ep-id').value;
-    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:parseFloat($('ep-price').value)||0,pct_sold:parseFloat($('ep-pct').value)||null,balance:parseFloat($('ep-balance').value)||null,stage:$('ep-stage').value,notes:$('ep-notes').value.trim(),updated_at:now()};
+    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:parseFloat($('ep-price').value)||0,pct_sold:parseFloat($('ep-pct').value)||null,balance:parseFloat($('ep-balance').value)||null,leads_delivered:parseInt($('ep-ld').value)||0,total_leads_purchased:parseInt($('ep-tlp').value)||0,stage:$('ep-stage').value,notes:$('ep-notes').value.trim(),updated_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   } else {
     id=$('em-id').value;
@@ -1795,7 +1931,7 @@ async function deleteClient(type) {
 async function saveClient(type) {
   let d;
   if (type==='ppl') {
-    d={type:'ppl',company_name:$('ppl-co').value.trim(),contact_name:$('ppl-cn').value.trim(),email:$('ppl-em').value.trim(),niche:$('ppl-niche').value,lead_price:parseFloat($('ppl-price').value)||0,stage:$('ppl-stage').value,created_at:now()};
+    d={type:'ppl',company_name:$('ppl-co').value.trim(),contact_name:$('ppl-cn').value.trim(),email:$('ppl-em').value.trim(),niche:$('ppl-niche').value,lead_price:parseFloat($('ppl-price').value)||0,leads_delivered:parseInt($('ppl-ld').value)||0,total_leads_purchased:parseInt($('ppl-tlp').value)||0,stage:$('ppl-stage').value,created_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   } else {
     d={type:'managed',company_name:$('mg-co').value.trim(),contact_name:$('mg-cn').value.trim(),email:$('mg-em').value.trim(),ad_account_id:$('mg-acc').value.trim(),monthly_budget:parseFloat($('mg-budget').value)||0,management_fee:parseFloat($('mg-fee').value)||0,stage:$('mg-stage').value,created_at:now()};
@@ -1803,7 +1939,7 @@ async function saveClient(type) {
   }
   const {error}=await db.from('clients').insert([d]);
   if (error) { toast('DB error: '+error.message,true); return; }
-  if (type==='ppl') ['ppl-co','ppl-cn','ppl-em','ppl-price'].forEach(id=>{$(id).value='';});
+  if (type==='ppl') ['ppl-co','ppl-cn','ppl-em','ppl-price','ppl-ld','ppl-tlp'].forEach(id=>{$(id).value='';});
   else ['mg-co','mg-cn','mg-em','mg-acc','mg-budget','mg-fee'].forEach(id=>{$(id).value='';});
   closeModal('m-'+type); toast('Client saved ✓');
   type==='ppl'?loadPPL():loadManaged();
@@ -1839,8 +1975,9 @@ function renderFinance(revenue,expenses,adSpend,subs,pplClients) {
   pplClients.forEach(c=>{const sold=Math.round((c.leads_mtd||0)*((c.pct_sold||0)/100));pplRev+=sold*(c.lead_price||0);});
   const acTrue=pplClients.filter(c=>c.true_cpl>0);
   const trueCpl=acTrue.length?'$'+(acTrue.reduce((s,c)=>s+c.true_cpl,0)/acTrue.length).toFixed(2):'—';
-  const np=tr-te,margin=tr>0?((np/tr)*100).toFixed(1):0;
-  setText('fin-rev',fmt(tr));setText('fin-exp',fmt(te));setText('fin-profit',fmt(np));
+  const totalExp=te+pplSp+agSp;
+  const np=tr-totalExp,margin=tr>0?((np/tr)*100).toFixed(1):0;
+  setText('fin-rev',fmt(tr));setText('fin-exp',fmt(totalExp));setText('fin-profit',fmt(np));
   $('fin-profit').className=`kval ${np>=0?'grn':'red'}`;
   setText('fin-margin',`${margin}% margin`);setText('fin-subs',ts!==null?fmt(ts):'—');
   setText('fin-ppl-spend',fmt(pplSp));setText('fin-ag-spend',fmt(agSp));setText('fin-mg-spend','—');
@@ -1942,7 +2079,7 @@ function renderDailyChart(data) {
 }
 
 /* AGENTS HUB */
-const AGENT_CFG={marketing:{name:'Marketing Agent',role:'Campaigns & CPL Optimisation'},finance:{name:'Finance Agent',role:'P&L & Revenue Tracking'},operations:{name:'Operations Agent',role:'Lead Flow & Quality Assurance'},strategy:{name:'Strategy Agent',role:'Growth Direction & Planning'}};
+const AGENT_CFG={marketing:{name:'Marketing Agent',role:'Campaigns & CPL Optimisation'},finance:{name:'Finance Agent',role:'P&L & Revenue Tracking'},operations:{name:'Operations Agent',role:'Lead Flow & Quality Assurance'},strategy:{name:'Strategy Agent',role:'Growth Direction & Planning'},sales:{name:'Sales Agent',role:'Pipeline Analysis & Lead Prioritisation'}};
 const DEFAULT_MD={'agents.md':'# Agent Role\nDefine responsibilities here.\n\n## Key Responsibilities\n-\n\n## Behaviour\n- Reference live Supabase data\n- Be concise and data-driven','soul.md':'# Agent Soul\n\n## Tone\nProfessional, direct, data-first.','user.md':'# User Context\n\n## Business\nQuoteLeads.com.au — Solar lead gen + managed ads agency, Australia.\n\n## Operator\nJack — Founder','tools.md':'# Agent Tools\n\n## Supabase Tables\n- clients, leads, ad_spend_daily (solar_ppl + agency only), expenses, revenue, subscriptions, tasks, flagged_emails, agent_files, chat_memory, daily_snapshots','__identity__.md':'# Identity\n\nYou are a QuoteLeads agent. Always lead with data. Never speculate without labelling it.'};
 function selectAgent(name,el) {
   document.querySelectorAll('.agent-card').forEach(c=>c.classList.remove('active-agent'));
@@ -1974,7 +2111,8 @@ const PERSONAS={
   marketing:{name:'Marketing',emoji:'MKT',intro:"Marketing Agent ready. Ask me about CPL trends, campaign performance, or ad spend optimisation."},
   finance:{name:'Finance',emoji:'FIN',intro:"Finance Agent ready. Revenue, expenses, margins, and billing — including historical trends."},
   operations:{name:'Operations',emoji:'OPS',intro:"Operations Agent ready. Lead flow, delivery performance, and quality metrics."},
-  strategy:{name:'Strategy',emoji:'STR',intro:"Strategy Agent ready. Pipeline trends, growth opportunities, and positioning."}
+  strategy:{name:'Strategy',emoji:'STR',intro:"Strategy Agent ready. Pipeline trends, growth opportunities, and positioning."},
+  sales:{name:'Sales',emoji:'SLS',intro:"Sales Agent ready. I have your full pipeline loaded — all leads, notes, values, and contact history. Ask me who to call today, which deals to prioritise, or for a full pipeline review."}
 };
 
 async function loadChatMemory() {
@@ -2032,12 +2170,9 @@ async function buildAgentContext() {
     if (!snapErr && snaps && snaps.length > 0) {
       snapRows = snaps;
       dataSource = 'daily_snapshots';
-      console.log(`[Context] daily_snapshots: ${snaps.length} rows loaded`);
-    } else {
-      console.warn(`[Context] daily_snapshots returned ${snaps?.length ?? 0} rows (error: ${snapErr?.message || 'none'}). Trying fallback...`);
     }
   } catch (e) {
-    console.warn('[Context] daily_snapshots query failed:', e.message);
+    // daily_snapshots unavailable — will try fallback
   }
 
   // ── SOURCE 2: FALLBACK — ad_spend_daily (already works for finance panel) ──
@@ -2050,8 +2185,7 @@ async function buildAgentContext() {
         .limit(60);
 
       if (!adErr && adRows && adRows.length > 0) {
-        dataSource = 'ad_spend_daily (fallback — daily_snapshots was empty, likely RLS)';
-        console.log(`[Context] Fallback: ad_spend_daily loaded ${adRows.length} rows`);
+        dataSource = 'ad_spend_daily';
 
         // Reshape ad_spend_daily rows into snapshot-like objects grouped by date
         const byDate = {};
@@ -2076,7 +2210,7 @@ async function buildAgentContext() {
         snapRows = Object.values(byDate).sort((a, b) => b.snapshot_date.localeCompare(a.snapshot_date));
       }
     } catch (e) {
-      console.warn('[Context] ad_spend_daily fallback also failed:', e.message);
+      // ad_spend_daily fallback unavailable
     }
   }
 
@@ -2185,6 +2319,206 @@ Be concise and data-driven. Lead with numbers. Never invent or estimate figures 
     addMsg('agent','ERR',`Proxy error: ${e.message}`);
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   SALES AGENT — Pipeline context, prioritisation, dedicated chat
+   ════════════════════════════════════════════════════════════════════ */
+
+let salesChatHistory = [];
+const SALES_STAGE_ORDER = {call_back:1,proposal:2,qualified:3,new_lead:4,no_answer:5,paused:6};
+
+async function buildSalesPipelineContext() {
+  try {
+    const { data: leads, error } = await db
+      .from('leads')
+      .select('id,name,company,stage,lead_type,value,source,notes,last_contact,created_at,updated_at')
+      .not('stage','in','("closed_won","closed_lost")')
+      .order('updated_at',{ascending:false});
+
+    if (error || !leads || !leads.length) return { leads: [], context: '\n\n## Sales Pipeline\nNo active leads in pipeline.' };
+
+    const sorted = [...leads].sort((a,b) => {
+      const so = (SALES_STAGE_ORDER[a.stage]||9) - (SALES_STAGE_ORDER[b.stage]||9);
+      return so !== 0 ? so : (b.value||0) - (a.value||0);
+    });
+
+    const lines = sorted.map(l => {
+      const lastContact = l.last_contact ? new Date(l.last_contact).toLocaleDateString('en-AU') : 'never contacted';
+      const value = l.value ? `$${Number(l.value).toLocaleString()}/mo` : 'value TBD';
+      const daysSince = l.last_contact ? Math.floor((Date.now()-new Date(l.last_contact))/(1000*86400)) : null;
+      const urgency = daysSince !== null && daysSince > 7 ? ` ⚠ ${daysSince}d since contact` : '';
+      return `  - [${stageLabel(l.stage)}] ${l.name}${l.company?' @ '+l.company:''} · ${value} · ${l.lead_type==='ppl'?'PPL':'Managed Ads'} · Last: ${lastContact}${urgency}\n    Notes: ${l.notes||'none'}`;
+    });
+
+    const ctx = `\n\n## Full Active Sales Pipeline (${leads.length} leads)\n${lines.join('\n')}\n\n### Counts by Stage\n${
+      Object.entries(
+        sorted.reduce((acc,l)=>{acc[l.stage]=(acc[l.stage]||0)+1;return acc;},{})
+      ).map(([s,n])=>`  - ${stageLabel(s)}: ${n}`).join('\n')
+    }\n\n### Total Pipeline Value\n  $${sorted.reduce((s,l)=>s+(l.value||0),0).toLocaleString()}/mo across ${leads.length} leads`;
+
+    return { leads: sorted, context: ctx };
+  } catch(e) {
+    return { leads: [], context: '\n\n## Sales Pipeline\nUnable to load pipeline data.' };
+  }
+}
+
+async function refreshSalesContext() {
+  const { leads } = await buildSalesPipelineContext();
+  renderSalesPriorityList(leads);
+  toast('Pipeline refreshed ✓');
+}
+
+function renderSalesPriorityList(leads) {
+  const el = $('sa-priority-list');
+  const callbacks = leads.filter(l => l.stage === 'call_back').length;
+  const proposals = leads.filter(l => l.stage === 'proposal').length;
+  const pipelineVal = leads.reduce((s,l)=>s+(l.value||0),0);
+  const active = leads.filter(l => !['closed_won','closed_lost'].includes(l.stage)).length;
+  setText('sa-active', active);
+  setText('sa-callbacks', callbacks);
+  setText('sa-proposals', proposals);
+  setText('sa-value', pipelineVal ? '$'+Number(pipelineVal).toLocaleString()+'/mo' : '—');
+
+  const priority = leads.slice(0, 8);
+  if (!priority.length) { el.innerHTML = '<div class="empty">No active leads in pipeline.</div>'; return; }
+  el.innerHTML = priority.map(l => {
+    const lastContact = l.last_contact ? new Date(l.last_contact).toLocaleDateString('en-AU') : 'Never';
+    const daysSince = l.last_contact ? Math.floor((Date.now()-new Date(l.last_contact))/(1000*86400)) : null;
+    const urgencyColor = daysSince !== null && daysSince > 7 ? 'var(--amb)' : 'var(--ink3)';
+    const badge = stageBadge(l.stage);
+    return `<div class="task-item" style="margin-bottom:4px">
+      <div class="task-body">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
+          <span class="badge ${badge}">${stageLabel(l.stage)}</span>
+          <strong style="font-size:12px">${esc(l.name||'—')}</strong>
+          ${l.company?`<span style="font-size:11px;color:var(--ink3)">${esc(l.company)}</span>`:''}
+          ${l.value?`<span style="font-family:var(--mono);font-size:10px;color:var(--acc);margin-left:auto">$${Number(l.value).toLocaleString()}/mo</span>`:''}
+        </div>
+        <div class="task-meta">
+          <span class="tag tag-normal">${l.lead_type==='ppl'?'PPL':'Managed Ads'}</span>
+          <span style="font-family:var(--mono);font-size:9px;color:${urgencyColor}">Last contact: ${lastContact}${daysSince!==null&&daysSince>7?' · '+daysSince+'d ago':''}</span>
+        </div>
+        ${l.notes?`<div style="font-size:11px;color:var(--ink2);margin-top:4px;font-weight:300">${esc(l.notes.substring(0,120))}${l.notes.length>120?'…':''}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function loadSalesPanel() {
+  const { leads } = await buildSalesPipelineContext();
+  renderSalesPriorityList(leads);
+  await loadSalesMemory();
+}
+
+async function loadSalesMemory() {
+  if (!db || !currentUser) return;
+  try {
+    const { data } = await db.from('chat_memory').select('*').eq('agent','sales').eq('user_id',currentUser.id).order('created_at',{ascending:true}).limit(80);
+    if (data && data.length > 0) {
+      salesChatHistory = data.map(m=>({role:m.role,content:m.content}));
+      const msgs = $('sa-msgs');
+      msgs.innerHTML = `<div class="msg"><div class="msg-av">SLS</div><div><div class="msg-bubble">${PERSONAS.sales.intro}</div><div class="msg-time">System</div></div></div>`;
+      data.forEach(m=>{ if (m.role!=='system') addSalesMsg(m.role==='user'?'user':'agent',m.role==='user'?'YOU':'SLS',m.content,new Date(m.created_at)); });
+      setText('sa-mem-info',`${data.length} messages in memory · ${new Date(data[data.length-1].created_at).toLocaleDateString('en-AU')}`);
+      setText('sa-mem-status',`Memory active — ${data.length} messages saved`);
+      scrollSalesChat();
+    } else {
+      salesChatHistory = [];
+      setText('sa-mem-info','No saved messages yet');
+      setText('sa-mem-status','Memory active — will save as you chat');
+    }
+  } catch(e) {
+    salesChatHistory = [];
+    setText('sa-mem-info','chat_memory table not found');
+  }
+}
+
+async function clearSalesMemory() {
+  if (!db || !currentUser) return;
+  if (!confirm('Clear all Sales Agent memory?')) return;
+  const { error } = await db.from('chat_memory').delete().eq('agent','sales').eq('user_id',currentUser.id);
+  if (error) { toast('Error: '+error.message, true); return; }
+  salesChatHistory = [];
+  $('sa-msgs').innerHTML = `<div class="msg"><div class="msg-av">SLS</div><div><div class="msg-bubble">${PERSONAS.sales.intro}</div><div class="msg-time">System</div></div></div>`;
+  setText('sa-mem-info','Memory cleared');
+  setText('sa-mem-status','Memory active — will save as you chat');
+  toast('Sales memory cleared');
+}
+
+async function sendSalesChat() {
+  const inp = $('sa-inp'), text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+  addSalesMsg('user','YOU',text);
+  salesChatHistory.push({role:'user',content:text});
+  $('sa-typing').style.display = 'flex';
+  scrollSalesChat();
+  try { await db.from('chat_memory').insert([{agent:'sales',user_id:currentUser.id,role:'user',content:text,created_at:now()}]); } catch(e) {}
+
+  const { context: pipelineCtx } = await buildSalesPipelineContext();
+  const perfCtx = await buildAgentContext();
+
+  const sys = `You are the QuoteLeads Sales Agent for QuoteLeads.com.au — an Australian solar lead generation and managed advertising agency on the Gold Coast.
+
+## Your Core Role
+Analyse the full sales pipeline, read all lead notes, and help the team prioritise the highest-value leads to contact each day. Be direct, specific, and action-oriented. Tell the team exactly who to call, in what order, and why.
+
+## Prioritisation Framework
+1. Call-back appointments (highest urgency — they're expecting a call)
+2. Proposals sent but not yet followed up (strike while warm)
+3. Qualified leads with high deal value (PPL or Managed Ads)
+4. New leads from the last 48 hours (strike while fresh)
+5. No-answer leads that haven't been attempted in 3+ days
+
+## Business Context
+- PPL clients: solar installers buying leads from us (~$85-150/lead)
+- Managed Ads clients: businesses paying $1,000-3,000+/mo management fee
+- Managed Ads deals are higher value and more strategic — prioritise these for follow-up
+- A new managed ads client at $2k/mo is worth $24k/yr recurring
+
+## Instructions
+- Lead with specific names and actions ("Call Sarah Johnson at Solar Co — she's been in proposal stage for 6 days with no follow-up")
+- Flag leads that have gone cold (7+ days without contact)
+- Identify quick wins (leads already qualified with high intent)
+- Be concise but thorough — the team is busy
+${pipelineCtx}
+${perfCtx}`;
+
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) throw new Error('Not authenticated.');
+    const history = salesChatHistory.slice(-30);
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/anthropic-proxy`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({system:sys,messages:history})});
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error?.message || `Proxy error ${res.status}`);
+    const reply = data.content?.map(c=>c.text||'').join('') || 'No response.';
+    $('sa-typing').style.display = 'none';
+    salesChatHistory.push({role:'assistant',content:reply});
+    addSalesMsg('agent','SLS',reply);
+    try {
+      await db.from('chat_memory').insert([{agent:'sales',user_id:currentUser.id,role:'assistant',content:reply,created_at:now()}]);
+      const cnt = salesChatHistory.length;
+      setText('sa-mem-status',`Memory active — ${cnt} messages saved`);
+      setText('sa-mem-info',`${cnt} messages in memory`);
+    } catch(e) {}
+  } catch(e) {
+    $('sa-typing').style.display = 'none';
+    addSalesMsg('agent','ERR',`Error: ${e.message}`);
+  }
+}
+
+function addSalesMsg(type, avatar, text, time) {
+  const msgs = $('sa-msgs');
+  const ts = (time||new Date()).toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
+  const d = document.createElement('div');
+  d.className = `msg ${type==='user'?'user':''}`;
+  const safe = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/`(.*?)`/g,'<code style="font-family:var(--mono);font-size:10.5px;background:var(--s3);padding:1px 5px;border-radius:3px">$1</code>');
+  d.innerHTML = `<div class="msg-av">${esc(avatar)}</div><div><div class="msg-bubble">${safe}</div><div class="msg-time">${ts}</div></div>`;
+  msgs.appendChild(d);
+  scrollSalesChat();
+}
+
+function scrollSalesChat() { const m=$('sa-msgs');if(m)m.scrollTop=m.scrollHeight; }
 
 function addMsg(type,avatar,text,time) {
   const msgs=$('chat-msgs');
