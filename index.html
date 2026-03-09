@@ -1822,7 +1822,8 @@ async function loadFinance() {
   const [revR,expR,spR,subR,pplR]=await Promise.all([
     db.from('revenue').select('*').gte('date',from).lt('date',next),
     db.from('expenses').select('*').gte('date',from).lt('date',next),
-    db.from('ad_spend_daily').select('date,account_type,spend,leads').gte('date',from).lt('date',next),
+    // Get latest row per account_type — order by date desc, one row each
+    db.from('ad_spend_daily').select('date,account_type,spend,leads').order('date',{ascending:false}),
     db.from('subscriptions').select('monthly_cost').eq('active',true),
     db.from('clients').select('leads_mtd,pct_sold,lead_price,meta_cpl,true_cpl').eq('type','ppl').eq('stage','active_client'),
   ]);
@@ -1832,9 +1833,12 @@ function renderFinance(revenue,expenses,adSpend,subs,pplClients) {
   const tr=revenue.reduce((s,r)=>s+(r.amount||0),0);
   const te=expenses.reduce((s,e)=>s+(e.amount||0),0);
   const ts=subs.length>0?subs.reduce((s,sub)=>s+(sub.monthly_cost||0),0):null;
-  const pplSp=adSpend.filter(a=>a.account_type==='solar_ppl').reduce((s,a)=>s+(a.spend||0),0);
-  const agSp=adSpend.filter(a=>a.account_type==='agency').reduce((s,a)=>s+(a.spend||0),0);
-  const pplLeadsTotal=adSpend.filter(a=>a.account_type==='solar_ppl').reduce((s,a)=>s+(a.leads||0),0);
+  // Use only the LATEST row per account_type — each row is a full YTD snapshot
+  const latestPpl=adSpend.find(a=>a.account_type==='solar_ppl');
+  const latestAg=adSpend.find(a=>a.account_type==='agency');
+  const pplSp=latestPpl?.spend||0;
+  const agSp=latestAg?.spend||0;
+  const pplLeadsTotal=latestPpl?.leads||0;
   const metaCpl=(pplSp>0&&pplLeadsTotal>0)?'$'+(pplSp/pplLeadsTotal).toFixed(2):'—';
   let pplRev=0;
   pplClients.forEach(c=>{const sold=Math.round((c.leads_mtd||0)*((c.pct_sold||0)/100));pplRev+=sold*(c.lead_price||0);});
@@ -1867,10 +1871,10 @@ function renderRevenueChart(revenue,expenses) {
 }
 function renderCplChart(adSpend) {
   const {grid,tick}=chartDefaults();
-  const pplByDay={};
-  adSpend.filter(a=>a.account_type==='solar_ppl').forEach(a=>{if (!pplByDay[a.date]) pplByDay[a.date]={spend:0,leads:0};pplByDay[a.date].spend+=(a.spend||0);pplByDay[a.date].leads+=(a.leads||0);});
-  const days=Object.keys(pplByDay).sort();
-  const metaCpls=days.map(d=>pplByDay[d].leads>0?+(pplByDay[d].spend/pplByDay[d].leads).toFixed(2):null);
+  // One row per day — use the row directly, no summing
+  const pplRows=adSpend.filter(a=>a.account_type==='solar_ppl').sort((a,b)=>a.date.localeCompare(b.date));
+  const days=pplRows.map(r=>r.date);
+  const metaCpls=pplRows.map(r=>r.leads>0?+(r.spend/r.leads).toFixed(2):null);
   if (cplChart) cplChart.destroy();
   cplChart=new Chart($('chart-cpl').getContext('2d'),{type:'line',data:{labels:days,datasets:[{label:'Meta CPL',data:metaCpls,borderColor:'#4f8fff',backgroundColor:'rgba(79,143,255,.05)',tension:.4,borderWidth:2,pointRadius:3,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:tick,font:{family:'DM Mono',size:9.5},boxWidth:8}}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9},callback:v=>'$'+v},grid:{color:grid}}}}});
 }
@@ -1904,10 +1908,13 @@ async function loadDailyLogs() {
 function renderDailyLogs(rows) {
   const getLeads=r=>r.leads??0;
   const getSpend=r=>r.spend??0;
-  const tl=rows.filter(r=>r.account_type==='solar_ppl').reduce((s,r)=>s+getLeads(r),0);
-  const ts=rows.reduce((s,r)=>s+getSpend(r),0);
+  // Latest row per account_type = the current YTD snapshot for that account
+  const latestPpl=rows.find(r=>r.account_type==='solar_ppl');
+  const latestAg=rows.find(r=>r.account_type==='agency');
+  const tl=getLeads(latestPpl||{});
+  const ts=getSpend(latestPpl||{})+getSpend(latestAg||{});
   setText('dl-leads',tl||'—');setText('dl-spend',ts?fmt(ts):'—');
-  setText('dl-cpl',tl>0?'$'+(rows.filter(r=>r.account_type==='solar_ppl').reduce((s,r)=>s+getSpend(r),0)/tl).toFixed(2):'—');
+  setText('dl-cpl',tl>0&&latestPpl?'$'+(getSpend(latestPpl)/tl).toFixed(2):'—');
   setText('dl-camps',new Set(rows.map(r=>r.date)).size||'—');
   const tb=$('daily-tbody');
   if (!rows.length) { tb.innerHTML='<tr><td colspan="7" class="empty">No data for this range.</td></tr>';renderDailyChart([]); return; }
@@ -1932,9 +1939,9 @@ function renderDailyLogs(rows) {
       <td style="font-family:var(--mono);font-size:10px;color:var(--ink3)">${runningMap[key]||'—'}</td>
     </tr>`;
   }).join('');
-  const byDate={};
-  rows.filter(r=>r.account_type==='solar_ppl').forEach(r=>{const d=r.date;if (!byDate[d]) byDate[d]=0;byDate[d]+=getLeads(r);});
-  renderDailyChart(Object.entries(byDate).sort((a,b)=>a[0].localeCompare(b[0])));
+  // Chart: each day's PPL row is one bar — no summing, each row is already the YTD snapshot for that day
+  const pplByDate=rows.filter(r=>r.account_type==='solar_ppl').sort((a,b)=>a.date.localeCompare(b.date));
+  renderDailyChart(pplByDate.map(r=>[r.date,getLeads(r)]));
 }
 function renderDailyChart(data) {
   const {grid,tick}=chartDefaults();
