@@ -1900,7 +1900,6 @@ async function loadDailyLogs() {
   const {data,error}=await db.from('ad_spend_daily').select('*').gte('date',from).lt('date',toNextStr).order('date',{ascending:false});
   if (error) { $('daily-tbody').innerHTML=`<tr><td colspan="7" class="empty">Error: ${esc(error.message)}</td></tr>`;renderDailyChart([]); return; }
   renderDailyLogs(data||[]);
-  saveSnapshotToday();
 }
 function renderDailyLogs(rows) {
   const getLeads=r=>r.leads??0;
@@ -1943,64 +1942,7 @@ function renderDailyChart(data) {
   dailyChart=new Chart($('chart-daily').getContext('2d'),{type:'bar',data:{labels:data.map(d=>d[0]),datasets:[{label:'Solar PPL Leads',data:data.map(d=>d[1]),backgroundColor:'rgba(79,143,255,.14)',borderColor:'#4f8fff',borderWidth:1.5,borderRadius:4}]},options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid},beginAtZero:true}},responsive:true,maintainAspectRatio:true}});
 }
 
-/*
- * ═══════════════════════════════════════════════════════
- * FIX 3: DAILY SNAPSHOT — UPSERT TODAY'S FIGURES ONLY
- * Each day has exactly ONE row in daily_snapshots.
- * We read today's rows from ad_spend_daily and UPSERT
- * (update if exists, insert if not) using snapshot_date
- * as the conflict key. This means:
- *   - The row reflects the current state of TODAY's data
- *   - No YTD compounding is written into the daily row
- *   - Historical rows (past days) remain untouched
- *   - The chat context still shows a 7-day history of
- *     saved snapshots which gives the agents trend data
- * ═══════════════════════════════════════════════════════
- */
-async function saveSnapshotToday() {
-  if (!db) return;
-  const today = new Date().toISOString().split('T')[0];
-  try {
-    // Only fetch TODAY's rows — not YTD
-    const { data: todayRows, error } = await db
-      .from('ad_spend_daily')
-      .select('account_type,spend,leads')
-      .eq('date', today);
-
-    if (error) throw error;
-
-    const rows = todayRows || [];
-    const sum = (type, field) =>
-      rows.filter(r => r.account_type === type).reduce((s, r) => s + (r[field] || 0), 0);
-
-    const pplLeads = sum('solar_ppl', 'leads');
-    const pplSpend = sum('solar_ppl', 'spend');
-    const agSpend  = sum('agency',    'spend');
-
-    const snapshot = {
-      snapshot_date:      today,
-      ppl_leads_today:    pplLeads,
-      ppl_spend_today:    pplSpend,
-      ppl_cpl_today:      pplLeads > 0 ? +(pplSpend / pplLeads).toFixed(2) : 0,
-      // YTD fields removed from daily snapshot — daily row = today only
-      // Agents can query ad_spend_daily directly for YTD if needed
-      ppl_leads_ytd:      null,
-      ppl_spend_ytd:      null,
-      ppl_cpl_ytd:        null,
-      agency_spend_today: agSpend,
-      agency_spend_ytd:   null,
-      total_leads_ytd:    null,
-      total_spend_ytd:    null,
-      updated_at:         now(),
-    };
-
-    // UPSERT on snapshot_date — always updates the same row for today
-    await db.from('daily_snapshots').upsert(snapshot, { onConflict: 'snapshot_date' });
-
-  } catch(e) {
-    console.warn('[Snapshot] Could not save today:', e.message);
-  }
-}
+/* daily_snapshots is written exclusively by Make.com — app only reads */
 
 /* AGENTS HUB */
 const AGENT_CFG={marketing:{name:'Marketing Agent',role:'Campaigns & CPL Optimisation'},finance:{name:'Finance Agent',role:'P&L & Revenue Tracking'},operations:{name:'Operations Agent',role:'Lead Flow & Quality Assurance'},strategy:{name:'Strategy Agent',role:'Growth Direction & Planning'}};
@@ -2080,74 +2022,63 @@ async function sendChat() {
   $('typing-area').style.display='flex';scrollChat();
   try { await db.from('chat_memory').insert([{agent:curChat,user_id:currentUser.id,role:'user',content:text,created_at:now()}]); } catch(e) {}
 
-  // ── LIVE CONTEXT BUILDER (today + yesterday + 7d + YTD from ad_spend_daily) ──
+  // ── CONTEXT BUILDER: reads from daily_snapshots (owned by Make.com) ──
+  // Each row = full YTD figures as of that day's final push from Make.
+  // Latest row = current state. Previous rows = day-by-day history.
   let dailyCtx = '';
   try {
-    const today    = new Date().toISOString().split('T')[0];
-    const yest     = new Date(); yest.setDate(yest.getDate()-1); const yStr = yest.toISOString().split('T')[0];
-    const week     = new Date(); week.setDate(week.getDate()-6); const wStr = week.toISOString().split('T')[0];
-    const ytdStart = `${new Date().getFullYear()}-01-01`;
+    // Fetch last 30 rows ordered newest first — latest = today's YTD figures
+    const { data: snaps, error: snapErr } = await db
+      .from('daily_snapshots')
+      .select('*')
+      .order('snapshot_date', { ascending: false })
+      .limit(30);
 
-    const sum = (rows, type, field) =>
-      (rows||[]).filter(r=>!type||r.account_type===type).reduce((s,r)=>s+(r[field]||0),0);
+    if (snapErr) throw snapErr;
 
-    const [tR, yR, wR, ytdR, snapR] = await Promise.all([
-      db.from('ad_spend_daily').select('account_type,spend,leads').eq('date', today),
-      db.from('ad_spend_daily').select('account_type,spend,leads').eq('date', yStr),
-      db.from('ad_spend_daily').select('account_type,spend,leads').gte('date', wStr).lte('date', today),
-      db.from('ad_spend_daily').select('account_type,spend,leads').gte('date', ytdStart).lte('date', today),
-      db.from('daily_snapshots').select('snapshot_date,ppl_leads_today,ppl_cpl_today,agency_spend_today').order('snapshot_date',{ascending:false}).limit(7),
-    ]);
+    const rows = snaps || [];
+    const latest = rows[0]; // most recent push from Make — this IS the YTD figure
+    const today = latest?.snapshot_date || new Date().toISOString().split('T')[0];
 
-    const td = {
-      ppl: { l: sum(tR.data,'solar_ppl','leads'), sp: sum(tR.data,'solar_ppl','spend') },
-      ag:  { sp: sum(tR.data,'agency','spend') }
-    };
-    const yd = { ppl: { l: sum(yR.data,'solar_ppl','leads'), sp: sum(yR.data,'solar_ppl','spend') } };
-    const wd = {
-      ppl: { l: sum(wR.data,'solar_ppl','leads'), sp: sum(wR.data,'solar_ppl','spend') },
-      ag:  { sp: sum(wR.data,'agency','spend') }
-    };
-    const ytd = {
-      ppl: { l: sum(ytdR.data,'solar_ppl','leads'), sp: sum(ytdR.data,'solar_ppl','spend') },
-      ag:  { sp: sum(ytdR.data,'agency','spend') }
-    };
+    const fmtN = n => (n != null && n !== '') ? '$' + Number(n).toLocaleString('en-AU', {minimumFractionDigits:0,maximumFractionDigits:0}) : 'n/a';
+    const fmtC = n => (n != null && n > 0) ? '$' + Number(n).toFixed(2) : 'n/a';
 
-    const cpl = (sp, l) => l > 0 ? `$${(sp/l).toFixed(2)}` : 'n/a';
-
-    const recentSnaps = (snapR.data||[]).reverse().map(s =>
-      `  ${s.snapshot_date}: ${s.ppl_leads_today} PPL leads that day, CPL ${s.ppl_cpl_today>0?'$'+s.ppl_cpl_today:'n/a'}, agency spend $${s.agency_spend_today||0}`
+    // Last 7 days of snapshots as trend history (oldest → newest for readability)
+    const history = rows.slice(0, 7).reverse();
+    const historyLines = history.map(s =>
+      `  ${s.snapshot_date}: ${s.ppl_leads_ytd ?? s.ppl_leads_today ?? '?'} YTD leads · spend ${fmtN(s.ppl_spend_ytd ?? s.ppl_spend_today)} · CPL ${fmtC(s.ppl_cpl_ytd ?? s.ppl_cpl_today)} · agency ${fmtN(s.agency_spend_ytd ?? s.agency_spend_today)}`
     ).join('\n');
 
-    dailyCtx = `
+    dailyCtx = latest ? `
 
-## Live Performance Context (${today})
+## Live Performance Context
+Data source: daily_snapshots (pushed by Make.com — each row = full YTD figures as of that date)
+Latest push: ${today}
 
-### Today
-- Solar PPL: ${td.ppl.l} leads, ${fmt(td.ppl.sp)} spend, CPL ${cpl(td.ppl.sp, td.ppl.l)}
-- Agency acquisition spend: ${fmt(td.ag.sp)}
+### Current YTD Figures (as of last Make push)
+- Solar PPL leads YTD: ${latest.ppl_leads_ytd ?? latest.total_leads_ytd ?? 'n/a'}
+- Solar PPL spend YTD: ${fmtN(latest.ppl_spend_ytd ?? latest.total_spend_ytd)}
+- Solar PPL avg CPL YTD: ${fmtC(latest.ppl_cpl_ytd)}
+- Agency acquisition spend YTD: ${fmtN(latest.agency_spend_ytd)}
+- Total operational spend YTD: ${fmtN(latest.total_spend_ytd)}
 
-### Yesterday (${yStr})
-- Solar PPL: ${yd.ppl.l} leads, ${fmt(yd.ppl.sp)} spend, CPL ${cpl(yd.ppl.sp, yd.ppl.l)}
+### Today's Session (${today})
+- PPL leads today: ${latest.ppl_leads_today ?? 'n/a'}
+- PPL spend today: ${fmtN(latest.ppl_spend_today)}
+- PPL CPL today: ${fmtC(latest.ppl_cpl_today)}
+- Agency spend today: ${fmtN(latest.agency_spend_today)}
 
-### Last 7 Days
-- Solar PPL: ${wd.ppl.l} leads, ${fmt(wd.ppl.sp)} spend, avg CPL ${cpl(wd.ppl.sp, wd.ppl.l)}
-- Agency spend: ${fmt(wd.ag.sp)}
-
-### Year to Date ${ytdStart} → ${today}
-- Solar PPL: ${ytd.ppl.l} leads, ${fmt(ytd.ppl.sp)} spend, avg CPL ${cpl(ytd.ppl.sp, ytd.ppl.l)}
-- Agency acquisition: ${fmt(ytd.ag.sp)} total spend
-- Combined operational spend YTD: ${fmt(ytd.ppl.sp + ytd.ag.sp)}
-
-### Recent Daily Snapshots (last 7 saved days — each row = that day only)
-${recentSnaps || '  No snapshots yet — will save automatically on Daily Logs visits'}
+### Day-by-Day Trend (last 7 pushes from Make)
+${historyLines || '  No history yet'}
 
 ### Data Notes
-- ad_spend_daily tracks our operational accounts: solar_ppl and agency
-- daily_snapshots stores each day's figures (not cumulative) — one row per day, updated throughout the day via upsert
-- Managed client spend is tracked separately in monthly reports`;
+- daily_snapshots is written by Make.com only — the app never writes to it
+- Each row contains full YTD cumulative figures as of that date
+- To see how the year is tracking, compare rows day over day above
+- Managed client spend is tracked separately in monthly reports` :
+`\n\n(No snapshot data found — Make.com may not have pushed yet today)`;
 
-  } catch(e) { dailyCtx = `\n\n(Live data unavailable: ${e.message})`; }
+  } catch(e) { dailyCtx = `\n\n(Snapshot data unavailable: ${e.message})`; }
 
   const p=PERSONAS[curChat];
   const sys=`You are the QuoteLeads ${p.name} AI for QuoteLeads.com.au — an Australian solar lead generation and managed advertising agency based on the Gold Coast.
