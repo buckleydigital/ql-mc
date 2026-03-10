@@ -6,8 +6,10 @@
 <title>QL · Mission Control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co 'self';">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
 <style>
 
 /* ═══ TOKENS ═══ */
@@ -524,8 +526,8 @@ body::after {
 .mem-dot{width:4px;height:4px;border-radius:50%;background:var(--grn);flex-shrink:0;box-shadow:0 0 5px var(--grn)}
 
 /* ═══ TABLES ═══ */
-.twrap{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);overflow:auto}
-table{width:100%;border-collapse:collapse;font-size:12px}
+.twrap{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:max-content;min-width:100%;border-collapse:collapse;font-size:12px}
 thead th{text-align:left;padding:8px 12px;font-family:var(--mono);font-size:9px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.09em;background:var(--s2);border-bottom:1px solid var(--bd);white-space:nowrap}
 tbody td{padding:9px 12px;border-bottom:1px solid var(--bd);color:var(--ink);vertical-align:middle}
 tbody tr:last-child td{border-bottom:none}
@@ -1380,6 +1382,9 @@ let chatHistory = {};
 let revChart = null, cplChart = null, dailyChart = null;
 let curDailyRange = 'today';
 
+// Secure data stores — avoids embedding DB objects in onclick attributes
+const _taskMap = new Map();
+
 /* Record caches — avoids embedding JSON blobs in onclick attributes */
 const LEAD_CACHE = {};
 const CLIENT_CACHE = {};
@@ -1523,10 +1528,11 @@ async function loadTasks() {
 function renderTaskList(id, list, type) {
   const el = $(id);
   if (!list.length) { el.innerHTML = '<div style="padding:8px 0;font-size:11px;color:var(--ink3);font-family:var(--mono)">No tasks.</div>'; return; }
+  list.forEach(t => _taskMap.set(String(t.id), t));
   el.innerHTML = list.map(t => `
     <div class="task-item ${t.done ? 'done' : ''}" id="ti-${t.id}">
-      <div class="tcb" onclick="toggleTask('${t.id}',${!!t.done})">${t.done ? '✓' : ''}</div>
-      <div class="task-body" onclick="openEditTask(${JSON.stringify(t).replace(/"/g,'&quot;')})" style="cursor:pointer">
+      <div class="tcb" data-task-id="${t.id}" data-done="${t.done ? '1' : '0'}">${t.done ? '✓' : ''}</div>
+      <div class="task-body" data-task-id="${t.id}" style="cursor:pointer">
         <div class="task-title">${esc(t.title)}</div>
         <div class="task-meta">
           <span class="tag ${t.priority==='urgent'?'tag-urgent':t.priority==='low'?'tag-low':type==='ai'?'tag-ai':'tag-normal'}">${esc(t.priority || type)}</span>
@@ -1534,6 +1540,12 @@ function renderTaskList(id, list, type) {
         </div>
       </div>
     </div>`).join('');
+  el.querySelectorAll('.tcb[data-task-id]').forEach(cb => {
+    cb.addEventListener('click', () => toggleTask(cb.dataset.taskId, cb.dataset.done === '1'));
+  });
+  el.querySelectorAll('.task-body[data-task-id]').forEach(body => {
+    body.addEventListener('click', () => openEditTask(_taskMap.get(body.dataset.taskId)));
+  });
 }
 function openEditTask(t) {
   setVal('et-id',t.id);setVal('et-title',t.title);setVal('et-assignee',t.assigned_to);
@@ -1592,11 +1604,14 @@ function renderEmails(emails) {
       <div class="email-preview">${esc((e.body_preview||'').substring(0,200))}…</div>
       ${e.ai_draft_reply?`<div class="ai-draft"><div class="ai-draft-lbl">AI Draft Reply</div><div class="ai-draft-txt">${esc(e.ai_draft_reply)}</div></div>`:''}
       <div class="email-acts">
-        <button class="btn btn-xs" style="border-color:rgba(79,143,255,.22);color:var(--acc)" onclick="actionEmail('${e.id}','approved')">Approve</button>
-        <button class="btn btn-xs" onclick="actionEmail('${e.id}','edit')">Edit</button>
-        <button class="btn btn-red btn-xs" onclick="actionEmail('${e.id}','discarded')">Discard</button>
+        <button class="btn btn-xs" style="border-color:rgba(79,143,255,.22);color:var(--acc)" data-email-id="${e.id}" data-action="approved">Approve</button>
+        <button class="btn btn-xs" data-email-id="${e.id}" data-action="edit">Edit</button>
+        <button class="btn btn-red btn-xs" data-email-id="${e.id}" data-action="discarded">Discard</button>
       </div>
     </div>`).join('');
+  el.querySelectorAll('button[data-email-id]').forEach(btn => {
+    btn.addEventListener('click', () => actionEmail(btn.dataset.emailId, btn.dataset.action));
+  });
 }
 async function actionEmail(id,status) {
   const {error}=await db.from('flagged_emails').update({status,actioned_at:now()}).eq('id',id);
@@ -2123,7 +2138,7 @@ async function loadChatMemory() {
       chatHistory[curChat]=data.map(m=>({role:m.role,content:m.content}));
       const msgs=$('chat-msgs');
       const p=PERSONAS[curChat];
-      msgs.innerHTML=`<div class="msg"><div class="msg-av">${p.emoji}</div><div><div class="msg-bubble">${p.intro}</div><div class="msg-time">System</div></div></div>`;
+      msgs.innerHTML=''; msgs.appendChild(_buildMsg('agent',p.emoji,p.intro,null));
       data.forEach(m=>{if (m.role!=='system') addMsg(m.role==='user'?'user':'agent',m.role==='user'?'YOU':p.emoji,m.content,new Date(m.created_at));});
       setText('chat-mem-info',`${data.length} messages in memory · ${new Date(data[data.length-1].created_at).toLocaleDateString('en-AU')}`);
       setText('mem-status',`Memory active — ${data.length} messages saved`);
@@ -2144,7 +2159,7 @@ function selectChat(name,el) {
   if (el) {document.querySelectorAll('.chat-item').forEach(i=>i.classList.remove('active'));el.classList.add('active');}
   curChat=name;const p=PERSONAS[name];
   setText('chat-name',p.name+' Agent');
-  $('chat-msgs').innerHTML=`<div class="msg"><div class="msg-av">${p.emoji}</div><div><div class="msg-bubble">${p.intro}</div><div class="msg-time">System</div></div></div>`;
+  const cm=$('chat-msgs'); cm.innerHTML=''; cm.appendChild(_buildMsg('agent',p.emoji,p.intro,null));
   chatHistory[name]=chatHistory[name]||[];loadChatMemory();
 }
 
@@ -2417,7 +2432,7 @@ async function loadSalesMemory() {
     if (data && data.length > 0) {
       salesChatHistory = data.map(m=>({role:m.role,content:m.content}));
       const msgs = $('sa-msgs');
-      msgs.innerHTML = `<div class="msg"><div class="msg-av">SLS</div><div><div class="msg-bubble">${PERSONAS.sales.intro}</div><div class="msg-time">System</div></div></div>`;
+      msgs.innerHTML = ''; msgs.appendChild(_buildMsg('agent','SLS',PERSONAS.sales.intro,null));
       data.forEach(m=>{ if (m.role!=='system') addSalesMsg(m.role==='user'?'user':'agent',m.role==='user'?'YOU':'SLS',m.content,new Date(m.created_at)); });
       setText('sa-mem-info',`${data.length} messages in memory · ${new Date(data[data.length-1].created_at).toLocaleDateString('en-AU')}`);
       setText('sa-mem-status',`Memory active — ${data.length} messages saved`);
@@ -2439,7 +2454,7 @@ async function clearSalesMemory() {
   const { error } = await db.from('chat_memory').delete().eq('agent','sales').eq('user_id',currentUser.id);
   if (error) { toast('Error: '+error.message, true); return; }
   salesChatHistory = [];
-  $('sa-msgs').innerHTML = `<div class="msg"><div class="msg-av">SLS</div><div><div class="msg-bubble">${PERSONAS.sales.intro}</div><div class="msg-time">System</div></div></div>`;
+  const sm=$('sa-msgs'); sm.innerHTML=''; sm.appendChild(_buildMsg('agent','SLS',PERSONAS.sales.intro,null));
   setText('sa-mem-info','Memory cleared');
   setText('sa-mem-status','Memory active — will save as you chat');
   toast('Sales memory cleared');
@@ -2507,31 +2522,35 @@ ${perfCtx}`;
   }
 }
 
-function addSalesMsg(type, avatar, text, time) {
-  const msgs = $('sa-msgs');
+function _renderMsgText(text) {
+  const escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\n/g,'<br>')
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/`(.*?)`/g,'<code style="font-family:var(--mono);font-size:10.5px;background:var(--s3);padding:1px 5px;border-radius:3px">$1</code>');
+  return window.DOMPurify ? DOMPurify.sanitize(escaped, {ALLOWED_TAGS:['br','strong','code'],ALLOWED_ATTR:['style']}) : escaped;
+}
+function _buildMsg(type, avatar, text, time, scrollFn) {
   const ts = (time||new Date()).toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
   const d = document.createElement('div');
   d.className = `msg ${type==='user'?'user':''}`;
-  const safe = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/`(.*?)`/g,'<code style="font-family:var(--mono);font-size:10.5px;background:var(--s3);padding:1px 5px;border-radius:3px">$1</code>');
-  d.innerHTML = `<div class="msg-av">${esc(avatar)}</div><div><div class="msg-bubble">${safe}</div><div class="msg-time">${ts}</div></div>`;
-  msgs.appendChild(d);
+  const av = document.createElement('div'); av.className='msg-av'; av.textContent=avatar;
+  const bubble = document.createElement('div'); bubble.className='msg-bubble'; bubble.innerHTML=_renderMsgText(text);
+  const mt = document.createElement('div'); mt.className='msg-time'; mt.textContent=ts;
+  const inner = document.createElement('div'); inner.appendChild(bubble); inner.appendChild(mt);
+  d.appendChild(av); d.appendChild(inner);
+  return d;
+}
+function addSalesMsg(type, avatar, text, time) {
+  const msgs = $('sa-msgs');
+  msgs.appendChild(_buildMsg(type, avatar, text, time));
   scrollSalesChat();
 }
 
 function scrollSalesChat() { const m=$('sa-msgs');if(m)m.scrollTop=m.scrollHeight; }
 
 function addMsg(type,avatar,text,time) {
-  const msgs=$('chat-msgs');
-  const ts=(time||new Date()).toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
-  const d=document.createElement('div');
-  d.className=`msg ${type==='user'?'user':''}`;
-  d.innerHTML=`
-    <div class="msg-av">${avatar}</div>
-    <div>
-      <div class="msg-bubble">${text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/`(.*?)`/g,'<code style="font-family:var(--mono);font-size:10.5px;background:var(--s3);padding:1px 5px;border-radius:3px">$1</code>')}</div>
-      <div class="msg-time">${ts}</div>
-    </div>`;
-  msgs.appendChild(d);scrollChat();
+  $('chat-msgs').appendChild(_buildMsg(type,avatar,text,time));
+  scrollChat();
 }
 function scrollChat() { const m=$('chat-msgs');m.scrollTop=m.scrollHeight; }
 </script>
