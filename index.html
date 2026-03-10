@@ -10,6 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<!-- Google Maps — replace YOUR_GOOGLE_MAPS_API_KEY below with your actual key -->
 <script id="gmaps-script"></script>
 <style>
 
@@ -879,18 +880,24 @@ td strong{font-weight:500}
           </table>
         </div>
         <div class="map-section">
-          <div class="sl" style="margin-top:0">Lead Generation Areas <div class="sl-line"></div></div>
-          <div class="map-controls">
-            <select id="map-client-select" onchange="loadMapAreas()">
-              <option value="">— Select PPL Client —</option>
-            </select>
-            <input type="text" id="map-area-label" placeholder="Area label (e.g. Gold Coast South)">
-            <input type="number" id="map-area-volume" placeholder="Volume (leads/mo)">
-            <button class="btn btn-sm btn-p" onclick="saveMapArea()">Save Area</button>
-            <button class="btn btn-sm" onclick="clearMapDrawing()">Clear Drawing</button>
+          <div class="sl" style="margin-top:0;cursor:pointer;user-select:none" onclick="toggleMap()">
+            Lead Generation Areas
+            <button id="map-toggle-btn" class="btn btn-xs" style="margin-left:8px;font-size:10px;padding:2px 9px;pointer-events:none">Show Map ▼</button>
+            <div class="sl-line"></div>
           </div>
-          <div id="ppl-map"><div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:var(--mono);font-size:11px;color:var(--ink3)">Loading map…</div></div>
-          <div class="area-list" id="map-area-list"></div>
+          <div id="map-body" style="display:none">
+            <div class="map-controls">
+              <select id="map-client-select" onchange="loadMapAreas()">
+                <option value="">— Select PPL Client —</option>
+              </select>
+              <input type="text" id="map-area-label" placeholder="Area label (e.g. Gold Coast South)">
+              <input type="number" id="map-area-volume" placeholder="Volume (leads/mo)">
+              <button class="btn btn-sm btn-p" onclick="saveMapArea()">Save Area</button>
+              <button class="btn btn-sm" onclick="clearMapDrawing()">Clear Drawing</button>
+            </div>
+            <div id="ppl-map"><div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:var(--mono);font-size:11px;color:var(--ink3)">Loading map…</div></div>
+            <div class="area-list" id="map-area-list"></div>
+          </div>
         </div>
       </div>
 
@@ -913,6 +920,13 @@ td strong{font-weight:500}
           <table>
             <thead><tr><th>Client</th><th>Stage</th><th>Ad Account</th><th>Spend MTD</th><th>CPL Today</th><th>CPL 7d Avg</th><th>Leads MTD</th><th>Mgmt Fee</th><th></th></tr></thead>
             <tbody id="mg-tbody"><tr><td colspan="9" class="empty">Loading...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="sl">Payment Tracker <div class="sl-line"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Client</th><th>Active Since</th><th>Months Active</th><th>Last Payment</th><th>Next Payment Due</th></tr></thead>
+            <tbody id="mg-payment-tbody"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1337,6 +1351,9 @@ td strong{font-weight:500}
         <option value="paused">Paused</option><option value="churned">Churned</option>
       </select>
     </div>
+    <div class="frow"><label class="flabel">Start Date</label><input class="fi" id="mg-start" type="date"></div>
+    <div class="frow"><label class="flabel">Last Payment Date</label><input class="fi" id="mg-last-pay" type="date" oninput="calcNextPaymentNew()"></div>
+    <div class="frow"><label class="flabel">Next Payment Due</label><input class="fi" id="mg-next-pay" type="date"></div>
     <div class="macts">
       <button class="btn" onclick="closeModal('m-managed')">Cancel</button>
       <button class="btn btn-p" onclick="saveClient('managed')">Save client</button>
@@ -1450,6 +1467,9 @@ td strong{font-weight:500}
         <option value="paused">Paused</option><option value="churned">Churned</option>
       </select>
     </div>
+    <div class="frow"><label class="flabel">Start Date</label><input class="fi" id="em-start" type="date"></div>
+    <div class="frow"><label class="flabel">Last Payment Date</label><input class="fi" id="em-last-pay" type="date" oninput="calcNextPayment()"></div>
+    <div class="frow"><label class="flabel">Next Payment Due</label><input class="fi" id="em-next-pay" type="date"></div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="em-notes"></textarea></div>
     <div class="macts">
       <button class="btn btn-red btn-sm" onclick="deleteClient('managed')">Delete</button>
@@ -1634,7 +1654,6 @@ function nav(panel, el) {
   if (panel === 'files') loadFileContent();
   if (panel === 'ppl') {
     populateMapClientDropdown();
-    if (!pplMap) initGoogleMaps();
   }
 }
 
@@ -1652,7 +1671,6 @@ async function loadAll() {
   loadTaskLeadDropdowns();
   loadFileContent();
   populateMapClientDropdown();
-  initGoogleMaps();
 }
 async function loadTaskLeadDropdowns() {
   const [leadsR, clientsR] = await Promise.all([
@@ -2014,6 +2032,44 @@ function renderPPL(clients) {
   });
 }
 
+function calcActiveMonths(startDate) {
+  if (!startDate) return '—';
+  const start = new Date(startDate + 'T00:00:00');
+  const now = new Date();
+  const months = (now.getFullYear()-start.getFullYear())*12+(now.getMonth()-start.getMonth());
+  return months <= 0 ? '< 1 mo' : months + ' mo';
+}
+function calcNextPayment() {
+  const v = $('em-last-pay')?.value; if (!v) return;
+  const d = new Date(v+'T00:00:00'); d.setDate(d.getDate()+30);
+  setVal('em-next-pay', d.toISOString().split('T')[0]);
+}
+function calcNextPaymentNew() {
+  const v = $('mg-last-pay')?.value; if (!v) return;
+  const d = new Date(v+'T00:00:00'); d.setDate(d.getDate()+30);
+  setVal('mg-next-pay', d.toISOString().split('T')[0]);
+}
+function renderManagedPayments(clients) {
+  const tb = $('mg-payment-tbody'); if (!tb) return;
+  const active = clients.filter(c => c.stage === 'active');
+  if (!active.length) { tb.innerHTML='<tr><td colspan="5" class="empty">No active managed clients.</td></tr>'; return; }
+  const today = new Date().toISOString().split('T')[0];
+  tb.innerHTML = active.map(c => {
+    const np = c.next_payment_date;
+    const overdue = np && np < today;
+    return `<tr style="cursor:pointer" data-client-id="${esc(String(c.id))}" data-client-type="managed" class="client-row">
+      <td><strong>${esc(c.company_name)}</strong></td>
+      <td style="font-family:var(--mono);font-size:10.5px">${c.start_date||'—'}</td>
+      <td style="font-family:var(--mono)">${calcActiveMonths(c.start_date)}</td>
+      <td style="font-family:var(--mono);font-size:10.5px">${c.last_payment_date||'—'}</td>
+      <td style="font-family:var(--mono);font-size:10.5px;font-weight:${overdue?'600':'400'};color:${overdue?'var(--red)':np?'var(--grn)':'var(--ink3)'}">${np?(np+(overdue?' ⚠ Overdue':'')):'—'}</td>
+    </tr>`;
+  }).join('');
+  tb.querySelectorAll('.client-row').forEach(row=>{
+    row.addEventListener('click',()=>{ const id=row.dataset.clientId; if(CLIENT_CACHE[id]) openEditClient('managed',CLIENT_CACHE[id]); });
+  });
+}
+
 /* MANAGED */
 const MG_STAGES=[{id:'active',label:'Active'},{id:'paused',label:'Paused'},{id:'churned',label:'Churned'}];
 async function loadManaged() {
@@ -2075,6 +2131,7 @@ function renderManaged(clients) {
       if (CLIENT_CACHE[id]) openEditClient(type,CLIENT_CACHE[id]);
     });
   });
+  renderManagedPayments(clients);
 }
 function openEditClient(type,c) {
   if (type==='ppl') {
@@ -2091,7 +2148,12 @@ function openEditClient(type,c) {
     setVal('em-em',c.email);setVal('em-ph',c.phone);setVal('em-acc',c.ad_account_id);
     setVal('em-budget',c.monthly_budget);setVal('em-fee',c.management_fee);
     const mgStage=['active','paused','churned'].includes(c.stage)?c.stage:'active';
-    setVal('em-stage',mgStage);setVal('em-notes',c.notes);
+    setVal('em-stage',mgStage);
+    setVal('em-start',c.start_date||'');
+    setVal('em-last-pay',c.last_payment_date||'');
+    setVal('em-next-pay',c.next_payment_date||'');
+    if (c.last_payment_date && !c.next_payment_date) calcNextPayment();
+    setVal('em-notes',c.notes);
     setText('edit-mg-sub',c.company_name||'');openModal('m-edit-managed');
   }
 }
@@ -2114,7 +2176,7 @@ async function updateClient(type) {
     if (!d.company_name) { toast('Company name required',true); return; }
   } else {
     id=$('em-id').value;
-    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,stage:$('em-stage').value,notes:$('em-notes').value.trim(),updated_at:now()};
+    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,stage:$('em-stage').value,start_date:$('em-start').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),updated_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   }
   const {error}=await db.from('clients').update(d).eq('id',id);
@@ -2136,13 +2198,13 @@ async function saveClient(type) {
     d={type:'ppl',company_name:$('ppl-co').value.trim(),contact_name:$('ppl-cn').value.trim(),email:$('ppl-em').value.trim(),niche:$('ppl-niche').value,lead_price:parseFloat($('ppl-price').value)||0,leads_delivered:parseInt($('ppl-ld').value)||0,total_leads_purchased:parseInt($('ppl-tlp').value)||0,stage:$('ppl-stage').value,created_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   } else {
-    d={type:'managed',company_name:$('mg-co').value.trim(),contact_name:$('mg-cn').value.trim(),email:$('mg-em').value.trim(),ad_account_id:$('mg-acc').value.trim(),monthly_budget:parseFloat($('mg-budget').value)||0,management_fee:parseFloat($('mg-fee').value)||0,stage:$('mg-stage').value,created_at:now()};
+    d={type:'managed',company_name:$('mg-co').value.trim(),contact_name:$('mg-cn').value.trim(),email:$('mg-em').value.trim(),ad_account_id:$('mg-acc').value.trim(),monthly_budget:parseFloat($('mg-budget').value)||0,management_fee:parseFloat($('mg-fee').value)||0,stage:$('mg-stage').value,start_date:$('mg-start').value||null,last_payment_date:$('mg-last-pay').value||null,next_payment_date:$('mg-next-pay').value||null,created_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   }
   const {error}=await db.from('clients').insert([d]);
   if (error) { toast('DB error: '+error.message,true); return; }
   if (type==='ppl') ['ppl-co','ppl-cn','ppl-em','ppl-price','ppl-ld','ppl-tlp'].forEach(id=>{$(id).value='';});
-  else ['mg-co','mg-cn','mg-em','mg-acc','mg-budget','mg-fee'].forEach(id=>{$(id).value='';});
+  else ['mg-co','mg-cn','mg-em','mg-acc','mg-budget','mg-fee','mg-start','mg-last-pay','mg-next-pay'].forEach(id=>{$(id).value='';});
   closeModal('m-'+type); toast('Client saved ✓');
   type==='ppl'?loadPPL():loadManaged();
 }
@@ -2812,8 +2874,32 @@ async function saveFileContent() {
   toast('Saved ✓ — '+curFile);
 }
 
+/* ═══════════════════════════════════════════════════════════
+   GOOGLE MAPS — PPL Lead Area Marking
+
+   TO ENABLE: Replace 'YOUR_GOOGLE_MAPS_API_KEY' below with
+   your actual Google Maps JavaScript API key, then save and reload.
+   Required APIs: Maps JavaScript API, Drawing API, Geocoding API
+   ═══════════════════════════════════════════════════════════ */
+// Google Maps key is fetched securely from Supabase Edge Function at runtime.
+// Do NOT hardcode the key here — use the Supabase dashboard app_settings table.
+
 let pplMap = null, drawingManager = null, drawnOverlay = null;
 let mapAreas = []; // loaded areas for current client
+let mapClientDataMap = {}; // keyed by client id
+
+function toggleMap() {
+  const body = $('map-body');
+  const btn = $('map-toggle-btn');
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  btn.textContent = isOpen ? 'Show Map ▼' : 'Hide Map ▲';
+  if (!isOpen && !pplMap) {
+    populateMapClientDropdown();
+    initGoogleMaps();
+  }
+}
 
 async function initGoogleMaps() {
   try {
@@ -2880,6 +2966,9 @@ async function loadMapAreas() {
   const clientId = $('map-client-select')?.value;
   if (!pplMap || !clientId) return;
   localStorage.setItem('ppl_selected_client', clientId);
+  // Auto-fill volume from client's total_leads_purchased
+  const _cd = mapClientDataMap[clientId];
+  if (_cd) { const vi=$('map-area-volume'); if(vi&&!vi.value) vi.value=_cd.total_leads_purchased||''; }
   // Clear existing area overlays
   mapAreas.forEach(a=>{ if(a._overlay) a._overlay.setMap(null); });
   mapAreas = [];
@@ -2956,8 +3045,10 @@ async function deleteMapArea(id) {
 async function populateMapClientDropdown() {
   const sel = $('map-client-select');
   if (!sel || !db) return;
-  const {data} = await db.from('clients').select('id,company_name').eq('type','ppl').not('stage','eq','churned').order('company_name');
+  const {data} = await db.from('clients').select('id,company_name,total_leads_purchased').eq('type','ppl').not('stage','eq','churned').order('company_name');
   if (data && data.length) {
+    mapClientDataMap = {};
+    data.forEach(c => { mapClientDataMap[String(c.id)] = c; });
     sel.innerHTML = '<option value="">— Select PPL Client —</option>' +
       data.map(c=>`<option value="${esc(String(c.id))}">${esc(c.company_name)}</option>`).join('');
     // Restore last-selected client, or default to first
