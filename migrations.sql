@@ -16,11 +16,11 @@ ALTER TABLE public.tasks
 
 -- ── 3. PPL LEAD AREAS: Create table for Google Maps area tracking ──
 CREATE TABLE IF NOT EXISTS public.ppl_lead_areas (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  client_id   uuid REFERENCES public.clients(id) ON DELETE CASCADE,
-  label       text NOT NULL,
-  volume      integer NOT NULL DEFAULT 0,
-  geo_json    text,  -- JSON array of {lat, lng} polygon coordinates
+  id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id   uuid        REFERENCES public.clients(id) ON DELETE CASCADE,
+  label       text        NOT NULL,
+  volume      integer     NOT NULL DEFAULT 0,
+  geo_json    text,
   created_at  timestamptz NOT NULL DEFAULT now(),
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
