@@ -2890,6 +2890,7 @@ function clearMapDrawing() {
 async function loadMapAreas() {
   const clientId = $('map-client-select')?.value;
   if (!pplMap || !clientId) return;
+  localStorage.setItem('ppl_selected_client', clientId);
   // Clear existing area overlays
   mapAreas.forEach(a=>{ if(a._overlay) a._overlay.setMap(null); });
   mapAreas = [];
@@ -2970,6 +2971,11 @@ async function populateMapClientDropdown() {
   if (data && data.length) {
     sel.innerHTML = '<option value="">— Select PPL Client —</option>' +
       data.map(c=>`<option value="${esc(String(c.id))}">${esc(c.company_name)}</option>`).join('');
+    // Restore last-selected client, or default to first
+    const saved = localStorage.getItem('ppl_selected_client');
+    const match = saved && data.find(c => String(c.id) === saved);
+    sel.value = match ? saved : String(data[0].id);
+    if (pplMap) loadMapAreas();
   }
 }
 </script>
