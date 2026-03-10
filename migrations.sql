@@ -3,48 +3,65 @@
 -- ============================================================
 
 -- ── 1. PPL CLIENTS: Add leads_delivered and total_leads_purchased ──
--- These track how many leads have actually been sent to each client
--- and how many they have purchased in total (may differ from delivered
--- if some are credited/rejected).
-
 ALTER TABLE public.clients
   ADD COLUMN IF NOT EXISTS leads_delivered       integer NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS total_leads_purchased integer NOT NULL DEFAULT 0;
 
--- ── 2. CHAT MEMORY: Ensure agent column supports 'sales' value ──
--- If you have a CHECK constraint on the agent column, update it.
--- Run the query below to check first:
---   SELECT conname, pg_get_constraintdef(oid)
---   FROM pg_constraint
---   WHERE conrelid = 'chat_memory'::regclass AND contype = 'c';
---
--- If a constraint exists, drop and recreate it to include 'sales':
+-- ── 2. TASKS: Add linked_ref and linked_name columns ──
+-- These allow tasks to be linked to any lead or client record.
+-- linked_ref format: "lead:<uuid>" or "client:<uuid>"
+ALTER TABLE public.tasks
+  ADD COLUMN IF NOT EXISTS linked_ref  text,
+  ADD COLUMN IF NOT EXISTS linked_name text;
+
+-- ── 3. PPL LEAD AREAS: Create table for Google Maps area tracking ──
+CREATE TABLE IF NOT EXISTS public.ppl_lead_areas (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id   uuid REFERENCES public.clients(id) ON DELETE CASCADE,
+  label       text NOT NULL,
+  volume      integer NOT NULL DEFAULT 0,
+  geo_json    text,  -- JSON array of {lat, lng} polygon coordinates
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now()
+);
+
+-- ── 4. MANAGED ADS PIPELINE: Migrate existing records to 3-stage model ──
+-- Previously: lead, qualified, onboarding, active, paused, churned
+-- Now: active, paused, churned
+UPDATE public.clients
+  SET stage = 'active'
+  WHERE type = 'managed'
+    AND stage IN ('lead', 'qualified', 'onboarding');
+
+-- ── 5. CHAT MEMORY: Ensure agent column supports 'sales' value ──
 -- ALTER TABLE public.chat_memory DROP CONSTRAINT IF EXISTS chat_memory_agent_check;
 -- ALTER TABLE public.chat_memory
 --   ADD CONSTRAINT chat_memory_agent_check
---   CHECK (agent IN ('marketing','finance','operations','strategy','sales'));
+--   CHECK (agent IN ('marketing','finance','operations','strategy','sales','docs'));
 
--- ── 3. AGENT FILES: Ensure 'sales' agent key is supported ──
+-- ── 6. AGENT FILES: Ensure 'docs' agent key is supported ──
 -- Same as above — if agent_files has a CHECK on the agent column:
 -- ALTER TABLE public.agent_files DROP CONSTRAINT IF EXISTS agent_files_agent_check;
 -- ALTER TABLE public.agent_files
 --   ADD CONSTRAINT agent_files_agent_check
---   CHECK (agent IN ('marketing','finance','operations','strategy','sales'));
+--   CHECK (agent IN ('marketing','finance','operations','strategy','sales','docs'));
 
--- ── 4. VERIFICATION ──
--- After running, verify with:
+-- ── 7. VERIFICATION ──
 SELECT column_name, data_type, column_default
 FROM information_schema.columns
 WHERE table_name = 'clients'
   AND column_name IN ('leads_delivered','total_leads_purchased');
 
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_name = 'tasks'
+  AND column_name IN ('linked_ref','linked_name');
+
+SELECT table_name FROM information_schema.tables
+WHERE table_schema = 'public' AND table_name = 'ppl_lead_areas';
+
 -- ============================================================
--- ── 5. ROW LEVEL SECURITY (RLS) — SECURITY FIX ─────────────
--- Enable RLS on every table so the public anon/publishable key
--- cannot read data from unauthenticated requests.
--- Authenticated users (logged-in operators) get full access.
--- chat_memory is scoped per-user via auth.uid().
--- daily_snapshots is read-only (written by Make.com service role).
+-- ── ROW LEVEL SECURITY (RLS) — SECURITY FIX ─────────────
 -- ============================================================
 
 -- tasks
@@ -91,6 +108,11 @@ CREATE POLICY "auth_all_ad_spend_daily" ON public.ad_spend_daily FOR ALL TO auth
 ALTER TABLE public.agent_files ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "auth_all_agent_files" ON public.agent_files;
 CREATE POLICY "auth_all_agent_files" ON public.agent_files FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- ppl_lead_areas
+ALTER TABLE public.ppl_lead_areas ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "auth_all_ppl_lead_areas" ON public.ppl_lead_areas;
+CREATE POLICY "auth_all_ppl_lead_areas" ON public.ppl_lead_areas FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- chat_memory — per-user isolation
 ALTER TABLE public.chat_memory ENABLE ROW LEVEL SECURITY;
