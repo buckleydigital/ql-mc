@@ -879,16 +879,14 @@ td strong{font-weight:500}
             <tbody id="ppl-tbody"><tr><td colspan="11" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
-      </div>
-
         <div class="map-section">
           <div class="sl" style="margin-top:0">Lead Generation Areas <div class="sl-line"></div></div>
           <div class="map-controls">
             <select id="map-client-select" onchange="loadMapAreas()">
               <option value="">— Select PPL Client —</option>
             </select>
-            <input type="text" id="map-area-label" placeholder="Area label (e.g. Gold Coast South)" style="width:200px">
-            <input type="number" id="map-area-volume" placeholder="Volume (leads/mo)" style="width:140px">
+            <input type="text" id="map-area-label" placeholder="Area label (e.g. Gold Coast South)">
+            <input type="number" id="map-area-volume" placeholder="Volume (leads/mo)">
             <button class="btn btn-sm btn-p" onclick="saveMapArea()">Save Area</button>
             <button class="btn btn-sm" onclick="clearMapDrawing()">Clear Drawing</button>
           </div>
@@ -2838,9 +2836,11 @@ async function initGoogleMaps() {
     if (!res.ok) return;
     const { key } = await res.json();
     if (!key) return;
-    const script = $('gmaps-script');
-    if (script && !script.src) {
+    if (!document.getElementById('gmaps-script-loaded')) {
+      const script = document.createElement('script');
+      script.id = 'gmaps-script-loaded';
       script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=drawing&callback=onGoogleMapsReady`;
+      document.head.appendChild(script);
     }
   } catch(e) {
     console.error('Maps init error:', e);
