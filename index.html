@@ -6,10 +6,12 @@
 <title>QL · Mission Control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co 'self';">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co https://*.googleapis.com 'self'; img-src * data: blob:;">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<!-- Google Maps — replace YOUR_GOOGLE_MAPS_API_KEY below with your actual key -->
+<script id="gmaps-script"></script>
 <style>
 
 /* ═══ TOKENS ═══ */
@@ -608,6 +610,34 @@ td strong{font-weight:500}
 .spin{display:inline-block;width:10px;height:10px;border:2px solid var(--bd2);border-top-color:var(--acc);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* ═══ FILES PANEL ═══ */
+.files-layout{display:grid;grid-template-columns:200px 1fr;gap:10px;height:calc(100vh - 160px)}
+.files-list{display:flex;flex-direction:column;gap:2px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:10px}
+.files-list-title{font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid var(--bd)}
+.file-item{padding:7px 10px;border-radius:var(--r);font-size:11.5px;font-family:var(--mono);color:var(--ink3);cursor:pointer;transition:all .12s;border:1px solid transparent;line-height:1.4}
+.file-item:hover{background:var(--s2);color:var(--ink);border-color:var(--bd)}
+.file-item.active{background:var(--acc-dim);color:var(--acc);border-color:rgba(79,143,255,.15)}
+.file-item .file-desc{font-size:9px;color:var(--ink3);margin-top:2px;font-family:var(--font)}
+.file-item.active .file-desc{color:var(--acc-ink);opacity:.7}
+.file-editor{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);display:flex;flex-direction:column;overflow:hidden}
+.file-editor-head{padding:9px 13px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;background:var(--s2);flex-shrink:0}
+.file-editor-name{font-family:var(--mono);font-size:10.5px;color:var(--acc);font-weight:500}
+.file-editor-ta{flex:1;background:transparent;border:none;outline:none;color:var(--ink);font-family:var(--mono);font-size:11.5px;line-height:1.8;padding:14px;resize:none}
+@media(max-width:700px){.files-layout{grid-template-columns:1fr;height:auto}.files-list{flex-direction:row;flex-wrap:wrap}}
+
+/* ═══ MAPS ═══ */
+.map-section{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:14px;margin-top:14px}
+.map-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.map-controls select,.map-controls input{background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);color:var(--ink);font-family:var(--font);font-size:12px;padding:6px 9px;outline:none}
+.map-controls select:focus,.map-controls input:focus{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-dim)}
+#ppl-map{height:400px;border-radius:var(--r);border:1px solid var(--bd);overflow:hidden;background:var(--s2)}
+.area-list{display:flex;flex-direction:column;gap:4px;margin-top:10px;max-height:200px;overflow-y:auto}
+.area-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);font-size:11.5px}
+.area-item-label{flex:1;font-weight:500}
+.area-item-vol{font-family:var(--mono);font-size:10px;color:var(--acc);margin-left:auto}
+.area-item-del{background:none;border:none;color:var(--ink3);cursor:pointer;font-size:12px;padding:2px 5px;border-radius:3px}
+.area-item-del:hover{color:var(--red);background:var(--red-dim)}
+
 /* ═══ BOTTOM NAV ═══ */
 .bnav{
   display:none;position:fixed;bottom:0;left:0;right:0;
@@ -733,6 +763,15 @@ td strong{font-weight:500}
         <div class="sb-divider"></div>
 
         <div class="sb-group">
+          <span class="sb-group-label">Resources</span>
+          <button class="navbtn" data-panel="files" onclick="nav('files',this)">
+            <span class="ni">📄</span>Files
+          </button>
+        </div>
+
+        <div class="sb-divider"></div>
+
+        <div class="sb-group">
           <span class="sb-group-label">AI</span>
           <button class="navbtn" data-panel="agents" onclick="nav('agents',this)">
             <span class="ni">⬡</span>Agents Hub
@@ -828,9 +867,25 @@ td strong{font-weight:500}
         <div class="sl">All PPL Clients <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Client</th><th>Stage</th><th>Niche</th><th>Leads MTD</th><th>Leads Delivered</th><th>Total Purchased</th><th>Meta CPL</th><th>True CPL</th><th>% Sold</th><th>Balance</th><th></th></tr></thead>
+            <thead><tr><th>Client</th><th>Stage</th><th>Niche</th><th>Leads MTD</th><th>Delivered</th><th>Purchased</th><th>Remaining</th><th>Price/Lead</th><th>$ Balance</th><th>% Sold</th><th></th></tr></thead>
             <tbody id="ppl-tbody"><tr><td colspan="11" class="empty">Loading...</td></tr></tbody>
           </table>
+        </div>
+      </div>
+
+        <div class="map-section">
+          <div class="sl" style="margin-top:0">Lead Generation Areas <div class="sl-line"></div></div>
+          <div class="map-controls">
+            <select id="map-client-select" onchange="loadMapAreas()">
+              <option value="">— Select PPL Client —</option>
+            </select>
+            <input type="text" id="map-area-label" placeholder="Area label (e.g. Gold Coast South)" style="width:200px">
+            <input type="number" id="map-area-volume" placeholder="Volume (leads/mo)" style="width:140px">
+            <button class="btn btn-sm btn-p" onclick="saveMapArea()">Save Area</button>
+            <button class="btn btn-sm" onclick="clearMapDrawing()">Clear Drawing</button>
+          </div>
+          <div id="ppl-map"><div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:var(--mono);font-size:11px;color:var(--ink3)">Set your Google Maps API key in the script to enable map. See instructions at top of JS section.</div></div>
+          <div class="area-list" id="map-area-list"></div>
         </div>
       </div>
 
@@ -925,6 +980,20 @@ td strong{font-weight:500}
           <table>
             <thead><tr><th>Date</th><th>Account / Client</th><th>Type</th><th>Leads</th><th>Spend</th><th>CPL</th><th>Running Total</th></tr></thead>
             <tbody id="daily-tbody"><tr><td colspan="7" class="empty">Select a date range above</td></tr></tbody>
+          </table>
+        </div>
+
+        <div class="sl" style="margin-top:20px">Sales Pipeline Summary <div class="sl-line"></div></div>
+        <div class="kg c4 mb4" id="daily-crm-kpis">
+          <div class="kpi"><div class="klabel">Active Leads</div><div class="kval blu" id="ds-active">—</div></div>
+          <div class="kpi"><div class="klabel">Call-Backs Due</div><div class="kval grn" id="ds-callbacks">—</div></div>
+          <div class="kpi"><div class="klabel">Proposals Out</div><div class="kval" id="ds-proposals">—</div></div>
+          <div class="kpi"><div class="klabel">Pipeline Value</div><div class="kval blu" id="ds-value">—</div></div>
+        </div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Stage</th><th>Count</th><th>Pipeline Value</th><th>PPL Leads</th><th>Managed Leads</th></tr></thead>
+            <tbody id="daily-crm-tbody"><tr><td colspan="5" class="empty">Loading sales data...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1095,6 +1164,49 @@ td strong{font-weight:500}
         </div>
       </div>
 
+      <!-- ══ FILES ══ -->
+      <div class="panel" id="panel-files">
+        <div class="ph">
+          <div class="ph-left"><h1>Files</h1><p>Email templates &amp; scripts — editable markdown</p></div>
+          <div class="ph-right">
+            <button class="btn btn-sm" onclick="loadFileContent()">↻ Reload</button>
+            <button class="btn btn-p btn-sm" onclick="saveFileContent()">Save file</button>
+          </div>
+        </div>
+        <div class="files-layout">
+          <div class="files-list">
+            <div class="files-list-title">Templates &amp; Scripts</div>
+            <div class="file-item active" data-file="post-call-email.md" onclick="selectFile('post-call-email.md',this)">
+              post-call-email.md
+              <div class="file-desc">After-call follow-up email</div>
+            </div>
+            <div class="file-item" data-file="follow-up-email.md" onclick="selectFile('follow-up-email.md',this)">
+              follow-up-email.md
+              <div class="file-desc">General follow-up email</div>
+            </div>
+            <div class="file-item" data-file="welcome-email.md" onclick="selectFile('welcome-email.md',this)">
+              welcome-email.md
+              <div class="file-desc">New client welcome</div>
+            </div>
+            <div class="file-item" data-file="pay-per-lead-welcome-email.md" onclick="selectFile('pay-per-lead-welcome-email.md',this)">
+              ppl-welcome-email.md
+              <div class="file-desc">PPL client onboarding</div>
+            </div>
+            <div class="file-item" data-file="discovery-call-script.md" onclick="selectFile('discovery-call-script.md',this)">
+              discovery-call-script.md
+              <div class="file-desc">Discovery call framework</div>
+            </div>
+          </div>
+          <div class="file-editor">
+            <div class="file-editor-head">
+              <span class="file-editor-name" id="file-editor-name">post-call-email.md</span>
+              <span style="font-family:var(--mono);font-size:9px;color:var(--ink3)">Supabase · agent_files (docs)</span>
+            </div>
+            <textarea class="file-editor-ta" id="file-editor-ta" placeholder="Loading..."></textarea>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /content -->
   </div><!-- /layout -->
 
@@ -1107,6 +1219,7 @@ td strong{font-weight:500}
     <button class="bnbtn" data-panel="daily" onclick="nav('daily',this)"><span class="bnbtn-icon">≋</span><span class="bnbtn-lbl">Daily</span></button>
     <button class="bnbtn" data-panel="chat" onclick="nav('chat',this)"><span class="bnbtn-icon">◉</span><span class="bnbtn-lbl">Chat</span></button>
     <button class="bnbtn" data-panel="sales-agent" onclick="nav('sales-agent',this)"><span class="bnbtn-icon">⚑</span><span class="bnbtn-lbl">Sales AI</span></button>
+    <button class="bnbtn" data-panel="files" onclick="nav('files',this)"><span class="bnbtn-icon">📄</span><span class="bnbtn-lbl">Files</span></button>
   </div>
 </div><!-- /app -->
 
@@ -1128,6 +1241,11 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Priority</label>
       <select class="fs" id="t-priority">
         <option value="normal">Normal</option><option value="urgent">Urgent</option><option value="low">Low</option>
+      </select>
+    </div>
+    <div class="frow"><label class="flabel">Link to Lead / Client</label>
+      <select class="fs" id="t-linked-lead">
+        <option value="">— No link —</option>
       </select>
     </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="t-notes" placeholder="Additional context..."></textarea></div>
@@ -1208,10 +1326,9 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Ad Account ID</label><input class="fi" id="mg-acc" placeholder="act_123456789"></div>
     <div class="frow"><label class="flabel">Monthly Budget (AUD)</label><input class="fi" id="mg-budget" type="number" placeholder="e.g. 5000"></div>
     <div class="frow"><label class="flabel">Management Fee (AUD/mo)</label><input class="fi" id="mg-fee" type="number" placeholder="e.g. 1500"></div>
-    <div class="frow"><label class="flabel">Pipeline Stage</label>
+    <div class="frow"><label class="flabel">Stage</label>
       <select class="fs" id="mg-stage">
-        <option value="lead">Lead</option><option value="qualified">Qualified</option>
-        <option value="onboarding">Onboarding</option><option value="active">Active</option>
+        <option value="active">Active</option>
         <option value="paused">Paused</option><option value="churned">Churned</option>
       </select>
     </div>
@@ -1285,11 +1402,17 @@ td strong{font-weight:500}
         <option>Solar Residential</option><option>Solar Commercial</option><option>Battery Storage</option><option>EV Charger</option>
       </select>
     </div>
-    <div class="frow"><label class="flabel">Lead Price (AUD)</label><input class="fi" id="ep-price" type="number"></div>
+    <div class="frow"><label class="flabel">Price Per Lead Sold (AUD)</label><input class="fi" id="ep-price" type="number" oninput="updatePplCalc()"></div>
     <div class="frow"><label class="flabel">% Sold</label><input class="fi" id="ep-pct" type="number" placeholder="e.g. 70"></div>
-    <div class="frow"><label class="flabel">Balance (AUD)</label><input class="fi" id="ep-balance" type="number"></div>
-    <div class="frow"><label class="flabel">Leads Delivered</label><input class="fi" id="ep-ld" type="number" placeholder="0"></div>
-    <div class="frow"><label class="flabel">Total Leads Purchased</label><input class="fi" id="ep-tlp" type="number" placeholder="0"></div>
+    <div class="frow"><label class="flabel">Leads Delivered</label><input class="fi" id="ep-ld" type="number" placeholder="0" oninput="updatePplCalc()"></div>
+    <div class="frow"><label class="flabel">Total Leads Purchased</label><input class="fi" id="ep-tlp" type="number" placeholder="0" oninput="updatePplCalc()"></div>
+    <div class="frow" style="background:var(--acc-dim);border:1px solid rgba(79,143,255,.12);border-radius:var(--r);padding:10px 12px">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--acc);font-weight:500;text-transform:uppercase;letter-spacing:.09em;margin-bottom:7px">Auto-Calculated Balance</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div><div style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-bottom:2px">LEADS REMAINING</div><div id="ep-leads-rem" style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--ink)">—</div></div>
+        <div><div style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-bottom:2px">$ BALANCE REMAINING</div><div id="ep-bal-rem" style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--grn)">—</div></div>
+      </div>
+    </div>
     <div class="frow"><label class="flabel">Status</label>
       <select class="fs" id="ep-stage">
         <option value="active_client">Active</option><option value="paused">Paused</option><option value="churned">Churned</option>
@@ -1316,10 +1439,9 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Ad Account ID</label><input class="fi" id="em-acc"></div>
     <div class="frow"><label class="flabel">Monthly Budget (AUD)</label><input class="fi" id="em-budget" type="number"></div>
     <div class="frow"><label class="flabel">Management Fee (AUD/mo)</label><input class="fi" id="em-fee" type="number"></div>
-    <div class="frow"><label class="flabel">Pipeline Stage</label>
+    <div class="frow"><label class="flabel">Stage</label>
       <select class="fs" id="em-stage">
-        <option value="lead">Lead</option><option value="qualified">Qualified</option>
-        <option value="onboarding">Onboarding</option><option value="active">Active</option>
+        <option value="active">Active</option>
         <option value="paused">Paused</option><option value="churned">Churned</option>
       </select>
     </div>
@@ -1351,6 +1473,11 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Priority</label>
       <select class="fs" id="et-priority">
         <option value="normal">Normal</option><option value="urgent">Urgent</option><option value="low">Low</option>
+      </select>
+    </div>
+    <div class="frow"><label class="flabel">Link to Lead / Client</label>
+      <select class="fs" id="et-linked-lead">
+        <option value="">— No link —</option>
       </select>
     </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="et-notes"></textarea></div>
@@ -1499,6 +1626,11 @@ function nav(panel, el) {
   if (panel === 'chat') loadChatMemory();
   if (panel === 'daily') loadDailyLogs();
   if (panel === 'sales-agent') loadSalesPanel();
+  if (panel === 'files') loadFileContent();
+  if (panel === 'ppl') {
+    populateMapClientDropdown();
+    if (!pplMap && GOOGLE_MAPS_KEY !== 'YOUR_GOOGLE_MAPS_API_KEY') initGoogleMaps();
+  }
 }
 
 function updateClock() {
@@ -1512,6 +1644,33 @@ document.addEventListener('click', e => { if (e.target.classList.contains('overl
 async function loadAll() {
   await Promise.all([loadTasks(), loadEmails(), loadCRM(), loadPPL(), loadManaged(), loadFinance()]);
   loadAgentFile();
+  loadTaskLeadDropdowns();
+  loadFileContent();
+  populateMapClientDropdown();
+  initGoogleMaps();
+}
+async function loadTaskLeadDropdowns() {
+  const [leadsR, clientsR] = await Promise.all([
+    db.from('leads').select('id,name,company,stage').not('stage','in','("closed_won","closed_lost")').order('name'),
+    db.from('clients').select('id,company_name,type,stage').in('stage',['active_client','active']).order('company_name')
+  ]);
+  const opts = ['<option value="">— No link —</option>'];
+  if (leadsR.data?.length) {
+    opts.push('<optgroup label="Sales Pipeline">');
+    leadsR.data.forEach(l=>opts.push(`<option value="lead:${esc(l.id)}">[Sales] ${esc(l.name||l.company||'Lead')}</option>`));
+    opts.push('</optgroup>');
+  }
+  if (clientsR.data?.length) {
+    const ppl=clientsR.data.filter(c=>c.type==='ppl');
+    const mg=clientsR.data.filter(c=>c.type==='managed');
+    if (ppl.length) {opts.push('<optgroup label="PPL Clients">');ppl.forEach(c=>opts.push(`<option value="client:${esc(c.id)}">[PPL] ${esc(c.company_name)}</option>`));opts.push('</optgroup>');}
+    if (mg.length) {opts.push('<optgroup label="Managed Ads">');mg.forEach(c=>opts.push(`<option value="client:${esc(c.id)}">[Managed] ${esc(c.company_name)}</option>`));opts.push('</optgroup>');}
+  }
+  const html = opts.join('');
+  const newSel = $('t-linked-lead');
+  const editSel = $('et-linked-lead');
+  if (newSel) newSel.innerHTML = html;
+  if (editSel) editSel.innerHTML = html;
 }
 
 /* TASKS */
@@ -1537,6 +1696,7 @@ function renderTaskList(id, list, type) {
         <div class="task-meta">
           <span class="tag ${t.priority==='urgent'?'tag-urgent':t.priority==='low'?'tag-low':type==='ai'?'tag-ai':'tag-normal'}">${esc(t.priority || type)}</span>
           ${t.assigned_to && t.assigned_to !== 'human' ? `<span class="tag tag-ai" style="opacity:.5">${esc(t.assigned_to)}</span>` : ''}
+          ${t.linked_name ? `<span class="tag" style="background:rgba(245,166,35,.07);color:var(--amb);border:1px solid rgba(245,166,35,.2);max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${esc(t.linked_name)}">⇢ ${esc(t.linked_name.replace(/^\[.*?\]\s*/,''))}</span>` : ''}
         </div>
       </div>
     </div>`).join('');
@@ -1550,11 +1710,14 @@ function renderTaskList(id, list, type) {
 function openEditTask(t) {
   setVal('et-id',t.id);setVal('et-title',t.title);setVal('et-assignee',t.assigned_to);
   setVal('et-priority',t.priority);setVal('et-notes',t.notes);
+  setVal('et-linked-lead',t.linked_ref||'');
   openModal('m-edit-task');
 }
 async function updateTask() {
   const id = $('et-id').value;
-  const d = {title:$('et-title').value.trim(),assigned_to:$('et-assignee').value,priority:$('et-priority').value,notes:$('et-notes').value,updated_at:now()};
+  const linkedRef=$('et-linked-lead').value||null;
+  const linkedName=$('et-linked-lead').options[$('et-linked-lead').selectedIndex]?.text||null;
+  const d = {title:$('et-title').value.trim(),assigned_to:$('et-assignee').value,priority:$('et-priority').value,notes:$('et-notes').value,linked_ref:linkedRef,linked_name:linkedRef?linkedName:null,updated_at:now()};
   if (!d.title) { toast('Title required',true); return; }
   const {error} = await db.from('tasks').update(d).eq('id',id);
   if (error) { toast('Error: '+error.message,true); return; }
@@ -1581,10 +1744,12 @@ async function quickAdd(type) {
 }
 async function addTask() {
   const title=$('t-title').value.trim(),assignee=$('t-assignee').value,priority=$('t-priority').value,notes=$('t-notes').value;
+  const linkedRef=$('t-linked-lead').value||null;
+  const linkedName=linkedRef?$('t-linked-lead').options[$('t-linked-lead').selectedIndex]?.text:null;
   if (!title) { toast('Title required',true); return; }
-  const {error} = await db.from('tasks').insert([{title,assigned_to:assignee,priority:assignee!=='human'?'ai':priority,notes,done:false,created_at:now()}]);
+  const {error} = await db.from('tasks').insert([{title,assigned_to:assignee,priority:assignee!=='human'?'ai':priority,notes,linked_ref:linkedRef,linked_name:linkedRef?linkedName:null,done:false,created_at:now()}]);
   if (error) { toast('DB error: '+error.message,true); return; }
-  $('t-title').value=''; $('t-notes').value='';
+  $('t-title').value=''; $('t-notes').value=''; if($('t-linked-lead'))$('t-linked-lead').value='';
   closeModal('m-task'); loadTasks(); toast('Task created ✓');
 }
 
@@ -1739,7 +1904,7 @@ async function convertLead(targetType) {
   if (targetType === 'ppl') {
     clientData = {type:'ppl',company_name:company||name,contact_name:name,email,phone,lead_price:0,stage:'active_client',created_at:now()};
   } else {
-    clientData = {type:'managed',company_name:company||name,contact_name:name,email,phone,management_fee:value||0,stage:'onboarding',created_at:now()};
+    clientData = {type:'managed',company_name:company||name,contact_name:name,email,phone,management_fee:value||0,stage:'active',created_at:now()};
   }
   const {error} = await db.from('clients').insert([clientData]);
   if (error) { toast('Client creation failed: '+error.message, true); return; }
@@ -1811,7 +1976,10 @@ function renderPPL(clients) {
   const tb=$('ppl-tbody');
   if (!clients.length) { tb.innerHTML='<tr><td colspan="11" class="empty">No PPL clients yet.</td></tr>'; return; }
   clients.forEach(c => { CLIENT_CACHE[c.id] = c; });
-  tb.innerHTML=clients.map(c=>`
+  tb.innerHTML=clients.map(c=>{
+    const leadsRem=(c.total_leads_purchased||0)-(c.leads_delivered||0);
+    const balRem=leadsRem*(c.lead_price||0);
+    return `
     <tr style="cursor:pointer" data-client-id="${esc(String(c.id))}" data-client-type="ppl" class="client-row">
       <td><strong>${esc(c.company_name)}</strong></td>
       <td><span class="badge ${stageBadge(c.stage)}">${stageLabel(c.stage)}</span></td>
@@ -1819,12 +1987,12 @@ function renderPPL(clients) {
       <td>${c.leads_mtd||0}</td>
       <td style="color:var(--grn);font-weight:500">${c.leads_delivered||0}</td>
       <td>${c.total_leads_purchased||0}</td>
-      <td>${fmtCpl(c.meta_cpl)}</td>
-      <td>${fmtCpl(c.true_cpl)}</td>
+      <td style="color:${leadsRem>0?'var(--amb)':'var(--ink3)'};font-weight:500">${leadsRem>0?leadsRem:'✓'}</td>
+      <td>${fmtCpl(c.lead_price)}</td>
+      <td style="color:${balRem>0?'var(--red)':'var(--grn)'};font-weight:500">${balRem>0?fmt(balRem):'—'}</td>
       <td>${c.pct_sold?Number(c.pct_sold).toFixed(1)+'%':'—'}</td>
-      <td>${c.balance?fmt(c.balance):'—'}</td>
       <td><button class="btn btn-xs client-edit-btn" data-client-id="${esc(String(c.id))}" data-client-type="ppl">Edit</button></td>
-    </tr>`).join('');
+    </tr>`}).join('');
   tb.querySelectorAll('.client-row').forEach(row=>{
     row.addEventListener('click',e=>{
       if (e.target.classList.contains('client-edit-btn')) return;
@@ -1842,7 +2010,7 @@ function renderPPL(clients) {
 }
 
 /* MANAGED */
-const MG_STAGES=[{id:'lead',label:'Lead'},{id:'qualified',label:'Qualified'},{id:'onboarding',label:'Onboarding'},{id:'active',label:'Active'},{id:'paused',label:'Paused'},{id:'churned',label:'Churned'}];
+const MG_STAGES=[{id:'active',label:'Active'},{id:'paused',label:'Paused'},{id:'churned',label:'Churned'}];
 async function loadManaged() {
   const {data,error}=await db.from('clients').select('*').eq('type','managed').order('created_at',{ascending:false});
   if (error) { $('mg-tbody').innerHTML=`<tr><td colspan="9" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
@@ -1907,23 +2075,37 @@ function openEditClient(type,c) {
   if (type==='ppl') {
     setVal('ep-id',c.id);setVal('ep-co',c.company_name);setVal('ep-cn',c.contact_name);
     setVal('ep-em',c.email);setVal('ep-ph',c.phone);setVal('ep-niche',c.niche);
-    setVal('ep-price',c.lead_price);setVal('ep-pct',c.pct_sold);setVal('ep-balance',c.balance);
+    setVal('ep-price',c.lead_price);setVal('ep-pct',c.pct_sold);
     setVal('ep-ld',c.leads_delivered||0);setVal('ep-tlp',c.total_leads_purchased||0);
     setVal('ep-stage',c.stage||'active_client');setVal('ep-notes',c.notes);
-    setText('edit-ppl-sub',c.company_name||'');openModal('m-edit-ppl');
+    setText('edit-ppl-sub',c.company_name||'');
+    updatePplCalc();
+    openModal('m-edit-ppl');
   } else {
     setVal('em-id',c.id);setVal('em-co',c.company_name);setVal('em-cn',c.contact_name);
     setVal('em-em',c.email);setVal('em-ph',c.phone);setVal('em-acc',c.ad_account_id);
     setVal('em-budget',c.monthly_budget);setVal('em-fee',c.management_fee);
-    setVal('em-stage',c.stage||'active');setVal('em-notes',c.notes);
+    const mgStage=['active','paused','churned'].includes(c.stage)?c.stage:'active';
+    setVal('em-stage',mgStage);setVal('em-notes',c.notes);
     setText('edit-mg-sub',c.company_name||'');openModal('m-edit-managed');
   }
+}
+function updatePplCalc() {
+  const price=parseFloat($('ep-price')?.value)||0;
+  const ld=parseInt($('ep-ld')?.value)||0;
+  const tlp=parseInt($('ep-tlp')?.value)||0;
+  const rem=tlp-ld;const bal=rem*price;
+  const remEl=$('ep-leads-rem');const balEl=$('ep-bal-rem');
+  if (remEl) remEl.textContent=rem>=0?rem:'0';
+  if (balEl) balEl.textContent=bal>0?'$'+Number(bal).toLocaleString('en-AU',{minimumFractionDigits:0,maximumFractionDigits:0}):(rem<=0?'Delivered ✓':'—');
+  if (balEl) balEl.style.color=bal>0?'var(--red)':'var(--grn)';
 }
 async function updateClient(type) {
   let id,d;
   if (type==='ppl') {
     id=$('ep-id').value;
-    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:parseFloat($('ep-price').value)||0,pct_sold:parseFloat($('ep-pct').value)||null,balance:parseFloat($('ep-balance').value)||null,leads_delivered:parseInt($('ep-ld').value)||0,total_leads_purchased:parseInt($('ep-tlp').value)||0,stage:$('ep-stage').value,notes:$('ep-notes').value.trim(),updated_at:now()};
+    const _ld=parseInt($('ep-ld').value)||0;const _tlp=parseInt($('ep-tlp').value)||0;const _price=parseFloat($('ep-price').value)||0;const _balCalc=(_tlp-_ld)*_price;
+    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:_price,pct_sold:parseFloat($('ep-pct').value)||null,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,stage:$('ep-stage').value,notes:$('ep-notes').value.trim(),updated_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   } else {
     id=$('em-id').value;
@@ -2047,9 +2229,43 @@ async function loadDailyLogs() {
   const {from,to}=getDateRange(curDailyRange);
   const toNext=new Date(to);toNext.setDate(toNext.getDate()+1);
   const toNextStr=toNext.toISOString().split('T')[0];
-  const {data,error}=await db.from('ad_spend_daily').select('*').gte('date',from).lt('date',toNextStr).order('date',{ascending:false});
-  if (error) { $('daily-tbody').innerHTML=`<tr><td colspan="7" class="empty">Error: ${esc(error.message)}</td></tr>`;renderDailyChart([]); return; }
-  renderDailyLogs(data||[]);
+  const [{data,error}, {data:leadsData}]=await Promise.all([
+    db.from('ad_spend_daily').select('*').gte('date',from).lt('date',toNextStr).order('date',{ascending:false}),
+    db.from('leads').select('id,name,stage,lead_type,value,created_at').not('stage','in','("closed_won","closed_lost")')
+  ]);
+  if (error) { $('daily-tbody').innerHTML=`<tr><td colspan="7" class="empty">Error: ${esc(error.message)}</td></tr>`;renderDailyChart([]); }
+  else renderDailyLogs(data||[]);
+  renderDailyCrmStats(leadsData||[]);
+}
+function renderDailyCrmStats(leads) {
+  const active=leads.filter(l=>!['closed_won','closed_lost'].includes(l.stage));
+  const callbacks=active.filter(l=>l.stage==='call_back').length;
+  const proposals=active.filter(l=>l.stage==='proposal').length;
+  const pipelineVal=active.reduce((s,l)=>s+(l.value||0),0);
+  setText('ds-active',active.length);
+  setText('ds-callbacks',callbacks);
+  setText('ds-proposals',proposals);
+  setText('ds-value',pipelineVal?'$'+Number(pipelineVal).toLocaleString()+'/mo':'—');
+  const stageGroups={};
+  active.forEach(l=>{
+    if (!stageGroups[l.stage]) stageGroups[l.stage]={count:0,value:0,ppl:0,managed:0};
+    stageGroups[l.stage].count++;
+    stageGroups[l.stage].value+=(l.value||0);
+    if (l.lead_type==='ppl') stageGroups[l.stage].ppl++; else stageGroups[l.stage].managed++;
+  });
+  const stageOrder=['new_lead','no_answer','call_back','proposal'];
+  const tb=$('daily-crm-tbody');
+  if (!active.length) { tb.innerHTML='<tr><td colspan="5" class="empty">No active leads.</td></tr>'; return; }
+  tb.innerHTML=stageOrder.filter(s=>stageGroups[s]).map(s=>{
+    const g=stageGroups[s];
+    return `<tr>
+      <td><span class="badge ${stageBadge(s)}">${stageLabel(s)}</span></td>
+      <td style="font-family:var(--mono);font-weight:500">${g.count}</td>
+      <td>${g.value?'$'+Number(g.value).toLocaleString()+'/mo':'—'}</td>
+      <td><span class="badge bg-sky" style="font-size:8.5px">${g.ppl} PPL</span></td>
+      <td><span class="badge bg-vio" style="font-size:8.5px">${g.managed} MA</span></td>
+    </tr>`;
+  }).join('');
 }
 function renderDailyLogs(rows) {
   const getLeads=r=>r.leads??0;
@@ -2553,6 +2769,201 @@ function addMsg(type,avatar,text,time) {
   scrollChat();
 }
 function scrollChat() { const m=$('chat-msgs');m.scrollTop=m.scrollHeight; }
+
+/* ═══════════════════════════════════════════════════════════
+   FILES SECTION — 5 editable .md templates stored in agent_files (agent='docs')
+   ═══════════════════════════════════════════════════════════ */
+let curFile = 'post-call-email.md';
+const FILE_DEFAULTS = {
+  'post-call-email.md': `# Post-Call Email\n\nSubject: Great speaking with you, [Name]\n\nHi [Name],\n\nThank you for taking the time to speak with me today.\n\nAs discussed:\n- [Key point 1]\n- [Key point 2]\n\nNext steps:\n- [Action item]\n\nLooking forward to working together.\n\nKind regards,\n[Your name]\nQuoteLeads`,
+  'follow-up-email.md': `# Follow-Up Email\n\nSubject: Following up — [Company Name]\n\nHi [Name],\n\nI wanted to follow up from our conversation last [day].\n\nI know you were considering [service] — I'd love to answer any questions you have before you decide.\n\n[Specific value prop or offer]\n\nWould you be open to a quick 10-minute call this week?\n\nKind regards,\n[Your name]`,
+  'welcome-email.md': `# Welcome Email — New Client\n\nSubject: Welcome to QuoteLeads — Let's get started!\n\nHi [Name],\n\nWelcome to QuoteLeads! We're excited to have [Company] on board.\n\nHere's what happens next:\n1. We'll set up your campaign within 48 hours\n2. You'll receive a welcome call from your account manager\n3. First leads typically arrive within 3–5 business days\n\nYour dedicated contact:\n[Account Manager Name] — [email]\n\nLet's go!\n\nKind regards,\nJack\nQuoteLeads`,
+  'pay-per-lead-welcome-email.md': `# PPL Welcome Email\n\nSubject: Your solar leads are coming — welcome to QuoteLeads PPL\n\nHi [Name],\n\nWelcome to the QuoteLeads Pay-Per-Lead program!\n\nHere's how it works:\n- We run Meta ads to generate exclusive solar leads for your area\n- You receive leads directly — name, number, address, interest\n- You pay [$X] per lead, invoiced [weekly/fortnightly]\n- Leads are guaranteed to be from your territory: [Area]\n\nImportant:\n- Leads are exclusive to you in your area\n- Please call leads within 1 hour for best results\n- Contact us within 24h to dispute any invalid leads\n\nTarget volume agreed: [X leads/month]\nPrice per lead: $[X]\n\nWelcome aboard!\n\nJack\nQuoteLeads`,
+  'discovery-call-script.md': `# Discovery Call Script\n\n## Before the Call\n- Review their business online\n- Check their current ad presence\n- Have pricing sheet ready\n\n---\n\n## Opening (2 min)\n"Hi [Name], thanks for jumping on the call. Just to give this context — I'll ask a few questions about your business first so I can work out if we're actually a good fit for you. Sound good?"\n\n## Discovery Questions (10 min)\n1. How are you currently generating leads?\n2. What's your monthly marketing budget?\n3. How many leads/jobs do you need per month?\n4. What areas do you service?\n5. What's your close rate on qualified leads?\n6. What would a good lead look like for you?\n\n## Pain Identification\n"So it sounds like [pain point] is the main challenge — is that right?"\n\n## Present Solution (5 min)\n- PPL: "We run Meta ads, generate the leads, you pay per lead. No retainer, no risk."\n- Managed: "We manage your ads account — you own the account, we handle the strategy and execution."\n\n## Pricing\n- PPL: [$X per lead], [volume], [area exclusivity]\n- Managed: [$X/mo management fee], [budget range]\n\n## Close\n"Based on what you've told me, [X] seems like a good fit. Do you want to move forward this week?"\n\n## Objections\n- "Too expensive" → Focus on ROI: "If each job is worth $X and you close Y%, one lead pays for itself"\n- "Need to think" → "What would you need to see to feel confident moving forward?"\n- "We have someone" → "What's working well? What could be better?"\n\n## Next Steps\n- Send proposal same day\n- Follow up within 48 hours\n- Book onboarding call if yes`
+};
+
+function selectFile(filename, el) {
+  document.querySelectorAll('.file-item').forEach(i=>i.classList.remove('active'));
+  el.classList.add('active');
+  curFile = filename;
+  setText('file-editor-name', filename);
+  loadFileContent();
+}
+async function loadFileContent() {
+  if (!db) return;
+  const ta = $('file-editor-ta');
+  if (!ta) return;
+  ta.value = 'Loading…';
+  const {data,error} = await db.from('agent_files').select('content').eq('agent','docs').eq('filename',curFile).maybeSingle();
+  if (error || !data) { ta.value = FILE_DEFAULTS[curFile] || ''; return; }
+  ta.value = data.content || FILE_DEFAULTS[curFile] || '';
+}
+async function saveFileContent() {
+  const ta = $('file-editor-ta');
+  if (!ta) return;
+  const content = ta.value;
+  const {error} = await db.from('agent_files').upsert({agent:'docs',filename:curFile,content,updated_at:now()},{onConflict:'agent,filename'});
+  if (error) { toast('Save failed: '+error.message, true); return; }
+  toast('Saved ✓ — '+curFile);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   GOOGLE MAPS — PPL Lead Area Marking
+
+   TO ENABLE: Replace 'YOUR_GOOGLE_MAPS_API_KEY' below with
+   your actual Google Maps JavaScript API key, then save and reload.
+   Required APIs: Maps JavaScript API, Drawing API, Geocoding API
+   ═══════════════════════════════════════════════════════════ */
+// Google Maps key is fetched securely from Supabase Edge Function at runtime.
+// Do NOT hardcode the key here — use the Supabase dashboard app_settings table.
+
+let pplMap = null, drawingManager = null, drawnOverlay = null;
+let mapAreas = []; // loaded areas for current client
+
+async function initGoogleMaps() {
+  try {
+    const {data:{session}} = await db.auth.getSession();
+    if (!session) return;
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/get-maps-key`, {
+      headers: { 'Authorization': `Bearer ${session.access_token}` }
+    });
+    if (!res.ok) return;
+    const { key } = await res.json();
+    if (!key) return;
+    const script = $('gmaps-script');
+    if (script && !script.src) {
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=drawing&callback=onGoogleMapsReady`;
+    }
+  } catch(e) {
+    console.error('Maps init error:', e);
+  }
+}
+
+function onGoogleMapsReady() {
+  const mapEl = $('ppl-map');
+  if (!mapEl) return;
+  pplMap = new google.maps.Map(mapEl, {
+    center: {lat: -27.9, lng: 153.4}, // Gold Coast default
+    zoom: 10,
+    mapTypeId: 'roadmap',
+    styles: document.documentElement.getAttribute('data-theme') === 'dark' ? [
+      {elementType:'geometry',stylers:[{color:'#1c1c22'}]},
+      {elementType:'labels.text.fill',stylers:[{color:'#9494a8'}]},
+      {elementType:'labels.text.stroke',stylers:[{color:'#0f0f12'}]},
+      {featureType:'road',elementType:'geometry',stylers:[{color:'#262630'}]},
+      {featureType:'water',elementType:'geometry',stylers:[{color:'#070708'}]}
+    ] : []
+  });
+  drawingManager = new google.maps.drawing.DrawingManager({
+    drawingMode: google.maps.drawing.OverlayType.POLYGON,
+    drawingControl: true,
+    drawingControlOptions: {
+      position: google.maps.ControlPosition.TOP_CENTER,
+      drawingModes: [google.maps.drawing.OverlayType.POLYGON, google.maps.drawing.OverlayType.RECTANGLE]
+    },
+    polygonOptions: {fillColor:'#4f8fff',fillOpacity:.18,strokeWeight:2,strokeColor:'#4f8fff',clickable:true,editable:true},
+    rectangleOptions: {fillColor:'#4f8fff',fillOpacity:.18,strokeWeight:2,strokeColor:'#4f8fff',clickable:true,editable:true}
+  });
+  drawingManager.setMap(pplMap);
+  google.maps.event.addListener(drawingManager,'overlaycomplete',e=>{
+    if (drawnOverlay) drawnOverlay.setMap(null);
+    drawnOverlay = e.overlay;
+    drawingManager.setDrawingMode(null);
+    toast('Area drawn — enter label & volume then Save Area');
+  });
+  loadMapAreas();
+}
+
+function clearMapDrawing() {
+  if (drawnOverlay) { drawnOverlay.setMap(null); drawnOverlay = null; }
+  if (drawingManager) drawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+}
+
+async function loadMapAreas() {
+  const clientId = $('map-client-select')?.value;
+  if (!pplMap || !clientId) return;
+  // Clear existing area overlays
+  mapAreas.forEach(a=>{ if(a._overlay) a._overlay.setMap(null); });
+  mapAreas = [];
+  const el = $('map-area-list');
+  if (!clientId) { if(el) el.innerHTML=''; return; }
+  const {data,error} = await db.from('ppl_lead_areas').select('*').eq('client_id',clientId).order('created_at',{ascending:true});
+  if (error) { toast('Could not load areas: '+error.message,true); return; }
+  mapAreas = data || [];
+  renderMapAreas();
+  mapAreas.forEach(area=>{
+    if (!area.geo_json) return;
+    try {
+      const coords = JSON.parse(area.geo_json);
+      const overlay = new google.maps.Polygon({
+        paths:coords,fillColor:'#2ecc8a',fillOpacity:.2,
+        strokeWeight:2,strokeColor:'#2ecc8a',map:pplMap
+      });
+      const infowin=new google.maps.InfoWindow({content:`<strong>${area.label}</strong><br>${area.volume||0} leads/mo`});
+      overlay.addListener('click',e=>infowin.open({map:pplMap,anchor:null,shouldFocus:false,position:e.latLng}));
+      area._overlay = overlay;
+    } catch(e){}
+  });
+}
+
+function renderMapAreas() {
+  const el = $('map-area-list');
+  if (!el) return;
+  if (!mapAreas.length) { el.innerHTML='<div style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);padding:6px">No areas saved yet — draw on the map.</div>'; return; }
+  el.innerHTML = mapAreas.map(a=>`
+    <div class="area-item">
+      <span class="area-item-label">${esc(a.label||'Unnamed area')}</span>
+      <span class="area-item-vol">${a.volume||0} leads/mo</span>
+      <button class="area-item-del" data-area-id="${esc(String(a.id))}" title="Delete area">✕</button>
+    </div>`).join('');
+  el.querySelectorAll('.area-item-del').forEach(btn=>{
+    btn.addEventListener('click',()=>deleteMapArea(btn.dataset.areaId));
+  });
+}
+
+async function saveMapArea() {
+  const clientId = $('map-client-select')?.value;
+  const label = $('map-area-label')?.value.trim();
+  const volume = parseInt($('map-area-volume')?.value)||0;
+  if (!clientId) { toast('Select a PPL client first',true); return; }
+  if (!label) { toast('Enter an area label',true); return; }
+  let geoJson = null;
+  if (drawnOverlay) {
+    try {
+      const path = drawnOverlay.getPath ? drawnOverlay.getPath().getArray() : drawnOverlay.getBounds ? [
+        {lat:drawnOverlay.getBounds().getNorthEast().lat(),lng:drawnOverlay.getBounds().getSouthWest().lng()},
+        {lat:drawnOverlay.getBounds().getNorthEast().lat(),lng:drawnOverlay.getBounds().getNorthEast().lng()},
+        {lat:drawnOverlay.getBounds().getSouthWest().lat(),lng:drawnOverlay.getBounds().getNorthEast().lng()},
+        {lat:drawnOverlay.getBounds().getSouthWest().lat(),lng:drawnOverlay.getBounds().getSouthWest().lng()},
+      ] : null;
+      if (path) geoJson = JSON.stringify(path.map ? path.map(p=>({lat:p.lat(),lng:p.lng()})) : path);
+    } catch(e){}
+  }
+  const {error} = await db.from('ppl_lead_areas').insert([{client_id:clientId,label,volume,geo_json:geoJson,created_at:now()}]);
+  if (error) { toast('Save failed: '+error.message,true); return; }
+  clearMapDrawing();
+  $('map-area-label').value='';$('map-area-volume').value='';
+  toast('Area saved ✓');
+  loadMapAreas();
+}
+
+async function deleteMapArea(id) {
+  if (!confirm('Delete this area?')) return;
+  const {error} = await db.from('ppl_lead_areas').delete().eq('id',id);
+  if (error) { toast('Error: '+error.message,true); return; }
+  toast('Area deleted');
+  loadMapAreas();
+}
+
+async function populateMapClientDropdown() {
+  const sel = $('map-client-select');
+  if (!sel || !db) return;
+  const {data} = await db.from('clients').select('id,company_name').eq('type','ppl').not('stage','eq','churned').order('company_name');
+  if (data && data.length) {
+    sel.innerHTML = '<option value="">— Select PPL Client —</option>' +
+      data.map(c=>`<option value="${esc(String(c.id))}">${esc(c.company_name)}</option>`).join('');
+  }
+}
 </script>
 </body>
 </html>
