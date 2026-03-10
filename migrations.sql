@@ -46,7 +46,25 @@ UPDATE public.clients
 --   ADD CONSTRAINT agent_files_agent_check
 --   CHECK (agent IN ('marketing','finance','operations','strategy','sales','docs'));
 
--- ── 7. VERIFICATION ──
+-- ── 7. APP SETTINGS: Secure key/value store for server-side secrets ──
+-- Store secrets like GOOGLE_MAPS_KEY here; read via Edge Function only.
+CREATE TABLE IF NOT EXISTS public.app_settings (
+  key        text PRIMARY KEY,
+  value      text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- No direct client access — service role only (no RLS policy grants to authenticated)
+ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
+-- Intentionally no authenticated policy: only the Edge Function (service role) can read this.
+
+-- Insert your Google Maps key (run once, update as needed):
+-- INSERT INTO public.app_settings (key, value)
+-- VALUES ('google_maps_key', 'YOUR_ACTUAL_KEY_HERE')
+-- ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
+
+-- ── 8. VERIFICATION ──
 SELECT column_name, data_type, column_default
 FROM information_schema.columns
 WHERE table_name = 'clients'

@@ -2814,16 +2814,28 @@ async function saveFileContent() {
    your actual Google Maps JavaScript API key, then save and reload.
    Required APIs: Maps JavaScript API, Drawing API, Geocoding API
    ═══════════════════════════════════════════════════════════ */
-const GOOGLE_MAPS_KEY = 'YOUR_GOOGLE_MAPS_API_KEY'; // <-- INSERT YOUR KEY HERE
+// Google Maps key is fetched securely from Supabase Edge Function at runtime.
+// Do NOT hardcode the key here — use the Supabase dashboard app_settings table.
 
 let pplMap = null, drawingManager = null, drawnOverlay = null;
 let mapAreas = []; // loaded areas for current client
 
-function initGoogleMaps() {
-  if (!GOOGLE_MAPS_KEY || GOOGLE_MAPS_KEY === 'YOUR_GOOGLE_MAPS_API_KEY') return;
-  const script = $('gmaps-script');
-  if (script && !script.src) {
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=drawing&callback=onGoogleMapsReady`;
+async function initGoogleMaps() {
+  try {
+    const {data:{session}} = await db.auth.getSession();
+    if (!session) return;
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/get-maps-key`, {
+      headers: { 'Authorization': `Bearer ${session.access_token}` }
+    });
+    if (!res.ok) return;
+    const { key } = await res.json();
+    if (!key) return;
+    const script = $('gmaps-script');
+    if (script && !script.src) {
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=drawing&callback=onGoogleMapsReady`;
+    }
+  } catch(e) {
+    console.error('Maps init error:', e);
   }
 }
 
