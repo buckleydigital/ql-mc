@@ -626,17 +626,25 @@ td strong{font-weight:500}
 @media(max-width:700px){.files-layout{grid-template-columns:1fr;height:auto}.files-list{flex-direction:row;flex-wrap:wrap}}
 
 /* ═══ MAPS ═══ */
-.map-section{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:14px;margin-top:14px}
-.map-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
-.map-controls select,.map-controls input{background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);color:var(--ink);font-family:var(--font);font-size:12px;padding:6px 9px;outline:none}
+.map-section{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:16px;margin-top:20px;width:100%;box-sizing:border-box}
+.map-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.map-controls select{flex:1;min-width:160px}
+.map-controls input[type=text]{flex:2;min-width:140px}
+.map-controls input[type=number]{flex:1;min-width:110px}
+.map-controls select,.map-controls input{background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);color:var(--ink);font-family:var(--font);font-size:12px;padding:6px 9px;outline:none;box-sizing:border-box}
 .map-controls select:focus,.map-controls input:focus{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-dim)}
-#ppl-map{height:400px;border-radius:var(--r);border:1px solid var(--bd);overflow:hidden;background:var(--s2)}
+#ppl-map{height:420px;border-radius:var(--r);border:1px solid var(--bd);overflow:hidden;background:var(--s2);width:100%}
 .area-list{display:flex;flex-direction:column;gap:4px;margin-top:10px;max-height:200px;overflow-y:auto}
 .area-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);font-size:11.5px}
 .area-item-label{flex:1;font-weight:500}
 .area-item-vol{font-family:var(--mono);font-size:10px;color:var(--acc);margin-left:auto}
 .area-item-del{background:none;border:none;color:var(--ink3);cursor:pointer;font-size:12px;padding:2px 5px;border-radius:3px}
 .area-item-del:hover{color:var(--red);background:var(--red-dim)}
+@media(max-width:700px){
+  .map-controls{flex-direction:column;align-items:stretch}
+  .map-controls select,.map-controls input,.map-controls .btn{width:100%;min-width:0}
+  #ppl-map{height:280px}
+}
 
 /* ═══ BOTTOM NAV ═══ */
 .bnav{
@@ -884,7 +892,7 @@ td strong{font-weight:500}
             <button class="btn btn-sm btn-p" onclick="saveMapArea()">Save Area</button>
             <button class="btn btn-sm" onclick="clearMapDrawing()">Clear Drawing</button>
           </div>
-          <div id="ppl-map"><div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:var(--mono);font-size:11px;color:var(--ink3)">Set your Google Maps API key in the script to enable map. See instructions at top of JS section.</div></div>
+          <div id="ppl-map"><div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:var(--mono);font-size:11px;color:var(--ink3)">Loading map…</div></div>
           <div class="area-list" id="map-area-list"></div>
         </div>
       </div>
@@ -1629,7 +1637,7 @@ function nav(panel, el) {
   if (panel === 'files') loadFileContent();
   if (panel === 'ppl') {
     populateMapClientDropdown();
-    if (!pplMap && GOOGLE_MAPS_KEY !== 'YOUR_GOOGLE_MAPS_API_KEY') initGoogleMaps();
+    if (!pplMap) initGoogleMaps();
   }
 }
 
