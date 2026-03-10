@@ -10,7 +10,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
-<!-- Google Maps — replace YOUR_GOOGLE_MAPS_API_KEY below with your actual key -->
 <script id="gmaps-script"></script>
 <style>
 
@@ -2813,16 +2812,6 @@ async function saveFileContent() {
   toast('Saved ✓ — '+curFile);
 }
 
-/* ═══════════════════════════════════════════════════════════
-   GOOGLE MAPS — PPL Lead Area Marking
-
-   TO ENABLE: Replace 'YOUR_GOOGLE_MAPS_API_KEY' below with
-   your actual Google Maps JavaScript API key, then save and reload.
-   Required APIs: Maps JavaScript API, Drawing API, Geocoding API
-   ═══════════════════════════════════════════════════════════ */
-// Google Maps key is fetched securely from Supabase Edge Function at runtime.
-// Do NOT hardcode the key here — use the Supabase dashboard app_settings table.
-
 let pplMap = null, drawingManager = null, drawnOverlay = null;
 let mapAreas = []; // loaded areas for current client
 
@@ -2890,6 +2879,7 @@ function clearMapDrawing() {
 async function loadMapAreas() {
   const clientId = $('map-client-select')?.value;
   if (!pplMap || !clientId) return;
+  localStorage.setItem('ppl_selected_client', clientId);
   // Clear existing area overlays
   mapAreas.forEach(a=>{ if(a._overlay) a._overlay.setMap(null); });
   mapAreas = [];
@@ -2970,6 +2960,11 @@ async function populateMapClientDropdown() {
   if (data && data.length) {
     sel.innerHTML = '<option value="">— Select PPL Client —</option>' +
       data.map(c=>`<option value="${esc(String(c.id))}">${esc(c.company_name)}</option>`).join('');
+    // Restore last-selected client, or default to first
+    const saved = localStorage.getItem('ppl_selected_client');
+    const match = saved && data.find(c => String(c.id) === saved);
+    sel.value = match ? saved : String(data[0].id);
+    if (pplMap) loadMapAreas();
   }
 }
 </script>
