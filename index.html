@@ -925,8 +925,8 @@ td strong{font-weight:500}
         <div class="sl">Payment Tracker <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Client</th><th>Active Since</th><th>Months Active</th><th>Last Payment</th><th>Next Payment Due</th></tr></thead>
-            <tbody id="mg-payment-tbody"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
+            <thead><tr><th>Client</th><th>Active Since</th><th>Payments Made</th><th>Monthly Fee</th><th>Retainer Total</th><th>Custom Orders</th><th>Lifetime Revenue</th><th>Last Payment</th><th>Next Due</th><th></th></tr></thead>
+            <tbody id="mg-payment-tbody"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -957,6 +957,12 @@ td strong{font-weight:500}
           <div class="kpi"><div class="klabel">True CPL</div><div class="kval blu" id="fin-true-cpl">—</div><div class="ksub">after sold %</div></div>
           <div class="kpi"><div class="klabel">PPL Revenue</div><div class="kval grn" id="fin-ppl-rev">—</div></div>
           <div class="kpi"><div class="klabel">PPL Margin</div><div class="kval" id="fin-ppl-margin">—</div></div>
+        </div>
+        <div class="sl">Managed Advertising Revenue <div class="sl-line"></div></div>
+        <div class="kg c3 mb4">
+          <div class="kpi"><div class="klabel">Retainer Revenue</div><div class="kval grn" id="fin-mg-retainer">—</div><div class="ksub">payments made × fee</div></div>
+          <div class="kpi"><div class="klabel">Custom Orders</div><div class="kval grn" id="fin-mg-custom">—</div><div class="ksub">one-off & extras</div></div>
+          <div class="kpi"><div class="klabel">Total Managed Rev</div><div class="kval blu" id="fin-mg-rev">—</div><div class="ksub">retainer + custom</div></div>
         </div>
         <div class="g2 mb4">
           <div class="chart-card"><div class="chart-title">Revenue vs Expenses</div><canvas id="chart-rev" height="160"></canvas></div>
@@ -1241,7 +1247,6 @@ td strong{font-weight:500}
     <button class="bnbtn" data-panel="finance" onclick="nav('finance',this)"><span class="bnbtn-icon">$</span><span class="bnbtn-lbl">Finance</span></button>
     <button class="bnbtn" data-panel="daily" onclick="nav('daily',this)"><span class="bnbtn-icon">≋</span><span class="bnbtn-lbl">Daily</span></button>
     <button class="bnbtn" data-panel="chat" onclick="nav('chat',this)"><span class="bnbtn-icon">◉</span><span class="bnbtn-lbl">Chat</span></button>
-    <button class="bnbtn" data-panel="sales-agent" onclick="nav('sales-agent',this)"><span class="bnbtn-icon">⚑</span><span class="bnbtn-lbl">Sales AI</span></button>
     <button class="bnbtn" data-panel="files" onclick="nav('files',this)"><span class="bnbtn-icon">📄</span><span class="bnbtn-lbl">Files</span></button>
   </div>
 </div><!-- /app -->
@@ -1493,7 +1498,19 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Start Date</label><input class="fi" id="em-start" type="date"></div>
     <div class="frow"><label class="flabel">Last Payment Date</label><input class="fi" id="em-last-pay" type="date" oninput="calcNextPayment()"></div>
     <div class="frow"><label class="flabel">Next Payment Due</label><input class="fi" id="em-next-pay" type="date"></div>
+    <div class="frow"><label class="flabel">Payments Made</label><input class="fi" id="em-payments-made" type="number" placeholder="0" min="0"></div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="em-notes"></textarea></div>
+    <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Custom Order Log</div>
+    <div id="em-order-log" style="margin-bottom:10px;font-family:var(--mono);font-size:11px;color:var(--ink3)">Loading…</div>
+    <div style="background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;margin-bottom:4px">
+      <div style="font-family:var(--mono);font-size:8.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Log Custom Order / One-off</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <input class="fi" type="text" id="em-ord-desc" placeholder="Description (e.g. Setup fee, Extra creative)" style="flex:2;min-width:160px">
+        <input class="fi" type="number" id="em-ord-amount" placeholder="Amount (AUD)" style="flex:1;min-width:110px">
+        <input class="fi" type="date" id="em-ord-date" style="flex:1;min-width:120px">
+        <button class="btn btn-p btn-sm" onclick="logManagedOrder()">Log Order</button>
+      </div>
+    </div>
     <div class="macts">
       <button class="btn btn-red btn-sm" onclick="deleteClient('managed')">Delete</button>
       <div style="flex:1"></div>
@@ -2108,25 +2125,95 @@ function calcNextPaymentNew() {
   const d = new Date(v+'T00:00:00'); d.setDate(d.getDate()+30);
   setVal('mg-next-pay', d.toISOString().split('T')[0]);
 }
-function renderManagedPayments(clients) {
+function renderManagedPayments(clients, orderLog=[]) {
   const tb = $('mg-payment-tbody'); if (!tb) return;
   const active = clients.filter(c => c.stage === 'active');
-  if (!active.length) { tb.innerHTML='<tr><td colspan="5" class="empty">No active managed clients.</td></tr>'; return; }
+  if (!active.length) { tb.innerHTML='<tr><td colspan="10" class="empty">No active managed clients.</td></tr>'; return; }
   const today = new Date().toISOString().split('T')[0];
   tb.innerHTML = active.map(c => {
     const np = c.next_payment_date;
     const overdue = np && np < today;
+    const paysMade = c.payments_made || 0;
+    const fee = c.management_fee || 0;
+    const retainerTotal = paysMade * fee;
+    const customOrders = orderLog.filter(o => o.client_id === c.id).reduce((s,o) => s + (o.amount||0), 0);
+    const lifetime = retainerTotal + customOrders;
     return `<tr style="cursor:pointer" data-client-id="${esc(String(c.id))}" data-client-type="managed" class="client-row">
       <td><strong>${esc(c.company_name)}</strong></td>
       <td style="font-family:var(--mono);font-size:10.5px">${c.start_date||'—'}</td>
-      <td style="font-family:var(--mono)">${calcActiveMonths(c.start_date)}</td>
+      <td style="font-family:var(--mono);font-weight:600;color:var(--acc)">${paysMade}</td>
+      <td style="font-family:var(--mono)">${fee>0?fmt(fee):'—'}</td>
+      <td style="font-family:var(--mono);color:var(--grn)">${retainerTotal>0?fmt(retainerTotal):'—'}</td>
+      <td style="font-family:var(--mono);color:var(--acc)">${customOrders>0?fmt(customOrders):'—'}</td>
+      <td style="font-family:var(--mono);font-weight:700;color:var(--grn)">${lifetime>0?fmt(lifetime):'—'}</td>
       <td style="font-family:var(--mono);font-size:10.5px">${c.last_payment_date||'—'}</td>
       <td style="font-family:var(--mono);font-size:10.5px;font-weight:${overdue?'600':'400'};color:${overdue?'var(--red)':np?'var(--grn)':'var(--ink3)'}">${np?(np+(overdue?' ⚠ Overdue':'')):'—'}</td>
+      <td><button class="btn btn-xs" onclick="logRetainerPayment(${c.id})">+ Payment</button></td>
     </tr>`;
   }).join('');
   tb.querySelectorAll('.client-row').forEach(row=>{
-    row.addEventListener('click',()=>{ const id=row.dataset.clientId; if(CLIENT_CACHE[id]) openEditClient('managed',CLIENT_CACHE[id]); });
+    row.addEventListener('click',e=>{
+      if (e.target.closest('button')) return;
+      const id=row.dataset.clientId; if(CLIENT_CACHE[id]) openEditClient('managed',CLIENT_CACHE[id]);
+    });
   });
+}
+
+/* MANAGED ORDER LOG */
+async function loadManagedOrderLog(clientId) {
+  const el=$('em-order-log'); if(!el) return;
+  el.textContent='Loading…';
+  const {data,error}=await db.from('managed_order_log').select('*').eq('client_id',clientId).order('order_date',{ascending:false});
+  if (error) { el.textContent='Error loading orders.'; return; }
+  el.innerHTML=renderManagedOrderLogTable(data||[], clientId);
+}
+function renderManagedOrderLogTable(data, clientId) {
+  if (!data.length) return '<div style="color:var(--ink3);padding:4px 0">No custom orders logged yet.</div>';
+  return `<table style="width:100%;border-collapse:collapse">
+    <thead><tr style="font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em">
+      <th style="text-align:left;padding:3px 6px;font-weight:500">Date</th>
+      <th style="text-align:left;padding:3px 6px;font-weight:500">Description</th>
+      <th style="text-align:left;padding:3px 6px;font-weight:500">Amount</th>
+      <th></th>
+    </tr></thead>
+    <tbody>${data.map(o=>`<tr style="border-top:1px solid var(--bd)">
+      <td style="padding:4px 6px;color:var(--ink2)">${o.order_date||'—'}</td>
+      <td style="padding:4px 6px;color:var(--ink)">${esc(o.description||'—')}</td>
+      <td style="padding:4px 6px;color:var(--grn);font-weight:600">${o.amount?fmt(o.amount):'—'}</td>
+      <td style="padding:4px 6px"><button class="btn btn-xs btn-red" onclick="deleteManagedOrder('${esc(o.id)}','${esc(clientId)}')">✕</button></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+async function logManagedOrder() {
+  const clientId=$('em-id').value;
+  const desc=$('em-ord-desc').value.trim();
+  const amount=parseFloat($('em-ord-amount').value)||0;
+  const date=$('em-ord-date').value||new Date().toISOString().split('T')[0];
+  if (!desc) { toast('Description required',true); return; }
+  if (!amount) { toast('Amount required',true); return; }
+  const {error}=await db.from('managed_order_log').insert([{client_id:clientId,description:desc,amount,order_date:date,created_at:now()}]);
+  if (error) { toast('Error: '+error.message,true); return; }
+  $('em-ord-desc').value='';$('em-ord-amount').value='';
+  toast('Order logged ✓');
+  loadManagedOrderLog(clientId);
+  loadManaged();
+}
+async function deleteManagedOrder(orderId, clientId) {
+  if (!confirm('Delete this order?')) return;
+  const {error}=await db.from('managed_order_log').delete().eq('id',orderId);
+  if (error) { toast('Error: '+error.message,true); return; }
+  toast('Order deleted');
+  loadManagedOrderLog(clientId);
+  loadManaged();
+}
+async function logRetainerPayment(clientId) {
+  const c=CLIENT_CACHE[clientId]; if (!c) return;
+  const newCount=(c.payments_made||0)+1;
+  const today=new Date().toISOString().split('T')[0];
+  const {error}=await db.from('clients').update({payments_made:newCount,last_payment_date:today,updated_at:now()}).eq('id',clientId);
+  if (error) { toast('Error: '+error.message,true); return; }
+  toast(`Payment #${newCount} logged ✓`);
+  loadManaged();
 }
 
 /* PPL ORDER LOG */
@@ -2239,11 +2326,14 @@ async function logPplOrder() {
 /* MANAGED */
 const MG_STAGES=[{id:'active',label:'Active'},{id:'paused',label:'Paused'},{id:'churned',label:'Churned'}];
 async function loadManaged() {
-  const {data,error}=await db.from('clients').select('*').eq('type','managed').order('created_at',{ascending:false});
+  const [{data,error},{data:orderData}]=await Promise.all([
+    db.from('clients').select('*').eq('type','managed').order('created_at',{ascending:false}),
+    db.from('managed_order_log').select('*').order('order_date',{ascending:false})
+  ]);
   if (error) { $('mg-tbody').innerHTML=`<tr><td colspan="9" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
-  renderManaged(data||[]);
+  renderManaged(data||[], orderData||[]);
 }
-function renderManaged(clients) {
+function renderManaged(clients, orderLog=[]) {
   setText('mg-active',clients.filter(c=>c.stage==='active').length);
   setText('mg-spend',fmt(clients.reduce((s,c)=>s+(c.spend_mtd||0),0)));
   setText('mg-fees',fmt(clients.reduce((s,c)=>s+(c.management_fee||0),0)));
@@ -2297,7 +2387,7 @@ function renderManaged(clients) {
       if (CLIENT_CACHE[id]) openEditClient(type,CLIENT_CACHE[id]);
     });
   });
-  renderManagedPayments(clients);
+  renderManagedPayments(clients, orderLog);
 }
 function openEditClient(type,c) {
   if (type==='ppl') {
@@ -2322,8 +2412,12 @@ function openEditClient(type,c) {
     setVal('em-last-pay',c.last_payment_date||'');
     setVal('em-next-pay',c.next_payment_date||'');
     if (c.last_payment_date && !c.next_payment_date) calcNextPayment();
+    setVal('em-payments-made',c.payments_made||0);
     setVal('em-notes',c.notes);
-    setText('edit-mg-sub',c.company_name||'');openModal('m-edit-managed');
+    setVal('em-ord-date',new Date().toISOString().split('T')[0]);
+    setText('edit-mg-sub',c.company_name||'');
+    loadManagedOrderLog(c.id);
+    openModal('m-edit-managed');
   }
 }
 function updatePplCalc() {
@@ -2349,7 +2443,7 @@ async function updateClient(type) {
     if (!d.company_name) { toast('Company name required',true); return; }
   } else {
     id=$('em-id').value;
-    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,stage:$('em-stage').value,start_date:$('em-start').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),updated_at:now()};
+    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:parseInt($('em-payments-made').value)||0,stage:$('em-stage').value,start_date:$('em-start').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),updated_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   }
   const {error}=await db.from('clients').update(d).eq('id',id);
@@ -2389,17 +2483,17 @@ function nextMonthStart(m) {
 }
 async function loadFinance() {
   const month=$('fin-month').value,next=nextMonthStart(month),from=`${month}-01`;
-  const [revR,expR,spR,subR,pplR]=await Promise.all([
-    db.from('revenue').select('*').gte('date',from).lt('date',next),
+  const [expR,spR,subR,pplR,mgR,mgOrdR]=await Promise.all([
     db.from('expenses').select('*').gte('date',from).lt('date',next),
     db.from('ad_spend_daily').select('date,account_type,spend,leads').order('date',{ascending:false}),
     db.from('subscriptions').select('monthly_cost').eq('active',true),
     db.from('clients').select('leads_mtd,pct_sold,lead_price,meta_cpl,true_cpl').eq('type','ppl').eq('stage','active_client'),
+    db.from('clients').select('id,company_name,management_fee,payments_made,stage').eq('type','managed'),
+    db.from('managed_order_log').select('client_id,amount,order_date'),
   ]);
-  renderFinance(revR.data||[],expR.data||[],spR.data||[],subR.data||[],pplR.data||[]);
+  renderFinance(expR.data||[],spR.data||[],subR.data||[],pplR.data||[],mgR.data||[],mgOrdR.data||[]);
 }
-function renderFinance(revenue,expenses,adSpend,subs,pplClients) {
-  const tr=revenue.reduce((s,r)=>s+(r.amount||0),0);
+function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders) {
   const te=expenses.reduce((s,e)=>s+(e.amount||0),0);
   const ts=subs.length>0?subs.reduce((s,sub)=>s+(sub.monthly_cost||0),0):null;
   const latestPpl=adSpend.find(a=>a.account_type==='solar_ppl');
@@ -2408,8 +2502,16 @@ function renderFinance(revenue,expenses,adSpend,subs,pplClients) {
   const agSp=latestAg?.spend||0;
   const pplLeadsTotal=latestPpl?.leads||0;
   const metaCpl=(pplSp>0&&pplLeadsTotal>0)?'$'+(pplSp/pplLeadsTotal).toFixed(2):'—';
+  // PPL revenue: active clients leads_mtd * pct_sold% * lead_price
   let pplRev=0;
   pplClients.forEach(c=>{const sold=Math.round((c.leads_mtd||0)*((c.pct_sold||0)/100));pplRev+=sold*(c.lead_price||0);});
+  // Managed retainer revenue: payments_made * management_fee (active clients only)
+  const activeMg=mgClients.filter(c=>c.stage==='active');
+  const mgRetainerRev=activeMg.reduce((s,c)=>s+((c.payments_made||0)*(c.management_fee||0)),0);
+  // Custom order revenue (all managed clients, all time)
+  const mgCustomRev=mgOrders.reduce((s,o)=>s+(o.amount||0),0);
+  const mgTotalRev=mgRetainerRev+mgCustomRev;
+  const tr=pplRev+mgTotalRev;
   const acTrue=pplClients.filter(c=>c.true_cpl>0);
   const trueCpl=acTrue.length?'$'+(acTrue.reduce((s,c)=>s+c.true_cpl,0)/acTrue.length).toFixed(2):'—';
   const totalExp=te+pplSp+agSp;
@@ -2417,26 +2519,29 @@ function renderFinance(revenue,expenses,adSpend,subs,pplClients) {
   setText('fin-rev',fmt(tr));setText('fin-exp',fmt(totalExp));setText('fin-profit',fmt(np));
   $('fin-profit').className=`kval ${np>=0?'grn':'red'}`;
   setText('fin-margin',`${margin}% margin`);setText('fin-subs',ts!==null?fmt(ts):'—');
-  setText('fin-ppl-spend',fmt(pplSp));setText('fin-ag-spend',fmt(agSp));setText('fin-mg-spend','—');
+  setText('fin-ppl-spend',fmt(pplSp));setText('fin-ag-spend',fmt(agSp));setText('fin-mg-spend',mgTotalRev>0?fmt(mgTotalRev):'—');
   setText('fin-meta-cpl',metaCpl);setText('fin-true-cpl',trueCpl);
   setText('fin-ppl-rev',pplRev>0?fmt(pplRev):'—');setText('fin-ppl-margin',pplRev>0?fmt(pplRev-pplSp):'—');
+  if ($('fin-mg-rev')) setText('fin-mg-rev',mgTotalRev>0?fmt(mgTotalRev):'—');
+  if ($('fin-mg-retainer')) setText('fin-mg-retainer',mgRetainerRev>0?fmt(mgRetainerRev):'—');
+  if ($('fin-mg-custom')) setText('fin-mg-custom',mgCustomRev>0?fmt(mgCustomRev):'—');
   const tb=$('exp-tbody');
   if (!expenses.length) { tb.innerHTML='<tr><td colspan="5" class="empty">No expenses for this period.</td></tr>'; }
   else { tb.innerHTML=expenses.map(e=>`<tr><td>${esc(e.category||'—')}</td><td>${esc(e.description||'—')}</td><td>${fmt(e.amount)}</td><td><span class="badge ${e.type==='fixed'?'bg-blu':'bg-amb'}">${e.type||'variable'}</span></td><td style="font-family:var(--mono);font-size:10px">${e.date||'—'}</td></tr>`).join(''); }
-  renderRevenueChart(revenue,expenses);renderCplChart(adSpend);
+  renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses);renderCplChart(adSpend);
 }
 function chartDefaults() {
   const dark=document.documentElement.getAttribute('data-theme')==='dark';
   return {grid:dark?'#1c1c22':'#dddde8',tick:dark?'#3e3e50':'#9494a8'};
 }
-function renderRevenueChart(revenue,expenses) {
+function renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses) {
   const {grid,tick}=chartDefaults();
-  const revByDay={},expByDay={};
-  revenue.forEach(r=>{revByDay[r.date]=(revByDay[r.date]||0)+(r.amount||0);});
-  expenses.forEach(e=>{expByDay[e.date]=(expByDay[e.date]||0)+(e.amount||0);});
-  const allDays=[...new Set([...Object.keys(revByDay),...Object.keys(expByDay)])].sort();
+  const labels=['PPL Revenue','Managed Retainers','Custom Orders','Expenses'];
+  const values=[pplRev,mgRetainerRev,mgCustomRev,expenses.reduce((s,e)=>s+(e.amount||0),0)];
+  const colors=['rgba(46,204,138,.15)','rgba(79,143,255,.15)','rgba(79,143,255,.08)','rgba(255,69,96,.07)'];
+  const borders=['#2ecc8a','#4f8fff','rgba(79,143,255,.6)','rgba(255,69,96,.45)'];
   if (revChart) revChart.destroy();
-  revChart=new Chart($('chart-rev').getContext('2d'),{type:'bar',data:{labels:allDays,datasets:[{label:'Revenue',data:allDays.map(d=>revByDay[d]||0),backgroundColor:'rgba(46,204,138,.1)',borderColor:'#2ecc8a',borderWidth:1.5,borderRadius:3},{label:'Expenses',data:allDays.map(d=>expByDay[d]||0),backgroundColor:'rgba(255,69,96,.07)',borderColor:'rgba(255,69,96,.45)',borderWidth:1.5,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:tick,font:{family:'DM Mono',size:9.5},boxWidth:8}}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}}}}});
+  revChart=new Chart($('chart-rev').getContext('2d'),{type:'bar',data:{labels,datasets:[{label:'Amount',data:values,backgroundColor:colors,borderColor:borders,borderWidth:1.5,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9},callback:v=>'$'+v.toLocaleString()},grid:{color:grid}}}}});
 }
 function renderCplChart(adSpend) {
   const {grid,tick}=chartDefaults();
