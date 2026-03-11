@@ -1326,6 +1326,7 @@ td strong{font-weight:500}
       </select>
     </div>
     <div class="frow"><label class="flabel">Lead Price (AUD)</label><input class="fi" id="ppl-price" type="number" placeholder="e.g. 85"></div>
+    <div class="frow"><label class="flabel">Meta CPL (AUD) <span style="font-size:9.5px;color:var(--ink3);font-weight:300">optional — overrides global avg</span></label><input class="fi" id="ppl-meta-cpl" type="number" placeholder="e.g. 28.50"></div>
     <div class="frow"><label class="flabel">Leads Delivered</label><input class="fi" id="ppl-ld" type="number" placeholder="0"></div>
     <div class="frow"><label class="flabel">Total Leads Purchased</label><input class="fi" id="ppl-tlp" type="number" placeholder="0"></div>
     <div class="frow"><label class="flabel">Status</label>
@@ -1429,6 +1430,7 @@ td strong{font-weight:500}
       </select>
     </div>
     <div class="frow"><label class="flabel">Price Per Lead Sold (AUD)</label><input class="fi" id="ep-price" type="number" oninput="updatePplCalc()"></div>
+    <div class="frow"><label class="flabel">Meta CPL (AUD) <span style="font-size:9.5px;color:var(--ink3);font-weight:300">optional — overrides global avg</span></label><input class="fi" id="ep-meta-cpl" type="number" placeholder="e.g. 28.50"></div>
     <div class="frow"><label class="flabel">% Sold</label><input class="fi" id="ep-pct" type="number" placeholder="e.g. 70"></div>
     <div class="frow"><label class="flabel">Leads Delivered</label><input class="fi" id="ep-ld" type="number" placeholder="0" oninput="updatePplCalc()"></div>
     <div class="frow"><label class="flabel">Total Leads Purchased</label><input class="fi" id="ep-tlp" type="number" placeholder="0" oninput="updatePplCalc()"></div>
@@ -1999,20 +2001,26 @@ async function saveLead() {
 /* PPL */
 const PPL_STAGES=[{id:'active_client',label:'Active'},{id:'paused',label:'Paused'},{id:'churned',label:'Churned'}];
 async function loadPPL() {
-  const [clientsR, ytdR] = await Promise.all([
+  const yr = new Date().getFullYear()+'-01-01';
+  const [clientsR, ytdR, spendR] = await Promise.all([
     db.from('clients').select('*').eq('type','ppl').order('created_at',{ascending:false}),
-    db.from('ppl_order_log').select('leads_qty').gte('order_date','2026-01-01')
+    db.from('ppl_order_log').select('leads_qty').gte('order_date',yr),
+    db.from('ad_spend_daily').select('spend,leads').eq('account_type','solar_ppl').gte('date',yr)
   ]);
   if (clientsR.error) { $('ppl-tbody').innerHTML=`<tr><td colspan="12" class="empty">Error: ${esc(clientsR.error.message)}</td></tr>`; return; }
   const ytdLeads = (ytdR.data||[]).reduce((s,r)=>s+(r.leads_qty||0),0);
-  renderPPL(clientsR.data||[], ytdLeads);
+  renderPPL(clientsR.data||[], ytdLeads, spendR.data||[]);
 }
-function renderPPL(clients, ytdLeads=0) {
+function renderPPL(clients, ytdLeads=0, spendData=[]) {
   setText('ppl-active',clients.filter(c=>c.stage==='active_client').length);
   setText('ppl-leads',ytdLeads);
-  const ac=clients.filter(c=>c.stage==='active_client'&&(c.meta_cpl||0)>0);
-  setText('ppl-meta-cpl',ac.length?'$'+(ac.reduce((s,c)=>s+(c.meta_cpl||0),0)/ac.length).toFixed(2):'—');
-  setText('ppl-true-cpl',ac.length&&ac.some(c=>c.true_cpl>0)?'$'+(ac.filter(c=>c.true_cpl>0).reduce((s,c)=>s+(c.true_cpl||0),0)/ac.filter(c=>c.true_cpl>0).length).toFixed(2):'—');
+  // Overall Meta CPL: YTD spend ÷ YTD leads from ad_spend_daily (solar_ppl)
+  const ytdSpend=spendData.reduce((s,r)=>s+(r.spend||0),0);
+  const ytdSpendLeads=spendData.reduce((s,r)=>s+(r.leads||0),0);
+  setText('ppl-meta-cpl',ytdSpend>0&&ytdSpendLeads>0?'$'+(ytdSpend/ytdSpendLeads).toFixed(2):'—');
+  // Avg True CPL: average of per-client true_cpl (auto-calc from delivered orders)
+  const ac=clients.filter(c=>c.stage==='active_client'&&(c.true_cpl||0)>0);
+  setText('ppl-true-cpl',ac.length?'$'+(ac.reduce((s,c)=>s+(c.true_cpl||0),0)/ac.length).toFixed(2):'—');
   PPL_STAGES.forEach(s=>{
     const col=$('ppl-col-'+s.id),cnt=$('pplc-'+s.id);
     const sl=clients.filter(c=>c.stage===s.id);
@@ -2292,7 +2300,7 @@ function openEditClient(type,c) {
   if (type==='ppl') {
     setVal('ep-id',c.id);setVal('ep-co',c.company_name);setVal('ep-cn',c.contact_name);
     setVal('ep-em',c.email);setVal('ep-ph',c.phone);setVal('ep-niche',c.niche);
-    setVal('ep-price',c.lead_price);setVal('ep-pct',c.pct_sold);
+    setVal('ep-price',c.lead_price);setVal('ep-meta-cpl',c.meta_cpl||'');setVal('ep-pct',c.pct_sold);
     setVal('ep-ld',c.leads_delivered||0);setVal('ep-tlp',c.total_leads_purchased||0);
     setVal('ep-stage',c.stage||'active_client');setVal('ep-notes',c.notes);
     setText('edit-ppl-sub',c.company_name||'');
@@ -2330,7 +2338,8 @@ async function updateClient(type) {
   if (type==='ppl') {
     id=$('ep-id').value;
     const _ld=parseInt($('ep-ld').value)||0;const _tlp=parseInt($('ep-tlp').value)||0;const _price=parseFloat($('ep-price').value)||0;const _balCalc=(_tlp-_ld)*_price;
-    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:_price,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,stage:$('ep-stage').value,notes:$('ep-notes').value.trim(),updated_at:now()};
+    const _metaCpl=parseFloat($('ep-meta-cpl').value)||null;
+    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:_price,meta_cpl:_metaCpl,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,stage:$('ep-stage').value,notes:$('ep-notes').value.trim(),updated_at:now()};
     // Only write pct_sold manually if no delivered orders exist (auto-calc takes priority)
     const {count:deliveredCount}=await db.from('ppl_order_log').select('id',{count:'exact',head:true}).eq('client_id',id).eq('status','delivered');
     if (!(deliveredCount>0)) d.pct_sold=parseFloat($('ep-pct').value)||null;
@@ -2356,7 +2365,7 @@ async function deleteClient(type) {
 async function saveClient(type) {
   let d;
   if (type==='ppl') {
-    d={type:'ppl',company_name:$('ppl-co').value.trim(),contact_name:$('ppl-cn').value.trim(),email:$('ppl-em').value.trim(),niche:$('ppl-niche').value,lead_price:parseFloat($('ppl-price').value)||0,leads_delivered:parseInt($('ppl-ld').value)||0,total_leads_purchased:parseInt($('ppl-tlp').value)||0,stage:$('ppl-stage').value,created_at:now()};
+    d={type:'ppl',company_name:$('ppl-co').value.trim(),contact_name:$('ppl-cn').value.trim(),email:$('ppl-em').value.trim(),niche:$('ppl-niche').value,lead_price:parseFloat($('ppl-price').value)||0,meta_cpl:parseFloat($('ppl-meta-cpl').value)||null,leads_delivered:parseInt($('ppl-ld').value)||0,total_leads_purchased:parseInt($('ppl-tlp').value)||0,stage:$('ppl-stage').value,created_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   } else {
     d={type:'managed',company_name:$('mg-co').value.trim(),contact_name:$('mg-cn').value.trim(),email:$('mg-em').value.trim(),ad_account_id:$('mg-acc').value.trim(),monthly_budget:parseFloat($('mg-budget').value)||0,management_fee:parseFloat($('mg-fee').value)||0,stage:$('mg-stage').value,start_date:$('mg-start').value||null,last_payment_date:$('mg-last-pay').value||null,next_payment_date:$('mg-next-pay').value||null,created_at:now()};
@@ -2364,7 +2373,7 @@ async function saveClient(type) {
   }
   const {error}=await db.from('clients').insert([d]);
   if (error) { toast('DB error: '+error.message,true); return; }
-  if (type==='ppl') ['ppl-co','ppl-cn','ppl-em','ppl-price','ppl-ld','ppl-tlp'].forEach(id=>{$(id).value='';});
+  if (type==='ppl') ['ppl-co','ppl-cn','ppl-em','ppl-price','ppl-meta-cpl','ppl-ld','ppl-tlp'].forEach(id=>{$(id).value='';});
   else ['mg-co','mg-cn','mg-em','mg-acc','mg-budget','mg-fee','mg-start','mg-last-pay','mg-next-pay'].forEach(id=>{$(id).value='';});
   closeModal('m-'+type); toast('Client saved ✓');
   type==='ppl'?loadPPL():loadManaged();
