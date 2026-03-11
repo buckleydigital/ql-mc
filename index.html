@@ -680,7 +680,7 @@ td strong{font-weight:500}
   :root{--sw:0px}
   .sidebar{display:none}
   .bnav{display:flex}
-  .panel{padding:11px 11px calc(54px + 11px)}
+  .panel{padding:11px 11px calc(var(--bnav-h, 180px) + 16px + env(safe-area-inset-bottom,0px))}
   .kg.c4,.kg.c3{grid-template-columns:1fr 1fr}
   .task-grid{grid-template-columns:1fr}
   .agent-grid{grid-template-columns:1fr 1fr}
@@ -1548,12 +1548,15 @@ td strong{font-weight:500}
 <script>
 function updateBnavPadding(){
   const nav=document.querySelector('.bnav');
-  if(nav&&window.innerWidth<=700){
-    document.documentElement.style.setProperty('--bnav-h', nav.offsetHeight+'px');
-  }
+  if(!nav||window.innerWidth>700) return;
+  // rAF ensures the browser has laid out the element before reading its size
+  requestAnimationFrame(()=>{
+    const h=nav.getBoundingClientRect().height;
+    if(h>0) document.documentElement.style.setProperty('--bnav-h', h+'px');
+  });
 }
 window.addEventListener('resize',updateBnavPadding);
-document.addEventListener('DOMContentLoaded',()=>{ setTimeout(updateBnavPadding,100); });
+document.addEventListener('DOMContentLoaded',()=>{ setTimeout(updateBnavPadding,50); });
 </script>
 
 <script>
@@ -1652,7 +1655,7 @@ function initSupabase() {
         $('login-screen').style.display = 'none';
         $('app').classList.add('visible');
         loadAll();
-        setTimeout(updateBnavPadding, 200);
+        setTimeout(updateBnavPadding, 300);
       } else {
         currentUser = null;
         $('login-screen').style.display = 'flex';
