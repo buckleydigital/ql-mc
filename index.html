@@ -876,7 +876,7 @@ td strong{font-weight:500}
         <div class="twrap">
           <table>
             <thead><tr><th>Client</th><th>Stage</th><th>Niche</th><th>Leads MTD</th><th>Delivered</th><th>Purchased</th><th>Remaining</th><th>Price/Lead</th><th>$ Balance</th><th>% Sold</th><th>Re-ordered</th><th></th></tr></thead>
-            <tbody id="ppl-tbody"><tr><td colspan="11" class="empty">Loading...</td></tr></tbody>
+            <tbody id="ppl-tbody"><tr><td colspan="12" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
         <div class="map-section">
@@ -2220,7 +2220,7 @@ async function logPplOrder() {
   await db.from('clients').update({total_leads_purchased:newTotal,has_reordered:(count||0)>=2,updated_at:now()}).eq('id',clientId);
   if (status==='delivered'&&gen) await recalcPplClient(clientId);
   toast('Order logged ✓');
-  $('ep-ord-qty').value='';$('ep-ord-gen').value='';$('ep-ord-notes').value='';
+  $('ep-ord-qty').value='';$('ep-ord-gen').value='';$('ep-ord-notes').value='';$('ep-ord-status').value='in_progress';
   loadPplOrderLog(clientId);
   loadPPL();
 }
@@ -2330,7 +2330,10 @@ async function updateClient(type) {
   if (type==='ppl') {
     id=$('ep-id').value;
     const _ld=parseInt($('ep-ld').value)||0;const _tlp=parseInt($('ep-tlp').value)||0;const _price=parseFloat($('ep-price').value)||0;const _balCalc=(_tlp-_ld)*_price;
-    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:_price,pct_sold:parseFloat($('ep-pct').value)||null,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,stage:$('ep-stage').value,notes:$('ep-notes').value.trim(),updated_at:now()};
+    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:_price,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,stage:$('ep-stage').value,notes:$('ep-notes').value.trim(),updated_at:now()};
+    // Only write pct_sold manually if no delivered orders exist (auto-calc takes priority)
+    const {count:deliveredCount}=await db.from('ppl_order_log').select('id',{count:'exact',head:true}).eq('client_id',id).eq('status','delivered');
+    if (!(deliveredCount>0)) d.pct_sold=parseFloat($('ep-pct').value)||null;
     if (!d.company_name) { toast('Company name required',true); return; }
   } else {
     id=$('em-id').value;
