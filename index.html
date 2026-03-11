@@ -876,7 +876,7 @@ td strong{font-weight:500}
         <div class="twrap">
           <table>
             <thead><tr><th>Client</th><th>Stage</th><th>Niche</th><th>Leads MTD</th><th>Delivered</th><th>Purchased</th><th>Remaining</th><th>Price/Lead</th><th>$ Balance</th><th>% Sold</th><th>Re-ordered</th><th></th></tr></thead>
-            <tbody id="ppl-tbody"><tr><td colspan="11" class="empty">Loading...</td></tr></tbody>
+            <tbody id="ppl-tbody"><tr><td colspan="12" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
         <div class="map-section">
@@ -1450,9 +1450,14 @@ td strong{font-weight:500}
     <div style="background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;margin-bottom:4px">
       <div style="font-family:var(--mono);font-size:8.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Log New Order</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <input class="fi" type="number" id="ep-ord-qty" placeholder="Leads qty" style="flex:1;min-width:90px">
+        <input class="fi" type="number" id="ep-ord-qty" placeholder="Leads sold (qty)" style="flex:1;min-width:90px">
+        <input class="fi" type="number" id="ep-ord-gen" placeholder="Leads generated" style="flex:1;min-width:110px">
         <input class="fi" type="number" id="ep-ord-price" placeholder="$/lead" style="flex:1;min-width:80px">
         <input class="fi" type="date" id="ep-ord-date" style="flex:1;min-width:120px">
+        <select class="fi" id="ep-ord-status" style="flex:1;min-width:120px">
+          <option value="in_progress">In Progress</option>
+          <option value="delivered">Delivered</option>
+        </select>
         <input class="fi" type="text" id="ep-ord-notes" placeholder="Notes (optional)" style="flex:2;min-width:140px">
         <button class="btn btn-p btn-sm" onclick="logPplOrder()">Log Order</button>
       </div>
@@ -2114,28 +2119,44 @@ function renderManagedPayments(clients) {
 }
 
 /* PPL ORDER LOG */
-function renderOrderLogTable(data) {
+function renderOrderLogTable(data, clientId) {
   if (!data.length) return '<div style="color:var(--ink3);padding:4px 0">No orders logged yet.</div>';
   return `<table style="width:100%;border-collapse:collapse">
     <thead><tr style="font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em">
       <th style="text-align:left;padding:3px 6px;font-weight:500">Date</th>
-      <th style="text-align:left;padding:3px 6px;font-weight:500">Qty</th>
+      <th style="text-align:left;padding:3px 6px;font-weight:500">Sold</th>
+      <th style="text-align:left;padding:3px 6px;font-weight:500">Generated</th>
+      <th style="text-align:left;padding:3px 6px;font-weight:500">% Sold</th>
       <th style="text-align:left;padding:3px 6px;font-weight:500">$/Lead</th>
+      <th style="text-align:left;padding:3px 6px;font-weight:500">Status</th>
       <th style="text-align:left;padding:3px 6px;font-weight:500">Notes</th>
+      <th></th>
     </tr></thead>
-    <tbody>${data.map(o=>`<tr style="border-top:1px solid var(--bd)">
-      <td style="padding:4px 6px;color:var(--ink2)">${o.order_date||'—'}</td>
-      <td style="padding:4px 6px;font-weight:600;color:var(--ink)">${o.leads_qty}</td>
-      <td style="padding:4px 6px;color:var(--grn)">${o.lead_price?'$'+Number(o.lead_price).toFixed(0):'—'}</td>
-      <td style="padding:4px 6px;color:var(--ink3)">${esc(o.notes||'—')}</td>
-    </tr>`).join('')}</tbody>
+    <tbody>${data.map(o=>{
+      const pct = (o.leads_generated&&o.leads_qty) ? (o.leads_qty/o.leads_generated*100).toFixed(0)+'%' : '—';
+      const delivered = o.status==='delivered';
+      const statusBadge = delivered
+        ? `<span style="font-family:var(--mono);font-size:9px;color:var(--grn);background:rgba(46,204,138,.1);padding:1px 6px;border-radius:3px">Delivered</span>`
+        : `<span style="font-family:var(--mono);font-size:9px;color:var(--amb);background:rgba(245,166,35,.1);padding:1px 6px;border-radius:3px">In Progress</span>`;
+      const action = delivered ? '' : `<button class="btn btn-xs" onclick="markOrderDelivered('${esc(o.id)}','${esc(clientId||o.client_id)}')">Mark Delivered</button>`;
+      return `<tr style="border-top:1px solid var(--bd)">
+        <td style="padding:4px 6px;color:var(--ink2)">${o.order_date||'—'}</td>
+        <td style="padding:4px 6px;font-weight:600;color:var(--ink)">${o.leads_qty}</td>
+        <td style="padding:4px 6px;color:var(--ink2)">${o.leads_generated||'—'}</td>
+        <td style="padding:4px 6px;color:${delivered?'var(--acc)':'var(--ink3)'}">${pct}</td>
+        <td style="padding:4px 6px;color:var(--grn)">${o.lead_price?'$'+Number(o.lead_price).toFixed(0):'—'}</td>
+        <td style="padding:4px 6px">${statusBadge}</td>
+        <td style="padding:4px 6px;color:var(--ink3)">${esc(o.notes||'—')}</td>
+        <td style="padding:4px 6px">${action}</td>
+      </tr>`;
+    }).join('')}</tbody>
   </table>`;
 }
 async function loadPplOrderLog(clientId) {
   const el = $('ep-order-log'); if (!el) return;
   el.innerHTML='Loading…';
   const {data} = await db.from('ppl_order_log').select('*').eq('client_id',clientId).order('order_date',{ascending:false});
-  el.innerHTML = renderOrderLogTable(data||[]);
+  el.innerHTML = renderOrderLogTable(data||[], clientId);
 }
 async function toggleInlineOrderLog(clientId) {
   const row=$('ol-row-'+clientId), cell=$('ol-cell-'+clientId);
@@ -2145,25 +2166,61 @@ async function toggleInlineOrderLog(clientId) {
   if (!open) {
     cell.innerHTML='Loading…';
     const {data} = await db.from('ppl_order_log').select('*').eq('client_id',clientId).order('order_date',{ascending:false});
-    cell.innerHTML = renderOrderLogTable(data||[]);
+    cell.innerHTML = renderOrderLogTable(data||[], clientId);
   }
+}
+async function recalcPplClient(clientId) {
+  const [{data:orders},{data:client}] = await Promise.all([
+    db.from('ppl_order_log').select('leads_qty,leads_generated').eq('client_id',clientId).eq('status','delivered'),
+    db.from('clients').select('meta_cpl').eq('id',clientId).maybeSingle()
+  ]);
+  const totalSold=(orders||[]).reduce((s,r)=>s+(r.leads_qty||0),0);
+  const totalGen=(orders||[]).reduce((s,r)=>s+(r.leads_generated||0),0);
+  const pctSold=totalGen>0?(totalSold/totalGen*100):null;
+  const metaCpl=client?.meta_cpl;
+  const trueCpl=(pctSold&&metaCpl)?metaCpl/(pctSold/100):null;
+  const upd={updated_at:now()};
+  if (pctSold!==null) upd.pct_sold=Number(pctSold.toFixed(1));
+  if (trueCpl!==null) upd.true_cpl=Number(trueCpl.toFixed(2));
+  await db.from('clients').update(upd).eq('id',clientId);
+}
+async function markOrderDelivered(orderId, clientId) {
+  const gen=prompt('How many leads were generated to fulfill this order?');
+  if (gen===null) return;
+  const leadsGenerated=parseInt(gen)||0;
+  if (!leadsGenerated) { toast('Enter a valid number',true); return; }
+  const {error}=await db.from('ppl_order_log').update({status:'delivered',leads_generated:leadsGenerated}).eq('id',orderId);
+  if (error) { toast('Error: '+error.message,true); return; }
+  await recalcPplClient(clientId);
+  toast('Delivered — % sold & True CPL updated ✓');
+  loadPplOrderLog(clientId);
+  const cell=$('ol-cell-'+clientId);
+  if (cell&&$('ol-row-'+clientId)?.style.display!=='none') {
+    const {data}=await db.from('ppl_order_log').select('*').eq('client_id',clientId).order('order_date',{ascending:false});
+    cell.innerHTML=renderOrderLogTable(data||[],clientId);
+  }
+  loadPPL();
 }
 async function logPplOrder() {
   const clientId=$('ep-id').value;
   const qty=parseInt($('ep-ord-qty').value)||0;
+  const gen=parseInt($('ep-ord-gen').value)||0;
   const price=parseFloat($('ep-ord-price').value)||0;
   const date=$('ep-ord-date').value||new Date().toISOString().split('T')[0];
+  const status=$('ep-ord-status').value||'in_progress';
   const notes=$('ep-ord-notes').value.trim();
   if (!qty) { toast('Enter lead quantity',true); return; }
-  const {error:insErr}=await db.from('ppl_order_log').insert([{client_id:clientId,leads_qty:qty,lead_price:price,notes,order_date:date,created_at:now()}]);
+  const row={client_id:clientId,leads_qty:qty,lead_price:price,notes,order_date:date,status,created_at:now()};
+  if (gen) row.leads_generated=gen;
+  const {error:insErr}=await db.from('ppl_order_log').insert([row]);
   if (insErr) { toast('Error: '+insErr.message,true); return; }
-  // Count total orders to set has_reordered
   const {count}=await db.from('ppl_order_log').select('id',{count:'exact',head:true}).eq('client_id',clientId);
   const client=CLIENT_CACHE[clientId];
   const newTotal=(client?.total_leads_purchased||0)+qty;
   await db.from('clients').update({total_leads_purchased:newTotal,has_reordered:(count||0)>=2,updated_at:now()}).eq('id',clientId);
+  if (status==='delivered'&&gen) await recalcPplClient(clientId);
   toast('Order logged ✓');
-  $('ep-ord-qty').value='';$('ep-ord-notes').value='';
+  $('ep-ord-qty').value='';$('ep-ord-gen').value='';$('ep-ord-notes').value='';$('ep-ord-status').value='in_progress';
   loadPplOrderLog(clientId);
   loadPPL();
 }
@@ -2273,7 +2330,10 @@ async function updateClient(type) {
   if (type==='ppl') {
     id=$('ep-id').value;
     const _ld=parseInt($('ep-ld').value)||0;const _tlp=parseInt($('ep-tlp').value)||0;const _price=parseFloat($('ep-price').value)||0;const _balCalc=(_tlp-_ld)*_price;
-    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:_price,pct_sold:parseFloat($('ep-pct').value)||null,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,stage:$('ep-stage').value,notes:$('ep-notes').value.trim(),updated_at:now()};
+    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:_price,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,stage:$('ep-stage').value,notes:$('ep-notes').value.trim(),updated_at:now()};
+    // Only write pct_sold manually if no delivered orders exist (auto-calc takes priority)
+    const {count:deliveredCount}=await db.from('ppl_order_log').select('id',{count:'exact',head:true}).eq('client_id',id).eq('status','delivered');
+    if (!(deliveredCount>0)) d.pct_sold=parseFloat($('ep-pct').value)||null;
     if (!d.company_name) { toast('Company name required',true); return; }
   } else {
     id=$('em-id').value;
