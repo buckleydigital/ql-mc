@@ -1519,9 +1519,19 @@ td strong{font-weight:500}
 @media(max-width:700px){
   .bnav{height:auto !important;flex-wrap:wrap;padding:4px 0 env(safe-area-inset-bottom,0) !important;}
   .bnbtn{flex:0 0 calc(100%/4);padding:5px 2px;}
-  .panel{padding:11px 11px calc(88px + 11px) !important;}
+  .panel{padding:11px 11px calc(var(--bnav-h, 160px) + 16px + env(safe-area-inset-bottom,0px)) !important;}
 }
 </style>
+<script>
+function updateBnavPadding(){
+  const nav=document.querySelector('.bnav');
+  if(nav&&window.innerWidth<=700){
+    document.documentElement.style.setProperty('--bnav-h', nav.offsetHeight+'px');
+  }
+}
+window.addEventListener('resize',updateBnavPadding);
+document.addEventListener('DOMContentLoaded',()=>{ setTimeout(updateBnavPadding,100); });
+</script>
 
 <script>
 'use strict';
@@ -1619,6 +1629,7 @@ function initSupabase() {
         $('login-screen').style.display = 'none';
         $('app').classList.add('visible');
         loadAll();
+        setTimeout(updateBnavPadding, 200);
       } else {
         currentUser = null;
         $('login-screen').style.display = 'flex';
