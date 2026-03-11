@@ -866,7 +866,7 @@ td strong{font-weight:500}
         </div>
         <div class="kg c4 mb4">
           <div class="kpi"><div class="klabel">Active Clients</div><div class="kval blu" id="ppl-active">—</div></div>
-          <div class="kpi"><div class="klabel">Leads This Month</div><div class="kval" id="ppl-leads">—</div></div>
+          <div class="kpi"><div class="klabel">Leads Sold This Year</div><div class="kval" id="ppl-leads">—</div><div class="ksub">Jan 2026 – now</div></div>
           <div class="kpi"><div class="klabel">Avg Meta CPL</div><div class="kval" id="ppl-meta-cpl">—</div></div>
           <div class="kpi"><div class="klabel">Avg True CPL</div><div class="kval blu" id="ppl-true-cpl">—</div><div class="ksub">after % sold</div></div>
         </div>
@@ -875,7 +875,7 @@ td strong{font-weight:500}
         <div class="sl">All PPL Clients <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Client</th><th>Stage</th><th>Niche</th><th>Leads MTD</th><th>Delivered</th><th>Purchased</th><th>Remaining</th><th>Price/Lead</th><th>$ Balance</th><th>% Sold</th><th></th></tr></thead>
+            <thead><tr><th>Client</th><th>Stage</th><th>Niche</th><th>Leads MTD</th><th>Delivered</th><th>Purchased</th><th>Remaining</th><th>Price/Lead</th><th>$ Balance</th><th>% Sold</th><th>Re-ordered</th><th></th></tr></thead>
             <tbody id="ppl-tbody"><tr><td colspan="11" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
@@ -1211,6 +1211,10 @@ td strong{font-weight:500}
               ppl-welcome-email.md
               <div class="file-desc">PPL client onboarding</div>
             </div>
+            <div class="file-item" data-file="pay-per-lead-post-call-email.md" onclick="selectFile('pay-per-lead-post-call-email.md',this)">
+              ppl-post-call-email.md
+              <div class="file-desc">PPL lead post-call follow-up</div>
+            </div>
             <div class="file-item" data-file="discovery-call-script.md" onclick="selectFile('discovery-call-script.md',this)">
               discovery-call-script.md
               <div class="file-desc">Discovery call framework</div>
@@ -1441,6 +1445,18 @@ td strong{font-weight:500}
       </select>
     </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="ep-notes"></textarea></div>
+    <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Order Log</div>
+    <div id="ep-order-log" style="margin-bottom:10px;font-family:var(--mono);font-size:11px;color:var(--ink3)">Loading…</div>
+    <div style="background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;margin-bottom:4px">
+      <div style="font-family:var(--mono);font-size:8.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Log New Order</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <input class="fi" type="number" id="ep-ord-qty" placeholder="Leads qty" style="flex:1;min-width:90px">
+        <input class="fi" type="number" id="ep-ord-price" placeholder="$/lead" style="flex:1;min-width:80px">
+        <input class="fi" type="date" id="ep-ord-date" style="flex:1;min-width:120px">
+        <input class="fi" type="text" id="ep-ord-notes" placeholder="Notes (optional)" style="flex:2;min-width:140px">
+        <button class="btn btn-p btn-sm" onclick="logPplOrder()">Log Order</button>
+      </div>
+    </div>
     <div class="macts">
       <button class="btn btn-red btn-sm" onclick="deleteClient('ppl')">Delete</button>
       <div style="flex:1"></div>
@@ -1519,9 +1535,19 @@ td strong{font-weight:500}
 @media(max-width:700px){
   .bnav{height:auto !important;flex-wrap:wrap;padding:4px 0 env(safe-area-inset-bottom,0) !important;}
   .bnbtn{flex:0 0 calc(100%/4);padding:5px 2px;}
-  .panel{padding:11px 11px calc(88px + 11px) !important;}
+  .panel{padding:11px 11px calc(var(--bnav-h, 160px) + 16px + env(safe-area-inset-bottom,0px)) !important;}
 }
 </style>
+<script>
+function updateBnavPadding(){
+  const nav=document.querySelector('.bnav');
+  if(nav&&window.innerWidth<=700){
+    document.documentElement.style.setProperty('--bnav-h', nav.offsetHeight+'px');
+  }
+}
+window.addEventListener('resize',updateBnavPadding);
+document.addEventListener('DOMContentLoaded',()=>{ setTimeout(updateBnavPadding,100); });
+</script>
 
 <script>
 'use strict';
@@ -1619,6 +1645,7 @@ function initSupabase() {
         $('login-screen').style.display = 'none';
         $('app').classList.add('visible');
         loadAll();
+        setTimeout(updateBnavPadding, 200);
       } else {
         currentUser = null;
         $('login-screen').style.display = 'flex';
@@ -1967,13 +1994,17 @@ async function saveLead() {
 /* PPL */
 const PPL_STAGES=[{id:'active_client',label:'Active'},{id:'paused',label:'Paused'},{id:'churned',label:'Churned'}];
 async function loadPPL() {
-  const {data,error}=await db.from('clients').select('*').eq('type','ppl').order('created_at',{ascending:false});
-  if (error) { $('ppl-tbody').innerHTML=`<tr><td colspan="9" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
-  renderPPL(data||[]);
+  const [clientsR, ytdR] = await Promise.all([
+    db.from('clients').select('*').eq('type','ppl').order('created_at',{ascending:false}),
+    db.from('ppl_order_log').select('leads_qty').gte('order_date','2026-01-01')
+  ]);
+  if (clientsR.error) { $('ppl-tbody').innerHTML=`<tr><td colspan="12" class="empty">Error: ${esc(clientsR.error.message)}</td></tr>`; return; }
+  const ytdLeads = (ytdR.data||[]).reduce((s,r)=>s+(r.leads_qty||0),0);
+  renderPPL(clientsR.data||[], ytdLeads);
 }
-function renderPPL(clients) {
+function renderPPL(clients, ytdLeads=0) {
   setText('ppl-active',clients.filter(c=>c.stage==='active_client').length);
-  setText('ppl-leads',clients.reduce((s,c)=>s+(c.leads_mtd||0),0));
+  setText('ppl-leads',ytdLeads);
   const ac=clients.filter(c=>c.stage==='active_client'&&(c.meta_cpl||0)>0);
   setText('ppl-meta-cpl',ac.length?'$'+(ac.reduce((s,c)=>s+(c.meta_cpl||0),0)/ac.length).toFixed(2):'—');
   setText('ppl-true-cpl',ac.length&&ac.some(c=>c.true_cpl>0)?'$'+(ac.filter(c=>c.true_cpl>0).reduce((s,c)=>s+(c.true_cpl||0),0)/ac.filter(c=>c.true_cpl>0).length).toFixed(2):'—');
@@ -1997,13 +2028,16 @@ function renderPPL(clients) {
     }
   });
   const tb=$('ppl-tbody');
-  if (!clients.length) { tb.innerHTML='<tr><td colspan="11" class="empty">No PPL clients yet.</td></tr>'; return; }
+  if (!clients.length) { tb.innerHTML='<tr><td colspan="12" class="empty">No PPL clients yet.</td></tr>'; return; }
   clients.forEach(c => { CLIENT_CACHE[c.id] = c; });
   tb.innerHTML=clients.map(c=>{
     const leadsRem=(c.total_leads_purchased||0)-(c.leads_delivered||0);
     const balRem=leadsRem*(c.lead_price||0);
+    const reordBadge=c.has_reordered
+      ?`<button class="badge bg-grn order-log-toggle" data-client-id="${esc(String(c.id))}" style="cursor:pointer;border:none;background:rgba(46,204,138,.12);color:var(--grn);padding:2px 7px;border-radius:3px;font-size:10px;font-family:var(--mono)">Yes ▾</button>`
+      :`<span style="font-family:var(--mono);font-size:10px;color:var(--ink3)">No</span>`;
     return `
-    <tr style="cursor:pointer" data-client-id="${esc(String(c.id))}" data-client-type="ppl" class="client-row">
+    <tr data-client-id="${esc(String(c.id))}" data-client-type="ppl" class="client-row" style="cursor:pointer">
       <td><strong>${esc(c.company_name)}</strong></td>
       <td><span class="badge ${stageBadge(c.stage)}">${stageLabel(c.stage)}</span></td>
       <td>${esc(c.niche||'—')}</td>
@@ -2014,11 +2048,17 @@ function renderPPL(clients) {
       <td>${fmtCpl(c.lead_price)}</td>
       <td style="color:${balRem>0?'var(--red)':'var(--grn)'};font-weight:500">${balRem>0?fmt(balRem):'—'}</td>
       <td>${c.pct_sold?Number(c.pct_sold).toFixed(1)+'%':'—'}</td>
+      <td>${reordBadge}</td>
       <td><button class="btn btn-xs client-edit-btn" data-client-id="${esc(String(c.id))}" data-client-type="ppl">Edit</button></td>
+    </tr>
+    <tr id="ol-row-${esc(String(c.id))}" style="display:none">
+      <td colspan="12" style="padding:0;border-top:none">
+        <div id="ol-cell-${esc(String(c.id))}" style="padding:10px 14px;background:var(--s2);border-bottom:1px solid var(--bd);font-family:var(--mono);font-size:11px">Loading…</div>
+      </td>
     </tr>`}).join('');
   tb.querySelectorAll('.client-row').forEach(row=>{
     row.addEventListener('click',e=>{
-      if (e.target.classList.contains('client-edit-btn')) return;
+      if (e.target.classList.contains('client-edit-btn')||e.target.classList.contains('order-log-toggle')) return;
       const id=row.dataset.clientId,type=row.dataset.clientType;
       if (CLIENT_CACHE[id]) openEditClient(type,CLIENT_CACHE[id]);
     });
@@ -2029,6 +2069,9 @@ function renderPPL(clients) {
       const id=btn.dataset.clientId,type=btn.dataset.clientType;
       if (CLIENT_CACHE[id]) openEditClient(type,CLIENT_CACHE[id]);
     });
+  });
+  tb.querySelectorAll('.order-log-toggle').forEach(btn=>{
+    btn.addEventListener('click',e=>{ e.stopPropagation(); toggleInlineOrderLog(btn.dataset.clientId); });
   });
 }
 
@@ -2068,6 +2111,61 @@ function renderManagedPayments(clients) {
   tb.querySelectorAll('.client-row').forEach(row=>{
     row.addEventListener('click',()=>{ const id=row.dataset.clientId; if(CLIENT_CACHE[id]) openEditClient('managed',CLIENT_CACHE[id]); });
   });
+}
+
+/* PPL ORDER LOG */
+function renderOrderLogTable(data) {
+  if (!data.length) return '<div style="color:var(--ink3);padding:4px 0">No orders logged yet.</div>';
+  return `<table style="width:100%;border-collapse:collapse">
+    <thead><tr style="font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em">
+      <th style="text-align:left;padding:3px 6px;font-weight:500">Date</th>
+      <th style="text-align:left;padding:3px 6px;font-weight:500">Qty</th>
+      <th style="text-align:left;padding:3px 6px;font-weight:500">$/Lead</th>
+      <th style="text-align:left;padding:3px 6px;font-weight:500">Notes</th>
+    </tr></thead>
+    <tbody>${data.map(o=>`<tr style="border-top:1px solid var(--bd)">
+      <td style="padding:4px 6px;color:var(--ink2)">${o.order_date||'—'}</td>
+      <td style="padding:4px 6px;font-weight:600;color:var(--ink)">${o.leads_qty}</td>
+      <td style="padding:4px 6px;color:var(--grn)">${o.lead_price?'$'+Number(o.lead_price).toFixed(0):'—'}</td>
+      <td style="padding:4px 6px;color:var(--ink3)">${esc(o.notes||'—')}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+async function loadPplOrderLog(clientId) {
+  const el = $('ep-order-log'); if (!el) return;
+  el.innerHTML='Loading…';
+  const {data} = await db.from('ppl_order_log').select('*').eq('client_id',clientId).order('order_date',{ascending:false});
+  el.innerHTML = renderOrderLogTable(data||[]);
+}
+async function toggleInlineOrderLog(clientId) {
+  const row=$('ol-row-'+clientId), cell=$('ol-cell-'+clientId);
+  if (!row) return;
+  const open = row.style.display!=='none';
+  row.style.display = open ? 'none' : '';
+  if (!open) {
+    cell.innerHTML='Loading…';
+    const {data} = await db.from('ppl_order_log').select('*').eq('client_id',clientId).order('order_date',{ascending:false});
+    cell.innerHTML = renderOrderLogTable(data||[]);
+  }
+}
+async function logPplOrder() {
+  const clientId=$('ep-id').value;
+  const qty=parseInt($('ep-ord-qty').value)||0;
+  const price=parseFloat($('ep-ord-price').value)||0;
+  const date=$('ep-ord-date').value||new Date().toISOString().split('T')[0];
+  const notes=$('ep-ord-notes').value.trim();
+  if (!qty) { toast('Enter lead quantity',true); return; }
+  const {error:insErr}=await db.from('ppl_order_log').insert([{client_id:clientId,leads_qty:qty,lead_price:price,notes,order_date:date,created_at:now()}]);
+  if (insErr) { toast('Error: '+insErr.message,true); return; }
+  // Count total orders to set has_reordered
+  const {count}=await db.from('ppl_order_log').select('id',{count:'exact',head:true}).eq('client_id',clientId);
+  const client=CLIENT_CACHE[clientId];
+  const newTotal=(client?.total_leads_purchased||0)+qty;
+  await db.from('clients').update({total_leads_purchased:newTotal,has_reordered:(count||0)>=2,updated_at:now()}).eq('id',clientId);
+  toast('Order logged ✓');
+  $('ep-ord-qty').value='';$('ep-ord-notes').value='';
+  loadPplOrderLog(clientId);
+  loadPPL();
 }
 
 /* MANAGED */
@@ -2142,6 +2240,9 @@ function openEditClient(type,c) {
     setVal('ep-stage',c.stage||'active_client');setVal('ep-notes',c.notes);
     setText('edit-ppl-sub',c.company_name||'');
     updatePplCalc();
+    setVal('ep-ord-price',c.lead_price||'');
+    setVal('ep-ord-date',new Date().toISOString().split('T')[0]);
+    loadPplOrderLog(c.id);
     openModal('m-edit-ppl');
   } else {
     setVal('em-id',c.id);setVal('em-co',c.company_name);setVal('em-cn',c.contact_name);
@@ -2846,6 +2947,7 @@ const FILE_DEFAULTS = {
   'follow-up-email.md': `# Follow-Up Email\n\nSubject: Following up — [Company Name]\n\nHi [Name],\n\nI wanted to follow up from our conversation last [day].\n\nI know you were considering [service] — I'd love to answer any questions you have before you decide.\n\n[Specific value prop or offer]\n\nWould you be open to a quick 10-minute call this week?\n\nKind regards,\n[Your name]`,
   'welcome-email.md': `# Welcome Email — New Client\n\nSubject: Welcome to QuoteLeads — Let's get started!\n\nHi [Name],\n\nWelcome to QuoteLeads! We're excited to have [Company] on board.\n\nHere's what happens next:\n1. We'll set up your campaign within 48 hours\n2. You'll receive a welcome call from your account manager\n3. First leads typically arrive within 3–5 business days\n\nYour dedicated contact:\n[Account Manager Name] — [email]\n\nLet's go!\n\nKind regards,\nJack\nQuoteLeads`,
   'pay-per-lead-welcome-email.md': `# PPL Welcome Email\n\nSubject: Your solar leads are coming — welcome to QuoteLeads PPL\n\nHi [Name],\n\nWelcome to the QuoteLeads Pay-Per-Lead program!\n\nHere's how it works:\n- We run Meta ads to generate exclusive solar leads for your area\n- You receive leads directly — name, number, address, interest\n- You pay [$X] per lead, invoiced [weekly/fortnightly]\n- Leads are guaranteed to be from your territory: [Area]\n\nImportant:\n- Leads are exclusive to you in your area\n- Please call leads within 1 hour for best results\n- Contact us within 24h to dispute any invalid leads\n\nTarget volume agreed: [X leads/month]\nPrice per lead: $[X]\n\nWelcome aboard!\n\nJack\nQuoteLeads`,
+  'pay-per-lead-post-call-email.md': `# PPL Post-Call Email\n\nSubject: Great speaking with you, [Name] — solar leads from QuoteLeads\n\nHi [Name],\n\nThanks for taking the time to chat today — really appreciate it.\n\nAs discussed, QuoteLeads generates exclusive solar leads in your area through targeted Meta ads. Here's a quick summary of what we offer:\n\n**How it works:**\n- We run the ads, you receive the leads directly (name, number, address, interest)\n- Pay per lead — no retainer, no lock-in\n- Leads are exclusive to you in your territory\n- Call leads within 1 hour for the best results\n\n**Your agreed terms:**\n- Area: [Service Area]\n- Price per lead: $[X]\n- Target volume: [X leads/month]\n\n**Next steps:**\n- [ ] Confirm your details so we can get the campaign live\n- [ ] We aim to have your first leads within 3–5 business days\n\nFeel free to reply or call me if you have any questions.\n\nLooking forward to getting you results!\n\nKind regards,\nJack\nQuoteLeads\n[Phone]\n[Email]`,
   'discovery-call-script.md': `# Discovery Call Script\n\n## Before the Call\n- Review their business online\n- Check their current ad presence\n- Have pricing sheet ready\n\n---\n\n## Opening (2 min)\n"Hi [Name], thanks for jumping on the call. Just to give this context — I'll ask a few questions about your business first so I can work out if we're actually a good fit for you. Sound good?"\n\n## Discovery Questions (10 min)\n1. How are you currently generating leads?\n2. What's your monthly marketing budget?\n3. How many leads/jobs do you need per month?\n4. What areas do you service?\n5. What's your close rate on qualified leads?\n6. What would a good lead look like for you?\n\n## Pain Identification\n"So it sounds like [pain point] is the main challenge — is that right?"\n\n## Present Solution (5 min)\n- PPL: "We run Meta ads, generate the leads, you pay per lead. No retainer, no risk."\n- Managed: "We manage your ads account — you own the account, we handle the strategy and execution."\n\n## Pricing\n- PPL: [$X per lead], [volume], [area exclusivity]\n- Managed: [$X/mo management fee], [budget range]\n\n## Close\n"Based on what you've told me, [X] seems like a good fit. Do you want to move forward this week?"\n\n## Objections\n- "Too expensive" → Focus on ROI: "If each job is worth $X and you close Y%, one lead pays for itself"\n- "Need to think" → "What would you need to see to feel confident moving forward?"\n- "We have someone" → "What's working well? What could be better?"\n\n## Next Steps\n- Send proposal same day\n- Follow up within 48 hours\n- Book onboarding call if yes`
 };
 
