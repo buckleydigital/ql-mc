@@ -1911,7 +1911,7 @@ function renderCRM(leads) {
   setText('crm-total',leads.length);
   setText('crm-active',leads.filter(l=>!['closed_won','closed_lost'].includes(l.stage)).length);
   setText('crm-won',won);
-  setText('crm-rate',closed>0?((won/closed)*100).toFixed(0)+'%':'—');
+  setText('crm-rate',leads.length>0?((won/leads.length)*100).toFixed(0)+'%':'—');
   CRM_STAGES.forEach(s=>{
     const col=$('crm-col-'+s.id),cnt=$('crmc-'+s.id);
     const sl=leads.filter(l=>l.stage===s.id);
