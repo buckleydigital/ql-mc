@@ -2797,126 +2797,53 @@ function selectChat(name,el) {
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   FIX: buildAgentContext — tries daily_snapshots first, falls back
-   to ad_spend_daily (which the finance/daily panels already read OK).
-   This handles RLS-blocked daily_snapshots gracefully.
+   buildAgentContext — reads the same data the dashboard reads:
+   ad_spend_daily (YTD) + active PPL clients + active managed clients
    ════════════════════════════════════════════════════════════════════ */
 async function buildAgentContext() {
   const fmtN = n => (n != null && n !== '') ? '$' + Number(n).toLocaleString('en-AU', {minimumFractionDigits:0,maximumFractionDigits:0}) : 'n/a';
   const fmtC = n => (n != null && n > 0) ? '$' + Number(n).toFixed(2) : 'n/a';
+  const yr = new Date().getFullYear() + '-01-01';
+  let out = '\n\n## Live Dashboard Context';
 
-  // ── SOURCE 1: daily_snapshots (preferred — pushed by Make.com) ──
-  let snapRows = [];
-  let dataSource = '';
+  // ── Ad spend YTD (same query as finance panel) ──
   try {
-    const { data: snaps, error: snapErr } = await db
-      .from('daily_snapshots')
-      .select('*')
-      .order('snapshot_date', { ascending: false })
-      .limit(30);
-
-    if (!snapErr && snaps && snaps.length > 0) {
-      snapRows = snaps;
-      dataSource = 'daily_snapshots';
-    }
-  } catch (e) {
-    // daily_snapshots unavailable — will try fallback
-  }
-
-  // ── SOURCE 2: FALLBACK — ad_spend_daily (already works for finance panel) ──
-  if (snapRows.length === 0) {
-    try {
-      const { data: adRows, error: adErr } = await db
-        .from('ad_spend_daily')
-        .select('*')
-        .order('date', { ascending: false })
-        .limit(60);
-
-      if (!adErr && adRows && adRows.length > 0) {
-        dataSource = 'ad_spend_daily';
-
-        // Reshape ad_spend_daily rows into snapshot-like objects grouped by date
-        const byDate = {};
-        adRows.forEach(r => {
-          const d = r.date;
-          if (!byDate[d]) byDate[d] = { snapshot_date: d };
-          const row = byDate[d];
-          if (r.account_type === 'solar_ppl') {
-            row.ppl_leads_today = r.leads ?? 0;
-            row.ppl_spend_today = r.spend ?? 0;
-            row.ppl_cpl_today = (r.leads > 0 && r.spend > 0) ? +(r.spend / r.leads).toFixed(2) : null;
-            row.ppl_leads_ytd = r.leads;
-            row.ppl_spend_ytd = r.spend;
-            row.ppl_cpl_ytd = row.ppl_cpl_today;
-          } else if (r.account_type === 'agency') {
-            row.agency_spend_today = r.spend ?? 0;
-            row.agency_spend_ytd = r.spend;
-          }
-          row.total_spend_ytd = (row.ppl_spend_ytd || 0) + (row.agency_spend_ytd || 0);
-          row.total_leads_ytd = row.ppl_leads_ytd || 0;
-        });
-        snapRows = Object.values(byDate).sort((a, b) => b.snapshot_date.localeCompare(a.snapshot_date));
-      }
-    } catch (e) {
-      // ad_spend_daily fallback unavailable
-    }
-  }
-
-  // ── SOURCE 3: Also pull PPL client data for richer context ──
-  let clientCtx = '';
-  try {
-    const { data: pplClients } = await db
-      .from('clients')
-      .select('company_name,leads_mtd,meta_cpl,true_cpl,pct_sold,lead_price,stage')
-      .eq('type', 'ppl')
-      .eq('stage', 'active_client');
-    if (pplClients && pplClients.length > 0) {
-      clientCtx = '\n### Active PPL Clients\n' + pplClients.map(c =>
-        `  - ${c.company_name}: ${c.leads_mtd||0} leads MTD · Meta CPL ${fmtC(c.meta_cpl)} · True CPL ${fmtC(c.true_cpl)} · ${c.pct_sold||0}% sold · price ${fmtC(c.lead_price)}`
-      ).join('\n');
+    const { data: adRows } = await db.from('ad_spend_daily').select('date,account_type,spend,leads').gte('date', yr).order('date', {ascending:false});
+    if (adRows && adRows.length) {
+      const ppl = adRows.filter(r => r.account_type === 'solar_ppl');
+      const agency = adRows.filter(r => r.account_type === 'agency');
+      const pplSpend = ppl.reduce((s,r) => s + (r.spend||0), 0);
+      const pplLeads = ppl.reduce((s,r) => s + (r.leads||0), 0);
+      const agencySpend = agency.reduce((s,r) => s + (r.spend||0), 0);
+      out += `\n### Ad Spend YTD (${yr.slice(0,4)})`;
+      out += `\n- Solar PPL spend: ${fmtN(pplSpend)} · ${pplLeads} leads · Meta CPL ${pplLeads > 0 ? fmtC(pplSpend/pplLeads) : 'n/a'}`;
+      out += `\n- Agency acquisition spend: ${fmtN(agencySpend)}`;
     }
   } catch(e) {}
 
-  // ── BUILD CONTEXT STRING ──
-  if (snapRows.length === 0) {
-    return `\n\n## Live Performance Context\nDATA UNAVAILABLE: Both daily_snapshots and ad_spend_daily returned empty.\nThis is likely a Supabase Row Level Security (RLS) issue — the tables have data but the authenticated user cannot read them.\nTell the user: "I can't see any performance data right now. This looks like a database permissions issue — please check that RLS policies on daily_snapshots and ad_spend_daily allow authenticated reads."${clientCtx}`;
-  }
+  // ── Active PPL clients (same as PPL panel) ──
+  try {
+    const { data: pplClients } = await db.from('clients').select('company_name,leads_mtd,leads_delivered,total_leads_purchased,meta_cpl,true_cpl,pct_sold,lead_price,balance').eq('type','ppl').eq('stage','active_client').order('company_name');
+    if (pplClients && pplClients.length) {
+      out += '\n### Active PPL Clients';
+      pplClients.forEach(c => {
+        out += `\n- ${c.company_name}: ${c.leads_mtd||0} leads MTD · ${c.leads_delivered||0} delivered · ${c.total_leads_purchased||0} purchased · Meta CPL ${fmtC(c.meta_cpl)} · True CPL ${fmtC(c.true_cpl)} · ${c.pct_sold||0}% sold · $${c.lead_price||0}/lead · balance ${fmtN(c.balance)}`;
+      });
+    }
+  } catch(e) {}
 
-  const latest = snapRows[0];
-  const today = latest.snapshot_date;
+  // ── Active managed clients (same as Managed panel) ──
+  try {
+    const { data: mgClients } = await db.from('clients').select('company_name,management_fee,leads_delivered,stage').eq('type','managed').eq('stage','active').order('company_name');
+    if (mgClients && mgClients.length) {
+      out += '\n### Active Managed Ads Clients';
+      mgClients.forEach(c => {
+        out += `\n- ${c.company_name}: ${fmtN(c.management_fee)}/mo fee`;
+      });
+    }
+  } catch(e) {}
 
-  const history = snapRows.slice(0, 7).reverse();
-  const historyLines = history.map(s =>
-    `  ${s.snapshot_date}: ${s.ppl_leads_ytd ?? s.ppl_leads_today ?? '?'} leads · spend ${fmtN(s.ppl_spend_ytd ?? s.ppl_spend_today)} · CPL ${fmtC(s.ppl_cpl_ytd ?? s.ppl_cpl_today)} · agency ${fmtN(s.agency_spend_ytd ?? s.agency_spend_today)}`
-  ).join('\n');
-
-  return `
-
-## Live Performance Context
-Data source: ${dataSource}
-Latest data: ${today}
-
-### Current Figures (as of ${today})
-- Solar PPL leads: ${latest.ppl_leads_ytd ?? latest.ppl_leads_today ?? latest.total_leads_ytd ?? 'n/a'}
-- Solar PPL spend: ${fmtN(latest.ppl_spend_ytd ?? latest.ppl_spend_today ?? latest.total_spend_ytd)}
-- Solar PPL avg CPL: ${fmtC(latest.ppl_cpl_ytd ?? latest.ppl_cpl_today)}
-- Agency acquisition spend: ${fmtN(latest.agency_spend_ytd ?? latest.agency_spend_today)}
-- Total operational spend: ${fmtN(latest.total_spend_ytd)}
-
-### Today's Session (${today})
-- PPL leads today: ${latest.ppl_leads_today ?? 'n/a'}
-- PPL spend today: ${fmtN(latest.ppl_spend_today)}
-- PPL CPL today: ${fmtC(latest.ppl_cpl_today)}
-- Agency spend today: ${fmtN(latest.agency_spend_today)}
-
-### Day-by-Day Trend (last ${history.length} data points)
-${historyLines || '  No history yet'}
-${clientCtx}
-
-### Data Notes
-- daily_snapshots is written by Make.com only — the app never writes to it
-- Each row contains full YTD cumulative figures as of that date
-- Managed client spend is tracked separately in monthly reports`;
+  return out;
 }
 
 async function sendChat() {
@@ -3104,7 +3031,6 @@ async function sendSalesChat() {
   try { await db.from('chat_memory').insert([{agent:'sales',user_id:currentUser.id,role:'user',content:text,created_at:now()}]); } catch(e) {}
 
   const { context: pipelineCtx } = await buildSalesPipelineContext();
-  const perfCtx = await buildAgentContext();
 
   const sys = `You are the QuoteLeads Sales Agent for QuoteLeads.com.au — an Australian solar lead generation and managed advertising agency on the Gold Coast.
 
@@ -3129,8 +3055,7 @@ Analyse the full sales pipeline, read all lead notes, and help the team prioriti
 - Flag leads that have gone cold (7+ days without contact)
 - Identify quick wins (leads already qualified with high intent)
 - Be concise but thorough — the team is busy
-${pipelineCtx}
-${perfCtx}`;
+${pipelineCtx}`;
 
   try {
     const { data: { session } } = await db.auth.getSession();
