@@ -2554,13 +2554,11 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const pplRevClients=pplClients.reduce((s,c)=>s+((c.leads_delivered||0)*(c.lead_price||0)),0);
   const pplRev=pplRevLog>0?pplRevLog:pplRevClients;
   // Managed retainer revenue: count active_months within date range × fee
-  const fromKey=(from||'').substring(0,7);
-  const nextKey=(next||'').substring(0,7);
   const mgRetainerRev=mgClients.reduce((s,c)=>{
     let months=[];
     try{months=JSON.parse(c.active_months||'[]');}catch(e){}
-    // filter to months within the selected period
-    const inRange=months.filter(m=>(!fromKey||m>=fromKey)&&(!nextKey||m<nextKey));
+    // compare month's first day against full from/next dates so current month is never cut off
+    const inRange=months.filter(m=>(!from||m+'-01'>=from)&&(!next||m+'-01'<next));
     // fallback to payments_made if no active_months set yet
     const cnt=c.active_months!=null?inRange.length:(c.payments_made||0);
     return s+(cnt*(c.management_fee||0));
