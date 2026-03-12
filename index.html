@@ -943,6 +943,7 @@ td strong{font-weight:500}
           <div class="kpi"><div class="klabel">Total Revenue</div><div class="kval blu" id="fin-rev">—</div></div>
           <div class="kpi"><div class="klabel">Total Expenses</div><div class="kval red" id="fin-exp">—</div></div>
           <div class="kpi"><div class="klabel">Net Profit</div><div class="kval" id="fin-profit">—</div><div class="ksub" id="fin-margin"></div></div>
+          <div class="kpi"><div class="klabel">After GST (10%)</div><div class="kval" id="fin-profit-gst">—</div><div class="ksub" id="fin-gst-detail"></div></div>
           <div class="kpi"><div class="klabel">Monthly Subscriptions</div><div class="kval" id="fin-subs">—</div><div class="ksub">from DB only</div></div>
         </div>
         <div class="sl">Ad Spend <div class="sl-line"></div></div>
@@ -960,7 +961,7 @@ td strong{font-weight:500}
         </div>
         <div class="sl">Managed Advertising Revenue <div class="sl-line"></div></div>
         <div class="kg c3 mb4">
-          <div class="kpi"><div class="klabel">Retainer Revenue</div><div class="kval grn" id="fin-mg-retainer">—</div><div class="ksub">payments made × fee</div></div>
+          <div class="kpi"><div class="klabel">Retainer Revenue</div><div class="kval grn" id="fin-mg-retainer">—</div><div class="ksub">active months × fee</div></div>
           <div class="kpi"><div class="klabel">Custom Orders</div><div class="kval grn" id="fin-mg-custom">—</div><div class="ksub">one-off & extras</div></div>
           <div class="kpi"><div class="klabel">Total Managed Rev</div><div class="kval blu" id="fin-mg-rev">—</div><div class="ksub">retainer + custom</div></div>
         </div>
@@ -1488,7 +1489,7 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Phone</label><input class="fi" id="em-ph"></div>
     <div class="frow"><label class="flabel">Ad Account ID</label><input class="fi" id="em-acc"></div>
     <div class="frow"><label class="flabel">Monthly Budget (AUD)</label><input class="fi" id="em-budget" type="number"></div>
-    <div class="frow"><label class="flabel">Management Fee (AUD/mo)</label><input class="fi" id="em-fee" type="number"></div>
+    <div class="frow"><label class="flabel">Management Fee (AUD/mo)</label><input class="fi" id="em-fee" type="number" oninput="updateMgMonthSummary()"></div>
     <div class="frow"><label class="flabel">Stage</label>
       <select class="fs" id="em-stage">
         <option value="active">Active</option>
@@ -1498,7 +1499,12 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Start Date</label><input class="fi" id="em-start" type="date"></div>
     <div class="frow"><label class="flabel">Last Payment Date</label><input class="fi" id="em-last-pay" type="date" oninput="calcNextPayment()"></div>
     <div class="frow"><label class="flabel">Next Payment Due</label><input class="fi" id="em-next-pay" type="date"></div>
-    <div class="frow"><label class="flabel">Payments Made</label><input class="fi" id="em-payments-made" type="number" placeholder="0" min="0"></div>
+    <input type="hidden" id="em-payments-made">
+    <div class="frow" style="flex-direction:column;gap:6px;align-items:flex-start">
+      <label class="flabel">Active Retainer Months — 2026 <span style="font-weight:400;color:var(--ink3)">(tap to toggle)</span></label>
+      <div id="em-month-picker" style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;width:100%"></div>
+      <div id="em-month-summary" style="font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:1px">—</div>
+    </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="em-notes"></textarea></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Custom Order Log</div>
     <div id="em-order-log" style="margin-bottom:10px;font-family:var(--mono);font-size:11px;color:var(--ink3)">Loading…</div>
@@ -2123,6 +2129,38 @@ function calcNextPayment() {
   const d = new Date(v+'T00:00:00'); d.setDate(d.getDate()+30);
   setVal('em-next-pay', d.toISOString().split('T')[0]);
 }
+/* ── Managed client month picker ── */
+const _MG_MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const _MG_YEAR=2026;
+function renderMonthPicker(activeMonthsJson){
+  let active=[];
+  try{active=JSON.parse(activeMonthsJson||'[]');}catch(e){}
+  const c=$('em-month-picker'); if(!c) return;
+  c.innerHTML=_MG_MONTHS.map((m,i)=>{
+    const key=`${_MG_YEAR}-${String(i+1).padStart(2,'0')}`;
+    const on=active.includes(key);
+    return `<button type="button" onclick="toggleMgMonth('${key}',this)" data-month="${key}" data-on="${on?'1':'0'}" style="font-family:var(--mono);font-size:9.5px;padding:5px 2px;border-radius:4px;border:1px solid ${on?'var(--acc)':'var(--bd)'};background:${on?'rgba(79,143,255,.15)':'var(--s2)'};color:${on?'var(--acc)':'var(--ink3)'};cursor:pointer;transition:all .14s;text-align:center">${m}</button>`;
+  }).join('');
+  updateMgMonthSummary();
+}
+function toggleMgMonth(key,btn){
+  const on=btn.dataset.on==='1';
+  btn.dataset.on=on?'0':'1';
+  btn.style.border=`1px solid ${on?'var(--bd)':'var(--acc)'}`;
+  btn.style.background=on?'var(--s2)':'rgba(79,143,255,.15)';
+  btn.style.color=on?'var(--ink3)':'var(--acc)';
+  updateMgMonthSummary();
+}
+function updateMgMonthSummary(){
+  const months=getActiveMgMonths();
+  const fee=parseFloat($('em-fee')?.value)||0;
+  const el=$('em-month-summary'); if(!el) return;
+  setText('em-month-summary',`${months.length} month${months.length!==1?'s':''} active · ${fmt(months.length*fee)} retainer revenue (2026)`);
+}
+function getActiveMgMonths(){
+  const btns=$('em-month-picker')?.querySelectorAll('button')||[];
+  return [...btns].filter(b=>b.dataset.on==='1').map(b=>b.dataset.month);
+}
 function calcNextPaymentNew() {
   const v = $('mg-last-pay')?.value; if (!v) return;
   const d = new Date(v+'T00:00:00'); d.setDate(d.getDate()+30);
@@ -2419,6 +2457,7 @@ function openEditClient(type,c) {
     setVal('em-notes',c.notes);
     setVal('em-ord-date',new Date().toISOString().split('T')[0]);
     setText('edit-mg-sub',c.company_name||'');
+    renderMonthPicker(c.active_months||'[]');
     loadManagedOrderLog(c.id);
     openModal('m-edit-managed');
   }
@@ -2446,7 +2485,8 @@ async function updateClient(type) {
     if (!d.company_name) { toast('Company name required',true); return; }
   } else {
     id=$('em-id').value;
-    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:parseInt($('em-payments-made').value)||0,stage:$('em-stage').value,start_date:$('em-start').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),updated_at:now()};
+    const _activeMo=getActiveMgMonths();
+    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),stage:$('em-stage').value,start_date:$('em-start').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),updated_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   }
   const {error}=await db.from('clients').update(d).eq('id',id);
@@ -2494,13 +2534,13 @@ async function loadFinance() {
     db.from('ad_spend_daily').select('date,account_type,spend,leads').order('date',{ascending:false}),
     db.from('subscriptions').select('monthly_cost').eq('active',true),
     db.from('clients').select('leads_mtd,pct_sold,lead_price,meta_cpl,true_cpl').eq('type','ppl').eq('stage','active_client'),
-    db.from('clients').select('id,company_name,management_fee,payments_made,stage').eq('type','managed'),
+    db.from('clients').select('id,company_name,management_fee,payments_made,stage,active_months').eq('type','managed'),
     db.from('managed_order_log').select('client_id,amount,order_date').gte('order_date',from).lte('order_date',next),
     db.from('ppl_order_log').select('leads_qty,lead_price,order_date').gte('order_date',from).lte('order_date',next),
   ]);
-  renderFinance(expR.data||[],spR.data||[],subR.data||[],pplR.data||[],mgR.data||[],mgOrdR.data||[],pplOrdR.data||[]);
+  renderFinance(expR.data||[],spR.data||[],subR.data||[],pplR.data||[],mgR.data||[],mgOrdR.data||[],pplOrdR.data||[],from,next);
 }
-function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOrders) {
+function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOrders,from,next) {
   const te=expenses.reduce((s,e)=>s+(e.amount||0),0);
   const ts=subs.length>0?subs.reduce((s,sub)=>s+(sub.monthly_cost||0),0):null;
   const latestPpl=adSpend.find(a=>a.account_type==='solar_ppl');
@@ -2511,10 +2551,19 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const metaCpl=(pplSp>0&&pplLeadsTotal>0)?'$'+(pplSp/pplLeadsTotal).toFixed(2):'—';
   // PPL revenue: sum of (leads_qty * lead_price) from order log for the period
   const pplRev=pplOrders.reduce((s,o)=>s+((o.leads_qty||0)*(o.lead_price||0)),0);
-  // Managed retainer revenue: payments_made * management_fee (active clients only)
-  const activeMg=mgClients.filter(c=>c.stage==='active');
-  const mgRetainerRev=activeMg.reduce((s,c)=>s+((c.payments_made||0)*(c.management_fee||0)),0);
-  // Custom order revenue: managed_order_log filtered to the selected month
+  // Managed retainer revenue: count active_months within date range × fee
+  const fromKey=(from||'').substring(0,7);
+  const nextKey=(next||'').substring(0,7);
+  const mgRetainerRev=mgClients.reduce((s,c)=>{
+    let months=[];
+    try{months=JSON.parse(c.active_months||'[]');}catch(e){}
+    // filter to months within the selected period
+    const inRange=months.filter(m=>(!fromKey||m>=fromKey)&&(!nextKey||m<nextKey));
+    // fallback to payments_made if no active_months set yet
+    const cnt=c.active_months!=null?inRange.length:(c.payments_made||0);
+    return s+(cnt*(c.management_fee||0));
+  },0);
+  // Custom order revenue: managed_order_log filtered to the selected period
   const mgCustomRev=mgOrders.reduce((s,o)=>s+(o.amount||0),0);
   const mgTotalRev=mgRetainerRev+mgCustomRev;
   const tr=pplRev+mgTotalRev;
@@ -2522,9 +2571,21 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const trueCpl=acTrue.length?'$'+(acTrue.reduce((s,c)=>s+c.true_cpl,0)/acTrue.length).toFixed(2):'—';
   const totalExp=te+pplSp+agSp;
   const np=tr-totalExp,margin=tr>0?((np/tr)*100).toFixed(1):0;
+  // GST: all figures assumed GST-inclusive (10% AU GST)
+  const GST_RATE=0.1;
+  const gstOnRev=tr>0?tr*GST_RATE/1.1:0;
+  const gstCredits=totalExp>0?totalExp*GST_RATE/1.1:0;
+  const netGst=gstOnRev-gstCredits;
+  const profitAfterGst=np-netGst;
+  const marginAfterGst=tr>0?((profitAfterGst/tr)*100).toFixed(1):0;
   setText('fin-rev',fmt(tr));setText('fin-exp',fmt(totalExp));setText('fin-profit',fmt(np));
   $('fin-profit').className=`kval ${np>=0?'grn':'red'}`;
   setText('fin-margin',`${margin}% margin`);setText('fin-subs',ts!==null?fmt(ts):'—');
+  if($('fin-profit-gst')){
+    $('fin-profit-gst').className=`kval ${profitAfterGst>=0?'grn':'red'}`;
+    setText('fin-profit-gst',fmt(profitAfterGst));
+    setText('fin-gst-detail',`GST payable ${fmt(netGst)} · ${marginAfterGst}% margin`);
+  }
   setText('fin-ppl-spend',fmt(pplSp));setText('fin-ag-spend',fmt(agSp));setText('fin-mg-spend',mgTotalRev>0?fmt(mgTotalRev):'—');
   setText('fin-meta-cpl',metaCpl);setText('fin-true-cpl',trueCpl);
   setText('fin-ppl-rev',pplRev>0?fmt(pplRev):'—');setText('fin-ppl-margin',pplRev>0?fmt(pplRev-pplSp):'—');
