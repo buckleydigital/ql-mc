@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
-<!-- Google Maps — replace YOUR_GOOGLE_MAPS_API_KEY below with your actual key -->
+<!-- Google Maps script tag — loaded dynamically at runtime via Edge Function -->
 <script id="gmaps-script"></script>
 <style>
 
@@ -3152,13 +3152,8 @@ async function saveFileContent() {
 
 /* ═══════════════════════════════════════════════════════════
    GOOGLE MAPS — PPL Lead Area Marking
-
-   TO ENABLE: Replace 'YOUR_GOOGLE_MAPS_API_KEY' below with
-   your actual Google Maps JavaScript API key, then save and reload.
-   Required APIs: Maps JavaScript API, Drawing API, Geocoding API
+   Key is fetched securely from Supabase Edge Function at runtime.
    ═══════════════════════════════════════════════════════════ */
-// Google Maps key is fetched securely from Supabase Edge Function at runtime.
-// Do NOT hardcode the key here — use the Supabase dashboard app_settings table.
 
 let pplMap = null, drawingManager = null, drawnOverlay = null;
 let mapAreas = []; // loaded areas for current client
