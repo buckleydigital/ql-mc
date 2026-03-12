@@ -2533,7 +2533,7 @@ async function loadFinance() {
     db.from('expenses').select('*').gte('date',from).lte('date',next),
     db.from('ad_spend_daily').select('date,account_type,spend,leads').order('date',{ascending:false}),
     db.from('subscriptions').select('monthly_cost').eq('active',true),
-    db.from('clients').select('leads_mtd,pct_sold,lead_price,meta_cpl,true_cpl').eq('type','ppl').eq('stage','active_client'),
+    db.from('clients').select('leads_delivered,lead_price,leads_mtd,pct_sold,meta_cpl,true_cpl,stage').eq('type','ppl'),
     db.from('clients').select('id,company_name,management_fee,payments_made,stage,active_months').eq('type','managed'),
     db.from('managed_order_log').select('client_id,amount,order_date').gte('order_date',from).lte('order_date',next),
     db.from('ppl_order_log').select('leads_qty,lead_price,order_date').gte('order_date',from).lte('order_date',next),
@@ -2549,8 +2549,10 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const agSp=latestAg?.spend||0;
   const pplLeadsTotal=latestPpl?.leads||0;
   const metaCpl=(pplSp>0&&pplLeadsTotal>0)?'$'+(pplSp/pplLeadsTotal).toFixed(2):'—';
-  // PPL revenue: sum of (leads_qty * lead_price) from order log for the period
-  const pplRev=pplOrders.reduce((s,o)=>s+((o.leads_qty||0)*(o.lead_price||0)),0);
+  // PPL revenue: use order log if populated, otherwise fall back to leads_delivered × lead_price on client records
+  const pplRevLog=pplOrders.reduce((s,o)=>s+((o.leads_qty||0)*(o.lead_price||0)),0);
+  const pplRevClients=pplClients.reduce((s,c)=>s+((c.leads_delivered||0)*(c.lead_price||0)),0);
+  const pplRev=pplRevLog>0?pplRevLog:pplRevClients;
   // Managed retainer revenue: count active_months within date range × fee
   const fromKey=(from||'').substring(0,7);
   const nextKey=(next||'').substring(0,7);
@@ -2567,7 +2569,7 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const mgCustomRev=mgOrders.reduce((s,o)=>s+(o.amount||0),0);
   const mgTotalRev=mgRetainerRev+mgCustomRev;
   const tr=pplRev+mgTotalRev;
-  const acTrue=pplClients.filter(c=>c.true_cpl>0);
+  const acTrue=pplClients.filter(c=>c.stage==='active_client'&&c.true_cpl>0);
   const trueCpl=acTrue.length?'$'+(acTrue.reduce((s,c)=>s+c.true_cpl,0)/acTrue.length).toFixed(2):'—';
   const totalExp=te+pplSp+agSp;
   const np=tr-totalExp,margin=tr>0?((np/tr)*100).toFixed(1):0;
