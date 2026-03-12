@@ -2065,7 +2065,8 @@ function renderPPL(clients, ytdLeads=0, spendData=[]) {
   const tb=$('ppl-tbody');
   if (!clients.length) { tb.innerHTML='<tr><td colspan="12" class="empty">No PPL clients yet.</td></tr>'; return; }
   clients.forEach(c => { CLIENT_CACHE[c.id] = c; });
-  tb.innerHTML=clients.map(c=>{
+  const stageOrder=s=>s==='active_client'?0:s==='paused'?1:2;
+  tb.innerHTML=[...clients].sort((a,b)=>stageOrder(a.stage)-stageOrder(b.stage)).map(c=>{
     const leadsRem=(c.total_leads_purchased||0)-(c.leads_delivered||0);
     const balRem=leadsRem*(c.lead_price||0);
     const reordBadge=c.has_reordered
