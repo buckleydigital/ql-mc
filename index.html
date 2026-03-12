@@ -2286,7 +2286,7 @@ function renderOrderLogTable(data, clientId) {
         <td style="padding:4px 6px;color:var(--grn)">${o.lead_price?'$'+Number(o.lead_price).toFixed(0):'—'}</td>
         <td style="padding:4px 6px">${statusBadge}</td>
         <td style="padding:4px 6px;color:var(--ink3)">${esc(o.notes||'—')}</td>
-        <td style="padding:4px 6px">${action}</td>
+        <td style="padding:4px 6px;display:flex;gap:4px">${action}<button class="btn btn-xs btn-red" onclick="deletePplOrder('${esc(o.id)}','${esc(clientId||o.client_id)}')">✕</button></td>
       </tr>`;
     }).join('')}</tbody>
   </table>`;
@@ -2296,6 +2296,14 @@ async function loadPplOrderLog(clientId) {
   el.innerHTML='Loading…';
   const {data} = await db.from('ppl_order_log').select('*').eq('client_id',clientId).order('order_date',{ascending:false});
   el.innerHTML = renderOrderLogTable(data||[], clientId);
+}
+async function deletePplOrder(orderId, clientId) {
+  if (!confirm('Delete this order?')) return;
+  const {error}=await db.from('ppl_order_log').delete().eq('id',orderId);
+  if (error) { toast('Error: '+error.message,true); return; }
+  toast('Order deleted');
+  loadPplOrderLog(clientId);
+  loadPPL();
 }
 async function toggleInlineOrderLog(clientId) {
   const row=$('ol-row-'+clientId), cell=$('ol-cell-'+clientId);
