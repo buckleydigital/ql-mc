@@ -1924,7 +1924,7 @@ function renderCRM(leads) {
           <div class="kcard-meta">${esc(l.company||'—')}</div>
           <div style="display:flex;gap:4px;margin-top:3px">
             ${l.lead_type?`<span class="badge ${typeBadge(l.lead_type)}" style="font-size:8.5px">${typeLabel(l.lead_type)}</span>`:''}
-            ${l.value?`<span class="kcard-val">${fmt(l.value)}/mo</span>`:''}
+            ${l.value?`<span class="kcard-val">${fmt(l.value)}</span>`:''}
           </div>
         </div>`).join('');
       col.querySelectorAll('.kcard').forEach(card=>{
