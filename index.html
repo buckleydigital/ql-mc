@@ -10,6 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<!-- Google Maps — replace YOUR_GOOGLE_MAPS_API_KEY below with your actual key -->
 <script id="gmaps-script"></script>
 <style>
 
@@ -891,8 +892,8 @@ td strong{font-weight:500}
               </select>
               <input type="text" id="map-area-label" placeholder="Area label (e.g. Gold Coast South)">
               <input type="number" id="map-area-volume" placeholder="Volume (leads/mo)">
-              <button class="btn btn-sm btn-p" onclick="saveMapArea()">Save Area</button>
-              <button class="btn btn-sm" onclick="clearMapDrawing()">Clear Drawing</button>
+              <button class="btn btn-sm btn-p" id="map-save-btn" onclick="saveMapArea()">Save Area</button>
+              <button class="btn btn-sm" id="map-clear-btn" onclick="clearMapDrawing()">Clear Drawing</button>
             </div>
             <div id="ppl-map"><div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:var(--mono);font-size:11px;color:var(--ink3)">Loading map…</div></div>
             <div class="area-list" id="map-area-list"></div>
@@ -1910,7 +1911,7 @@ function renderCRM(leads) {
   setText('crm-total',leads.length);
   setText('crm-active',leads.filter(l=>!['closed_won','closed_lost'].includes(l.stage)).length);
   setText('crm-won',won);
-  setText('crm-rate',closed>0?((won/closed)*100).toFixed(0)+'%':'—');
+  setText('crm-rate',leads.length>0?((won/leads.length)*100).toFixed(0)+'%':'—');
   CRM_STAGES.forEach(s=>{
     const col=$('crm-col-'+s.id),cnt=$('crmc-'+s.id);
     const sl=leads.filter(l=>l.stage===s.id);
@@ -1923,7 +1924,7 @@ function renderCRM(leads) {
           <div class="kcard-meta">${esc(l.company||'—')}</div>
           <div style="display:flex;gap:4px;margin-top:3px">
             ${l.lead_type?`<span class="badge ${typeBadge(l.lead_type)}" style="font-size:8.5px">${typeLabel(l.lead_type)}</span>`:''}
-            ${l.value?`<span class="kcard-val">${fmt(l.value)}/mo</span>`:''}
+            ${l.value?`<span class="kcard-val">${fmt(l.value)}</span>`:''}
           </div>
         </div>`).join('');
       col.querySelectorAll('.kcard').forEach(card=>{
@@ -3312,18 +3313,71 @@ function clearMapDrawing() {
   if (drawingManager) drawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
 }
 
+const ALL_CLIENT_COLOURS = ['#2ecc8a','#4f8fff','#f39c12','#e74c3c','#9b59b6','#1abc9c','#e67e22','#3498db'];
+
 async function loadMapAreas() {
   const clientId = $('map-client-select')?.value;
   if (!pplMap || !clientId) return;
   localStorage.setItem('ppl_selected_client', clientId);
-  // Auto-fill volume from client's total_leads_purchased
-  const _cd = mapClientDataMap[clientId];
-  if (_cd) { const vi=$('map-area-volume'); if(vi&&!vi.value) vi.value=_cd.total_leads_purchased||''; }
   // Clear existing area overlays
   mapAreas.forEach(a=>{ if(a._overlay) a._overlay.setMap(null); });
   mapAreas = [];
+  const isAll = clientId === 'all';
+  // Toggle drawing controls visibility
+  const drawingEl = document.querySelector('.map-controls');
+  if (drawingEl) {
+    $('map-area-label').style.display = isAll ? 'none' : '';
+    $('map-area-volume').style.display = isAll ? 'none' : '';
+    $('map-save-btn').style.display = isAll ? 'none' : '';
+    $('map-clear-btn').style.display = isAll ? 'none' : '';
+    if (drawingManager) drawingManager.setMap(isAll ? null : pplMap);
+  }
   const el = $('map-area-list');
-  if (!clientId) { if(el) el.innerHTML=''; return; }
+  if (isAll) {
+    // Fetch all areas across all clients
+    const {data,error} = await db.from('ppl_lead_areas').select('*').order('client_id').order('created_at',{ascending:true});
+    if (error) { toast('Could not load areas: '+error.message,true); return; }
+    mapAreas = data || [];
+    // Assign a colour per client_id
+    const clientIds = [...new Set(mapAreas.map(a=>String(a.client_id)))];
+    const colourMap = {};
+    clientIds.forEach((id,i) => { colourMap[id] = ALL_CLIENT_COLOURS[i % ALL_CLIENT_COLOURS.length]; });
+    mapAreas.forEach(area=>{
+      if (!area.geo_json) return;
+      try {
+        const coords = JSON.parse(area.geo_json);
+        const colour = colourMap[String(area.client_id)] || '#2ecc8a';
+        const overlay = new google.maps.Polygon({
+          paths:coords,fillColor:colour,fillOpacity:.22,
+          strokeWeight:2,strokeColor:colour,map:pplMap
+        });
+        const clientName = mapClientDataMap[String(area.client_id)]?.company_name || 'Client';
+        const infowin = new google.maps.InfoWindow({content:`<strong>${area.label}</strong><br>${clientName}<br>${area.volume||0} leads/mo`});
+        overlay.addListener('click',e=>infowin.open({map:pplMap,anchor:null,shouldFocus:false,position:e.latLng}));
+        area._overlay = overlay;
+      } catch(e){}
+    });
+    // Render area list grouped by client with colour swatch
+    if (el) {
+      if (!mapAreas.length) { el.innerHTML='<div style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);padding:6px">No areas saved yet.</div>'; return; }
+      const grouped = {};
+      mapAreas.forEach(a=>{ const k=String(a.client_id); if(!grouped[k]) grouped[k]=[]; grouped[k].push(a); });
+      el.innerHTML = Object.entries(grouped).map(([cid,areas])=>{
+        const colour = colourMap[cid] || '#2ecc8a';
+        const name = mapClientDataMap[cid]?.company_name || 'Unknown';
+        return `<div style="margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">
+            <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${colour};flex-shrink:0"></span>${esc(name)}
+          </div>
+          ${areas.map(a=>`<div class="area-item"><span class="area-item-label">${esc(a.label||'Unnamed')}</span><span class="area-item-vol">${a.volume||0} leads/mo</span></div>`).join('')}
+        </div>`;
+      }).join('');
+    }
+    return;
+  }
+  // Single client mode
+  const _cd = mapClientDataMap[clientId];
+  if (_cd) { const vi=$('map-area-volume'); if(vi&&!vi.value) vi.value=_cd.total_leads_purchased||''; }
   const {data,error} = await db.from('ppl_lead_areas').select('*').eq('client_id',clientId).order('created_at',{ascending:true});
   if (error) { toast('Could not load areas: '+error.message,true); return; }
   mapAreas = data || [];
@@ -3400,10 +3454,11 @@ async function populateMapClientDropdown() {
     mapClientDataMap = {};
     data.forEach(c => { mapClientDataMap[String(c.id)] = c; });
     sel.innerHTML = '<option value="">— Select PPL Client —</option>' +
+      '<option value="all">— All Clients —</option>' +
       data.map(c=>`<option value="${esc(String(c.id))}">${esc(c.company_name)}</option>`).join('');
     // Restore last-selected client, or default to first
     const saved = localStorage.getItem('ppl_selected_client');
-    const match = saved && data.find(c => String(c.id) === saved);
+    const match = saved && (saved === 'all' || data.find(c => String(c.id) === saved));
     sel.value = match ? saved : String(data[0].id);
     if (pplMap) loadMapAreas();
   }
