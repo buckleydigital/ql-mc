@@ -680,7 +680,7 @@ td strong{font-weight:500}
   :root{--sw:0px}
   .sidebar{display:none}
   .bnav{display:flex}
-  .panel{padding:11px 11px calc(var(--bnav-h, 180px) + 16px + env(safe-area-inset-bottom,0px))}
+  .panel{padding:11px 11px calc(var(--bnav-h, 200px) + 40px + env(safe-area-inset-bottom,0px))}
   .kg.c4,.kg.c3{grid-template-columns:1fr 1fr}
   .task-grid{grid-template-columns:1fr}
   .agent-grid{grid-template-columns:1fr 1fr}
@@ -1559,7 +1559,7 @@ td strong{font-weight:500}
 @media(max-width:700px){
   .bnav{height:auto !important;flex-wrap:wrap;padding:4px 0 env(safe-area-inset-bottom,0) !important;}
   .bnbtn{flex:0 0 calc(100%/4);padding:5px 2px;}
-  .panel{padding:11px 11px calc(var(--bnav-h, 160px) + 16px + env(safe-area-inset-bottom,0px)) !important;}
+  .panel{padding:11px 11px calc(var(--bnav-h, 200px) + 40px + env(safe-area-inset-bottom,0px)) !important;}
 }
 </style>
 <script>
@@ -2065,7 +2065,8 @@ function renderPPL(clients, ytdLeads=0, spendData=[]) {
   const tb=$('ppl-tbody');
   if (!clients.length) { tb.innerHTML='<tr><td colspan="12" class="empty">No PPL clients yet.</td></tr>'; return; }
   clients.forEach(c => { CLIENT_CACHE[c.id] = c; });
-  tb.innerHTML=clients.map(c=>{
+  const stageOrder=s=>s==='active_client'?0:s==='paused'?1:2;
+  tb.innerHTML=[...clients].sort((a,b)=>stageOrder(a.stage)-stageOrder(b.stage)).map(c=>{
     const leadsRem=(c.total_leads_purchased||0)-(c.leads_delivered||0);
     const balRem=leadsRem*(c.lead_price||0);
     const reordBadge=c.has_reordered
