@@ -1647,12 +1647,14 @@ window.addEventListener('load', () => {
   const sel = $('fin-month');
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const n = new Date();
+  const ytdOpt = document.createElement('option');
+  ytdOpt.value = 'ytd-2026'; ytdOpt.textContent = '2026 YTD'; ytdOpt.selected = true;
+  sel.appendChild(ytdOpt);
   for (let i = 0; i < 12; i++) {
     const d = new Date(n.getFullYear(), n.getMonth() - i, 1);
     const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     const opt = document.createElement('option');
     opt.value = val; opt.textContent = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
-    if (i === 0) opt.selected = true;
     sel.appendChild(opt);
   }
   $('daily-date').value = new Date().toISOString().split('T')[0];
@@ -2482,15 +2484,18 @@ function nextMonthStart(m) {
   return mo===12?`${y+1}-01-01`:`${y}-${String(mo+1).padStart(2,'0')}-01`;
 }
 async function loadFinance() {
-  const month=$('fin-month').value,next=nextMonthStart(month),from=`${month}-01`;
+  const val=$('fin-month').value;
+  const today=new Date().toISOString().split('T')[0];
+  const from=val==='ytd-2026'?'2026-01-01':`${val}-01`;
+  const next=val==='ytd-2026'?today:nextMonthStart(val);
   const [expR,spR,subR,pplR,mgR,mgOrdR,pplOrdR]=await Promise.all([
-    db.from('expenses').select('*').gte('date',from).lt('date',next),
+    db.from('expenses').select('*').gte('date',from).lte('date',next),
     db.from('ad_spend_daily').select('date,account_type,spend,leads').order('date',{ascending:false}),
     db.from('subscriptions').select('monthly_cost').eq('active',true),
     db.from('clients').select('leads_mtd,pct_sold,lead_price,meta_cpl,true_cpl').eq('type','ppl').eq('stage','active_client'),
     db.from('clients').select('id,company_name,management_fee,payments_made,stage').eq('type','managed'),
-    db.from('managed_order_log').select('client_id,amount,order_date').gte('order_date',from).lt('order_date',next),
-    db.from('ppl_order_log').select('leads_qty,lead_price,order_date').gte('order_date',from).lt('order_date',next),
+    db.from('managed_order_log').select('client_id,amount,order_date').gte('order_date',from).lte('order_date',next),
+    db.from('ppl_order_log').select('leads_qty,lead_price,order_date').gte('order_date',from).lte('order_date',next),
   ]);
   renderFinance(expR.data||[],spR.data||[],subR.data||[],pplR.data||[],mgR.data||[],mgOrdR.data||[],pplOrdR.data||[]);
 }
