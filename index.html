@@ -908,10 +908,12 @@ td strong{font-weight:500}
             <div id="pricing-map-body" style="display:none">
               <div class="map-controls">
                 <input type="text" id="pricing-area-label" placeholder="Area label (e.g. Sydney CBD)">
-                <input type="number" id="pricing-area-cpl" placeholder="CPL ($)" step="0.01" min="0">
+                <input type="number" id="pricing-area-internal-cpl" placeholder="Our cost ($/lead)" step="0.01" min="0" oninput="calcRecommendedSell()">
+                <input type="number" id="pricing-area-cpl" placeholder="Sell CPL ($)" step="0.01" min="0">
                 <button class="btn btn-sm btn-p" id="pricing-save-btn" onclick="savePricingArea()">Save Area</button>
                 <button class="btn btn-sm" id="pricing-clear-btn" onclick="clearPricingDrawing()">Clear Drawing</button>
               </div>
+              <div id="pricing-sell-hint" style="font-family:var(--mono);font-size:10px;color:var(--ink3);padding:4px 2px 6px;min-height:18px"></div>
               <div id="pricing-map" style="height:420px;border-radius:var(--r);border:1px solid var(--bd);overflow:hidden;background:var(--s2);width:100%"><div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:var(--mono);font-size:11px;color:var(--ink3)">Loading map…</div></div>
               <div class="area-list" id="pricing-area-list"></div>
             </div>
@@ -3468,7 +3470,8 @@ async function loadPricingAreas() {
       const overlay = new google.maps.Polygon({
         paths:coords, fillColor:colour, fillOpacity:.22, strokeWeight:2, strokeColor:colour, map:pricingMap
       });
-      const infowin = new google.maps.InfoWindow({content:`<strong>${area.label}</strong><br>CPL $${Number(area.cpl||0).toFixed(2)}`});
+      const _margin = area.internal_cpl && area.cpl ? Math.round((1 - area.internal_cpl/area.cpl)*100) : null;
+      const infowin = new google.maps.InfoWindow({content:`<strong>${area.label}</strong><br>Sell CPL: $${Number(area.cpl||0).toFixed(2)}${area.internal_cpl?`<br>Our cost: $${Number(area.internal_cpl).toFixed(2)}${_margin!==null?` · ${_margin}% margin`:''}`:''}`});
       overlay.addListener('click',e=>infowin.open({map:pricingMap,anchor:null,shouldFocus:false,position:e.latLng}));
       area._overlay = overlay;
     } catch(e){}
@@ -3484,10 +3487,18 @@ function renderPricingAreas() {
   }
   el.innerHTML = pricingAreas.map((a,i)=>{
     const colour = PRICING_COLOURS[i % PRICING_COLOURS.length];
+    const margin = a.internal_cpl && a.cpl ? Math.round((1 - a.internal_cpl/a.cpl)*100) : null;
+    const costHtml = a.internal_cpl
+      ? `<span style="font-family:var(--mono);font-size:10px;color:var(--ink3)">cost $${Number(a.internal_cpl).toFixed(2)} →</span>`
+      : '';
+    const marginHtml = margin !== null
+      ? `<span style="font-family:var(--mono);font-size:10px;color:${margin>=30?'#2ecc8a':'#e74c3c'}"> (${margin}%)</span>`
+      : '';
     return `<div class="area-item">
       <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${colour};flex-shrink:0"></span>
       <span class="area-item-label">${esc(a.label||'Unnamed area')}</span>
-      <span class="area-item-cpl">$${Number(a.cpl||0).toFixed(2)} CPL</span>
+      ${costHtml}
+      <span class="area-item-cpl">$${Number(a.cpl||0).toFixed(2)} sell${marginHtml}</span>
       <button class="area-item-del" data-pricing-id="${esc(String(a.id))}" title="Delete area">✕</button>
     </div>`;
   }).join('');
@@ -3496,9 +3507,21 @@ function renderPricingAreas() {
   });
 }
 
+function calcRecommendedSell() {
+  const cost = parseFloat($('pricing-area-internal-cpl')?.value) || 0;
+  const hint = $('pricing-sell-hint');
+  const sellInput = $('pricing-area-cpl');
+  if (!hint) return;
+  if (!cost) { hint.innerHTML = ''; if (sellInput) sellInput.value = ''; return; }
+  const recommended = cost / 0.70;
+  hint.innerHTML = `Recommended sell: <strong style="color:#2ecc8a">$${recommended.toFixed(2)}</strong> ex GST &nbsp;·&nbsp; 30% margin`;
+  if (sellInput) sellInput.value = recommended.toFixed(2);
+}
+
 async function savePricingArea() {
-  const label = $('pricing-area-label')?.value.trim();
-  const cpl   = parseFloat($('pricing-area-cpl')?.value) || 0;
+  const label        = $('pricing-area-label')?.value.trim();
+  const internal_cpl = parseFloat($('pricing-area-internal-cpl')?.value) || null;
+  const cpl          = parseFloat($('pricing-area-cpl')?.value) || 0;
   if (!label) { toast('Enter an area label',true); return; }
   let geoJson = null;
   if (pricingDrawnOverlay) {
@@ -3512,10 +3535,11 @@ async function savePricingArea() {
       if (path) geoJson = JSON.stringify(path.map ? path.map(p=>({lat:p.lat(),lng:p.lng()})) : path);
     } catch(e){}
   }
-  const {error} = await db.from('lead_pricing_areas').insert([{label,cpl,geo_json:geoJson,created_at:now()}]);
+  const {error} = await db.from('lead_pricing_areas').insert([{label,cpl,internal_cpl,geo_json:geoJson,created_at:now()}]);
   if (error) { toast('Save failed: '+error.message,true); return; }
   clearPricingDrawing();
-  $('pricing-area-label').value=''; $('pricing-area-cpl').value='';
+  $('pricing-area-label').value=''; $('pricing-area-internal-cpl').value=''; $('pricing-area-cpl').value='';
+  const hint = $('pricing-sell-hint'); if (hint) hint.innerHTML = '';
   toast('Pricing area saved ✓');
   loadPricingAreas();
 }
