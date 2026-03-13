@@ -640,6 +640,7 @@ td strong{font-weight:500}
 .area-item-vol{font-family:var(--mono);font-size:10px;color:var(--acc);margin-left:auto}
 .area-item-del{background:none;border:none;color:var(--ink3);cursor:pointer;font-size:12px;padding:2px 5px;border-radius:3px}
 .area-item-del:hover{color:var(--red);background:var(--red-dim)}
+.area-item-cpl{font-family:var(--mono);font-size:10px;color:#f39c12;margin-left:auto}
 @media(max-width:700px){
   .map-controls{flex-direction:column;align-items:stretch}
   .map-controls select,.map-controls input,.map-controls .btn{width:100%;min-width:0}
@@ -897,6 +898,23 @@ td strong{font-weight:500}
             </div>
             <div id="ppl-map"><div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:var(--mono);font-size:11px;color:var(--ink3)">Loading map…</div></div>
             <div class="area-list" id="map-area-list"></div>
+          </div>
+          <div style="margin-top:16px">
+            <div class="sl" style="margin-top:0;cursor:pointer;user-select:none" onclick="togglePricingMap()">
+              Lead Pricing
+              <button id="pricing-map-toggle-btn" class="btn btn-xs" style="margin-left:8px;font-size:10px;padding:2px 9px;pointer-events:none">Show Map ▼</button>
+              <div class="sl-line"></div>
+            </div>
+            <div id="pricing-map-body" style="display:none">
+              <div class="map-controls">
+                <input type="text" id="pricing-area-label" placeholder="Area label (e.g. Sydney CBD)">
+                <input type="number" id="pricing-area-cpl" placeholder="CPL ($)" step="0.01" min="0">
+                <button class="btn btn-sm btn-p" id="pricing-save-btn" onclick="savePricingArea()">Save Area</button>
+                <button class="btn btn-sm" id="pricing-clear-btn" onclick="clearPricingDrawing()">Clear Drawing</button>
+              </div>
+              <div id="pricing-map" style="height:420px;border-radius:var(--r);border:1px solid var(--bd);overflow:hidden;background:var(--s2);width:100%"><div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:var(--mono);font-size:11px;color:var(--ink3)">Loading map…</div></div>
+              <div class="area-list" id="pricing-area-list"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -3226,6 +3244,7 @@ function onGoogleMapsReady() {
     toast('Area drawn — enter label & volume then Save Area');
   });
   loadMapAreas();
+  if (window._pricingMapPending) { window._pricingMapPending = false; onPricingMapsReady(); }
 }
 
 function clearMapDrawing() {
@@ -3364,6 +3383,149 @@ async function deleteMapArea(id) {
   if (error) { toast('Error: '+error.message,true); return; }
   toast('Area deleted');
   loadMapAreas();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LEAD PRICING MAP — Geographic CPL pricing zones
+   ═══════════════════════════════════════════════════════════ */
+let pricingMap = null, pricingDrawingMgr = null, pricingDrawnOverlay = null;
+let pricingAreas = [];
+const PRICING_COLOURS = ['#f39c12','#2ecc8a','#e74c3c','#4f8fff','#9b59b6','#1abc9c','#e67e22','#3498db'];
+
+function togglePricingMap() {
+  const body = $('pricing-map-body');
+  const btn  = $('pricing-map-toggle-btn');
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  btn.textContent = isOpen ? 'Show Map ▼' : 'Hide Map ▲';
+  if (!isOpen && !pricingMap) initPricingMap();
+}
+
+async function initPricingMap() {
+  if (window.google?.maps) { onPricingMapsReady(); return; }
+  window._pricingMapPending = true;
+  if (document.getElementById('gmaps-script-loaded')) {
+    // Script already loading — poll until ready
+    const t = setInterval(()=>{ if (window.google?.maps) { clearInterval(t); if (window._pricingMapPending) { window._pricingMapPending=false; onPricingMapsReady(); } } }, 150);
+    return;
+  }
+  await initGoogleMaps(); // will load script; onGoogleMapsReady fires the pending flag
+}
+
+function onPricingMapsReady() {
+  const mapEl = $('pricing-map');
+  if (!mapEl) return;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  pricingMap = new google.maps.Map(mapEl, {
+    center: {lat:-27.0,lng:134.0}, zoom:5, mapTypeId:'roadmap',
+    styles: isDark ? [
+      {elementType:'geometry',stylers:[{color:'#1c1c22'}]},
+      {elementType:'labels.text.fill',stylers:[{color:'#9494a8'}]},
+      {elementType:'labels.text.stroke',stylers:[{color:'#0f0f12'}]},
+      {featureType:'road',elementType:'geometry',stylers:[{color:'#262630'}]},
+      {featureType:'water',elementType:'geometry',stylers:[{color:'#070708'}]}
+    ] : []
+  });
+  pricingDrawingMgr = new google.maps.drawing.DrawingManager({
+    drawingMode: google.maps.drawing.OverlayType.POLYGON,
+    drawingControl: true,
+    drawingControlOptions: {
+      position: google.maps.ControlPosition.TOP_CENTER,
+      drawingModes: [google.maps.drawing.OverlayType.POLYGON, google.maps.drawing.OverlayType.RECTANGLE]
+    },
+    polygonOptions:   {fillColor:'#f39c12',fillOpacity:.18,strokeWeight:2,strokeColor:'#f39c12',clickable:true,editable:true},
+    rectangleOptions: {fillColor:'#f39c12',fillOpacity:.18,strokeWeight:2,strokeColor:'#f39c12',clickable:true,editable:true}
+  });
+  pricingDrawingMgr.setMap(pricingMap);
+  google.maps.event.addListener(pricingDrawingMgr,'overlaycomplete',e=>{
+    if (pricingDrawnOverlay) pricingDrawnOverlay.setMap(null);
+    pricingDrawnOverlay = e.overlay;
+    pricingDrawingMgr.setDrawingMode(null);
+    toast('Area drawn — enter label & CPL then Save Area');
+  });
+  loadPricingAreas();
+}
+
+function clearPricingDrawing() {
+  if (pricingDrawnOverlay) { pricingDrawnOverlay.setMap(null); pricingDrawnOverlay = null; }
+  if (pricingDrawingMgr) pricingDrawingMgr.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+}
+
+async function loadPricingAreas() {
+  if (!pricingMap) return;
+  pricingAreas.forEach(a=>{ if (a._overlay) a._overlay.setMap(null); });
+  pricingAreas = [];
+  const {data,error} = await db.from('lead_pricing_areas').select('*').order('created_at',{ascending:true});
+  if (error) { toast('Could not load pricing areas: '+error.message,true); return; }
+  pricingAreas = data || [];
+  renderPricingAreas();
+  pricingAreas.forEach((area,i)=>{
+    if (!area.geo_json) return;
+    try {
+      const coords = JSON.parse(area.geo_json);
+      const colour = PRICING_COLOURS[i % PRICING_COLOURS.length];
+      const overlay = new google.maps.Polygon({
+        paths:coords, fillColor:colour, fillOpacity:.22, strokeWeight:2, strokeColor:colour, map:pricingMap
+      });
+      const infowin = new google.maps.InfoWindow({content:`<strong>${area.label}</strong><br>CPL $${Number(area.cpl||0).toFixed(2)}`});
+      overlay.addListener('click',e=>infowin.open({map:pricingMap,anchor:null,shouldFocus:false,position:e.latLng}));
+      area._overlay = overlay;
+    } catch(e){}
+  });
+}
+
+function renderPricingAreas() {
+  const el = $('pricing-area-list');
+  if (!el) return;
+  if (!pricingAreas.length) {
+    el.innerHTML = '<div style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);padding:6px">No pricing areas saved yet — draw on the map.</div>';
+    return;
+  }
+  el.innerHTML = pricingAreas.map((a,i)=>{
+    const colour = PRICING_COLOURS[i % PRICING_COLOURS.length];
+    return `<div class="area-item">
+      <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${colour};flex-shrink:0"></span>
+      <span class="area-item-label">${esc(a.label||'Unnamed area')}</span>
+      <span class="area-item-cpl">$${Number(a.cpl||0).toFixed(2)} CPL</span>
+      <button class="area-item-del" data-pricing-id="${esc(String(a.id))}" title="Delete area">✕</button>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.area-item-del').forEach(btn=>{
+    btn.addEventListener('click',()=>deletePricingArea(btn.dataset.pricingId));
+  });
+}
+
+async function savePricingArea() {
+  const label = $('pricing-area-label')?.value.trim();
+  const cpl   = parseFloat($('pricing-area-cpl')?.value) || 0;
+  if (!label) { toast('Enter an area label',true); return; }
+  let geoJson = null;
+  if (pricingDrawnOverlay) {
+    try {
+      const path = pricingDrawnOverlay.getPath ? pricingDrawnOverlay.getPath().getArray() : pricingDrawnOverlay.getBounds ? [
+        {lat:pricingDrawnOverlay.getBounds().getNorthEast().lat(),lng:pricingDrawnOverlay.getBounds().getSouthWest().lng()},
+        {lat:pricingDrawnOverlay.getBounds().getNorthEast().lat(),lng:pricingDrawnOverlay.getBounds().getNorthEast().lng()},
+        {lat:pricingDrawnOverlay.getBounds().getSouthWest().lat(),lng:pricingDrawnOverlay.getBounds().getNorthEast().lng()},
+        {lat:pricingDrawnOverlay.getBounds().getSouthWest().lat(),lng:pricingDrawnOverlay.getBounds().getSouthWest().lng()},
+      ] : null;
+      if (path) geoJson = JSON.stringify(path.map ? path.map(p=>({lat:p.lat(),lng:p.lng()})) : path);
+    } catch(e){}
+  }
+  const {error} = await db.from('lead_pricing_areas').insert([{label,cpl,geo_json:geoJson,created_at:now()}]);
+  if (error) { toast('Save failed: '+error.message,true); return; }
+  clearPricingDrawing();
+  $('pricing-area-label').value=''; $('pricing-area-cpl').value='';
+  toast('Pricing area saved ✓');
+  loadPricingAreas();
+}
+
+async function deletePricingArea(id) {
+  if (!confirm('Delete this pricing area?')) return;
+  const {error} = await db.from('lead_pricing_areas').delete().eq('id',id);
+  if (error) { toast('Error: '+error.message,true); return; }
+  toast('Pricing area deleted');
+  loadPricingAreas();
 }
 
 async function populateMapClientDropdown() {
