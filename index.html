@@ -1689,11 +1689,15 @@ window.addEventListener('load', () => {
   const sel = $('fin-month');
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const n = new Date();
+  const curYear = n.getFullYear();
   const ytdOpt = document.createElement('option');
-  ytdOpt.value = 'ytd-2026'; ytdOpt.textContent = '2026 YTD'; ytdOpt.selected = true;
+  ytdOpt.value = `ytd-${curYear}`; ytdOpt.textContent = `${curYear} YTD`; ytdOpt.selected = true;
   sel.appendChild(ytdOpt);
-  for (let i = 0; i < 12; i++) {
+  // Walk back from current month to Jan 2026 (business start) — auto-extends as months pass
+  const START_YEAR = 2026, START_MONTH = 0; // Jan 2026
+  for (let i = 0; ; i++) {
     const d = new Date(n.getFullYear(), n.getMonth() - i, 1);
+    if (d.getFullYear() < START_YEAR || (d.getFullYear() === START_YEAR && d.getMonth() < START_MONTH)) break;
     const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     const opt = document.createElement('option');
     opt.value = val; opt.textContent = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
@@ -2612,8 +2616,10 @@ function nextMonthStart(m) {
 async function loadFinance() {
   const val=$('fin-month').value;
   const today=new Date().toISOString().split('T')[0];
-  const from=val==='ytd-2026'?'2026-01-01':`${val}-01`;
-  const next=val==='ytd-2026'?today:nextMonthStart(val);
+  const isYtd = val.startsWith('ytd-');
+  const ytdYear = isYtd ? val.split('-')[1] : null;
+  const from = isYtd ? `${ytdYear}-01-01` : `${val}-01`;
+  const next = isYtd ? today : nextMonthStart(val);
   const [expR,spR,subR,pplR,mgR,mgOrdR,pplOrdR]=await Promise.all([
     db.from('expenses').select('*').gte('date',from).lte('date',next),
     db.from('ad_spend_daily').select('date,account_type,spend,leads').order('date',{ascending:false}),
