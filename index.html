@@ -10,6 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<!-- Google Maps script tag — loaded dynamically at runtime via Edge Function -->
 <script id="gmaps-script"></script>
 <style>
 
@@ -2057,7 +2058,7 @@ function renderPPL(clients, ytdLeads=0, spendData=[]) {
       col.innerHTML=sl.map(c=>`
         <div class="kcard" id="kc-ppl-${esc(String(c.id))}" data-client-id="${esc(String(c.id))}" data-client-type="ppl">
           <div class="kcard-name">${esc(c.company_name)}</div>
-          <div class="kcard-meta">${esc(c.niche||'Solar')} · ${c.leads_mtd||0} leads MTD</div>
+          <div class="kcard-meta">${esc(c.niche||'Solar')} · ${c.leads_delivered||0} delivered · ${c.total_leads_purchased||0} purchased</div>
           ${c.meta_cpl?`<div class="kcard-val">CPL $${Number(c.meta_cpl).toFixed(2)}</div>`:''}
         </div>`).join('');
       col.querySelectorAll('.kcard').forEach(card=>{
@@ -2822,11 +2823,11 @@ async function buildAgentContext() {
 
   // ── Active PPL clients (same as PPL panel) ──
   try {
-    const { data: pplClients } = await db.from('clients').select('company_name,leads_mtd,leads_delivered,total_leads_purchased,meta_cpl,true_cpl,pct_sold,lead_price,balance').eq('type','ppl').eq('stage','active_client').order('company_name');
+    const { data: pplClients } = await db.from('clients').select('company_name,leads_delivered,total_leads_purchased,meta_cpl,true_cpl,pct_sold,lead_price,balance').eq('type','ppl').eq('stage','active_client').order('company_name');
     if (pplClients && pplClients.length) {
       out += '\n### Active PPL Clients';
       pplClients.forEach(c => {
-        out += `\n- ${c.company_name}: ${c.leads_mtd||0} leads MTD · ${c.leads_delivered||0} delivered · ${c.total_leads_purchased||0} purchased · Meta CPL ${fmtC(c.meta_cpl)} · True CPL ${fmtC(c.true_cpl)} · ${c.pct_sold||0}% sold · $${c.lead_price||0}/lead · balance ${fmtN(c.balance)}`;
+        out += `\n- ${c.company_name}: ${c.leads_delivered||0} delivered · ${c.total_leads_purchased||0} purchased · Meta CPL ${fmtC(c.meta_cpl)} · True CPL ${fmtC(c.true_cpl)} · ${c.pct_sold||0}% sold · $${c.lead_price||0}/lead · balance ${fmtN(c.balance)}`;
       });
     }
   } catch(e) {}
@@ -3151,13 +3152,8 @@ async function saveFileContent() {
 
 /* ═══════════════════════════════════════════════════════════
    GOOGLE MAPS — PPL Lead Area Marking
-
-   TO ENABLE: Replace 'YOUR_GOOGLE_MAPS_API_KEY' below with
-   your actual Google Maps JavaScript API key, then save and reload.
-   Required APIs: Maps JavaScript API, Drawing API, Geocoding API
+   Key is fetched securely from Supabase Edge Function at runtime.
    ═══════════════════════════════════════════════════════════ */
-// Google Maps key is fetched securely from Supabase Edge Function at runtime.
-// Do NOT hardcode the key here — use the Supabase dashboard app_settings table.
 
 let pplMap = null, drawingManager = null, drawnOverlay = null;
 let mapAreas = []; // loaded areas for current client
