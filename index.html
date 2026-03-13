@@ -2058,7 +2058,7 @@ function renderPPL(clients, ytdLeads=0, spendData=[]) {
       col.innerHTML=sl.map(c=>`
         <div class="kcard" id="kc-ppl-${esc(String(c.id))}" data-client-id="${esc(String(c.id))}" data-client-type="ppl">
           <div class="kcard-name">${esc(c.company_name)}</div>
-          <div class="kcard-meta">${esc(c.niche||'Solar')} · ${c.leads_mtd||0} leads MTD</div>
+          <div class="kcard-meta">${esc(c.niche||'Solar')} · ${c.leads_delivered||0} delivered · ${c.total_leads_purchased||0} purchased</div>
           ${c.meta_cpl?`<div class="kcard-val">CPL $${Number(c.meta_cpl).toFixed(2)}</div>`:''}
         </div>`).join('');
       col.querySelectorAll('.kcard').forEach(card=>{
@@ -2823,11 +2823,11 @@ async function buildAgentContext() {
 
   // ── Active PPL clients (same as PPL panel) ──
   try {
-    const { data: pplClients } = await db.from('clients').select('company_name,leads_mtd,leads_delivered,total_leads_purchased,meta_cpl,true_cpl,pct_sold,lead_price,balance').eq('type','ppl').eq('stage','active_client').order('company_name');
+    const { data: pplClients } = await db.from('clients').select('company_name,leads_delivered,total_leads_purchased,meta_cpl,true_cpl,pct_sold,lead_price,balance').eq('type','ppl').eq('stage','active_client').order('company_name');
     if (pplClients && pplClients.length) {
       out += '\n### Active PPL Clients';
       pplClients.forEach(c => {
-        out += `\n- ${c.company_name}: ${c.leads_mtd||0} leads MTD · ${c.leads_delivered||0} delivered · ${c.total_leads_purchased||0} purchased · Meta CPL ${fmtC(c.meta_cpl)} · True CPL ${fmtC(c.true_cpl)} · ${c.pct_sold||0}% sold · $${c.lead_price||0}/lead · balance ${fmtN(c.balance)}`;
+        out += `\n- ${c.company_name}: ${c.leads_delivered||0} delivered · ${c.total_leads_purchased||0} purchased · Meta CPL ${fmtC(c.meta_cpl)} · True CPL ${fmtC(c.true_cpl)} · ${c.pct_sold||0}% sold · $${c.lead_price||0}/lead · balance ${fmtN(c.balance)}`;
       });
     }
   } catch(e) {}
