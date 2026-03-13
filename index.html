@@ -747,7 +747,7 @@ td strong{font-weight:500}
             <span class="ni">✦</span>Tasks
           </button>
           <button class="navbtn" data-panel="crm" onclick="nav('crm',this)">
-            <span class="ni">◎</span>Sales Pipeline
+            <span class="ni">◎</span>Sales Pipeline<span id="crm-followup-badge" style="display:none;background:var(--amb);color:#1c1416;border-radius:10px;font-size:9px;padding:1px 6px;margin-left:5px;font-family:var(--mono);font-weight:700;line-height:1.5">0</span>
           </button>
           <button class="navbtn" data-panel="ppl" onclick="nav('ppl',this)">
             <span class="ni">◈</span>PPL Clients
@@ -842,6 +842,10 @@ td strong{font-weight:500}
           <div class="ph-left"><h1>Sales Pipeline</h1><p>Agency client acquisition</p></div>
           <div class="ph-right"><button class="btn btn-p btn-sm" onclick="openModal('m-lead')">+ Add lead</button></div>
         </div>
+        <div id="crm-followup-banner" style="display:none;margin-bottom:14px;padding:10px 14px;background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.28);border-radius:var(--r);font-size:11px">
+          <span style="font-weight:600;color:var(--amb)">⚠ <span id="crm-followup-count">0</span> leads need follow-up</span>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--ink2);margin-left:8px" id="crm-followup-names"></span>
+        </div>
         <div class="kg c4 mb4">
           <div class="kpi"><div class="klabel">Total Leads</div><div class="kval blu" id="crm-total">—</div></div>
           <div class="kpi"><div class="klabel">In Progress</div><div class="kval" id="crm-active">—</div></div>
@@ -870,6 +874,7 @@ td strong{font-weight:500}
           <div class="kpi"><div class="klabel">Leads Sold This Year</div><div class="kval" id="ppl-leads">—</div><div class="ksub">Jan 2026 – now</div></div>
           <div class="kpi"><div class="klabel">Avg Meta CPL</div><div class="kval" id="ppl-meta-cpl">—</div></div>
           <div class="kpi"><div class="klabel">Avg True CPL</div><div class="kval blu" id="ppl-true-cpl">—</div><div class="ksub">after % sold</div></div>
+          <div class="kpi"><div class="klabel">Due for Reorder</div><div class="kval amb" id="ppl-reorder-count">—</div><div class="ksub">≥75% delivered</div></div>
         </div>
         <div class="sl">Client Pipeline <div class="sl-line"></div></div>
         <div class="kanban-wrap"><div class="kanban" id="ppl-kanban"></div></div>
@@ -913,7 +918,8 @@ td strong{font-weight:500}
                 <button class="btn btn-sm btn-p" id="pricing-save-btn" onclick="savePricingArea()">Save Area</button>
                 <button class="btn btn-sm" id="pricing-clear-btn" onclick="clearPricingDrawing()">Clear Drawing</button>
               </div>
-              <div id="pricing-sell-hint" style="font-family:var(--mono);font-size:10px;color:var(--ink3);padding:4px 2px 6px;min-height:18px"></div>
+              <div id="pricing-sell-hint" style="font-family:var(--mono);font-size:10px;color:var(--ink3);padding:4px 2px 4px;min-height:18px"></div>
+              <textarea id="pricing-area-notes" placeholder="Notes / price history (e.g. Mar 2026: increased from $45→$52, Meta costs up)" style="width:100%;box-sizing:border-box;min-height:50px;margin-bottom:8px;background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);color:var(--ink);font-family:var(--font);font-size:12px;padding:6px 9px;resize:vertical;outline:none;display:block"></textarea>
               <div id="pricing-map" style="height:420px;border-radius:var(--r);border:1px solid var(--bd);overflow:hidden;background:var(--s2);width:100%"><div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:var(--mono);font-size:11px;color:var(--ink3)">Loading map…</div></div>
               <div class="area-list" id="pricing-area-list"></div>
             </div>
@@ -994,6 +1000,13 @@ td strong{font-weight:500}
           <table>
             <thead><tr><th>Category</th><th>Description</th><th>Amount</th><th>Type</th><th>Date</th></tr></thead>
             <tbody id="exp-tbody"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="sl" style="margin-top:16px">Subscriptions <div class="sl-line"></div><button class="btn btn-xs btn-p" style="margin-left:8px" onclick="openAddSub()">+ Add</button></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Name</th><th>Monthly Cost</th><th>Status</th><th></th></tr></thead>
+            <tbody id="subs-tbody"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1251,8 +1264,11 @@ td strong{font-weight:500}
             <div class="file-editor-head">
               <span class="file-editor-name" id="file-editor-name">post-call-email.md</span>
               <span style="font-family:var(--mono);font-size:9px;color:var(--ink3)">Supabase · agent_files (docs)</span>
+              <select id="tmpl-client-sel" style="margin-left:auto;font-family:var(--mono);font-size:10px;padding:3px 7px;background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);color:var(--ink);outline:none;max-width:180px" onchange="updateTemplatePreview()"><option value="">— Preview with client —</option></select>
+              <button class="btn btn-xs" id="tmpl-preview-btn" onclick="toggleTemplatePreview()" style="flex-shrink:0">Preview</button>
             </div>
             <textarea class="file-editor-ta" id="file-editor-ta" placeholder="Loading..."></textarea>
+            <div id="tmpl-preview" style="display:none;padding:16px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);font-size:12.5px;line-height:1.75;white-space:pre-wrap;overflow-y:auto;max-height:520px;color:var(--ink);font-family:var(--font)"></div>
           </div>
         </div>
       </div>
@@ -1733,7 +1749,7 @@ function nav(panel, el) {
   if (panel === 'chat') loadChatMemory();
   if (panel === 'daily') loadDailyLogs();
   if (panel === 'sales-agent') loadSalesPanel();
-  if (panel === 'files') loadFileContent();
+  if (panel === 'files') { loadFileContent(); loadTemplateClientDropdown(); }
   if (panel === 'ppl') {
     populateMapClientDropdown();
   }
@@ -1932,13 +1948,36 @@ function renderCRM(leads) {
   setText('crm-active',leads.filter(l=>!['closed_won','closed_lost'].includes(l.stage)).length);
   setText('crm-won',won);
   setText('crm-rate',leads.length>0?((won/leads.length)*100).toFixed(0)+'%':'—');
+  // Follow-up reminders: not closed + (never contacted OR last_contact ≥7 days ago)
+  const staleLeads=leads.filter(l=>{
+    if (['closed_won','closed_lost'].includes(l.stage)) return false;
+    if (!l.last_contact) return true;
+    return Math.floor((Date.now()-new Date(l.last_contact))/(1000*86400))>=7;
+  });
+  const badge=$('crm-followup-badge'),banner=$('crm-followup-banner');
+  if (badge){badge.textContent=staleLeads.length;badge.style.display=staleLeads.length>0?'inline':'none';}
+  if (banner){
+    if (staleLeads.length>0){
+      banner.style.display='block';
+      setText('crm-followup-count',staleLeads.length);
+      const names=staleLeads.slice(0,4).map(l=>{
+        const d=l.last_contact?Math.floor((Date.now()-new Date(l.last_contact))/(1000*86400)):null;
+        return `${esc(l.name||l.company||'Unknown')} (${d!==null?d+'d':'no contact'})`;
+      }).join(', ')+(staleLeads.length>4?` +${staleLeads.length-4} more`:'');
+      setText('crm-followup-names',names);
+    } else { banner.style.display='none'; }
+  }
+  const staleIds=new Set(staleLeads.map(l=>String(l.id)));
   CRM_STAGES.forEach(s=>{
     const col=$('crm-col-'+s.id),cnt=$('crmc-'+s.id);
     const sl=leads.filter(l=>l.stage===s.id);
     if (cnt) cnt.textContent=sl.length;
     if (col) {
       sl.forEach(l => { LEAD_CACHE[l.id] = l; });
-      col.innerHTML=sl.map(l=>`
+      col.innerHTML=sl.map(l=>{
+        const ds=l.last_contact?Math.floor((Date.now()-new Date(l.last_contact))/(1000*86400)):null;
+        const isStale=staleIds.has(String(l.id));
+        return `
         <div class="kcard" id="kc-crm-${esc(String(l.id))}" data-lead-id="${esc(String(l.id))}">
           <div class="kcard-name">${esc(l.name||'—')}</div>
           <div class="kcard-meta">${esc(l.company||'—')}</div>
@@ -1946,7 +1985,8 @@ function renderCRM(leads) {
             ${l.lead_type?`<span class="badge ${typeBadge(l.lead_type)}" style="font-size:8.5px">${typeLabel(l.lead_type)}</span>`:''}
             ${l.value?`<span class="kcard-val">${fmt(l.value)}</span>`:''}
           </div>
-        </div>`).join('');
+          ${isStale?`<div style="font-size:9px;color:var(--amb);font-family:var(--mono);margin-top:3px">⚠ ${ds!==null?ds+'d since contact':'not yet contacted'}</div>`:''}
+        </div>`}).join('');
       col.querySelectorAll('.kcard').forEach(card=>{
         const id=card.dataset.leadId;
         initCardDrag(card,id,'crm');
@@ -1957,7 +1997,13 @@ function renderCRM(leads) {
   const tb=$('crm-tbody');
   if (!leads.length) { tb.innerHTML='<tr><td colspan="9" class="empty">No leads yet.</td></tr>'; return; }
   leads.forEach(l => { LEAD_CACHE[l.id] = l; });
-  tb.innerHTML=leads.map(l=>`
+  tb.innerHTML=leads.map(l=>{
+    const ds=l.last_contact?Math.floor((Date.now()-new Date(l.last_contact))/(1000*86400)):null;
+    const isStale=staleIds.has(String(l.id));
+    const contactCell=l.last_contact
+      ?`<span style="color:${isStale?'var(--amb)':'inherit'}">${new Date(l.last_contact).toLocaleDateString('en-AU')}${isStale?` <span style="font-size:9px;font-family:var(--mono)">(${ds}d)</span>`:''}</span>`
+      :`<span style="color:${isStale?'var(--amb)':'var(--ink3)'}">—${isStale?' ⚠':''}</span>`;
+    return `
     <tr style="cursor:pointer" data-lead-id="${esc(l.id)}" class="lead-row">
       <td><strong>${esc(l.name||'—')}</strong></td>
       <td>${esc(l.company||'—')}</td>
@@ -1965,10 +2011,10 @@ function renderCRM(leads) {
       <td><span class="badge ${stageBadge(l.stage)}">${stageLabel(l.stage)}</span></td>
       <td>${l.value?'$'+Number(l.value).toLocaleString()+'/mo':'—'}</td>
       <td>${esc(l.source||'—')}</td>
-      <td>${l.last_contact?new Date(l.last_contact).toLocaleDateString('en-AU'):'—'}</td>
+      <td>${contactCell}</td>
       <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink2)">${esc(l.notes||'—')}</td>
       <td><button class="btn btn-xs edit-lead-btn" data-lead-id="${esc(l.id)}">Edit</button></td>
-    </tr>`).join('');
+    </tr>`}).join('');
   tb.querySelectorAll('.lead-row').forEach(row => {
     row.addEventListener('click', e => {
       if (e.target.classList.contains('edit-lead-btn')) { e.stopPropagation(); }
@@ -2069,18 +2115,25 @@ function renderPPL(clients, ytdLeads=0, spendData=[]) {
   // Avg True CPL: average of per-client true_cpl (auto-calc from delivered orders)
   const ac=clients.filter(c=>c.stage==='active_client'&&(c.true_cpl||0)>0);
   setText('ppl-true-cpl',ac.length?'$'+(ac.reduce((s,c)=>s+(c.true_cpl||0),0)/ac.length).toFixed(2):'—');
+  const dueClients=clients.filter(c=>c.stage==='active_client'&&c.total_leads_purchased>0&&(c.leads_delivered||0)/c.total_leads_purchased>=0.75);
+  setText('ppl-reorder-count',dueClients.length||'—');
   PPL_STAGES.forEach(s=>{
     const col=$('ppl-col-'+s.id),cnt=$('pplc-'+s.id);
     const sl=clients.filter(c=>c.stage===s.id);
     if (cnt) cnt.textContent=sl.length;
     if (col) {
       sl.forEach(c => { CLIENT_CACHE[c.id] = c; });
-      col.innerHTML=sl.map(c=>`
+      col.innerHTML=sl.map(c=>{
+        const cplAlert=c.true_cpl&&c.lead_price?(c.true_cpl>=c.lead_price?'danger':c.true_cpl>=c.lead_price*0.85?'warning':null):null;
+        const dueReorder=c.stage==='active_client'&&c.total_leads_purchased>0&&(c.leads_delivered||0)/c.total_leads_purchased>=0.75;
+        return `
         <div class="kcard" id="kc-ppl-${esc(String(c.id))}" data-client-id="${esc(String(c.id))}" data-client-type="ppl">
           <div class="kcard-name">${esc(c.company_name)}</div>
           <div class="kcard-meta">${esc(c.niche||'Solar')} · ${c.leads_delivered||0} delivered · ${c.total_leads_purchased||0} purchased</div>
           ${c.meta_cpl?`<div class="kcard-val">CPL $${Number(c.meta_cpl).toFixed(2)}</div>`:''}
-        </div>`).join('');
+          ${cplAlert==='danger'?'<div style="font-size:9px;color:var(--red);font-family:var(--mono);margin-top:3px">⚠ margin lost — true CPL exceeds sell price</div>':cplAlert==='warning'?'<div style="font-size:9px;color:var(--amb);font-family:var(--mono);margin-top:3px">⚠ low margin — true CPL near sell price</div>':''}
+          ${dueReorder?'<div style="font-size:9px;color:var(--amb);font-family:var(--mono);margin-top:2px">↻ due for reorder</div>':''}
+        </div>`}).join('');
       col.querySelectorAll('.kcard').forEach(card=>{
         const id=card.dataset.clientId;
         initCardDrag(card,id,'ppl');
@@ -2098,6 +2151,10 @@ function renderPPL(clients, ytdLeads=0, spendData=[]) {
     const reordBadge=c.has_reordered
       ?`<button class="badge bg-grn order-log-toggle" data-client-id="${esc(String(c.id))}" style="cursor:pointer;border:none;background:rgba(46,204,138,.12);color:var(--grn);padding:2px 7px;border-radius:3px;font-size:10px;font-family:var(--mono)">Yes ▾</button>`
       :`<span style="font-family:var(--mono);font-size:10px;color:var(--ink3)">No</span>`;
+    const cplAlert=c.true_cpl&&c.lead_price?(c.true_cpl>=c.lead_price?'danger':c.true_cpl>=c.lead_price*0.85?'warning':null):null;
+    const marginBadge=cplAlert==='danger'?` <span style="color:var(--red);font-size:9px;font-family:var(--mono)">⚠ losing</span>`:cplAlert==='warning'?` <span style="color:var(--amb);font-size:9px;font-family:var(--mono)">⚠ low</span>`:'';
+    const dueReorder=c.stage==='active_client'&&c.total_leads_purchased>0&&(c.leads_delivered||0)/c.total_leads_purchased>=0.75;
+    const remHtml=leadsRem>0?`${leadsRem}${dueReorder?' <span style="font-size:9px;color:var(--amb);font-family:var(--mono)">↻</span>':''}`:'✓';
     return `
     <tr data-client-id="${esc(String(c.id))}" data-client-type="ppl" class="client-row" style="cursor:pointer">
       <td><strong>${esc(c.company_name)}</strong></td>
@@ -2106,8 +2163,8 @@ function renderPPL(clients, ytdLeads=0, spendData=[]) {
       <td>${c.leads_mtd||0}</td>
       <td style="color:var(--grn);font-weight:500">${c.leads_delivered||0}</td>
       <td>${c.total_leads_purchased||0}</td>
-      <td style="color:${leadsRem>0?'var(--amb)':'var(--ink3)'};font-weight:500">${leadsRem>0?leadsRem:'✓'}</td>
-      <td>${fmtCpl(c.lead_price)}</td>
+      <td style="color:${leadsRem>0?'var(--amb)':'var(--ink3)'};font-weight:500">${remHtml}</td>
+      <td>${fmtCpl(c.lead_price)}${marginBadge}</td>
       <td style="color:${balRem>0?'var(--red)':'var(--grn)'};font-weight:500">${balRem>0?fmt(balRem):'—'}</td>
       <td>${c.pct_sold?Number(c.pct_sold).toFixed(1)+'%':'—'}</td>
       <td>${reordBadge}</td>
@@ -2560,7 +2617,7 @@ async function loadFinance() {
   const [expR,spR,subR,pplR,mgR,mgOrdR,pplOrdR]=await Promise.all([
     db.from('expenses').select('*').gte('date',from).lte('date',next),
     db.from('ad_spend_daily').select('date,account_type,spend,leads').order('date',{ascending:false}),
-    db.from('subscriptions').select('monthly_cost').eq('active',true),
+    db.from('subscriptions').select('*').order('created_at'),
     db.from('clients').select('leads_delivered,lead_price,leads_mtd,pct_sold,meta_cpl,true_cpl,stage').eq('type','ppl'),
     db.from('clients').select('id,company_name,management_fee,payments_made,stage,active_months').eq('type','managed'),
     db.from('managed_order_log').select('client_id,amount,order_date').gte('order_date',from).lte('order_date',next),
@@ -2570,7 +2627,9 @@ async function loadFinance() {
 }
 function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOrders,from,next) {
   const te=expenses.reduce((s,e)=>s+(e.amount||0),0);
-  const ts=subs.length>0?subs.reduce((s,sub)=>s+(sub.monthly_cost||0),0):null;
+  const activeSubs=subs.filter(s=>s.active);
+  const ts=activeSubs.length>0?activeSubs.reduce((s,sub)=>s+(sub.monthly_cost||0),0):null;
+  renderSubscriptionsTable(subs);
   const latestPpl=adSpend.find(a=>a.account_type==='solar_ppl');
   const latestAg=adSpend.find(a=>a.account_type==='agency');
   const pplSp=latestPpl?.spend||0;
@@ -2622,6 +2681,42 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   else { tb.innerHTML=expenses.map(e=>`<tr><td>${esc(e.category||'—')}</td><td>${esc(e.description||'—')}</td><td>${fmt(e.amount)}</td><td><span class="badge ${e.type==='fixed'?'bg-blu':'bg-amb'}">${e.type||'variable'}</span></td><td style="font-family:var(--mono);font-size:10px">${e.date||'—'}</td></tr>`).join(''); }
   renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses);renderCplChart(adSpend);
 }
+function renderSubscriptionsTable(subs) {
+  const tb = $('subs-tbody');
+  if (!tb) return;
+  if (!subs.length) { tb.innerHTML = '<tr><td colspan="4" class="empty">No subscriptions yet — add your tools & software costs.</td></tr>'; return; }
+  tb.innerHTML = subs.map(s => `
+    <tr>
+      <td><strong>${esc(s.name||'—')}</strong></td>
+      <td style="font-family:var(--mono)">${fmt(s.monthly_cost||0)}/mo</td>
+      <td><button onclick="toggleSubActive('${esc(String(s.id))}',${!!s.active})" style="border:none;cursor:pointer;border-radius:3px;font-size:10px;padding:2px 8px;font-family:var(--mono);background:${s.active?'rgba(46,204,138,.12)':'rgba(255,69,96,.08)'};color:${s.active?'var(--grn)':'var(--red)'}">${s.active?'Active':'Inactive'}</button></td>
+      <td><button class="btn btn-xs" style="color:var(--red)" onclick="deleteSub('${esc(String(s.id))}')">Delete</button></td>
+    </tr>`).join('');
+}
+async function openAddSub() {
+  const name = prompt('Subscription name (e.g. "Slack, Canva, Supabase"):');
+  if (!name?.trim()) return;
+  const costStr = prompt('Monthly cost ($):');
+  const cost = parseFloat(costStr);
+  if (isNaN(cost) || cost < 0) { toast('Invalid cost',true); return; }
+  const {error} = await db.from('subscriptions').insert([{name:name.trim(),monthly_cost:cost,active:true,created_at:now()}]);
+  if (error) { toast('Error: '+error.message,true); return; }
+  toast('Subscription added ✓');
+  loadFinance();
+}
+async function toggleSubActive(id, currentlyActive) {
+  const {error} = await db.from('subscriptions').update({active:!currentlyActive}).eq('id',id);
+  if (error) { toast('Error: '+error.message,true); return; }
+  loadFinance();
+}
+async function deleteSub(id) {
+  if (!confirm('Delete this subscription?')) return;
+  const {error} = await db.from('subscriptions').delete().eq('id',id);
+  if (error) { toast('Error: '+error.message,true); return; }
+  toast('Subscription deleted');
+  loadFinance();
+}
+
 function chartDefaults() {
   const dark=document.documentElement.getAttribute('data-theme')==='dark';
   return {grid:dark?'#1c1c22':'#dddde8',tick:dark?'#3e3e50':'#9494a8'};
@@ -3170,6 +3265,49 @@ async function saveFileContent() {
   toast('Saved ✓ — '+curFile);
 }
 
+let _tmplClients = [], _tmplPreviewOn = false;
+async function loadTemplateClientDropdown() {
+  if (_tmplClients.length) return;
+  const {data} = await db.from('clients').select('id,company_name,contact_name,niche,lead_price,total_leads_purchased,leads_delivered,type').in('stage',['active_client','active']).order('company_name');
+  _tmplClients = data || [];
+  const sel = $('tmpl-client-sel');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Preview with client —</option>' +
+    _tmplClients.map(c=>`<option value="${esc(String(c.id))}">${esc(c.company_name)} [${c.type==='ppl'?'PPL':'Managed'}]</option>`).join('');
+}
+function applyTemplateVars(text, client) {
+  if (!client) return text;
+  return text
+    .replace(/\{\{client_name\}\}/gi, client.company_name||'')
+    .replace(/\{\{contact_name\}\}/gi, client.contact_name||'')
+    .replace(/\{\{niche\}\}/gi, client.niche||'Solar')
+    .replace(/\{\{lead_price\}\}/gi, client.lead_price?'$'+client.lead_price:'')
+    .replace(/\{\{leads_purchased\}\}/gi, client.total_leads_purchased||'')
+    .replace(/\{\{leads_delivered\}\}/gi, client.leads_delivered||'');
+}
+function updateTemplatePreview() {
+  if (!_tmplPreviewOn) return;
+  const sel=$('tmpl-client-sel'),ta=$('file-editor-ta'),preview=$('tmpl-preview');
+  if (!sel||!ta||!preview) return;
+  const client=_tmplClients.find(c=>String(c.id)===sel.value)||null;
+  preview.textContent = applyTemplateVars(ta.value, client);
+}
+function toggleTemplatePreview() {
+  const sel=$('tmpl-client-sel'),ta=$('file-editor-ta'),preview=$('tmpl-preview'),btn=$('tmpl-preview-btn');
+  if (!sel||!ta||!preview) return;
+  if (!sel.value) { toast('Select a client to preview',true); return; }
+  _tmplPreviewOn = !_tmplPreviewOn;
+  if (_tmplPreviewOn) {
+    const client=_tmplClients.find(c=>String(c.id)===sel.value)||null;
+    preview.textContent = applyTemplateVars(ta.value, client);
+    preview.style.display='block'; ta.style.display='none';
+    if(btn) btn.textContent='Edit';
+  } else {
+    preview.style.display='none'; ta.style.display='';
+    if(btn) btn.textContent='Preview';
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════
    GOOGLE MAPS — PPL Lead Area Marking
    Key is fetched securely from Supabase Edge Function at runtime.
@@ -3471,7 +3609,7 @@ async function loadPricingAreas() {
         paths:coords, fillColor:colour, fillOpacity:.22, strokeWeight:2, strokeColor:colour, map:pricingMap
       });
       const _margin = area.internal_cpl && area.cpl ? Math.round((1 - area.internal_cpl/area.cpl)*100) : null;
-      const infowin = new google.maps.InfoWindow({content:`<strong>${area.label}</strong><br>Sell CPL: $${Number(area.cpl||0).toFixed(2)}${area.internal_cpl?`<br>Our cost: $${Number(area.internal_cpl).toFixed(2)}${_margin!==null?` · ${_margin}% margin`:''}`:''}`});
+      const infowin = new google.maps.InfoWindow({content:`<strong>${area.label}</strong><br>Sell CPL: $${Number(area.cpl||0).toFixed(2)}${area.internal_cpl?`<br>Our cost: $${Number(area.internal_cpl).toFixed(2)}${_margin!==null?` · ${_margin}% margin`:''}`:''} ${area.notes?`<br><span style="color:#888;font-size:11px">${area.notes}</span>`:''}`});
       overlay.addListener('click',e=>infowin.open({map:pricingMap,anchor:null,shouldFocus:false,position:e.latLng}));
       area._overlay = overlay;
     } catch(e){}
@@ -3500,7 +3638,7 @@ function renderPricingAreas() {
       ${costHtml}
       <span class="area-item-cpl">$${Number(a.cpl||0).toFixed(2)} sell${marginHtml}</span>
       <button class="area-item-del" data-pricing-id="${esc(String(a.id))}" title="Delete area">✕</button>
-    </div>`;
+    </div>${a.notes?`<div style="font-size:10px;color:var(--ink3);font-family:var(--font);padding:3px 12px 4px;line-height:1.45">${esc(a.notes)}</div>`:''}`;
   }).join('');
   el.querySelectorAll('.area-item-del').forEach(btn=>{
     btn.addEventListener('click',()=>deletePricingArea(btn.dataset.pricingId));
@@ -3522,6 +3660,7 @@ async function savePricingArea() {
   const label        = $('pricing-area-label')?.value.trim();
   const internal_cpl = parseFloat($('pricing-area-internal-cpl')?.value) || null;
   const cpl          = parseFloat($('pricing-area-cpl')?.value) || 0;
+  const notes        = $('pricing-area-notes')?.value.trim() || null;
   if (!label) { toast('Enter an area label',true); return; }
   let geoJson = null;
   if (pricingDrawnOverlay) {
@@ -3535,10 +3674,10 @@ async function savePricingArea() {
       if (path) geoJson = JSON.stringify(path.map ? path.map(p=>({lat:p.lat(),lng:p.lng()})) : path);
     } catch(e){}
   }
-  const {error} = await db.from('lead_pricing_areas').insert([{label,cpl,internal_cpl,geo_json:geoJson,created_at:now()}]);
+  const {error} = await db.from('lead_pricing_areas').insert([{label,cpl,internal_cpl,notes,geo_json:geoJson,created_at:now()}]);
   if (error) { toast('Save failed: '+error.message,true); return; }
   clearPricingDrawing();
-  $('pricing-area-label').value=''; $('pricing-area-internal-cpl').value=''; $('pricing-area-cpl').value='';
+  $('pricing-area-label').value=''; $('pricing-area-internal-cpl').value=''; $('pricing-area-cpl').value=''; if($('pricing-area-notes'))$('pricing-area-notes').value='';
   const hint = $('pricing-sell-hint'); if (hint) hint.innerHTML = '';
   toast('Pricing area saved ✓');
   loadPricingAreas();
