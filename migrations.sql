@@ -5,8 +5,11 @@
 -- ── 1. PPL CLIENTS: Add leads_delivered and total_leads_purchased ──
 ALTER TABLE public.clients
   ADD COLUMN IF NOT EXISTS leads_delivered       integer NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS total_leads_purchased integer NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS leads_scrubbed        integer NOT NULL DEFAULT 0;
+  ADD COLUMN IF NOT EXISTS total_leads_purchased integer NOT NULL DEFAULT 0;
+
+-- ── 1b. PPL CLIENTS: Add leads_scrubbed ──
+ALTER TABLE public.clients
+  ADD COLUMN IF NOT EXISTS leads_scrubbed integer NOT NULL DEFAULT 0;
 
 -- ── 2. TASKS: Add linked_ref and linked_name columns ──
 -- These allow tasks to be linked to any lead or client record.
