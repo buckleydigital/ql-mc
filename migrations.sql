@@ -68,7 +68,125 @@ ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
 -- VALUES ('google_maps_key', 'YOUR_ACTUAL_KEY_HERE')
 -- ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
 
--- ── 8. VERIFICATION ──
+-- ── 8. PPL LEAD DISTRIBUTION: Add delivery config columns to clients ──
+ALTER TABLE public.clients
+  ADD COLUMN IF NOT EXISTS postcodes            text[]      DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS delivery_method      text        DEFAULT 'email',
+  ADD COLUMN IF NOT EXISTS delivery_email       text,
+  ADD COLUMN IF NOT EXISTS delivery_phone       text,
+  ADD COLUMN IF NOT EXISTS custom_fields        jsonb       DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS last_lead_delivered_at timestamptz;
+
+-- ── 9. SOLAR LEADS: Incoming leads from Make.com webhook ──
+CREATE TABLE IF NOT EXISTS public.solar_leads (
+  id                  uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- Contact info (from ad form / webhook)
+  name                text        NOT NULL,
+  email               text,
+  phone               text,
+  postcode            text        NOT NULL,
+  address             text,
+  suburb              text,
+  state               text,
+  -- Solar-specific fields
+  property_type       text,       -- 'residential', 'commercial'
+  roof_type           text,
+  monthly_bill        numeric,
+  system_size         text,
+  interested_in       text,       -- 'solar', 'battery', 'both'
+  -- Flexible extra fields from the ad form (Make maps these in)
+  custom_data         jsonb       DEFAULT '{}',
+  -- Distribution / delivery
+  assigned_client_id  uuid        REFERENCES public.clients(id) ON DELETE SET NULL,
+  assigned_at         timestamptz,
+  status              text        NOT NULL DEFAULT 'pending'
+                                  CHECK (status IN ('pending','assigned','delivered','failed','scrubbed')),
+  delivery_method     text,
+  delivered_at        timestamptz,
+  delivery_error      text,
+  -- Source tracking
+  source              text        DEFAULT 'make',
+  -- Timestamps
+  created_at          timestamptz NOT NULL DEFAULT now(),
+  updated_at          timestamptz NOT NULL DEFAULT now()
+);
+
+-- ── 10. SOLAR LEADS: RLS ──
+ALTER TABLE public.solar_leads ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "auth_all_solar_leads" ON public.solar_leads;
+CREATE POLICY "auth_all_solar_leads" ON public.solar_leads FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- ── 11. SOLAR LEADS: Atomic assignment function for Make.com ──
+-- Called by Make after inserting the lead; atomically finds the right
+-- client (active, covers the postcode, longest since last delivery),
+-- increments leads_delivered, and returns delivery details.
+CREATE OR REPLACE FUNCTION public.assign_solar_lead(
+  p_lead_id  uuid,
+  p_postcode text
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_client record;
+BEGIN
+  -- Atomically lock the next eligible client using SKIP LOCKED so
+  -- concurrent Make executions never double-assign the same client.
+  SELECT
+    c.id,
+    c.company_name,
+    c.delivery_method,
+    c.delivery_email,
+    c.delivery_phone,
+    c.custom_fields
+  INTO v_client
+  FROM public.clients c
+  WHERE c.type    = 'ppl'
+    AND c.stage   = 'active_client'
+    AND (c.leads_delivered + COALESCE(c.leads_scrubbed, 0)) < c.total_leads_purchased
+    AND p_postcode = ANY(c.postcodes)
+  ORDER BY c.last_lead_delivered_at ASC NULLS FIRST
+  LIMIT 1
+  FOR UPDATE SKIP LOCKED;
+
+  IF v_client.id IS NULL THEN
+    RETURN jsonb_build_object(
+      'assigned', false,
+      'reason',   'no_matching_client'
+    );
+  END IF;
+
+  -- Increment counter and record the timestamp
+  UPDATE public.clients
+  SET
+    leads_delivered         = leads_delivered + 1,
+    last_lead_delivered_at  = now(),
+    updated_at              = now()
+  WHERE id = v_client.id;
+
+  -- Mark the lead as assigned
+  UPDATE public.solar_leads
+  SET
+    assigned_client_id = v_client.id,
+    assigned_at        = now(),
+    status             = 'assigned',
+    delivery_method    = v_client.delivery_method,
+    updated_at         = now()
+  WHERE id = p_lead_id;
+
+  RETURN jsonb_build_object(
+    'assigned',        true,
+    'client_id',       v_client.id,
+    'company_name',    v_client.company_name,
+    'delivery_method', v_client.delivery_method,
+    'delivery_email',  v_client.delivery_email,
+    'delivery_phone',  v_client.delivery_phone,
+    'custom_fields',   COALESCE(v_client.custom_fields, '{}'::jsonb)
+  );
+END;
+$$;
+
+-- ── 12. VERIFICATION ──
 SELECT column_name, data_type, column_default
 FROM information_schema.columns
 WHERE table_name = 'clients'

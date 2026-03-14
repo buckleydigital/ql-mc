@@ -1377,6 +1377,21 @@ td strong{font-weight:500}
         <option value="active_client">Active</option><option value="paused">Paused</option><option value="churned">Churned</option>
       </select>
     </div>
+    <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Lead Delivery</div>
+    <div class="frow"><label class="flabel">Postcodes Covered <span style="font-size:9.5px;color:var(--ink3);font-weight:300">comma-separated</span></label><input class="fi" id="ppl-postcodes" placeholder="e.g. 2000, 2010, 2020"></div>
+    <div class="frow"><label class="flabel">Delivery Method</label>
+      <select class="fs" id="ppl-delivery-method" onchange="toggleDeliveryFields('ppl')">
+        <option value="email">Email</option>
+        <option value="phone">Phone (SMS)</option>
+        <option value="email_and_phone">Email &amp; Phone</option>
+        <option value="crm">CRM (Custom)</option>
+      </select>
+    </div>
+    <div class="frow" id="ppl-dm-email-row"><label class="flabel">Delivery Email</label><input class="fi" id="ppl-delivery-email" type="email" placeholder="leads@client.com"></div>
+    <div class="frow" id="ppl-dm-phone-row" style="display:none"><label class="flabel">Delivery Phone <span style="font-size:9.5px;color:var(--ink3);font-weight:300">for SMS</span></label><input class="fi" id="ppl-delivery-phone" placeholder="+61400000000"></div>
+    <div id="ppl-dm-crm-row" style="display:none">
+      <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px"><label class="flabel">CRM Custom Fields <span style="font-size:9.5px;color:var(--ink3);font-weight:300">JSON key-value pairs</span></label><textarea class="fta" id="ppl-custom-fields" placeholder='{"webhook_url":"https://...", "api_key":"..."}' style="font-family:var(--mono);font-size:10px"></textarea></div>
+    </div>
     <div class="macts">
       <button class="btn" onclick="closeModal('m-ppl')">Cancel</button>
       <button class="btn btn-p" onclick="saveClient('ppl')">Save client</button>
@@ -1491,6 +1506,21 @@ td strong{font-weight:500}
       </select>
     </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="ep-notes"></textarea></div>
+    <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Lead Delivery</div>
+    <div class="frow"><label class="flabel">Postcodes Covered <span style="font-size:9.5px;color:var(--ink3);font-weight:300">comma-separated</span></label><input class="fi" id="ep-postcodes" placeholder="e.g. 2000, 2010, 2020"></div>
+    <div class="frow"><label class="flabel">Delivery Method</label>
+      <select class="fs" id="ep-delivery-method" onchange="toggleDeliveryFields('ep')">
+        <option value="email">Email</option>
+        <option value="phone">Phone (SMS)</option>
+        <option value="email_and_phone">Email &amp; Phone</option>
+        <option value="crm">CRM (Custom)</option>
+      </select>
+    </div>
+    <div class="frow" id="ep-dm-email-row"><label class="flabel">Delivery Email</label><input class="fi" id="ep-delivery-email" type="email" placeholder="leads@client.com"></div>
+    <div class="frow" id="ep-dm-phone-row" style="display:none"><label class="flabel">Delivery Phone <span style="font-size:9.5px;color:var(--ink3);font-weight:300">for SMS</span></label><input class="fi" id="ep-delivery-phone" placeholder="+61400000000"></div>
+    <div id="ep-dm-crm-row" style="display:none">
+      <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px"><label class="flabel">CRM Custom Fields <span style="font-size:9.5px;color:var(--ink3);font-weight:300">JSON key-value pairs</span></label><textarea class="fta" id="ep-custom-fields" placeholder='{"webhook_url":"https://...", "api_key":"..."}' style="font-family:var(--mono);font-size:10px"></textarea></div>
+    </div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Order Log</div>
     <div id="ep-order-log" style="margin-bottom:10px;font-family:var(--mono);font-size:11px;color:var(--ink3)">Loading…</div>
     <div style="background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;margin-bottom:4px">
@@ -2529,6 +2559,14 @@ function openEditClient(type,c) {
     setVal('ep-price',c.lead_price);setVal('ep-meta-cpl',c.meta_cpl||'');setVal('ep-pct',c.pct_sold);
     setVal('ep-ld',c.leads_delivered||0);setVal('ep-tlp',c.total_leads_purchased||0);setVal('ep-scrubbed',c.leads_scrubbed||0);
     setVal('ep-stage',c.stage||'active_client');setVal('ep-notes',c.notes);
+    // Delivery fields
+    const epPc=Array.isArray(c.postcodes)?c.postcodes.join(', '):(c.postcodes||'');
+    setVal('ep-postcodes',epPc);
+    setVal('ep-delivery-method',c.delivery_method||'email');
+    setVal('ep-delivery-email',c.delivery_email||'');
+    setVal('ep-delivery-phone',c.delivery_phone||'');
+    try{if($('ep-custom-fields'))$('ep-custom-fields').value=c.custom_fields&&Object.keys(c.custom_fields).length?JSON.stringify(c.custom_fields,null,2):'';}catch(e){}
+    toggleDeliveryFields('ep');
     setText('edit-ppl-sub',c.company_name||'');
     updatePplCalc();
     setVal('ep-ord-price',c.lead_price||'');
@@ -2554,6 +2592,18 @@ function openEditClient(type,c) {
     openModal('m-edit-managed');
   }
 }
+function toggleDeliveryFields(prefix) {
+  const method = $(prefix === 'ep' ? 'ep-delivery-method' : 'ppl-delivery-method')?.value || 'email';
+  const showEmail = method === 'email' || method === 'email_and_phone';
+  const showPhone = method === 'phone' || method === 'email_and_phone';
+  const showCrm   = method === 'crm';
+  const emailRow = $(prefix + '-dm-email-row');
+  const phoneRow = $(prefix + '-dm-phone-row');
+  const crmRow   = $(prefix + '-dm-crm-row');
+  if (emailRow) emailRow.style.display = showEmail ? '' : 'none';
+  if (phoneRow) phoneRow.style.display = showPhone ? '' : 'none';
+  if (crmRow)   crmRow.style.display   = showCrm   ? '' : 'none';
+}
 function updatePplCalc() {
   const price=parseFloat($('ep-price')?.value)||0;
   const ld=parseInt($('ep-ld')?.value)||0;
@@ -2572,7 +2622,9 @@ async function updateClient(type) {
     id=$('ep-id').value;
     const _ld=parseInt($('ep-ld').value)||0;const _tlp=parseInt($('ep-tlp').value)||0;const _scrubbed=parseInt($('ep-scrubbed').value)||0;const _price=parseFloat($('ep-price').value)||0;const _balCalc=(_tlp-_ld+_scrubbed)*_price;
     const _metaCpl=parseFloat($('ep-meta-cpl').value)||null;
-    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:_price,meta_cpl:_metaCpl,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,leads_scrubbed:_scrubbed,stage:$('ep-stage').value,notes:$('ep-notes').value.trim(),updated_at:now()};
+    const _postcodes=$('ep-postcodes').value.split(',').map(s=>s.trim()).filter(Boolean);
+    let _customFields={};try{const _cf=$('ep-custom-fields').value.trim();if(_cf)_customFields=JSON.parse(_cf);}catch(e){toast('Custom fields must be valid JSON',true);return;}
+    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:_price,meta_cpl:_metaCpl,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,leads_scrubbed:_scrubbed,stage:$('ep-stage').value,notes:$('ep-notes').value.trim(),postcodes:_postcodes,delivery_method:$('ep-delivery-method').value,delivery_email:$('ep-delivery-email').value.trim()||null,delivery_phone:$('ep-delivery-phone').value.trim()||null,custom_fields:_customFields,updated_at:now()};
     // Only write pct_sold manually if no delivered orders exist (auto-calc takes priority)
     const {count:deliveredCount}=await db.from('ppl_order_log').select('id',{count:'exact',head:true}).eq('client_id',id).eq('status','delivered');
     if (!(deliveredCount>0)) d.pct_sold=parseFloat($('ep-pct').value)||null;
@@ -2599,7 +2651,9 @@ async function deleteClient(type) {
 async function saveClient(type) {
   let d;
   if (type==='ppl') {
-    d={type:'ppl',company_name:$('ppl-co').value.trim(),contact_name:$('ppl-cn').value.trim(),email:$('ppl-em').value.trim(),niche:$('ppl-niche').value,lead_price:parseFloat($('ppl-price').value)||0,meta_cpl:parseFloat($('ppl-meta-cpl').value)||null,leads_delivered:parseInt($('ppl-ld').value)||0,total_leads_purchased:parseInt($('ppl-tlp').value)||0,leads_scrubbed:parseInt($('ppl-scrubbed').value)||0,stage:$('ppl-stage').value,created_at:now()};
+    const _pplPostcodes=$('ppl-postcodes').value.split(',').map(s=>s.trim()).filter(Boolean);
+    let _pplCf={};try{const _cf=$('ppl-custom-fields')?.value.trim();if(_cf)_pplCf=JSON.parse(_cf);}catch(e){toast('Custom fields must be valid JSON',true);return;}
+    d={type:'ppl',company_name:$('ppl-co').value.trim(),contact_name:$('ppl-cn').value.trim(),email:$('ppl-em').value.trim(),niche:$('ppl-niche').value,lead_price:parseFloat($('ppl-price').value)||0,meta_cpl:parseFloat($('ppl-meta-cpl').value)||null,leads_delivered:parseInt($('ppl-ld').value)||0,total_leads_purchased:parseInt($('ppl-tlp').value)||0,leads_scrubbed:parseInt($('ppl-scrubbed').value)||0,stage:$('ppl-stage').value,postcodes:_pplPostcodes,delivery_method:$('ppl-delivery-method').value,delivery_email:$('ppl-delivery-email').value.trim()||null,delivery_phone:$('ppl-delivery-phone').value.trim()||null,custom_fields:_pplCf,created_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   } else {
     d={type:'managed',company_name:$('mg-co').value.trim(),contact_name:$('mg-cn').value.trim(),email:$('mg-em').value.trim(),ad_account_id:$('mg-acc').value.trim(),monthly_budget:parseFloat($('mg-budget').value)||0,management_fee:parseFloat($('mg-fee').value)||0,stage:$('mg-stage').value,start_date:$('mg-start').value||null,last_payment_date:$('mg-last-pay').value||null,next_payment_date:$('mg-next-pay').value||null,created_at:now()};
@@ -2607,7 +2661,7 @@ async function saveClient(type) {
   }
   const {error}=await db.from('clients').insert([d]);
   if (error) { toast('DB error: '+error.message,true); return; }
-  if (type==='ppl') ['ppl-co','ppl-cn','ppl-em','ppl-price','ppl-meta-cpl','ppl-ld','ppl-tlp','ppl-scrubbed'].forEach(id=>{$(id).value='';});
+  if (type==='ppl') ['ppl-co','ppl-cn','ppl-em','ppl-price','ppl-meta-cpl','ppl-ld','ppl-tlp','ppl-scrubbed','ppl-postcodes','ppl-delivery-email','ppl-delivery-phone'].forEach(id=>{if($(id))$(id).value='';});
   else ['mg-co','mg-cn','mg-em','mg-acc','mg-budget','mg-fee','mg-start','mg-last-pay','mg-next-pay'].forEach(id=>{$(id).value='';});
   closeModal('m-'+type); toast('Client saved ✓');
   type==='ppl'?loadPPL():loadManaged();
