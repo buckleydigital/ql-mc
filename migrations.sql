@@ -265,7 +265,172 @@ BEGIN
 END;
 $$;
 
--- ── 12. VERIFICATION ──
+-- ── 13. SOLAR LEADS: Add new standard lead fields ──
+ALTER TABLE public.solar_leads
+  ADD COLUMN IF NOT EXISTS is_homeowner       text,    -- 'Yes' / 'No'
+  ADD COLUMN IF NOT EXISTS avg_quarterly_bill numeric, -- average quarterly electricity bill
+  ADD COLUMN IF NOT EXISTS purchase_timeline  text;    -- e.g. 'ASAP', '1-3 months', '6-12 months'
+
+-- ── 14. CLIENTS: Add weekly and monthly lead caps ──
+-- NULL = no cap (unlimited). Caps are checked live against solar_leads.
+ALTER TABLE public.clients
+  ADD COLUMN IF NOT EXISTS weekly_cap  integer,
+  ADD COLUMN IF NOT EXISTS monthly_cap integer;
+
+-- ── 15. SOLAR LEADS: Update assignment function with new fields + cap enforcement ──
+CREATE OR REPLACE FUNCTION public.assign_solar_lead(
+  p_lead_id  uuid,
+  p_postcode text
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_client      record;
+  v_lead        record;
+  v_all_fields  jsonb;
+  v_template    jsonb;
+  v_field       jsonb;
+  v_key         text;
+  v_label       text;
+  v_val         text;
+  v_email_rows  text := '';
+  v_sms_parts   text[] := ARRAY[]::text[];
+  v_email_html  text;
+  v_sms_body    text;
+BEGIN
+  -- ── Step 1: fetch the lead row ──────────────────────────────────────
+  SELECT * INTO v_lead FROM public.solar_leads WHERE id = p_lead_id;
+
+  -- ── Step 2: atomically find + lock the right client ─────────────────
+  -- Eligibility: active PPL, leads remaining, covers postcode, under caps.
+  -- Priority: whoever has gone the longest since their last lead (round-robin).
+  SELECT
+    c.id, c.company_name, c.delivery_method,
+    c.delivery_email, c.delivery_phone,
+    c.custom_fields, c.lead_template
+  INTO v_client
+  FROM public.clients c
+  WHERE c.type  = 'ppl'
+    AND c.stage = 'active_client'
+    AND (c.leads_delivered + COALESCE(c.leads_scrubbed, 0)) < c.total_leads_purchased
+    AND p_postcode = ANY(c.postcodes)
+    -- Weekly cap: null = no limit
+    AND (
+      c.weekly_cap IS NULL OR (
+        SELECT COUNT(*) FROM public.solar_leads sl
+        WHERE sl.assigned_client_id = c.id
+          AND sl.assigned_at >= date_trunc('week', now())
+      ) < c.weekly_cap
+    )
+    -- Monthly cap: null = no limit
+    AND (
+      c.monthly_cap IS NULL OR (
+        SELECT COUNT(*) FROM public.solar_leads sl
+        WHERE sl.assigned_client_id = c.id
+          AND sl.assigned_at >= date_trunc('month', now())
+      ) < c.monthly_cap
+    )
+  ORDER BY c.last_lead_delivered_at ASC NULLS FIRST
+  LIMIT 1
+  FOR UPDATE SKIP LOCKED;
+
+  IF v_client.id IS NULL THEN
+    RETURN jsonb_build_object('assigned', false, 'reason', 'no_matching_client');
+  END IF;
+
+  -- ── Step 3: merge all lead fields into one flat JSONB map ────────────
+  v_all_fields :=
+    jsonb_build_object(
+      'name',              v_lead.name,
+      'email',             v_lead.email,
+      'phone',             v_lead.phone,
+      'postcode',          v_lead.postcode,
+      'address',           v_lead.address,
+      'suburb',            v_lead.suburb,
+      'state',             v_lead.state,
+      'is_homeowner',      v_lead.is_homeowner,
+      'avg_quarterly_bill',v_lead.avg_quarterly_bill::text,
+      'purchase_timeline', v_lead.purchase_timeline,
+      'property_type',     v_lead.property_type,
+      'roof_type',         v_lead.roof_type,
+      'monthly_bill',      v_lead.monthly_bill::text,
+      'system_size',       v_lead.system_size,
+      'interested_in',     v_lead.interested_in
+    ) || COALESCE(v_lead.custom_data, '{}');
+
+  -- ── Step 4: resolve template (default = 7 standard fields) ──────────
+  v_template := COALESCE(
+    v_client.lead_template,
+    '[
+      {"key":"name",               "label":"Name"},
+      {"key":"email",              "label":"Email"},
+      {"key":"phone",              "label":"Phone"},
+      {"key":"postcode",           "label":"Postcode"},
+      {"key":"is_homeowner",       "label":"Home Owner"},
+      {"key":"avg_quarterly_bill", "label":"Avg Quarterly Bill"},
+      {"key":"purchase_timeline",  "label":"Purchase Timeline"}
+    ]'::jsonb
+  );
+
+  -- ── Step 5: build email HTML + SMS text (skip blank fields) ──────────
+  FOR v_field IN SELECT value FROM jsonb_array_elements(v_template) LOOP
+    v_key   := v_field->>'key';
+    v_label := COALESCE(v_field->>'label', v_key);
+    v_val   := v_all_fields->>v_key;
+
+    IF v_val IS NOT NULL AND trim(v_val) != '' THEN
+      v_email_rows := v_email_rows
+        || '<tr>'
+        || '<td style="padding:6px 12px 6px 0;color:#888;font-size:13px;white-space:nowrap;vertical-align:top">' || v_label || '</td>'
+        || '<td style="padding:6px 0;font-size:13px;color:#111">' || v_val || '</td>'
+        || '</tr>';
+      v_sms_parts := v_sms_parts || (v_label || ': ' || v_val);
+    END IF;
+  END LOOP;
+
+  v_email_html :=
+    '<div style="font-family:sans-serif;max-width:480px">'
+    || '<p style="font-size:15px;font-weight:600;margin:0 0 12px">New Solar Lead — ' || v_lead.name || '</p>'
+    || '<table style="border-collapse:collapse;width:100%">' || v_email_rows || '</table>'
+    || '<p style="font-size:11px;color:#aaa;margin:16px 0 0">Exclusive lead distributed to ' || v_client.company_name || ' · QL Mission Control</p>'
+    || '</div>';
+
+  v_sms_body := array_to_string(v_sms_parts, ' | ');
+
+  -- ── Step 6: increment counter + stamp the client ─────────────────────
+  UPDATE public.clients
+  SET leads_delivered        = leads_delivered + 1,
+      last_lead_delivered_at = now(),
+      updated_at             = now()
+  WHERE id = v_client.id;
+
+  -- ── Step 7: update the lead row ──────────────────────────────────────
+  UPDATE public.solar_leads
+  SET assigned_client_id = v_client.id,
+      assigned_at        = now(),
+      status             = 'assigned',
+      delivery_method    = v_client.delivery_method,
+      updated_at         = now()
+  WHERE id = p_lead_id;
+
+  -- ── Step 8: return everything Make needs ─────────────────────────────
+  RETURN jsonb_build_object(
+    'assigned',        true,
+    'client_id',       v_client.id,
+    'company_name',    v_client.company_name,
+    'delivery_method', v_client.delivery_method,
+    'delivery_email',  v_client.delivery_email,
+    'delivery_phone',  v_client.delivery_phone,
+    'custom_fields',   COALESCE(v_client.custom_fields, '{}'),
+    'email_subject',   'New Lead — ' || v_lead.name || ' (' || v_lead.postcode || ')',
+    'email_html',      v_email_html,
+    'sms_body',        v_sms_body
+  );
+END;
+$$;
+
+-- ── 16. VERIFICATION ──
 SELECT column_name, data_type, column_default
 FROM information_schema.columns
 WHERE table_name = 'clients'
