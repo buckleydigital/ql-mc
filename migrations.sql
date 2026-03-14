@@ -70,12 +70,17 @@ ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
 
 -- ── 8. PPL LEAD DISTRIBUTION: Add delivery config columns to clients ──
 ALTER TABLE public.clients
-  ADD COLUMN IF NOT EXISTS postcodes            text[]      DEFAULT '{}',
-  ADD COLUMN IF NOT EXISTS delivery_method      text        DEFAULT 'email',
-  ADD COLUMN IF NOT EXISTS delivery_email       text,
-  ADD COLUMN IF NOT EXISTS delivery_phone       text,
-  ADD COLUMN IF NOT EXISTS custom_fields        jsonb       DEFAULT '{}',
-  ADD COLUMN IF NOT EXISTS last_lead_delivered_at timestamptz;
+  ADD COLUMN IF NOT EXISTS postcodes             text[]      DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS delivery_method       text        DEFAULT 'email',
+  ADD COLUMN IF NOT EXISTS delivery_email        text,
+  ADD COLUMN IF NOT EXISTS delivery_phone        text,
+  ADD COLUMN IF NOT EXISTS custom_fields         jsonb       DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS last_lead_delivered_at timestamptz,
+  -- Ordered list of {key, label} pairs that define which lead fields
+  -- appear in the email/SMS notification for this client.
+  -- Keys can be any solar_leads column OR a key inside custom_data.
+  -- Example: [{"key":"name","label":"Name"},{"key":"monthly_bill","label":"Bill"}]
+  ADD COLUMN IF NOT EXISTS lead_template         jsonb;
 
 -- ── 9. SOLAR LEADS: Incoming leads from Make.com webhook ──
 CREATE TABLE IF NOT EXISTS public.solar_leads (
@@ -116,10 +121,18 @@ ALTER TABLE public.solar_leads ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "auth_all_solar_leads" ON public.solar_leads;
 CREATE POLICY "auth_all_solar_leads" ON public.solar_leads FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
--- ── 11. SOLAR LEADS: Atomic assignment function for Make.com ──
--- Called by Make after inserting the lead; atomically finds the right
--- client (active, covers the postcode, longest since last delivery),
--- increments leads_delivered, and returns delivery details.
+-- ── 11. SOLAR LEADS: Atomic assignment + payload builder for Make.com ──
+-- Called by Make immediately after inserting the lead row.
+-- 1. Atomically finds the right client (active, covers postcode, longest
+--    since last delivery) using FOR UPDATE SKIP LOCKED so two simultaneous
+--    Make executions can never double-assign.
+-- 2. Increments leads_delivered on the client.
+-- 3. Reads the client's lead_template to build a pre-formatted email_html
+--    and sms_body — only fields with non-null values are included, and
+--    labels come from the template so each client can have custom field names.
+--    Any key from solar_leads columns OR from custom_data is supported.
+-- 4. Returns everything Make needs: delivery details + pre-built payload.
+--    Make just routes and sends — no reformatting required.
 CREATE OR REPLACE FUNCTION public.assign_solar_lead(
   p_lead_id  uuid,
   p_postcode text
@@ -128,21 +141,31 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  v_client record;
+  v_client      record;
+  v_lead        record;
+  v_all_fields  jsonb;
+  v_template    jsonb;
+  v_field       jsonb;
+  v_key         text;
+  v_label       text;
+  v_val         text;
+  v_email_rows  text := '';
+  v_sms_parts   text[] := ARRAY[]::text[];
+  v_email_html  text;
+  v_sms_body    text;
 BEGIN
-  -- Atomically lock the next eligible client using SKIP LOCKED so
-  -- concurrent Make executions never double-assign the same client.
+  -- ── Step 1: fetch the lead row ──────────────────────────────────────
+  SELECT * INTO v_lead FROM public.solar_leads WHERE id = p_lead_id;
+
+  -- ── Step 2: atomically find + lock the right client ─────────────────
   SELECT
-    c.id,
-    c.company_name,
-    c.delivery_method,
-    c.delivery_email,
-    c.delivery_phone,
-    c.custom_fields
+    c.id, c.company_name, c.delivery_method,
+    c.delivery_email, c.delivery_phone,
+    c.custom_fields, c.lead_template
   INTO v_client
   FROM public.clients c
-  WHERE c.type    = 'ppl'
-    AND c.stage   = 'active_client'
+  WHERE c.type  = 'ppl'
+    AND c.stage = 'active_client'
     AND (c.leads_delivered + COALESCE(c.leads_scrubbed, 0)) < c.total_leads_purchased
     AND p_postcode = ANY(c.postcodes)
   ORDER BY c.last_lead_delivered_at ASC NULLS FIRST
@@ -150,30 +173,82 @@ BEGIN
   FOR UPDATE SKIP LOCKED;
 
   IF v_client.id IS NULL THEN
-    RETURN jsonb_build_object(
-      'assigned', false,
-      'reason',   'no_matching_client'
-    );
+    RETURN jsonb_build_object('assigned', false, 'reason', 'no_matching_client');
   END IF;
 
-  -- Increment counter and record the timestamp
+  -- ── Step 3: merge all lead fields into one flat JSONB map ────────────
+  -- Fixed columns first, then custom_data on top so funnels can override
+  -- labels or add entirely new fields without a schema change.
+  v_all_fields :=
+    jsonb_build_object(
+      'name',          v_lead.name,
+      'email',         v_lead.email,
+      'phone',         v_lead.phone,
+      'postcode',      v_lead.postcode,
+      'address',       v_lead.address,
+      'suburb',        v_lead.suburb,
+      'state',         v_lead.state,
+      'property_type', v_lead.property_type,
+      'roof_type',     v_lead.roof_type,
+      'monthly_bill',  v_lead.monthly_bill::text,
+      'system_size',   v_lead.system_size,
+      'interested_in', v_lead.interested_in
+    ) || COALESCE(v_lead.custom_data, '{}');
+
+  -- ── Step 4: resolve template ─────────────────────────────────────────
+  -- Fall back to showing the four crucial fields if no template is set.
+  v_template := COALESCE(
+    v_client.lead_template,
+    '[
+      {"key":"name",     "label":"Name"},
+      {"key":"email",    "label":"Email"},
+      {"key":"phone",    "label":"Phone"},
+      {"key":"postcode", "label":"Postcode"}
+    ]'::jsonb
+  );
+
+  -- ── Step 5: build email HTML + SMS text (skip blank fields) ──────────
+  FOR v_field IN SELECT value FROM jsonb_array_elements(v_template) LOOP
+    v_key   := v_field->>'key';
+    v_label := COALESCE(v_field->>'label', v_key);
+    v_val   := v_all_fields->>v_key;
+
+    IF v_val IS NOT NULL AND trim(v_val) != '' THEN
+      v_email_rows := v_email_rows
+        || '<tr>'
+        || '<td style="padding:6px 12px 6px 0;color:#888;font-size:13px;white-space:nowrap;vertical-align:top">' || v_label || '</td>'
+        || '<td style="padding:6px 0;font-size:13px;color:#111">' || v_val || '</td>'
+        || '</tr>';
+      v_sms_parts := v_sms_parts || (v_label || ': ' || v_val);
+    END IF;
+  END LOOP;
+
+  v_email_html :=
+    '<div style="font-family:sans-serif;max-width:480px">'
+    || '<p style="font-size:15px;font-weight:600;margin:0 0 12px">New Solar Lead — ' || v_lead.name || '</p>'
+    || '<table style="border-collapse:collapse;width:100%">' || v_email_rows || '</table>'
+    || '<p style="font-size:11px;color:#aaa;margin:16px 0 0">Exclusive lead distributed to ' || v_client.company_name || ' · QL Mission Control</p>'
+    || '</div>';
+
+  v_sms_body := array_to_string(v_sms_parts, ' | ');
+
+  -- ── Step 6: increment counter + stamp the client ─────────────────────
   UPDATE public.clients
-  SET
-    leads_delivered         = leads_delivered + 1,
-    last_lead_delivered_at  = now(),
-    updated_at              = now()
+  SET leads_delivered        = leads_delivered + 1,
+      last_lead_delivered_at = now(),
+      updated_at             = now()
   WHERE id = v_client.id;
 
-  -- Mark the lead as assigned
+  -- ── Step 7: update the lead row ──────────────────────────────────────
   UPDATE public.solar_leads
-  SET
-    assigned_client_id = v_client.id,
-    assigned_at        = now(),
-    status             = 'assigned',
-    delivery_method    = v_client.delivery_method,
-    updated_at         = now()
+  SET assigned_client_id = v_client.id,
+      assigned_at        = now(),
+      status             = 'assigned',
+      delivery_method    = v_client.delivery_method,
+      updated_at         = now()
   WHERE id = p_lead_id;
 
+  -- ── Step 8: return everything Make needs ─────────────────────────────
   RETURN jsonb_build_object(
     'assigned',        true,
     'client_id',       v_client.id,
@@ -181,7 +256,11 @@ BEGIN
     'delivery_method', v_client.delivery_method,
     'delivery_email',  v_client.delivery_email,
     'delivery_phone',  v_client.delivery_phone,
-    'custom_fields',   COALESCE(v_client.custom_fields, '{}'::jsonb)
+    'custom_fields',   COALESCE(v_client.custom_fields, '{}'),
+    -- Pre-built payload — Make just sends these directly, no reformatting
+    'email_subject',   'New Lead — ' || v_lead.name || ' (' || v_lead.postcode || ')',
+    'email_html',      v_email_html,
+    'sms_body',        v_sms_body
   );
 END;
 $$;

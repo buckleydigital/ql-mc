@@ -1,276 +1,308 @@
 # Make.com — Solar Lead Distribution Scenario
 
-## Overview
+## How it works
 
-This scenario receives a new solar lead (from a Facebook Lead Ad, Google Form,
-Typeform, etc.), inserts it into Supabase, atomically assigns it to the correct
-PPL client based on postcode, increments their delivered count, then delivers
-the lead via email, SMS, or both. CRM delivery uses a custom webhook branch.
+All the smart stuff happens in Supabase. Make's job is minimal:
+
+1. Receive the lead from your ad form
+2. Insert it into Supabase → get back a UUID
+3. Call one database function → get back who to send to, how, and the pre-built email/SMS content
+4. Route and send — that's it
+
+The email HTML and SMS text are built entirely in Postgres using each client's
+**Lead Notification Template**. Only fields with actual values appear. Blank
+fields are skipped automatically. Each client or funnel can have completely
+different fields.
 
 ```
-[Webhook] → [Insert Lead] → [Assign Lead] → [Router] → [Email / SMS / CRM]
-                                                      → [Mark Delivered]
+[Webhook trigger]
+      ↓
+[Module 1] Insert lead into solar_leads → get UUID
+      ↓
+[Module 2] Call assign_solar_lead() → get delivery details + pre-built email/SMS
+      ↓ (filter: assigned = false → [Module 6] notify you, stop)
+[Module 3] Router on delivery_method
+      ↓           ↓           ↓           ↓
+  [email]    [phone]    [both]      [crm]
+      ↓           ↓           ↓           ↓
+[Module 4] Mark lead as "delivered" in solar_leads
 ```
 
 ---
 
-## Module 1 — Custom Webhook (Trigger)
+## Before you build — set up each PPL client
 
-**Type:** Webhooks > Custom webhook
+In QL Mission Control, open each PPL client's Edit modal and fill in:
 
-Configure this as your ad form's submission endpoint. The webhook receives the
-raw lead data and kicks off the scenario.
+**Lead Delivery section:**
+- **Postcodes Covered** — the postcodes this client bought leads for (comma-separated)
+- **Delivery Method** — Email / Phone / Email & Phone / CRM
+- **Delivery Email** — where lead emails go (can differ from their contact email)
+- **Delivery Phone** — mobile number for SMS
 
-**Expected payload (Facebook Lead Ads example):**
+**Lead Notification Template section:**
+An ordered JSON array. Each item is `{"key": "...", "label": "..."}` where:
+- `key` is the field name (see built-in keys below, or any custom key from your ad form)
+- `label` is what appears in the email/SMS next to the value
+
+```json
+[
+  {"key": "name",          "label": "Name"},
+  {"key": "email",         "label": "Email"},
+  {"key": "phone",         "label": "Phone"},
+  {"key": "postcode",      "label": "Postcode"},
+  {"key": "suburb",        "label": "Suburb"},
+  {"key": "monthly_bill",  "label": "Monthly Bill"},
+  {"key": "property_type", "label": "Property Type"},
+  {"key": "interested_in", "label": "Interested In"}
+]
+```
+
+**Built-in field keys** (standard solar_leads columns):
+`name` `email` `phone` `postcode` `address` `suburb` `state`
+`property_type` `roof_type` `monthly_bill` `system_size` `interested_in`
+
+**Custom field keys** — any extra field your ad form sends gets stored in
+`custom_data` on the lead. Just use the same key name in the template:
+```json
+{"key": "roof_age",          "label": "Roof Age"},
+{"key": "current_provider",  "label": "Current Provider"},
+{"key": "num_occupants",     "label": "People in Home"}
+```
+
+If a client has no template set, the system falls back to name + email + phone + postcode only.
+
+---
+
+## Supabase setup
+
+**Service role key** — go to Supabase Dashboard → Settings → API → copy the
+`service_role` secret key. You'll use this in all HTTP module headers.
+Never use the anon key here — it won't have permission to call the RPC function.
+
+**Run the migrations** — paste sections 8–11 from `migrations.sql` into
+Supabase → SQL Editor → New Query and run.
+
+---
+
+## Module 1 — Insert lead into Supabase
+
+**Type:** HTTP → Make a request
+
+| Setting     | Value |
+|-------------|-------|
+| URL         | `https://YOUR-PROJECT-REF.supabase.co/rest/v1/solar_leads` |
+| Method      | POST |
+| Header      | `apikey: YOUR_SERVICE_ROLE_KEY` |
+| Header      | `Authorization: Bearer YOUR_SERVICE_ROLE_KEY` |
+| Header      | `Content-Type: application/json` |
+| Header      | `Prefer: return=representation` |
+| Parse response | Yes |
+
+**Body (raw JSON):**
+
+Map fields from your trigger (webhook, Facebook Lead Ad, etc.) to these names.
+Standard fields go in their own keys. Any extra funnel fields go inside
+`custom_data` as a JSON object — the template system will pick them up.
+
 ```json
 {
-  "name":          "Jane Smith",
-  "email":         "jane@example.com",
-  "phone":         "+61400000000",
-  "postcode":      "2000",
-  "address":       "123 Main St",
-  "suburb":        "Sydney",
-  "state":         "NSW",
-  "property_type": "residential",
-  "roof_type":     "tile",
-  "monthly_bill":  250,
-  "interested_in": "solar"
+  "name":          "{{trigger.full_name}}",
+  "email":         "{{trigger.email}}",
+  "phone":         "{{trigger.phone_number}}",
+  "postcode":      "{{trigger.postcode}}",
+  "suburb":        "{{trigger.suburb}}",
+  "state":         "{{trigger.state}}",
+  "address":       "{{trigger.address}}",
+  "property_type": "{{trigger.property_type}}",
+  "monthly_bill":  {{trigger.monthly_bill}},
+  "interested_in": "{{trigger.interested_in}}",
+  "source":        "make",
+  "custom_data": {
+    "roof_age":         "{{trigger.roof_age}}",
+    "current_provider": "{{trigger.current_provider}}"
+  }
 }
 ```
 
-> For Facebook Lead Ads, use the **Facebook Lead Ads** trigger module instead
-> and map fields to the structure above using Set Variables.
+Remove any keys you don't have. The response gives you the new row — you need
+`{{1.id}}` (the UUID) for the next module. Make sure Parse response is ON.
 
 ---
 
-## Module 2 — Insert Lead into Supabase
+## Module 2 — Assign lead + get pre-built payload
 
-**Type:** HTTP > Make a request
+**Type:** HTTP → Make a request
 
-| Field       | Value                                                        |
-|-------------|--------------------------------------------------------------|
-| URL         | `https://<your-project>.supabase.co/rest/v1/solar_leads`    |
-| Method      | POST                                                         |
-| Headers     | `apikey: <service_role_key>`                                 |
-|             | `Authorization: Bearer <service_role_key>`                   |
-|             | `Content-Type: application/json`                             |
-|             | `Prefer: return=representation`                              |
-| Body (JSON) | See below                                                    |
+| Setting     | Value |
+|-------------|-------|
+| URL         | `https://YOUR-PROJECT-REF.supabase.co/rest/v1/rpc/assign_solar_lead` |
+| Method      | POST |
+| Header      | `apikey: YOUR_SERVICE_ROLE_KEY` |
+| Header      | `Authorization: Bearer YOUR_SERVICE_ROLE_KEY` |
+| Header      | `Content-Type: application/json` |
+| Parse response | Yes |
 
 **Body:**
 ```json
 {
-  "name":          "{{1.name}}",
-  "email":         "{{1.email}}",
-  "phone":         "{{1.phone}}",
-  "postcode":      "{{1.postcode}}",
-  "address":       "{{1.address}}",
-  "suburb":        "{{1.suburb}}",
-  "state":         "{{1.state}}",
-  "property_type": "{{1.property_type}}",
-  "roof_type":     "{{1.roof_type}}",
-  "monthly_bill":  {{1.monthly_bill}},
-  "interested_in": "{{1.interested_in}}",
-  "source":        "make"
+  "p_lead_id":  "{{1.id}}",
+  "p_postcode": "{{trigger.postcode}}"
 }
 ```
 
-**Parse response:** Yes — map `{{2.id}}` as `lead_id` for the next module.
-
----
-
-## Module 3 — Assign Lead (RPC call)
-
-**Type:** HTTP > Make a request
-
-This calls the `assign_solar_lead` PostgreSQL function atomically. It finds the
-right client (active, covers the postcode, longest since their last delivery),
-increments their `leads_delivered` counter, and returns delivery details.
-
-| Field       | Value                                                             |
-|-------------|-------------------------------------------------------------------|
-| URL         | `https://<your-project>.supabase.co/rest/v1/rpc/assign_solar_lead` |
-| Method      | POST                                                              |
-| Headers     | `apikey: <service_role_key>`                                      |
-|             | `Authorization: Bearer <service_role_key>`                        |
-|             | `Content-Type: application/json`                                  |
-| Body (JSON) | `{"p_lead_id": "{{2.id}}", "p_postcode": "{{1.postcode}}"}` |
-
-**Response structure:**
+**What comes back when a client is found:**
 ```json
 {
   "assigned":        true,
-  "client_id":       "uuid",
-  "company_name":    "SunPower Solutions",
+  "client_id":       "uuid...",
+  "company_name":    "SunPower QLD",
   "delivery_method": "email_and_phone",
   "delivery_email":  "leads@sunpower.com.au",
   "delivery_phone":  "+61412345678",
-  "custom_fields":   {}
+  "custom_fields":   {},
+  "email_subject":   "New Lead — Jane Smith (2000)",
+  "email_html":      "<div>...pre-built HTML email...</div>",
+  "sms_body":        "Name: Jane Smith | Phone: 0412345678 | Postcode: 2000 | ..."
 }
 ```
 
-If `assigned = false`, the lead has no matching active client. Set up an error
-handler / notification for this case (see Module 7).
-
----
-
-## Module 4 — Router
-
-**Type:** Flow Control > Router
-
-Add four routes based on `{{3.delivery_method}}`:
-
-| Route | Condition                               |
-|-------|-----------------------------------------|
-| A     | `delivery_method` = `email`             |
-| B     | `delivery_method` = `phone`             |
-| C     | `delivery_method` = `email_and_phone`   |
-| D     | `delivery_method` = `crm`               |
-
-Routes A and B each go to a single module. Route C runs both email and SMS in
-sequence (or use two parallel paths). Route D calls the client's webhook.
-
----
-
-## Module 5A — Send Email (Gmail / SendGrid)
-
-**Type:** Gmail > Send an Email  **or** SendGrid > Send Email
-
-| Field   | Value                                                    |
-|---------|----------------------------------------------------------|
-| To      | `{{3.delivery_email}}`                                   |
-| Subject | `New Solar Lead — {{1.name}} ({{1.postcode}})`           |
-| Body    | See template below                                       |
-
-**Email body template (HTML):**
-```
-<h2>New Solar Lead</h2>
-<table>
-  <tr><td><b>Name</b></td><td>{{1.name}}</td></tr>
-  <tr><td><b>Phone</b></td><td>{{1.phone}}</td></tr>
-  <tr><td><b>Email</b></td><td>{{1.email}}</td></tr>
-  <tr><td><b>Postcode</b></td><td>{{1.postcode}}, {{1.suburb}} {{1.state}}</td></tr>
-  <tr><td><b>Address</b></td><td>{{1.address}}</td></tr>
-  <tr><td><b>Property</b></td><td>{{1.property_type}} — {{1.roof_type}} roof</td></tr>
-  <tr><td><b>Monthly Bill</b></td><td>${{1.monthly_bill}}</td></tr>
-  <tr><td><b>Interested in</b></td><td>{{1.interested_in}}</td></tr>
-</table>
-<p><i>Exclusive lead — distributed to {{3.company_name}} only.</i></p>
+**What comes back when no client matched:**
+```json
+{
+  "assigned": false,
+  "reason":   "no_matching_client"
+}
 ```
 
+Add a **filter** after this module: continue only if `{{2.assigned}}` = `true`.
+Everything else falls to the error path (Module 6).
+
 ---
 
-## Module 5B — Send SMS (Twilio)
+## Module 3 — Router
 
-**Type:** Twilio > Send an SMS
+**Type:** Flow Control → Router
 
-| Field | Value                                           |
-|-------|-------------------------------------------------|
-| To    | `{{3.delivery_phone}}`                          |
-| Body  | See template below                              |
+Add four routes. Each route has a filter on `{{2.delivery_method}}`:
 
-**SMS template:**
+| Route | Filter condition |
+|-------|-----------------|
+| A | `{{2.delivery_method}}` equals `email` |
+| B | `{{2.delivery_method}}` equals `phone` |
+| C | `{{2.delivery_method}}` equals `email_and_phone` |
+| D | `{{2.delivery_method}}` equals `crm` |
+
+---
+
+### Route A — Email only
+
+**Module:** Gmail → Send an Email (or SendGrid → Send Email)
+
+| Field   | Value |
+|---------|-------|
+| To      | `{{2.delivery_email}}` |
+| Subject | `{{2.email_subject}}` |
+| Content | HTML |
+| Body    | `{{2.email_html}}` |
+
+That's it. Supabase already built the HTML for you.
+
+---
+
+### Route B — SMS only
+
+**Module:** Twilio → Send an SMS
+
+| Field | Value |
+|-------|-------|
+| To    | `{{2.delivery_phone}}` |
+| Body  | `{{2.sms_body}}` |
+
+---
+
+### Route C — Email and SMS
+
+Add both the Gmail module and the Twilio module in sequence on this route.
+Use `{{2.email_subject}}`, `{{2.email_html}}`, `{{2.delivery_email}}` for email
+and `{{2.delivery_phone}}`, `{{2.sms_body}}` for SMS.
+
+---
+
+### Route D — CRM webhook
+
+**Module:** HTTP → Make a request
+
+The client's CRM connection details live in their `custom_fields` JSON.
+Typical pattern: `{"webhook_url": "https://crm.example.com/leads", "api_key": "xxx"}`
+
+| Field  | Value |
+|--------|-------|
+| URL    | `{{2.custom_fields.webhook_url}}` |
+| Method | POST |
+| Header | `X-Api-Key: {{2.custom_fields.api_key}}` (or whatever the CRM needs) |
+| Body   | `{{2.email_html}}` as HTML, or a full JSON payload built from the trigger data |
+
+Each CRM client will be a bit different. For fully custom CRM integrations,
+consider a sub-scenario or a dedicated scenario per client.
+
+---
+
+## Module 4 — Mark lead as delivered
+
+Add this at the **end of every route** (after the send step).
+
+**Type:** HTTP → Make a request
+
+| Setting | Value |
+|---------|-------|
+| URL     | `https://YOUR-PROJECT-REF.supabase.co/rest/v1/solar_leads?id=eq.{{1.id}}` |
+| Method  | PATCH |
+| Header  | `apikey: YOUR_SERVICE_ROLE_KEY` |
+| Header  | `Authorization: Bearer YOUR_SERVICE_ROLE_KEY` |
+| Header  | `Content-Type: application/json` |
+| Header  | `Prefer: return=minimal` |
+
+**Body:**
+```json
+{
+  "status":       "delivered",
+  "delivered_at": "{{now}}"
+}
 ```
-New Solar Lead for {{3.company_name}}:
-{{1.name}} | {{1.phone}} | {{1.postcode}}
-Bill: ${{1.monthly_bill}}/mo | {{1.property_type}}
-Reply STOP to opt out.
+
+---
+
+## Module 5 — Error handler: lead failed to match
+
+If Module 2 returns `assigned = false`, route to a notification.
+
+**Type:** Gmail / Slack / whatever you prefer
+
+Send yourself an alert:
+```
+No PPL client found for postcode {{trigger.postcode}}.
+Lead: {{trigger.full_name}} ({{trigger.email}})
+Check QL Mission Control — client may have run out of leads or postcodes not configured.
 ```
 
----
-
-## Module 5C — Email & Phone
-
-Run **both** 5A and 5B in sequence on this route.
+The lead remains in `solar_leads` with `status = 'pending'` so you can
+manually review and reassign from the database.
 
 ---
 
-## Module 5D — CRM Webhook
+## How the distribution logic works
 
-**Type:** HTTP > Make a request
+When `assign_solar_lead` runs, it looks for a PPL client where ALL of these are true:
+- `type = 'ppl'`
+- `stage = 'active_client'`
+- `leads_delivered + leads_scrubbed < total_leads_purchased` (still has leads to fill)
+- The lead's postcode is in the client's `postcodes[]` array
 
-The client's CRM details are stored in `custom_fields` on their client record.
-Common pattern: `{"webhook_url": "https://crm.example.com/leads", "api_key": "xxx"}`.
+Among all matching clients, it picks the one with the **oldest `last_lead_delivered_at`**
+(the one who went the longest without a lead). This gives fair round-robin across
+multiple clients covering the same postcode.
 
-| Field   | Value                                   |
-|---------|-----------------------------------------|
-| URL     | `{{3.custom_fields.webhook_url}}`       |
-| Method  | POST                                    |
-| Headers | `X-Api-Key: {{3.custom_fields.api_key}}`|
-| Body    | Full lead JSON from Module 1            |
-
-Adapt this per client CRM. Each CRM client typically gets their own dedicated
-scenario route or a sub-scenario.
-
----
-
-## Module 6 — Mark Lead as Delivered
-
-**Type:** HTTP > Make a request
-
-Run this **after** all delivery routes converge (add a converger if using
-parallel routes), regardless of which delivery method was used.
-
-| Field       | Value                                                                    |
-|-------------|--------------------------------------------------------------------------|
-| URL         | `https://<your-project>.supabase.co/rest/v1/solar_leads?id=eq.{{2.id}}` |
-| Method      | PATCH                                                                    |
-| Headers     | `apikey: <service_role_key>`                                             |
-|             | `Authorization: Bearer <service_role_key>`                               |
-|             | `Content-Type: application/json`                                         |
-| Body (JSON) | `{"status": "delivered", "delivered_at": "{{now}}"}` |
-
----
-
-## Module 7 — No Match Handler (Error Route)
-
-Add an **error handler** or a filter on Module 3 for `assigned = false`.
-
-**Suggested action:** Send yourself a Slack/email notification:
-```
-No PPL client matched for postcode {{1.postcode}}.
-Lead: {{1.name}} ({{1.email}})
-```
-The lead stays as `status = 'pending'` in `solar_leads` for manual review.
-
----
-
-## Variables Reference
-
-| Variable           | Source     | Description                           |
-|--------------------|------------|---------------------------------------|
-| `1.postcode`       | Webhook    | Lead's postcode                       |
-| `2.id`             | Module 2   | UUID of the inserted solar_lead row   |
-| `3.assigned`       | Module 3   | Boolean — was a client found?         |
-| `3.delivery_method`| Module 3   | `email`, `phone`, `email_and_phone`, `crm` |
-| `3.delivery_email` | Module 3   | Client's lead delivery email          |
-| `3.delivery_phone` | Module 3   | Client's lead delivery phone (SMS)    |
-| `3.custom_fields`  | Module 3   | JSON object for CRM config            |
-| `3.company_name`   | Module 3   | Client name (for notifications)       |
-
----
-
-## Supabase Service Role Key
-
-Use the **service role** key (not the anon key) so Make can bypass RLS and
-call the RPC function. Find it in:
-`Supabase Dashboard → Settings → API → service_role secret`
-
-Store it in Make as a **Connection** or environment variable — never hardcode
-it in the scenario body.
-
----
-
-## How Exclusive Lead Matching Works
-
-The `assign_solar_lead` database function uses `FOR UPDATE SKIP LOCKED` which
-means even if two leads arrive simultaneously, Postgres guarantees only one
-client is assigned per lead. The client chosen is always the active PPL client
-who:
-
-1. Covers the lead's postcode (postcode is in their `postcodes[]` array)
-2. Has leads remaining (`leads_delivered < total_leads_purchased`)
-3. Has gone the longest since their last delivery (`last_lead_delivered_at ASC`)
-
-This gives you a fair round-robin across multiple clients in the same area,
-with exclusivity guaranteed at the database level.
+The database uses `FOR UPDATE SKIP LOCKED` so if two leads arrive at exactly the
+same millisecond, Postgres guarantees they can't be assigned to the same client.
+One waits, the other proceeds — no race conditions.
