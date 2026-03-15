@@ -16,11 +16,22 @@
     .success { background: #d1fae5; color: #065f46; }
     .error { background: #fee2e2; color: #991b1b; }
     hr { border: none; border-top: 1px solid #e5e5e5; margin: 8px 0 20px; }
+    .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 12px; }
   </style>
 </head>
 <body>
   <h2>Test Lead Submission</h2>
+
   <form id="leadForm">
+    <p class="section-title">Your Account</p>
+    <label>Email</label>
+    <input type="email" name="login_email" placeholder="you@example.com" required>
+    <label>Password</label>
+    <input type="password" name="login_password" placeholder="Dashboard password" required>
+
+    <hr>
+
+    <p class="section-title">Lead Data</p>
     <label>Full Name</label>
     <input type="text" name="name" value="Jane Test" required>
 
@@ -63,18 +74,15 @@
     <textarea name="custom_data" rows="4" placeholder='{"roof_condition":"Good","shading_notes":"West side only"}'></textarea>
     <p class="hint">Any extra key/value pairs here are captured in custom_data and will auto-appear in lead delivery emails.</p>
 
-    <hr>
-
-    <label>Webhook Token</label>
-    <input type="text" name="_token" placeholder="Enter shared secret" autocomplete="off">
-    <p class="hint">Must match the token configured in your automation scenario — requests without it are rejected.</p>
-
     <button type="submit">Send Lead</button>
   </form>
 
   <div id="status"></div>
 
   <script>
+    const SUPABASE_URL = 'https://wmegoygrancfwxagqskh.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_UHQNxVCjHJnFjssYwTiwcQ_3FYovX8I';
+
     document.getElementById('leadForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const form = e.target;
@@ -95,32 +103,56 @@
         }
       }
 
-      const data = {
-        name: form.name.value,
-        email: form.email.value,
-        phone: form.phone.value,
-        postcode: form.postcode.value,
-        is_homeowner: form.is_homeowner.value === 'true',
-        avg_quarterly_bill: Number(form.avg_quarterly_bill.value),
-        interested_in: form.interested_in.value,
-        purchase_timeline: form.purchase_timeline.value,
-        custom_data: customData,
-        _token: form._token.value
-      };
-
-      btn.textContent = 'Sending...';
+      btn.textContent = 'Signing in...';
       btn.disabled = true;
       status.style.display = 'none';
 
       try {
-        const res = await fetch('https://hook.eu2.make.com/qw1gnas56z5s6vd4uc0wvi0pudw6pgkw', {
+        // Step 1: authenticate with Supabase to get a JWT
+        const authRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            email: form.login_email.value,
+            password: form.login_password.value,
+          }),
         });
-        const text = await res.text();
+        const authData = await authRes.json();
+        if (!authRes.ok) {
+          throw new Error(authData.error_description || authData.message || 'Login failed');
+        }
+        const jwt = authData.access_token;
+
+        // Step 2: submit lead via edge function — webhook URL and token stay server-side
+        btn.textContent = 'Sending lead...';
+        const leadData = {
+          name: form.name.value,
+          email: form.email.value,
+          phone: form.phone.value,
+          postcode: form.postcode.value,
+          is_homeowner: form.is_homeowner.value === 'true',
+          avg_quarterly_bill: Number(form.avg_quarterly_bill.value),
+          interested_in: form.interested_in.value,
+          purchase_timeline: form.purchase_timeline.value,
+          custom_data: customData,
+        };
+
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/submit-lead`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${jwt}`,
+          },
+          body: JSON.stringify(leadData),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || `HTTP ${res.status}`);
+
         status.className = 'success';
-        status.textContent = `Sent! Response: ${text}`;
+        status.textContent = `Lead sent! Response: ${result.response}`;
       } catch (err) {
         status.className = 'error';
         status.textContent = `Error: ${err.message}`;
