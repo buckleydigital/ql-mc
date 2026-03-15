@@ -1945,7 +1945,7 @@ async function sendTestLead() {
       avg_quarterly_bill: Number(document.getElementById('tl-bill').value),
       interested_in: document.getElementById('tl-interest').value,
       purchase_timeline: document.getElementById('tl-timeline').value,
-      ...(customDataRaw ? { custom_data: customDataRaw } : {}),
+      custom_data: customDataRaw,
     };
 
     const res = await fetch(`${_ep}/functions/v1/submit-lead`, {
