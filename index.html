@@ -1949,7 +1949,7 @@ async function sendTestLead() {
 
     const res = await fetch(`${_ep}/functions/v1/submit-lead`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': _ak },
       body: JSON.stringify(payload),
     });
     const result = await res.json();
@@ -3283,7 +3283,7 @@ async function sendChat() {
     const {data:{session}}=await db.auth.getSession();
     if (!session) throw new Error('Not authenticated.');
     const history=(chatHistory[curChat]||[]).slice(-20);
-    const res=await fetch(`${_ep}/functions/v1/anthropic-proxy`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({agent:curChat,context:dailyCtx,messages:history})});
+    const res=await fetch(`${_ep}/functions/v1/anthropic-proxy`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':_ak},body:JSON.stringify({agent:curChat,context:dailyCtx,messages:history})});
     const data=await res.json();
     if (!res.ok||data.error) throw new Error(data.error?.message||`Proxy error ${res.status}`);
     const reply=data.content?.map(c=>c.text||'').join('')||'No response.';
@@ -3443,7 +3443,7 @@ async function sendSalesChat() {
     const { data: { session } } = await db.auth.getSession();
     if (!session) throw new Error('Not authenticated.');
     const history = salesChatHistory.slice(-30);
-    const res = await fetch(`${_ep}/functions/v1/anthropic-proxy`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({agent:'sales',context:pipelineCtx,messages:history})});
+    const res = await fetch(`${_ep}/functions/v1/anthropic-proxy`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':_ak},body:JSON.stringify({agent:'sales',context:pipelineCtx,messages:history})});
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error?.message || `Proxy error ${res.status}`);
     const reply = data.content?.map(c=>c.text||'').join('') || 'No response.';
@@ -3602,7 +3602,7 @@ async function initGoogleMaps() {
     const {data:{session}} = await db.auth.getSession();
     if (!session) return;
     const res = await fetch(`${_ep}/functions/v1/get-maps-key`, {
-      headers: { 'Authorization': `Bearer ${session.access_token}` }
+      headers: { 'Authorization': `Bearer ${session.access_token}`, 'apikey': _ak }
     });
     if (!res.ok) return;
     const { key } = await res.json();
