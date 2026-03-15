@@ -981,7 +981,6 @@ td strong{font-weight:500}
               <option value="all">All Statuses</option>
               <option value="pending">Pending</option>
               <option value="assigned">Assigned</option>
-              <option value="delivered">Delivered</option>
               <option value="failed">Failed</option>
               <option value="scrubbed">Scrubbed</option>
             </select>
@@ -1983,10 +1982,9 @@ async function loadLeads() {
   const filter = $('ld-filter')?.value || 'all';
 
   // KPI counts (always from full set)
-  // 'assigned' = lead sent to client (effectively delivered); 'delivered' = confirmed
   setText('ld-total', all.length);
   setText('ld-pending', all.filter(l => l.status === 'pending').length);
-  setText('ld-delivered', all.filter(l => l.status === 'delivered' || l.status === 'assigned').length);
+  setText('ld-delivered', all.filter(l => l.status === 'assigned').length);
   setText('ld-failed', all.filter(l => l.status === 'failed' || l.status === 'scrubbed').length);
 
   // Per-client breakdown
@@ -1994,10 +1992,9 @@ async function loadLeads() {
   all.forEach(l => {
     if (!l.assigned_client_id) return;
     const name = l.clients?.company_name || 'Unknown Client';
-    if (!clientMap[name]) clientMap[name] = {total: 0, delivered: 0, assigned: 0, failed: 0};
+    if (!clientMap[name]) clientMap[name] = {total: 0, assigned: 0, failed: 0};
     clientMap[name].total++;
-    if (l.status === 'delivered') clientMap[name].delivered++;
-    else if (l.status === 'assigned') clientMap[name].assigned++;
+    if (l.status === 'assigned') clientMap[name].assigned++;
     else if (l.status === 'failed' || l.status === 'scrubbed') clientMap[name].failed++;
   });
   const entries = Object.entries(clientMap);
@@ -2006,7 +2003,7 @@ async function loadLeads() {
         <div class="ld-client-card">
           <div class="ld-client-name">${esc(name)}</div>
           <div class="ld-client-val">${s.total}</div>
-          <div class="ld-client-sub">${s.delivered} delivered · ${s.assigned} assigned · ${s.failed ? `<span style="color:var(--red)">${s.failed} failed</span>` : '0 failed'}</div>
+          <div class="ld-client-sub">${s.assigned} assigned · ${s.failed ? `<span style="color:var(--red)">${s.failed} failed</span>` : '0 failed'}</div>
         </div>`).join('')}
       </div>`
     : '<div class="empty">No leads matched to clients yet.</div>';
@@ -2018,7 +2015,7 @@ async function loadLeads() {
     return;
   }
   const statusBadge = s => {
-    const cls = {pending:'bg-amb',assigned:'bg-blu',delivered:'bg-grn',failed:'bg-red',scrubbed:'bg-gray'};
+    const cls = {pending:'bg-amb',assigned:'bg-grn',failed:'bg-red',scrubbed:'bg-gray'};
     return `<span class="badge ${cls[s]||'bg-gray'}">${esc(s||'unknown')}</span>`;
   };
   const fmtDate = (d, time) => {
@@ -2037,7 +2034,7 @@ async function loadLeads() {
       <td style="font-size:11px;color:var(--ink2);white-space:nowrap">${esc(l.purchase_timeline||'—')}</td>
       <td>${statusBadge(l.status)}</td>
       <td>${l.clients?.company_name ? `<strong>${esc(l.clients.company_name)}</strong>` : '<span style="color:var(--ink3)">—</span>'}</td>
-      <td style="font-family:var(--mono);font-size:10px;color:var(--ink3);white-space:nowrap">${fmtDate(l.delivered_at, false)}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--ink3);white-space:nowrap">${fmtDate(l.assigned_at, false)}</td>
       <td style="font-family:var(--mono);font-size:10px;color:var(--ink3)">${esc(l.delivery_method||'—')}</td>
       <td><span class="badge bg-gray">${esc(l.source||'make')}</span></td>
       <td style="font-size:11px;color:var(--ink2);max-width:180px;white-space:pre-wrap;word-break:break-word">${esc(l.custom_fields||'')}</td>
@@ -2045,7 +2042,6 @@ async function loadLeads() {
         <select class="fi" style="font-size:10.5px;padding:3px 6px;width:auto;font-family:var(--mono)" onchange="updateLeadStatus('${esc(l.id)}', this.value, this)">
           <option value="pending" ${l.status==='pending'?'selected':''}>Pending</option>
           <option value="assigned" ${l.status==='assigned'?'selected':''}>Assigned</option>
-          <option value="delivered" ${l.status==='delivered'?'selected':''}>Delivered</option>
           <option value="scrubbed" ${l.status==='scrubbed'?'selected':''}>Scrubbed</option>
           <option value="failed" ${l.status==='failed'?'selected':''}>Failed</option>
         </select>
@@ -2056,9 +2052,6 @@ async function updateLeadStatus(leadId, newStatus, selectEl) {
   const prev = Array.from(selectEl.options).find(o => o.defaultSelected)?.value || selectEl.value;
   selectEl.disabled = true;
   const updates = {status: newStatus};
-  if (newStatus === 'delivered' && !selectEl.closest('tr').querySelector('[data-delivered-at]')) {
-    updates.delivered_at = new Date().toISOString();
-  }
   const {error} = await db.from('solar_leads').update(updates).eq('id', leadId);
   selectEl.disabled = false;
   if (error) {
