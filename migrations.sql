@@ -356,7 +356,9 @@ BEGIN
       'roof_type',         v_lead.roof_type,
       'monthly_bill',      v_lead.monthly_bill::text,
       'system_size',       v_lead.system_size,
-      'interested_in',     v_lead.interested_in
+      'interested_in',     v_lead.interested_in,
+      'phone_verified',    v_lead.phone_verified::text,
+      'email_verified',    v_lead.email_verified::text
     ) || COALESCE(v_lead.custom_data, '{}');
 
   -- ── Step 4: resolve template (default = 7 standard fields) ──────────
@@ -430,7 +432,12 @@ BEGIN
 END;
 $$;
 
--- ── 16. VERIFICATION ──
+-- ── 16. SOLAR LEADS: Add verification flags ──
+ALTER TABLE public.solar_leads
+  ADD COLUMN IF NOT EXISTS phone_verified boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS email_verified boolean DEFAULT false;
+
+-- ── 17. VERIFICATION ──
 SELECT column_name, data_type, column_default
 FROM information_schema.columns
 WHERE table_name = 'clients'
