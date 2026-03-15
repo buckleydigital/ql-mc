@@ -1149,3 +1149,47 @@ BEGIN
   );
 END;
 $$;
+
+-- ── 21. FIX: Convert solar_leads.custom_fields from text to jsonb ─────────────
+-- The column was originally created as custom_data text and renamed to
+-- custom_fields, so the type is still text in existing databases.
+-- assign_solar_lead uses JSONB operators (||, jsonb_each_text) on this column,
+-- which throws 22P02 "invalid input syntax for type json" when the stored value
+-- is not valid JSON (e.g. plain text like "Battery storage {info}").
+--
+-- Safe conversion strategy:
+--   • NULL or blank      → '{}'
+--   • Starts with { or [ → cast directly to jsonb (already valid JSON object/array)
+--   • Anything else      → wrap as {"notes": "<original text>"}
+--
+-- Wrapped in a DO block so it is idempotent: if the column is already jsonb
+-- (new installs where the CREATE TABLE above defined it as jsonb) the ALTER is
+-- skipped without error.
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM   information_schema.columns
+    WHERE  table_schema = 'public'
+      AND  table_name   = 'solar_leads'
+      AND  column_name  = 'custom_fields'
+      AND  data_type    = 'text'
+  ) THEN
+    ALTER TABLE public.solar_leads
+      ALTER COLUMN custom_fields TYPE jsonb
+      USING (
+        CASE
+          WHEN custom_fields IS NULL OR trim(custom_fields) = ''
+            THEN '{}'::jsonb
+          WHEN trim(custom_fields) ~ '^[\{\[]'
+            THEN custom_fields::jsonb
+          ELSE
+            jsonb_build_object('notes', custom_fields)
+        END
+      );
+    ALTER TABLE public.solar_leads
+      ALTER COLUMN custom_fields SET DEFAULT '{}';
+  END IF;
+END;
+$$;
