@@ -1,3 +1,5 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, content-type',
@@ -8,10 +10,21 @@ Deno.serve(async (req: Request) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  // Supabase gateway already validates the JWT before reaching this code.
-  // Just confirm the header is present as a sanity check.
-  if (!req.headers.get('Authorization')) {
+  // Verify the caller is an authenticated user
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
     return new Response(JSON.stringify({ error: 'Missing authorization' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+  const userClient = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+    { global: { headers: { Authorization: authHeader } } },
+  );
+  const { error: authError } = await userClient.auth.getUser();
+  if (authError) {
+    return new Response(JSON.stringify({ error: 'Invalid token' }), {
       status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
