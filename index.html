@@ -691,6 +691,15 @@ td strong{font-weight:500}
   #clock,.live-pill{display:none}
 }
 @media(max-width:400px){.kg.c4,.kg.c3,.kg.c2{grid-template-columns:1fr}}
+
+/* ══ LEAD DISTRIBUTION ══ */
+.ld-client-grid{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px}
+.ld-client-card{flex:1;min-width:130px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:12px 14px}
+.ld-client-name{font-family:var(--mono);font-size:9px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ld-client-val{font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:-.6px;color:var(--acc)}
+.ld-client-sub{font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:4px}
+.mobile-only{display:none}
+@media(max-width:700px){.mobile-only{display:inline-flex}}
 </style>
 </head>
 <body>
@@ -755,6 +764,9 @@ td strong{font-weight:500}
           <button class="navbtn" data-panel="managed" onclick="nav('managed',this)">
             <span class="ni">▣</span>Managed Ads
           </button>
+          <button class="navbtn" data-panel="leads" onclick="nav('leads',this)">
+            <span class="ni">⚡</span>Lead Distribution
+          </button>
         </div>
 
         <div class="sb-divider"></div>
@@ -808,7 +820,10 @@ td strong{font-weight:500}
       <div class="panel active" id="panel-tasks">
         <div class="ph">
           <div class="ph-left"><h1>Tasks</h1><p id="task-date"></p></div>
-          <div class="ph-right"><button class="btn btn-p btn-sm" onclick="openModal('m-task')">+ New task</button></div>
+          <div class="ph-right">
+            <button class="btn btn-sm mobile-only" onclick="nav('leads',this)">⚡ Lead Distribution</button>
+            <button class="btn btn-p btn-sm" onclick="openModal('m-task')">+ New task</button>
+          </div>
         </div>
         <div class="task-grid">
           <div>
@@ -953,6 +968,54 @@ td strong{font-weight:500}
           <table>
             <thead><tr><th>Client</th><th>Active Since</th><th>Payments Made</th><th>Monthly Fee</th><th>Retainer Total</th><th>Custom Orders</th><th>Lifetime Revenue</th><th>Last Payment</th><th>Next Due</th><th></th></tr></thead>
             <tbody id="mg-payment-tbody"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══ LEAD DISTRIBUTION ══ -->
+      <div class="panel" id="panel-leads">
+        <div class="ph">
+          <div class="ph-left"><h1>Lead Distribution</h1><p>Incoming solar leads · assignment &amp; delivery tracking</p></div>
+          <div class="ph-right">
+            <select class="fi" id="ld-filter" onchange="loadLeads()" style="width:auto;font-size:11.5px;padding:5px 10px;font-family:var(--mono)">
+              <option value="all">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="assigned">Assigned</option>
+              <option value="delivered">Delivered</option>
+              <option value="failed">Failed</option>
+              <option value="scrubbed">Scrubbed</option>
+            </select>
+            <button class="btn btn-sm" onclick="loadLeads()">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="kg c4 mb4">
+          <div class="kpi"><div class="klabel">Total Received</div><div class="kval blu" id="ld-total">—</div></div>
+          <div class="kpi"><div class="klabel">Pending</div><div class="kval amb" id="ld-pending">—</div></div>
+          <div class="kpi"><div class="klabel">Delivered</div><div class="kval grn" id="ld-delivered">—</div></div>
+          <div class="kpi"><div class="klabel">Failed / Scrubbed</div><div class="kval red" id="ld-failed">—</div></div>
+        </div>
+        <div class="sl">By Client <div class="sl-line"></div></div>
+        <div id="ld-client-breakdown" class="mb4"><div class="empty">Loading…</div></div>
+        <div class="sl">All Leads <div class="sl-line"></div></div>
+        <div class="twrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Received</th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Postcode</th>
+                <th>Project</th>
+                <th>Avg Bill</th>
+                <th>Timeline</th>
+                <th>Status</th>
+                <th>Matched Client</th>
+                <th>Delivered At</th>
+                <th>Method</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody id="ld-tbody"><tr><td colspan="12" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1794,9 +1857,8 @@ function nav(panel, el) {
   if (panel === 'daily') loadDailyLogs();
   if (panel === 'sales-agent') loadSalesPanel();
   if (panel === 'files') { loadFileContent(); loadTemplateClientDropdown(); }
-  if (panel === 'ppl') {
-    populateMapClientDropdown();
-  }
+  if (panel === 'ppl') { populateMapClientDropdown(); }
+  if (panel === 'leads') loadLeads();
 }
 
 function updateClock() {
@@ -1813,6 +1875,78 @@ async function loadAll() {
   loadTaskLeadDropdowns();
   loadFileContent();
   populateMapClientDropdown();
+}
+
+/* LEAD DISTRIBUTION */
+async function loadLeads() {
+  const {data, error} = await db.from('solar_leads')
+    .select('*, clients(company_name)')
+    .order('created_at', {ascending: false});
+  if (error) {
+    $('ld-tbody').innerHTML = `<tr><td colspan="12" class="empty">Error: ${esc(error.message)}</td></tr>`;
+    return;
+  }
+  const all = data || [];
+  const filter = $('ld-filter')?.value || 'all';
+
+  // KPI counts (always from full set)
+  setText('ld-total', all.length);
+  setText('ld-pending', all.filter(l => l.status === 'pending').length);
+  setText('ld-delivered', all.filter(l => l.status === 'delivered').length);
+  setText('ld-failed', all.filter(l => l.status === 'failed' || l.status === 'scrubbed').length);
+
+  // Per-client breakdown
+  const clientMap = {};
+  all.forEach(l => {
+    if (!l.assigned_client_id) return;
+    const name = l.clients?.company_name || 'Unknown Client';
+    if (!clientMap[name]) clientMap[name] = {total: 0, delivered: 0, assigned: 0, failed: 0};
+    clientMap[name].total++;
+    if (l.status === 'delivered') clientMap[name].delivered++;
+    else if (l.status === 'assigned') clientMap[name].assigned++;
+    else if (l.status === 'failed' || l.status === 'scrubbed') clientMap[name].failed++;
+  });
+  const entries = Object.entries(clientMap);
+  $('ld-client-breakdown').innerHTML = entries.length
+    ? `<div class="ld-client-grid">${entries.map(([name, s]) => `
+        <div class="ld-client-card">
+          <div class="ld-client-name">${esc(name)}</div>
+          <div class="ld-client-val">${s.total}</div>
+          <div class="ld-client-sub">${s.delivered} delivered · ${s.assigned} assigned · ${s.failed ? `<span style="color:var(--red)">${s.failed} failed</span>` : '0 failed'}</div>
+        </div>`).join('')}
+      </div>`
+    : '<div class="empty">No leads matched to clients yet.</div>';
+
+  // Table (filtered)
+  const rows = filter === 'all' ? all : all.filter(l => l.status === filter);
+  if (!rows.length) {
+    $('ld-tbody').innerHTML = `<tr><td colspan="12" class="empty">No leads found.</td></tr>`;
+    return;
+  }
+  const statusBadge = s => {
+    const cls = {pending:'bg-amb',assigned:'bg-blu',delivered:'bg-grn',failed:'bg-red',scrubbed:'bg-gray'};
+    return `<span class="badge ${cls[s]||'bg-gray'}">${esc(s||'unknown')}</span>`;
+  };
+  const fmtDate = (d, time) => {
+    if (!d) return '—';
+    const opts = time ? {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'} : {day:'numeric',month:'short'};
+    return new Date(d).toLocaleDateString('en-AU', opts);
+  };
+  $('ld-tbody').innerHTML = rows.map(l => `
+    <tr>
+      <td style="white-space:nowrap;font-family:var(--mono);font-size:10px;color:var(--ink3)">${fmtDate(l.created_at, true)}</td>
+      <td><strong>${esc(l.name||'—')}</strong><br><span style="font-family:var(--mono);font-size:9.5px;color:var(--ink3)">${esc(l.email||'')}</span></td>
+      <td style="font-family:var(--mono);font-size:11px">${esc(l.phone||'—')}</td>
+      <td style="font-family:var(--mono);font-size:11px">${esc(l.postcode||'—')}</td>
+      <td>${l.project_type ? `<span class="badge bg-blu">${esc(l.project_type.replace(/_/g,' '))}</span>` : '<span style="color:var(--ink3)">—</span>'}</td>
+      <td style="font-family:var(--mono);font-size:11px">${l.avg_quarterly_bill ? '$'+Number(l.avg_quarterly_bill).toLocaleString('en-AU') : '—'}</td>
+      <td style="font-size:11px;color:var(--ink2);white-space:nowrap">${esc(l.purchase_timeline||'—')}</td>
+      <td>${statusBadge(l.status)}</td>
+      <td>${l.clients?.company_name ? `<strong>${esc(l.clients.company_name)}</strong>` : '<span style="color:var(--ink3)">—</span>'}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--ink3);white-space:nowrap">${fmtDate(l.delivered_at, false)}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--ink3)">${esc(l.delivery_method||'—')}</td>
+      <td><span class="badge bg-gray">${esc(l.source||'make')}</span></td>
+    </tr>`).join('');
 }
 async function loadTaskLeadDropdowns() {
   const [leadsR, clientsR] = await Promise.all([
