@@ -986,6 +986,7 @@ td strong{font-weight:500}
               <option value="scrubbed">Scrubbed</option>
             </select>
             <button class="btn btn-sm" onclick="loadLeads()">↻ Refresh</button>
+            <button class="btn btn-sm" onclick="openModal('m-test-lead')">＋ Test Lead</button>
           </div>
         </div>
         <div class="kg c4 mb4">
@@ -1457,7 +1458,7 @@ td strong{font-weight:500}
     <div class="frow" id="ppl-dm-email-row"><label class="flabel">Delivery Email</label><input class="fi" id="ppl-delivery-email" type="email" placeholder="leads@client.com"></div>
     <div class="frow" id="ppl-dm-phone-row" style="display:none"><label class="flabel">Delivery Phone <span style="font-size:9.5px;color:var(--ink3);font-weight:300">for SMS</span></label><input class="fi" id="ppl-delivery-phone" placeholder="+61400000000"></div>
     <div id="ppl-dm-crm-row" style="display:none">
-      <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px"><label class="flabel">CRM Custom Fields <span style="font-size:9.5px;color:var(--ink3);font-weight:300">JSON key-value pairs</span></label><textarea class="fta" id="ppl-custom-fields" placeholder='{"webhook_url":"https://...", "api_key":"..."}' style="font-family:var(--mono);font-size:10px"></textarea></div>
+      <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px"><label class="flabel">Custom Notes <span style="font-size:9.5px;color:var(--ink3);font-weight:300">any text — passed to Make.com as custom_fields</span></label><textarea class="fta" id="ppl-custom-fields" placeholder="e.g. webhook URL, API key, notes…"></textarea></div>
     </div>
     <div class="macts">
       <button class="btn" onclick="closeModal('m-ppl')">Cancel</button>
@@ -1590,7 +1591,7 @@ td strong{font-weight:500}
     <div class="frow" id="ep-dm-email-row"><label class="flabel">Delivery Email</label><input class="fi" id="ep-delivery-email" type="email" placeholder="leads@client.com"></div>
     <div class="frow" id="ep-dm-phone-row" style="display:none"><label class="flabel">Delivery Phone <span style="font-size:9.5px;color:var(--ink3);font-weight:300">for SMS</span></label><input class="fi" id="ep-delivery-phone" placeholder="+61400000000"></div>
     <div id="ep-dm-crm-row" style="display:none">
-      <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px"><label class="flabel">CRM Custom Fields <span style="font-size:9.5px;color:var(--ink3);font-weight:300">JSON key-value pairs</span></label><textarea class="fta" id="ep-custom-fields" placeholder='{"webhook_url":"https://...", "api_key":"..."}' style="font-family:var(--mono);font-size:10px"></textarea></div>
+      <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px"><label class="flabel">Custom Notes <span style="font-size:9.5px;color:var(--ink3);font-weight:300">any text — passed to Make.com as custom_fields</span></label><textarea class="fta" id="ep-custom-fields" placeholder="e.g. webhook URL, API key, notes…"></textarea></div>
     </div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Order Log</div>
     <div id="ep-order-log" style="margin-bottom:10px;font-family:var(--mono);font-size:11px;color:var(--ink3)">Loading…</div>
@@ -1696,6 +1697,43 @@ td strong{font-weight:500}
       <div style="flex:1"></div>
       <button class="btn" onclick="closeModal('m-edit-task')">Cancel</button>
       <button class="btn btn-p" onclick="updateTask()">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="m-test-lead">
+  <div class="modal">
+    <h2>Submit Test Lead</h2><div class="msub">Simulates an incoming ad lead through the full pipeline</div>
+    <div class="frow"><label class="flabel">Full Name</label><input class="fi" id="tl-name" value="Jane Test"></div>
+    <div class="frow"><label class="flabel">Email</label><input class="fi" id="tl-email" type="email" value="jane@test.com"></div>
+    <div class="frow"><label class="flabel">Phone</label><input class="fi" id="tl-phone" value="0444444444"></div>
+    <div class="frow"><label class="flabel">Postcode</label><input class="fi" id="tl-postcode" value="4218"></div>
+    <div class="frow"><label class="flabel">Homeowner?</label>
+      <select class="fs" id="tl-homeowner">
+        <option value="true">Yes</option>
+        <option value="false">No</option>
+      </select>
+    </div>
+    <div class="frow"><label class="flabel">Avg Quarterly Bill ($)</label><input class="fi" id="tl-bill" type="number" value="320"></div>
+    <div class="frow"><label class="flabel">Interested In</label>
+      <select class="fs" id="tl-interest">
+        <option value="solar">Solar</option>
+        <option value="battery">Battery</option>
+        <option value="both">Solar + Battery</option>
+      </select>
+    </div>
+    <div class="frow"><label class="flabel">Purchase Timeline</label>
+      <select class="fs" id="tl-timeline">
+        <option value="0-3 months">0–3 months</option>
+        <option value="3-6 months" selected>3–6 months</option>
+        <option value="6-12 months">6–12 months</option>
+        <option value="12+ months">12+ months</option>
+      </select>
+    </div>
+    <div id="tl-status" style="display:none;padding:8px 10px;border-radius:6px;font-size:13px;margin-bottom:8px"></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-test-lead')">Cancel</button>
+      <button class="btn btn-p" id="tl-btn" onclick="sendTestLead()">Send Test Lead</button>
     </div>
   </div>
 </div>
@@ -1878,6 +1916,50 @@ async function loadAll() {
 }
 
 /* LEAD DISTRIBUTION */
+async function sendTestLead() {
+  const btn = document.getElementById('tl-btn');
+  const statusEl = document.getElementById('tl-status');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  statusEl.style.display = 'none';
+
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) throw new Error('Not logged in');
+
+    const payload = {
+      name: document.getElementById('tl-name').value,
+      email: document.getElementById('tl-email').value,
+      phone: document.getElementById('tl-phone').value,
+      postcode: document.getElementById('tl-postcode').value,
+      is_homeowner: document.getElementById('tl-homeowner').value === 'true',
+      avg_quarterly_bill: Number(document.getElementById('tl-bill').value),
+      interested_in: document.getElementById('tl-interest').value,
+      purchase_timeline: document.getElementById('tl-timeline').value,
+    };
+
+    const res = await fetch(`${_ep}/functions/v1/submit-lead`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+      body: JSON.stringify(payload),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || `HTTP ${res.status}`);
+
+    statusEl.style.background = '#d1fae5'; statusEl.style.color = '#065f46';
+    statusEl.textContent = 'Lead sent! Refresh the table to see it appear.';
+    statusEl.style.display = 'block';
+    setTimeout(() => loadLeads(), 1500);
+  } catch (err) {
+    statusEl.style.background = '#fee2e2'; statusEl.style.color = '#991b1b';
+    statusEl.textContent = `Error: ${err.message}`;
+    statusEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send Test Lead';
+  }
+}
+
 async function loadLeads() {
   const {data, error} = await db.from('solar_leads')
     .select('*, clients(company_name)')
@@ -2709,7 +2791,7 @@ function openEditClient(type,c) {
     setVal('ep-delivery-method',c.delivery_method||'email');
     setVal('ep-delivery-email',c.delivery_email||'');
     setVal('ep-delivery-phone',c.delivery_phone||'');
-    try{if($('ep-custom-fields'))$('ep-custom-fields').value=c.custom_fields&&Object.keys(c.custom_fields).length?JSON.stringify(c.custom_fields,null,2):'';}catch(e){}
+    try{if($('ep-custom-fields')){const _cf=c.custom_fields||{};$('ep-custom-fields').value=_cf._text!=null?_cf._text:(Object.keys(_cf).length?JSON.stringify(_cf,null,2):'');}}catch(e){}
     toggleDeliveryFields('ep');
     setText('edit-ppl-sub',c.company_name||'');
     updatePplCalc();
@@ -2767,7 +2849,7 @@ async function updateClient(type) {
     const _ld=parseInt($('ep-ld').value)||0;const _tlp=parseInt($('ep-tlp').value)||0;const _scrubbed=parseInt($('ep-scrubbed').value)||0;const _price=parseFloat($('ep-price').value)||0;const _balCalc=(_tlp-_ld+_scrubbed)*_price;
     const _metaCpl=parseFloat($('ep-meta-cpl').value)||null;
     const _postcodes=$('ep-postcodes').value.split(',').map(s=>s.trim()).filter(Boolean);
-    let _customFields={};try{const _cf=$('ep-custom-fields').value.trim();if(_cf)_customFields=JSON.parse(_cf);}catch(e){toast('Custom fields must be valid JSON',true);return;}
+    const _cfRaw=$('ep-custom-fields').value.trim();const _customFields=_cfRaw?{_text:_cfRaw}:{};
     const _weeklyCap=$('ep-weekly-cap').value!==''?parseInt($('ep-weekly-cap').value):null;
     const _monthlyCap=$('ep-monthly-cap').value!==''?parseInt($('ep-monthly-cap').value):null;
     d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:_price,meta_cpl:_metaCpl,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,leads_scrubbed:_scrubbed,stage:$('ep-stage').value,notes:$('ep-notes').value.trim(),postcodes:_postcodes,weekly_cap:_weeklyCap,monthly_cap:_monthlyCap,delivery_method:$('ep-delivery-method').value,delivery_email:$('ep-delivery-email').value.trim()||null,delivery_phone:$('ep-delivery-phone').value.trim()||null,custom_fields:_customFields,updated_at:now()};
@@ -2798,7 +2880,7 @@ async function saveClient(type) {
   let d;
   if (type==='ppl') {
     const _pplPostcodes=$('ppl-postcodes').value.split(',').map(s=>s.trim()).filter(Boolean);
-    let _pplCf={};try{const _cf=$('ppl-custom-fields')?.value.trim();if(_cf)_pplCf=JSON.parse(_cf);}catch(e){toast('Custom fields must be valid JSON',true);return;}
+    const _pplCfRaw=$('ppl-custom-fields')?.value.trim()||'';const _pplCf=_pplCfRaw?{_text:_pplCfRaw}:{};
     const _pplWeeklyCap=$('ppl-weekly-cap')?.value!==''?parseInt($('ppl-weekly-cap').value)||null:null;
     const _pplMonthlyCap=$('ppl-monthly-cap')?.value!==''?parseInt($('ppl-monthly-cap').value)||null:null;
     d={type:'ppl',company_name:$('ppl-co').value.trim(),contact_name:$('ppl-cn').value.trim(),email:$('ppl-em').value.trim(),niche:$('ppl-niche').value,lead_price:parseFloat($('ppl-price').value)||0,meta_cpl:parseFloat($('ppl-meta-cpl').value)||null,leads_delivered:parseInt($('ppl-ld').value)||0,total_leads_purchased:parseInt($('ppl-tlp').value)||0,leads_scrubbed:parseInt($('ppl-scrubbed').value)||0,stage:$('ppl-stage').value,postcodes:_pplPostcodes,weekly_cap:_pplWeeklyCap,monthly_cap:_pplMonthlyCap,delivery_method:$('ppl-delivery-method').value,delivery_email:$('ppl-delivery-email').value.trim()||null,delivery_phone:$('ppl-delivery-phone').value.trim()||null,custom_fields:_pplCf,created_at:now()};
