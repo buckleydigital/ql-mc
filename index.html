@@ -1730,6 +1730,13 @@ td strong{font-weight:500}
         <option value="12+ months">12+ months</option>
       </select>
     </div>
+    <div class="frow" style="align-items:flex-start">
+      <label class="flabel" style="padding-top:6px">Custom Fields</label>
+      <div style="flex:1">
+        <textarea class="fi" id="tl-custom" rows="3" placeholder="source=facebook&#10;campaign=summer2026&#10;ad_id=12345" style="resize:vertical;font-family:var(--mono);font-size:12px"></textarea>
+        <div style="font-size:11px;color:var(--ink2);margin-top:3px">One key=value per line — sent as custom_data on the webhook</div>
+      </div>
+    </div>
     <div id="tl-status" style="display:none;padding:8px 10px;border-radius:6px;font-size:13px;margin-bottom:8px"></div>
     <div class="macts">
       <button class="btn" onclick="closeModal('m-test-lead')">Cancel</button>
@@ -1927,6 +1934,12 @@ async function sendTestLead() {
     const { data: { session } } = await db.auth.getSession();
     if (!session) throw new Error('Not logged in');
 
+    const customData = {};
+    document.getElementById('tl-custom').value.split('\n').forEach(line => {
+      const eq = line.indexOf('=');
+      if (eq > 0) customData[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
+    });
+
     const payload = {
       name: document.getElementById('tl-name').value,
       email: document.getElementById('tl-email').value,
@@ -1936,6 +1949,7 @@ async function sendTestLead() {
       avg_quarterly_bill: Number(document.getElementById('tl-bill').value),
       interested_in: document.getElementById('tl-interest').value,
       purchase_timeline: document.getElementById('tl-timeline').value,
+      ...(Object.keys(customData).length ? { custom_data: customData } : {}),
     };
 
     const res = await fetch(`${_ep}/functions/v1/submit-lead`, {
