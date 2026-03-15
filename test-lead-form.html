@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Lead Form</title>
+  <style>
+    body { font-family: sans-serif; max-width: 480px; margin: 60px auto; padding: 0 20px; }
+    h2 { margin-bottom: 24px; }
+    label { display: block; margin-bottom: 4px; font-size: 14px; font-weight: 600; }
+    input, select { width: 100%; padding: 10px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; box-sizing: border-box; }
+    button { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    #status { margin-top: 16px; padding: 12px; border-radius: 6px; display: none; font-size: 14px; }
+    .success { background: #d1fae5; color: #065f46; }
+    .error { background: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body>
+  <h2>Test Lead Submission</h2>
+  <form id="leadForm">
+    <label>Full Name</label>
+    <input type="text" name="name" value="Jane Test" required>
+
+    <label>Email</label>
+    <input type="email" name="email" value="jane@test.com" required>
+
+    <label>Phone</label>
+    <input type="tel" name="phone" value="07700900000" required>
+
+    <label>Postcode</label>
+    <input type="text" name="postcode" value="SW1A 1AA" required>
+
+    <label>Homeowner?</label>
+    <select name="is_homeowner">
+      <option value="true">Yes</option>
+      <option value="false">No</option>
+    </select>
+
+    <label>Avg Quarterly Bill (£)</label>
+    <input type="number" name="avg_quarterly_bill" value="320" required>
+
+    <label>Purchase Timeline</label>
+    <select name="purchase_timeline">
+      <option value="0-3 months">0–3 months</option>
+      <option value="3-6 months" selected>3–6 months</option>
+      <option value="6-12 months">6–12 months</option>
+      <option value="12+ months">12+ months</option>
+    </select>
+
+    <button type="submit">Send Lead</button>
+  </form>
+
+  <div id="status"></div>
+
+  <script>
+    document.getElementById('leadForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const status = document.getElementById('status');
+      const btn = form.querySelector('button');
+
+      const data = {
+        name: form.name.value,
+        email: form.email.value,
+        phone: form.phone.value,
+        postcode: form.postcode.value,
+        is_homeowner: form.is_homeowner.value === 'true',
+        avg_quarterly_bill: Number(form.avg_quarterly_bill.value),
+        purchase_timeline: form.purchase_timeline.value
+      };
+
+      btn.textContent = 'Sending...';
+      btn.disabled = true;
+      status.style.display = 'none';
+
+      try {
+        const res = await fetch('https://hook.eu2.make.com/qw1gnas56z5s6vd4uc0wvi0pudw6pgkw', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const text = await res.text();
+        status.className = 'success';
+        status.textContent = `Sent! Response: ${text}`;
+      } catch (err) {
+        status.className = 'error';
+        status.textContent = `Error: ${err.message}`;
+      } finally {
+        status.style.display = 'block';
+        btn.textContent = 'Send Lead';
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
