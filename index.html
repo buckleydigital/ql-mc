@@ -981,6 +981,7 @@ td strong{font-weight:500}
               <option value="all">All Statuses</option>
               <option value="pending">Pending</option>
               <option value="assigned">Assigned</option>
+              <option value="delivered">Delivered</option>
               <option value="failed">Failed</option>
               <option value="scrubbed">Scrubbed</option>
             </select>
@@ -988,9 +989,10 @@ td strong{font-weight:500}
             <button class="btn btn-sm" onclick="openModal('m-test-lead')">＋ Test Lead</button>
           </div>
         </div>
-        <div class="kg c4 mb4">
+        <div class="kg c5 mb4">
           <div class="kpi"><div class="klabel">Total Received</div><div class="kval blu" id="ld-total">—</div></div>
           <div class="kpi"><div class="klabel">Pending</div><div class="kval amb" id="ld-pending">—</div></div>
+          <div class="kpi"><div class="klabel">Assigned</div><div class="kval ink" id="ld-assigned">—</div></div>
           <div class="kpi"><div class="klabel">Delivered</div><div class="kval grn" id="ld-delivered">—</div></div>
           <div class="kpi"><div class="klabel">Failed / Scrubbed</div><div class="kval red" id="ld-failed">—</div></div>
         </div>
@@ -1984,7 +1986,8 @@ async function loadLeads() {
   // KPI counts (always from full set)
   setText('ld-total', all.length);
   setText('ld-pending', all.filter(l => l.status === 'pending').length);
-  setText('ld-delivered', all.filter(l => l.status === 'assigned').length);
+  setText('ld-assigned', all.filter(l => l.status === 'assigned').length);
+  setText('ld-delivered', all.filter(l => l.status === 'delivered').length);
   setText('ld-failed', all.filter(l => l.status === 'failed' || l.status === 'scrubbed').length);
 
   // Per-client breakdown
@@ -1992,9 +1995,10 @@ async function loadLeads() {
   all.forEach(l => {
     if (!l.assigned_client_id) return;
     const name = l.clients?.company_name || 'Unknown Client';
-    if (!clientMap[name]) clientMap[name] = {total: 0, assigned: 0, failed: 0};
+    if (!clientMap[name]) clientMap[name] = {total: 0, assigned: 0, delivered: 0, failed: 0};
     clientMap[name].total++;
     if (l.status === 'assigned') clientMap[name].assigned++;
+    else if (l.status === 'delivered') clientMap[name].delivered++;
     else if (l.status === 'failed' || l.status === 'scrubbed') clientMap[name].failed++;
   });
   const entries = Object.entries(clientMap);
@@ -2003,7 +2007,7 @@ async function loadLeads() {
         <div class="ld-client-card">
           <div class="ld-client-name">${esc(name)}</div>
           <div class="ld-client-val">${s.total}</div>
-          <div class="ld-client-sub">${s.assigned} assigned · ${s.failed ? `<span style="color:var(--red)">${s.failed} failed</span>` : '0 failed'}</div>
+          <div class="ld-client-sub">${s.delivered} delivered · ${s.assigned} assigned · ${s.failed ? `<span style="color:var(--red)">${s.failed} failed</span>` : '0 failed'}</div>
         </div>`).join('')}
       </div>`
     : '<div class="empty">No leads matched to clients yet.</div>';
@@ -2015,7 +2019,7 @@ async function loadLeads() {
     return;
   }
   const statusBadge = s => {
-    const cls = {pending:'bg-amb',assigned:'bg-grn',failed:'bg-red',scrubbed:'bg-gray'};
+    const cls = {pending:'bg-amb',assigned:'bg-blu',delivered:'bg-grn',failed:'bg-red',scrubbed:'bg-gray'};
     return `<span class="badge ${cls[s]||'bg-gray'}">${esc(s||'unknown')}</span>`;
   };
   const fmtDate = (d, time) => {
@@ -2042,6 +2046,7 @@ async function loadLeads() {
         <select class="fi" style="font-size:10.5px;padding:3px 6px;width:auto;font-family:var(--mono)" onchange="updateLeadStatus('${esc(l.id)}', this.value, this)">
           <option value="pending" ${l.status==='pending'?'selected':''}>Pending</option>
           <option value="assigned" ${l.status==='assigned'?'selected':''}>Assigned</option>
+          <option value="delivered" ${l.status==='delivered'?'selected':''}>Delivered</option>
           <option value="scrubbed" ${l.status==='scrubbed'?'selected':''}>Scrubbed</option>
           <option value="failed" ${l.status==='failed'?'selected':''}>Failed</option>
         </select>
@@ -2051,16 +2056,19 @@ async function loadLeads() {
 async function updateLeadStatus(leadId, newStatus, selectEl) {
   const prev = Array.from(selectEl.options).find(o => o.defaultSelected)?.value || selectEl.value;
   selectEl.disabled = true;
-  const updates = {status: newStatus};
-  const {error} = await db.from('solar_leads').update(updates).eq('id', leadId);
+  let error;
+  if (newStatus === 'delivered') {
+    // Use the audit-logging function so delivered_at and delivery_audit_log are set
+    ({error} = await db.rpc('mark_lead_delivered', {p_lead_id: leadId, p_note: 'Manually marked delivered'}));
+  } else {
+    ({error} = await db.from('solar_leads').update({status: newStatus, updated_at: new Date().toISOString()}).eq('id', leadId));
+  }
   selectEl.disabled = false;
   if (error) {
     alert('Failed to update status: ' + error.message);
-    // revert
     for (const opt of selectEl.options) opt.selected = opt.value === prev;
     return;
   }
-  // Re-render KPIs and client breakdown without full table reload
   loadLeads();
 }
 
@@ -2378,10 +2386,21 @@ async function deleteLead() {
   closeModal('m-edit-lead'); loadCRM(); toast('Lead deleted');
 }
 async function saveLead() {
-  const d={name:$('l-name').value.trim(),company:$('l-company').value.trim(),email:$('l-email').value.trim(),phone:$('l-phone').value.trim(),stage:$('l-stage').value,lead_type:$('l-type').value,value:parseFloat($('l-value').value)||null,source:$('l-source').value,notes:$('l-notes').value.trim(),created_at:now()};
-  if (!d.name) { toast('Contact name required',true); return; }
-  const {error}=await db.from('leads').insert([d]);
+  const name=$('l-name').value.trim();
+  if (!name) { toast('Contact name required',true); return; }
+  const {data,error}=await db.rpc('add_lead',{
+    p_name:name,
+    p_company:$('l-company').value.trim()||null,
+    p_email:$('l-email').value.trim()||null,
+    p_phone:$('l-phone').value.trim()||null,
+    p_stage:$('l-stage').value,
+    p_lead_type:$('l-type').value||null,
+    p_value:parseFloat($('l-value').value)||null,
+    p_source:$('l-source').value||null,
+    p_notes:$('l-notes').value.trim()||null,
+  });
   if (error) { toast('DB error: '+error.message,true); return; }
+  if (data?.duplicate) { toast('A lead with that name and contact already exists',true); return; }
   ['l-name','l-company','l-email','l-phone','l-value','l-notes'].forEach(id=>{$(id).value='';});
   closeModal('m-lead'); loadCRM(); toast('Lead saved ✓');
 }
