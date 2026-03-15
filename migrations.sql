@@ -695,3 +695,70 @@ CREATE POLICY "auth_read_daily_snapshots" ON public.daily_snapshots FOR SELECT T
 
 -- Verify RLS is ON for all tables:
 -- SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;
+
+-- ── 19. LEADS: Secure insert function with duplicate guard ──
+-- Replaces the direct client-side INSERT so server-side validation is enforced.
+-- Deduplication: if a lead with the same name + email (or name + phone) already
+-- exists the function returns the existing row's id and duplicate=true instead
+-- of inserting a second copy.
+-- Returns: { id, duplicate }
+CREATE OR REPLACE FUNCTION public.add_lead(
+  p_name       text,
+  p_company    text    DEFAULT NULL,
+  p_email      text    DEFAULT NULL,
+  p_phone      text    DEFAULT NULL,
+  p_stage      text    DEFAULT 'new',
+  p_lead_type  text    DEFAULT NULL,
+  p_value      numeric DEFAULT NULL,
+  p_source     text    DEFAULT NULL,
+  p_notes      text    DEFAULT NULL
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_lead record;
+  v_id   uuid;
+BEGIN
+  -- Require a contact name
+  IF trim(p_name) = '' OR p_name IS NULL THEN
+    RAISE EXCEPTION 'name is required';
+  END IF;
+
+  -- Duplicate check: same name + (email match OR phone match)
+  SELECT * INTO v_lead
+  FROM public.leads
+  WHERE name = trim(p_name)
+    AND (
+      (p_email IS NOT NULL AND email = trim(p_email))
+      OR
+      (p_phone IS NOT NULL AND phone = trim(p_phone))
+    )
+  LIMIT 1;
+
+  IF v_lead IS NULL THEN
+    INSERT INTO public.leads (name, company, email, phone, stage, lead_type, value, source, notes, created_at, updated_at)
+    VALUES (
+      trim(p_name),
+      NULLIF(trim(COALESCE(p_company, '')), ''),
+      NULLIF(trim(COALESCE(p_email,   '')), ''),
+      NULLIF(trim(COALESCE(p_phone,   '')), ''),
+      COALESCE(p_stage, 'new'),
+      p_lead_type,
+      p_value,
+      p_source,
+      NULLIF(trim(COALESCE(p_notes, '')), ''),
+      now(),
+      now()
+    )
+    RETURNING id INTO v_id;
+
+    RETURN jsonb_build_object('id', v_id, 'duplicate', false);
+  ELSE
+    RETURN jsonb_build_object('id', v_lead.id, 'duplicate', true);
+  END IF;
+END;
+$$;
+
+-- Allow authenticated users to call this function
+GRANT EXECUTE ON FUNCTION public.add_lead(text,text,text,text,text,text,numeric,text,text) TO authenticated;

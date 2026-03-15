@@ -2378,10 +2378,21 @@ async function deleteLead() {
   closeModal('m-edit-lead'); loadCRM(); toast('Lead deleted');
 }
 async function saveLead() {
-  const d={name:$('l-name').value.trim(),company:$('l-company').value.trim(),email:$('l-email').value.trim(),phone:$('l-phone').value.trim(),stage:$('l-stage').value,lead_type:$('l-type').value,value:parseFloat($('l-value').value)||null,source:$('l-source').value,notes:$('l-notes').value.trim(),created_at:now()};
-  if (!d.name) { toast('Contact name required',true); return; }
-  const {error}=await db.from('leads').insert([d]);
+  const name=$('l-name').value.trim();
+  if (!name) { toast('Contact name required',true); return; }
+  const {data,error}=await db.rpc('add_lead',{
+    p_name:name,
+    p_company:$('l-company').value.trim()||null,
+    p_email:$('l-email').value.trim()||null,
+    p_phone:$('l-phone').value.trim()||null,
+    p_stage:$('l-stage').value,
+    p_lead_type:$('l-type').value||null,
+    p_value:parseFloat($('l-value').value)||null,
+    p_source:$('l-source').value||null,
+    p_notes:$('l-notes').value.trim()||null,
+  });
   if (error) { toast('DB error: '+error.message,true); return; }
+  if (data?.duplicate) { toast('A lead with that name and contact already exists',true); return; }
   ['l-name','l-company','l-email','l-phone','l-value','l-notes'].forEach(id=>{$(id).value='';});
   closeModal('m-lead'); loadCRM(); toast('Lead saved ✓');
 }
