@@ -7,12 +7,15 @@
     body { font-family: sans-serif; max-width: 480px; margin: 60px auto; padding: 0 20px; }
     h2 { margin-bottom: 24px; }
     label { display: block; margin-bottom: 4px; font-size: 14px; font-weight: 600; }
-    input, select { width: 100%; padding: 10px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; box-sizing: border-box; }
+    input, select, textarea { width: 100%; padding: 10px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; box-sizing: border-box; }
+    textarea { font-family: monospace; font-size: 12px; resize: vertical; }
+    .hint { font-size: 11px; color: #888; margin-top: -12px; margin-bottom: 14px; }
     button { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; }
     button:hover { background: #1d4ed8; }
     #status { margin-top: 16px; padding: 12px; border-radius: 6px; display: none; font-size: 14px; }
     .success { background: #d1fae5; color: #065f46; }
     .error { background: #fee2e2; color: #991b1b; }
+    hr { border: none; border-top: 1px solid #e5e5e5; margin: 8px 0 20px; }
   </style>
 </head>
 <body>
@@ -28,7 +31,7 @@
     <input type="tel" name="phone" value="0444444444" required>
 
     <label>Postcode</label>
-    <input type="text" name="postcode" value="SW1A 1AA" required>
+    <input type="text" name="postcode" value="4218" required>
 
     <label>Homeowner?</label>
     <select name="is_homeowner">
@@ -39,13 +42,11 @@
     <label>Avg Quarterly Bill ($)</label>
     <input type="number" name="avg_quarterly_bill" value="320" required>
 
-    <label>Project Type</label>
-    <select name="project_type">
+    <label>Interested In</label>
+    <select name="interested_in">
       <option value="solar">Solar</option>
       <option value="battery">Battery</option>
-      <option value="solar_battery">Solar + Battery</option>
-      <option value="ev_charger">EV Charger</option>
-      <option value="heat_pump">Heat Pump</option>
+      <option value="both">Solar + Battery</option>
     </select>
 
     <label>Purchase Timeline</label>
@@ -55,6 +56,18 @@
       <option value="6-12 months">6–12 months</option>
       <option value="12+ months">12+ months</option>
     </select>
+
+    <hr>
+
+    <label>Custom Fields <span style="font-weight:400;color:#888">(optional JSON)</span></label>
+    <textarea name="custom_data" rows="4" placeholder='{"roof_condition":"Good","shading_notes":"West side only"}'></textarea>
+    <p class="hint">Any extra key/value pairs here are captured in custom_data and will auto-appear in lead delivery emails.</p>
+
+    <hr>
+
+    <label>Webhook Token</label>
+    <input type="text" name="_token" placeholder="Enter shared secret" autocomplete="off">
+    <p class="hint">Must match the token configured in your automation scenario — requests without it are rejected.</p>
 
     <button type="submit">Send Lead</button>
   </form>
@@ -68,6 +81,20 @@
       const status = document.getElementById('status');
       const btn = form.querySelector('button');
 
+      // Parse custom_data JSON if provided
+      let customData = {};
+      const rawCustom = form.custom_data.value.trim();
+      if (rawCustom) {
+        try {
+          customData = JSON.parse(rawCustom);
+        } catch {
+          status.className = 'error';
+          status.textContent = 'Custom Fields must be valid JSON (or leave blank).';
+          status.style.display = 'block';
+          return;
+        }
+      }
+
       const data = {
         name: form.name.value,
         email: form.email.value,
@@ -75,8 +102,10 @@
         postcode: form.postcode.value,
         is_homeowner: form.is_homeowner.value === 'true',
         avg_quarterly_bill: Number(form.avg_quarterly_bill.value),
-        project_type: form.project_type.value,
-        purchase_timeline: form.purchase_timeline.value
+        interested_in: form.interested_in.value,
+        purchase_timeline: form.purchase_timeline.value,
+        custom_data: customData,
+        _token: form._token.value
       };
 
       btn.textContent = 'Sending...';

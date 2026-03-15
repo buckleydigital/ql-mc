@@ -1723,8 +1723,8 @@ document.addEventListener('DOMContentLoaded',()=>{ setTimeout(updateBnavPadding,
 
 <script>
 'use strict';
-const SUPABASE_URL = 'https://wmegoygrancfwxagqskh.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_UHQNxVCjHJnFjssYwTiwcQ_3FYovX8I';
+const _ep = 'https://wmegoygrancfwxagqskh.supabase.co';
+const _ak = 'sb_publishable_UHQNxVCjHJnFjssYwTiwcQ_3FYovX8I';
 
 let db, currentUser;
 let curAgent = 'marketing', curMd = 'agents.md', curChat = 'marketing';
@@ -1815,7 +1815,7 @@ window.addEventListener('load', () => {
 function initSupabase() {
   try {
     if (!window.supabase) { $('login-error').textContent = 'Supabase library failed to load.'; return; }
-    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    db = window.supabase.createClient(_ep, _ak);
     db.auth.onAuthStateChange((event, session) => {
       if (session) {
         currentUser = session.user;
@@ -3187,15 +3187,15 @@ async function sendChat() {
   const dailyCtx = await buildAgentContext();
 
   const p=PERSONAS[curChat];
-  const sys=`You are the QuoteLeads ${p.name} AI for QuoteLeads.com.au — an Australian solar lead generation and managed advertising agency based on the Gold Coast.
+  const sys=`You are the ${p.name} AI assistant for this business dashboard.
 
-## Business Model
-- **PPL (Pay-Per-Lead)**: We run Meta ads on our accounts, generate solar leads, sell them to solar installers. Key metric: Meta CPL vs True CPL (after % sold).
-- **Managed Advertising**: We manage Meta/Google ads on clients' accounts and charge a monthly management fee.
-- **Sales Pipeline**: leads tracked in CRM with PPL or MA type — closed deals convert directly to active clients.
+## Revenue Streams
+- **Pay-Per-Lead**: generate leads via paid ads and sell to clients. Key metric: ad cost per lead vs effective sell price.
+- **Managed Advertising**: manage paid ad campaigns for clients on a monthly retainer.
+- **Sales Pipeline**: leads tracked in CRM — closed deals convert to active clients.
 
 ## Key Metrics
-Meta CPL, True CPL (after % sold), managed spend MTD, management fee revenue, net profit margin${dailyCtx}
+Ad CPL, effective CPL (after unsold), managed spend MTD, retainer revenue, net profit margin${dailyCtx}
 
 ## Instructions
 Be concise and data-driven. Lead with numbers. Never invent or estimate figures — if data is unavailable, say so. You have access to YTD data from 2026-01-01 onwards.`;
@@ -3204,7 +3204,7 @@ Be concise and data-driven. Lead with numbers. Never invent or estimate figures 
     const {data:{session}}=await db.auth.getSession();
     if (!session) throw new Error('Not authenticated.');
     const history=(chatHistory[curChat]||[]).slice(-20);
-    const res=await fetch(`${SUPABASE_URL}/functions/v1/anthropic-proxy`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({system:sys,messages:history})});
+    const res=await fetch(`${_ep}/functions/v1/anthropic-proxy`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({system:sys,messages:history})});
     const data=await res.json();
     if (!res.ok||data.error) throw new Error(data.error?.message||`Proxy error ${res.status}`);
     const reply=data.content?.map(c=>c.text||'').join('')||'No response.';
@@ -3360,7 +3360,7 @@ async function sendSalesChat() {
 
   const { context: pipelineCtx } = await buildSalesPipelineContext();
 
-  const sys = `You are the QuoteLeads Sales Agent for QuoteLeads.com.au — an Australian solar lead generation and managed advertising agency on the Gold Coast.
+  const sys = `You are the Sales Agent AI for this business dashboard.
 
 ## Your Core Role
 Analyse the full sales pipeline, read all lead notes, and help the team prioritise the highest-value leads to contact each day. Be direct, specific, and action-oriented. Tell the team exactly who to call, in what order, and why.
@@ -3368,15 +3368,14 @@ Analyse the full sales pipeline, read all lead notes, and help the team prioriti
 ## Prioritisation Framework
 1. Call-back appointments (highest urgency — they're expecting a call)
 2. Proposals sent but not yet followed up (strike while warm)
-3. Qualified leads with high deal value (PPL or Managed Ads)
+3. Qualified leads with high deal value
 4. New leads from the last 48 hours (strike while fresh)
 5. No-answer leads that haven't been attempted in 3+ days
 
 ## Business Context
-- PPL clients: solar installers buying leads from us (~$85-150/lead)
-- Managed Ads clients: businesses paying $1,000-3,000+/mo management fee
-- Managed Ads deals are higher value and more strategic — prioritise these for follow-up
-- A new managed ads client at $2k/mo is worth $24k/yr recurring
+- Pay-per-lead clients: buying inbound leads generated via paid ads
+- Managed Ads clients: paying a monthly retainer for ad management
+- Retainer deals are higher value and more strategic — prioritise these for follow-up
 
 ## Instructions
 - Lead with specific names and actions ("Call Sarah Johnson at Solar Co — she's been in proposal stage for 6 days with no follow-up")
@@ -3389,7 +3388,7 @@ ${pipelineCtx}`;
     const { data: { session } } = await db.auth.getSession();
     if (!session) throw new Error('Not authenticated.');
     const history = salesChatHistory.slice(-30);
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/anthropic-proxy`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({system:sys,messages:history})});
+    const res = await fetch(`${_ep}/functions/v1/anthropic-proxy`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({system:sys,messages:history})});
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error?.message || `Proxy error ${res.status}`);
     const reply = data.content?.map(c=>c.text||'').join('') || 'No response.';
@@ -3547,7 +3546,7 @@ async function initGoogleMaps() {
   try {
     const {data:{session}} = await db.auth.getSession();
     if (!session) return;
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/get-maps-key`, {
+    const res = await fetch(`${_ep}/functions/v1/get-maps-key`, {
       headers: { 'Authorization': `Bearer ${session.access_token}` }
     });
     if (!res.ok) return;
