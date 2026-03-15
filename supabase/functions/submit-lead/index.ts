@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
+  'Access-Control-Allow-Headers': 'authorization, content-type, apikey',
 };
 
 Deno.serve(async (req: Request) => {
@@ -57,8 +57,14 @@ Deno.serve(async (req: Request) => {
   });
   const text = await makeRes.text();
 
-  return new Response(JSON.stringify({ ok: makeRes.ok, response: text }), {
-    status: makeRes.status,
+  if (!makeRes.ok) {
+    return new Response(JSON.stringify({ error: `Webhook error ${makeRes.status}: ${text}` }), {
+      status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  return new Response(JSON.stringify({ ok: true, response: text }), {
+    status: 200,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 });
