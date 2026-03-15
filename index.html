@@ -1015,9 +1015,10 @@ td strong{font-weight:500}
                 <th>Method</th>
                 <th>Source</th>
                 <th>Notes</th>
+                <th>Actions</th>
               </tr>
             </thead>
-            <tbody id="ld-tbody"><tr><td colspan="13" class="empty">Loading…</td></tr></tbody>
+            <tbody id="ld-tbody"><tr><td colspan="14" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1982,9 +1983,10 @@ async function loadLeads() {
   const filter = $('ld-filter')?.value || 'all';
 
   // KPI counts (always from full set)
+  // 'assigned' = lead sent to client (effectively delivered); 'delivered' = confirmed
   setText('ld-total', all.length);
   setText('ld-pending', all.filter(l => l.status === 'pending').length);
-  setText('ld-delivered', all.filter(l => l.status === 'delivered').length);
+  setText('ld-delivered', all.filter(l => l.status === 'delivered' || l.status === 'assigned').length);
   setText('ld-failed', all.filter(l => l.status === 'failed' || l.status === 'scrubbed').length);
 
   // Per-client breakdown
@@ -2012,7 +2014,7 @@ async function loadLeads() {
   // Table (filtered)
   const rows = filter === 'all' ? all : all.filter(l => l.status === filter);
   if (!rows.length) {
-    $('ld-tbody').innerHTML = `<tr><td colspan="13" class="empty">No leads found.</td></tr>`;
+    $('ld-tbody').innerHTML = `<tr><td colspan="14" class="empty">No leads found.</td></tr>`;
     return;
   }
   const statusBadge = s => {
@@ -2039,8 +2041,36 @@ async function loadLeads() {
       <td style="font-family:var(--mono);font-size:10px;color:var(--ink3)">${esc(l.delivery_method||'—')}</td>
       <td><span class="badge bg-gray">${esc(l.source||'make')}</span></td>
       <td style="font-size:11px;color:var(--ink2);max-width:180px;white-space:pre-wrap;word-break:break-word">${esc(l.custom_fields||'')}</td>
+      <td>
+        <select class="fi" style="font-size:10.5px;padding:3px 6px;width:auto;font-family:var(--mono)" onchange="updateLeadStatus('${esc(l.id)}', this.value, this)">
+          <option value="pending" ${l.status==='pending'?'selected':''}>Pending</option>
+          <option value="assigned" ${l.status==='assigned'?'selected':''}>Assigned</option>
+          <option value="delivered" ${l.status==='delivered'?'selected':''}>Delivered</option>
+          <option value="scrubbed" ${l.status==='scrubbed'?'selected':''}>Scrubbed</option>
+          <option value="failed" ${l.status==='failed'?'selected':''}>Failed</option>
+        </select>
+      </td>
     </tr>`).join('');
 }
+async function updateLeadStatus(leadId, newStatus, selectEl) {
+  const prev = Array.from(selectEl.options).find(o => o.defaultSelected)?.value || selectEl.value;
+  selectEl.disabled = true;
+  const updates = {status: newStatus};
+  if (newStatus === 'delivered' && !selectEl.closest('tr').querySelector('[data-delivered-at]')) {
+    updates.delivered_at = new Date().toISOString();
+  }
+  const {error} = await db.from('solar_leads').update(updates).eq('id', leadId);
+  selectEl.disabled = false;
+  if (error) {
+    alert('Failed to update status: ' + error.message);
+    // revert
+    for (const opt of selectEl.options) opt.selected = opt.value === prev;
+    return;
+  }
+  // Re-render KPIs and client breakdown without full table reload
+  loadLeads();
+}
+
 async function loadTaskLeadDropdowns() {
   const [leadsR, clientsR] = await Promise.all([
     db.from('leads').select('id,name,company,stage').not('stage','in','("closed_won","closed_lost")').order('name'),
