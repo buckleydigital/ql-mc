@@ -18,12 +18,6 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // Use service role to read app_settings (bypasses RLS)
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  );
-
   // Verify the JWT is valid before returning the key
   const userClient = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -37,19 +31,15 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const { data, error } = await supabase
-    .from('app_settings')
-    .select('value')
-    .eq('key', 'google_maps_key')
-    .single();
-
-  if (error || !data) {
+  // Read key from Supabase secret (never stored in DB)
+  const mapsKey = Deno.env.get('GOOGLE_MAPS_KEY');
+  if (!mapsKey) {
     return new Response(JSON.stringify({ error: 'Key not configured' }), {
       status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 
-  return new Response(JSON.stringify({ key: data.value }), {
+  return new Response(JSON.stringify({ key: mapsKey }), {
     status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 });
