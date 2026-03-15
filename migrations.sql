@@ -762,3 +762,58 @@ $$;
 
 -- Allow authenticated users to call this function
 GRANT EXECUTE ON FUNCTION public.add_lead(text,text,text,text,text,text,numeric,text,text) TO authenticated;
+
+-- ── 20. SOLAR LEADS: Restore 'delivered' status + add delivery audit log ──
+-- 'assigned'  = Make has matched a client and will attempt delivery
+-- 'delivered' = Make confirms the email/SMS actually left the platform
+-- delivery_audit_log accumulates timestamped notes so you can see every
+-- event (auto + manual) even if a lead was assigned but never confirmed sent.
+
+-- Re-add 'delivered' to the CHECK constraint (drop + recreate)
+ALTER TABLE public.solar_leads
+  DROP CONSTRAINT IF EXISTS solar_leads_status_check;
+ALTER TABLE public.solar_leads
+  ADD CONSTRAINT solar_leads_status_check
+    CHECK (status IN ('pending','assigned','delivered','failed','scrubbed'));
+
+-- Audit log column (plain text, newline-delimited entries)
+ALTER TABLE public.solar_leads
+  ADD COLUMN IF NOT EXISTS delivery_audit_log text;
+
+-- Function called by Make once email/SMS is confirmed sent.
+-- Also callable from the dashboard for manual overrides.
+-- p_note: free-text e.g. "Email sent to sarah@solarcorp.com.au via Make scenario #123"
+CREATE OR REPLACE FUNCTION public.mark_lead_delivered(
+  p_lead_id uuid,
+  p_note    text DEFAULT 'Marked delivered'
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_lead  record;
+  v_entry text;
+BEGIN
+  SELECT * INTO v_lead FROM public.solar_leads WHERE id = p_lead_id;
+
+  IF v_lead IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'lead_not_found');
+  END IF;
+
+  v_entry := '[' || to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI UTC') || '] ' || p_note;
+
+  UPDATE public.solar_leads
+  SET status             = 'delivered',
+      delivered_at       = COALESCE(delivered_at, now()),
+      delivery_audit_log = CASE
+                             WHEN delivery_audit_log IS NULL THEN v_entry
+                             ELSE delivery_audit_log || E'\n' || v_entry
+                           END,
+      updated_at         = now()
+  WHERE id = p_lead_id;
+
+  RETURN jsonb_build_object('ok', true, 'lead_id', p_lead_id, 'note', v_entry);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.mark_lead_delivered(uuid, text) TO authenticated;
