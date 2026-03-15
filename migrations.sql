@@ -166,7 +166,7 @@ BEGIN
   FROM public.clients c
   WHERE c.type  = 'ppl'
     AND c.stage = 'active_client'
-    AND (c.leads_delivered + COALESCE(c.leads_scrubbed, 0)) < c.total_leads_purchased
+    AND c.leads_delivered < (c.total_leads_purchased + COALESCE(c.leads_scrubbed, 0))
     AND p_postcode = ANY(c.postcodes)
   ORDER BY c.last_lead_delivered_at ASC NULLS FIRST
   LIMIT 1
@@ -313,7 +313,7 @@ BEGIN
   FROM public.clients c
   WHERE c.type  = 'ppl'
     AND c.stage = 'active_client'
-    AND (c.leads_delivered + COALESCE(c.leads_scrubbed, 0)) < c.total_leads_purchased
+    AND c.leads_delivered < (c.total_leads_purchased + COALESCE(c.leads_scrubbed, 0))
     AND p_postcode = ANY(c.postcodes)
     -- Weekly cap: null = no limit
     AND (
@@ -476,7 +476,7 @@ BEGIN
   FROM public.clients c
   WHERE c.type  = 'ppl'
     AND c.stage = 'active_client'
-    AND (c.leads_delivered + COALESCE(c.leads_scrubbed, 0)) < c.total_leads_purchased
+    AND c.leads_delivered < (c.total_leads_purchased + COALESCE(c.leads_scrubbed, 0))
     AND p_postcode = ANY(c.postcodes)
     AND (
       c.weekly_cap IS NULL OR (
