@@ -25,7 +25,7 @@
     <input type="email" name="email" value="jane@test.com" required>
 
     <label>Phone</label>
-    <input type="tel" name="phone" value="07700900000" required>
+    <input type="tel" name="phone" value="0444444444" required>
 
     <label>Postcode</label>
     <input type="text" name="postcode" value="SW1A 1AA" required>
@@ -36,8 +36,17 @@
       <option value="false">No</option>
     </select>
 
-    <label>Avg Quarterly Bill (£)</label>
+    <label>Avg Quarterly Bill ($)</label>
     <input type="number" name="avg_quarterly_bill" value="320" required>
+
+    <label>Project Type</label>
+    <select name="project_type">
+      <option value="solar">Solar</option>
+      <option value="battery">Battery</option>
+      <option value="solar_battery">Solar + Battery</option>
+      <option value="ev_charger">EV Charger</option>
+      <option value="heat_pump">Heat Pump</option>
+    </select>
 
     <label>Purchase Timeline</label>
     <select name="purchase_timeline">
@@ -66,6 +75,7 @@
         postcode: form.postcode.value,
         is_homeowner: form.is_homeowner.value === 'true',
         avg_quarterly_bill: Number(form.avg_quarterly_bill.value),
+        project_type: form.project_type.value,
         purchase_timeline: form.purchase_timeline.value
       };
 
