@@ -777,3 +777,11 @@ ALTER TABLE public.solar_leads
 -- Audit log column (plain text, newline-delimited entries)
 ALTER TABLE public.solar_leads
   ADD COLUMN IF NOT EXISTS delivery_audit_log text;
+
+-- ── 21. PPL CLIENTS: QuoteLeads platform account fields ──
+ALTER TABLE public.clients
+  ADD COLUMN IF NOT EXISTS has_quoteleads_platform_account boolean NOT NULL DEFAULT false;
+ALTER TABLE public.clients
+  ADD COLUMN IF NOT EXISTS platform_email text;
+ALTER TABLE public.clients
+  ADD COLUMN IF NOT EXISTS twilio_phone text;
