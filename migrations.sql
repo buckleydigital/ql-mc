@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS public.solar_leads (
   system_size         text,
   interested_in       text,       -- 'solar', 'battery', 'both'
   -- Flexible extra fields from the ad form (Make maps these in)
-  custom_data         jsonb       DEFAULT '{}',
+  custom_fields       jsonb       DEFAULT '{}',
   -- Distribution / delivery
   assigned_client_id  uuid        REFERENCES public.clients(id) ON DELETE SET NULL,
   assigned_at         timestamptz,
@@ -870,7 +870,7 @@ BEGIN
       'interested_in',     v_lead.interested_in,
       'phone_verified',    v_lead.phone_verified::text,
       'email_verified',    v_lead.email_verified::text
-    ) || COALESCE(v_lead.custom_data, '{}');
+    ) || COALESCE(v_lead.custom_fields, '{}');
 
   -- ── Step 4: resolve template ─────────────────────────────────────────
   v_template := COALESCE(
@@ -904,9 +904,193 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- ── Step 5b: append any custom_data keys not already in the template ─
+  -- ── Step 5b: append any custom_fields keys not already in the template ─
   FOR v_cd_key, v_cd_val IN
-    SELECT key, value FROM jsonb_each_text(COALESCE(v_lead.custom_data, '{}'))
+    SELECT key, value FROM jsonb_each_text(COALESCE(v_lead.custom_fields, '{}'))
+    ORDER BY key
+  LOOP
+    CONTINUE WHEN v_cd_key = ANY(v_rendered_keys);
+    CONTINUE WHEN v_cd_val IS NULL OR trim(v_cd_val) = '';
+
+    v_label := initcap(replace(v_cd_key, '_', ' '));
+
+    v_email_rows := v_email_rows
+      || '<tr>'
+      || '<td style="padding:6px 12px 6px 0;color:#888;font-size:13px;white-space:nowrap;vertical-align:top">' || v_label || '</td>'
+      || '<td style="padding:6px 0;font-size:13px;color:#111">' || v_cd_val || '</td>'
+      || '</tr>';
+    v_sms_parts := v_sms_parts || (v_label || ': ' || v_cd_val);
+  END LOOP;
+
+  v_email_html :=
+    '<div style="font-family:sans-serif;max-width:480px">'
+    || '<p style="font-size:15px;font-weight:600;margin:0 0 12px">New Solar Lead — ' || v_lead.name || '</p>'
+    || '<table style="border-collapse:collapse;width:100%">' || v_email_rows || '</table>'
+    || '<p style="font-size:11px;color:#aaa;margin:16px 0 0">Exclusive lead distributed to ' || v_client.company_name || ' · QL Mission Control</p>'
+    || '</div>';
+
+  v_sms_body := array_to_string(v_sms_parts, ' | ');
+
+  -- ── Step 6: increment counter + stamp the client ─────────────────────
+  UPDATE public.clients
+  SET leads_delivered        = leads_delivered + 1,
+      last_lead_delivered_at = now(),
+      updated_at             = now()
+  WHERE id = v_client.id;
+
+  -- ── Step 7: update the lead row ──────────────────────────────────────
+  UPDATE public.solar_leads
+  SET assigned_client_id = v_client.id,
+      assigned_at        = now(),
+      status             = 'assigned',
+      delivery_method    = v_client.delivery_method,
+      updated_at         = now()
+  WHERE id = p_lead_id;
+
+  -- ── Step 8: return everything Make needs ─────────────────────────────
+  RETURN jsonb_build_object(
+    'assigned',                        true,
+    'client_id',                       v_client.id,
+    'company_name',                    v_client.company_name,
+    'delivery_method',                 v_client.delivery_method,
+    'delivery_email',                  v_client.delivery_email,
+    'delivery_phone',                  v_client.delivery_phone,
+    'custom_fields',                   COALESCE(v_client.custom_fields, '{}'),
+    'has_quoteleads_platform_account', v_client.has_quoteleads_platform_account,
+    'platform_email',                  v_client.platform_email,
+    'twilio_phone',                    v_client.twilio_phone,
+    'email_subject',                   'New Lead — ' || v_lead.name || ' (' || v_lead.postcode || ')',
+    'email_html',                      v_email_html,
+    'sms_body',                        v_sms_body
+  );
+END;
+$$;
+
+-- ── 19. FIX: rename custom_data → custom_fields on solar_leads ────────────
+-- Run this block in Supabase SQL editor ONLY if the column still exists as custom_data.
+-- If already renamed, skip the ALTER TABLE line and run only the CREATE OR REPLACE.
+-- ALTER TABLE public.solar_leads RENAME COLUMN custom_data TO custom_fields;
+
+-- ── 20. REDEPLOY assign_solar_lead using custom_fields ────────────────────
+-- Fixes: record "v_lead" has no field "custom_data"
+CREATE OR REPLACE FUNCTION public.assign_solar_lead(
+  p_lead_id  uuid,
+  p_postcode text
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_client        record;
+  v_lead          record;
+  v_all_fields    jsonb;
+  v_template      jsonb;
+  v_field         jsonb;
+  v_key           text;
+  v_label         text;
+  v_val           text;
+  v_email_rows    text := '';
+  v_sms_parts     text[] := ARRAY[]::text[];
+  v_email_html    text;
+  v_sms_body      text;
+  v_rendered_keys text[] := ARRAY[]::text[];
+  v_cd_key        text;
+  v_cd_val        text;
+BEGIN
+  -- ── Step 1: fetch the lead row ──────────────────────────────────────
+  SELECT * INTO v_lead FROM public.solar_leads WHERE id = p_lead_id;
+
+  -- ── Step 2: atomically find + lock the right client ─────────────────
+  SELECT
+    c.id, c.company_name, c.delivery_method,
+    c.delivery_email, c.delivery_phone,
+    c.custom_fields, c.lead_template,
+    c.has_quoteleads_platform_account, c.platform_email, c.twilio_phone
+  INTO v_client
+  FROM public.clients c
+  WHERE c.type  = 'ppl'
+    AND c.stage = 'active_client'
+    AND c.leads_delivered < (c.total_leads_purchased + COALESCE(c.leads_scrubbed, 0))
+    AND p_postcode = ANY(c.postcodes)
+    AND (
+      c.weekly_cap IS NULL OR (
+        SELECT COUNT(*) FROM public.solar_leads sl
+        WHERE sl.assigned_client_id = c.id
+          AND sl.assigned_at >= date_trunc('week', now())
+      ) < c.weekly_cap
+    )
+    AND (
+      c.monthly_cap IS NULL OR (
+        SELECT COUNT(*) FROM public.solar_leads sl
+        WHERE sl.assigned_client_id = c.id
+          AND sl.assigned_at >= date_trunc('month', now())
+      ) < c.monthly_cap
+    )
+  ORDER BY c.last_lead_delivered_at ASC NULLS FIRST
+  LIMIT 1
+  FOR UPDATE SKIP LOCKED;
+
+  IF v_client.id IS NULL THEN
+    RETURN jsonb_build_object('assigned', false, 'reason', 'no_matching_client');
+  END IF;
+
+  -- ── Step 3: merge all lead fields into one flat JSONB map ────────────
+  v_all_fields :=
+    jsonb_build_object(
+      'name',              v_lead.name,
+      'email',             v_lead.email,
+      'phone',             v_lead.phone,
+      'postcode',          v_lead.postcode,
+      'address',           v_lead.address,
+      'suburb',            v_lead.suburb,
+      'state',             v_lead.state,
+      'is_homeowner',      v_lead.is_homeowner,
+      'avg_quarterly_bill',v_lead.avg_quarterly_bill::text,
+      'purchase_timeline', v_lead.purchase_timeline,
+      'property_type',     v_lead.property_type,
+      'roof_type',         v_lead.roof_type,
+      'monthly_bill',      v_lead.monthly_bill::text,
+      'system_size',       v_lead.system_size,
+      'interested_in',     v_lead.interested_in,
+      'phone_verified',    v_lead.phone_verified::text,
+      'email_verified',    v_lead.email_verified::text
+    ) || COALESCE(v_lead.custom_fields, '{}');
+
+  -- ── Step 4: resolve template ─────────────────────────────────────────
+  v_template := COALESCE(
+    v_client.lead_template,
+    '[
+      {"key":"name",               "label":"Name"},
+      {"key":"email",              "label":"Email"},
+      {"key":"phone",              "label":"Phone"},
+      {"key":"postcode",           "label":"Postcode"},
+      {"key":"is_homeowner",       "label":"Home Owner"},
+      {"key":"avg_quarterly_bill", "label":"Avg Quarterly Bill"},
+      {"key":"purchase_timeline",  "label":"Purchase Timeline"}
+    ]'::jsonb
+  );
+
+  -- ── Step 5: render template fields ───────────────────────────────────
+  FOR v_field IN SELECT value FROM jsonb_array_elements(v_template) LOOP
+    v_key   := v_field->>'key';
+    v_label := COALESCE(v_field->>'label', v_key);
+    v_val   := v_all_fields->>v_key;
+
+    v_rendered_keys := v_rendered_keys || v_key;
+
+    IF v_val IS NOT NULL AND trim(v_val) != '' THEN
+      v_email_rows := v_email_rows
+        || '<tr>'
+        || '<td style="padding:6px 12px 6px 0;color:#888;font-size:13px;white-space:nowrap;vertical-align:top">' || v_label || '</td>'
+        || '<td style="padding:6px 0;font-size:13px;color:#111">' || v_val || '</td>'
+        || '</tr>';
+      v_sms_parts := v_sms_parts || (v_label || ': ' || v_val);
+    END IF;
+  END LOOP;
+
+  -- ── Step 5b: append any custom_fields keys not already in the template ─
+  FOR v_cd_key, v_cd_val IN
+    SELECT key, value FROM jsonb_each_text(COALESCE(v_lead.custom_fields, '{}'))
     ORDER BY key
   LOOP
     CONTINUE WHEN v_cd_key = ANY(v_rendered_keys);
