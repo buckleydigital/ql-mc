@@ -1014,9 +1014,10 @@ td strong{font-weight:500}
                 <th>Delivered At</th>
                 <th>Method</th>
                 <th>Source</th>
+                <th>Notes</th>
               </tr>
             </thead>
-            <tbody id="ld-tbody"><tr><td colspan="12" class="empty">Loading…</td></tr></tbody>
+            <tbody id="ld-tbody"><tr><td colspan="13" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1974,7 +1975,7 @@ async function loadLeads() {
     .select('*, clients(company_name)')
     .order('created_at', {ascending: false});
   if (error) {
-    $('ld-tbody').innerHTML = `<tr><td colspan="12" class="empty">Error: ${esc(error.message)}</td></tr>`;
+    $('ld-tbody').innerHTML = `<tr><td colspan="13" class="empty">Error: ${esc(error.message)}</td></tr>`;
     return;
   }
   const all = data || [];
@@ -2011,7 +2012,7 @@ async function loadLeads() {
   // Table (filtered)
   const rows = filter === 'all' ? all : all.filter(l => l.status === filter);
   if (!rows.length) {
-    $('ld-tbody').innerHTML = `<tr><td colspan="12" class="empty">No leads found.</td></tr>`;
+    $('ld-tbody').innerHTML = `<tr><td colspan="13" class="empty">No leads found.</td></tr>`;
     return;
   }
   const statusBadge = s => {
@@ -2037,6 +2038,7 @@ async function loadLeads() {
       <td style="font-family:var(--mono);font-size:10px;color:var(--ink3);white-space:nowrap">${fmtDate(l.delivered_at, false)}</td>
       <td style="font-family:var(--mono);font-size:10px;color:var(--ink3)">${esc(l.delivery_method||'—')}</td>
       <td><span class="badge bg-gray">${esc(l.source||'make')}</span></td>
+      <td style="font-size:11px;color:var(--ink2);max-width:180px;white-space:pre-wrap;word-break:break-word">${esc(l.custom_fields||'')}</td>
     </tr>`).join('');
 }
 async function loadTaskLeadDropdowns() {
