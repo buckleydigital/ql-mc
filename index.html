@@ -1005,7 +1005,7 @@ td strong{font-weight:500}
                 <th>Name</th>
                 <th>Phone</th>
                 <th>Postcode</th>
-                <th>Project</th>
+                <th>Interested In</th>
                 <th>Avg Bill</th>
                 <th>Timeline</th>
                 <th>Status</th>
@@ -1938,7 +1938,7 @@ async function loadLeads() {
       <td><strong>${esc(l.name||'—')}</strong><br><span style="font-family:var(--mono);font-size:9.5px;color:var(--ink3)">${esc(l.email||'')}</span></td>
       <td style="font-family:var(--mono);font-size:11px">${esc(l.phone||'—')}</td>
       <td style="font-family:var(--mono);font-size:11px">${esc(l.postcode||'—')}</td>
-      <td>${l.project_type ? `<span class="badge bg-blu">${esc(l.project_type.replace(/_/g,' '))}</span>` : '<span style="color:var(--ink3)">—</span>'}</td>
+      <td>${l.interested_in ? `<span class="badge bg-blu">${esc(l.interested_in.replace(/_/g,' '))}</span>` : '<span style="color:var(--ink3)">—</span>'}</td>
       <td style="font-family:var(--mono);font-size:11px">${l.avg_quarterly_bill ? '$'+Number(l.avg_quarterly_bill).toLocaleString('en-AU') : '—'}</td>
       <td style="font-size:11px;color:var(--ink2);white-space:nowrap">${esc(l.purchase_timeline||'—')}</td>
       <td>${statusBadge(l.status)}</td>
