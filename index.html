@@ -2848,6 +2848,7 @@ function renderManaged(clients, orderLog=[]) {
         <div class="kcard" id="kc-mg-${esc(String(c.id))}" data-client-id="${esc(String(c.id))}" data-client-type="managed">
           <div class="kcard-name">${esc(c.company_name)}</div>
           <div class="kcard-meta">${fmt(c.spend_mtd||0)} MTD</div>
+          ${c.phone?`<div class="kcard-phone">${esc(c.phone)}</div>`:''}
           ${c.management_fee?`<div class="kcard-val">${fmt(c.management_fee)}/mo fee</div>`:''}
         </div>`).join('');
       col.querySelectorAll('.kcard').forEach(card=>{
