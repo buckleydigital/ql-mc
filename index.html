@@ -12,6 +12,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
 <!-- Google Maps script tag — loaded dynamically at runtime via Edge Function -->
 <script id="gmaps-script"></script>
+<!--
+  DB MIGRATION (run once in Supabase SQL editor):
+  ALTER TABLE leads ADD COLUMN IF NOT EXISTS contactable BOOLEAN DEFAULT NULL;
+-->
 <style>
 
 /* ═══ TOKENS ═══ */
@@ -391,7 +395,15 @@ body::after {
 .kcard.dragging{opacity:.25;cursor:grabbing}
 .kcard-name{font-size:11.5px;font-weight:500;color:var(--ink);margin-bottom:2px}
 .kcard-meta{font-family:var(--mono);font-size:9.5px;color:var(--ink3)}
+.kcard-phone{font-family:var(--mono);font-size:8.5px;color:var(--ink3);margin-top:1px}
 .kcard-val{font-family:var(--mono);font-size:9.5px;color:var(--acc);margin-top:3px}
+.kcard-contact-row{display:flex;align-items:center;gap:4px;margin-top:4px}
+.kcard-cpill{font-family:var(--mono);font-size:7.5px;font-weight:500;padding:1px 5px;border-radius:3px;letter-spacing:.03em}
+.kcard-cpill.cp-yes{color:var(--grn);background:rgba(var(--grn-rgb,52,199,89),.1);border:1px solid rgba(var(--grn-rgb,52,199,89),.2)}
+.kcard-cpill.cp-no{color:var(--red);background:rgba(var(--red-rgb,255,69,58),.1);border:1px solid rgba(var(--red-rgb,255,69,58),.2)}
+.kcard-cpill.cp-unk{color:var(--ink3);background:var(--s3);border:1px solid var(--bd2)}
+.kcard-ctoggle{font-family:var(--mono);font-size:8px;padding:1px 5px;border-radius:3px;cursor:pointer;border:1px solid var(--bd2);background:var(--s2);color:var(--ink2);transition:all .1s;line-height:1.4}
+.kcard-ctoggle:hover{border-color:var(--acc);color:var(--acc)}
 .kcards.drag-over{background:var(--acc-dim);border-color:rgba(79,143,255,.22)}
 
 .kcol[data-s="new_lead"] .kcolh,.kcol[data-s="lead"] .kcolh{border-top-color:var(--acc);}
@@ -1525,6 +1537,13 @@ td strong{font-weight:500}
         <option value="closed_won">Closed Won</option><option value="closed_lost">Closed Lost</option>
       </select>
     </div>
+    <div class="frow"><label class="flabel">Contact Status</label>
+      <select class="fs" id="el-contactable">
+        <option value="">— Not set</option>
+        <option value="true">✓ Contactable</option>
+        <option value="false">✗ Uncontactable</option>
+      </select>
+    </div>
     <div class="convert-banner" id="convert-banner" style="display:none">
       <div class="convert-banner-title">
         <span>🎉</span> Convert to active client
@@ -2247,7 +2266,9 @@ async function drop(e,prefix,newStage) {
   e.preventDefault();e.currentTarget.classList.remove('drag-over');
   if (!draggedId||draggedPrefix!==prefix) return;
   const table=prefix==='crm'?'leads':'clients';
-  const {error}=await db.from(table).update({stage:newStage,updated_at:now()}).eq('id',draggedId);
+  const updateData={stage:newStage,updated_at:now()};
+  if (prefix==='crm'&&['call_back','proposal','closed_won'].includes(newStage)) updateData.contactable=true;
+  const {error}=await db.from(table).update(updateData).eq('id',draggedId);
   if (error) { toast('Move failed: '+error.message,true); return; }
   toast('→ '+stageLabel(newStage));
   draggedId=null;draggedPrefix=null;
@@ -2268,10 +2289,12 @@ function renderCRM(leads) {
   setText('crm-active',leads.filter(l=>!['closed_won','closed_lost'].includes(l.stage)).length);
   setText('crm-won',won);
   setText('crm-rate',leads.length>0?((won/leads.length)*100).toFixed(0)+'%':'—');
-  // Follow-up reminders: not closed + (never contacted OR last_contact ≥7 days ago)
+  // Follow-up reminders: not closed, not uncontactable.
+  // contactable===true → only stale by last_contact; contactable===false → excluded; null → old logic
   const staleLeads=leads.filter(l=>{
     if (['closed_won','closed_lost'].includes(l.stage)) return false;
-    if (!l.last_contact) return true;
+    if (l.contactable===false) return false;
+    if (!l.last_contact) return l.contactable!==true; // "not yet contacted" only when not explicitly contactable
     return Math.floor((Date.now()-new Date(l.last_contact))/(1000*86400))>=7;
   });
   const badge=$('crm-followup-badge'),banner=$('crm-followup-banner');
@@ -2297,14 +2320,27 @@ function renderCRM(leads) {
       col.innerHTML=sl.map(l=>{
         const ds=l.last_contact?Math.floor((Date.now()-new Date(l.last_contact))/(1000*86400)):null;
         const isStale=staleIds.has(String(l.id));
+        const cPill=l.contactable===true
+          ?`<span class="kcard-cpill cp-yes">● contactable</span>`
+          :l.contactable===false
+          ?`<span class="kcard-cpill cp-no">● uncontactable</span>`
+          :`<span class="kcard-cpill cp-unk">● not set</span>`;
+        const cToggleYes=l.contactable===true
+          ?`<button class="kcard-ctoggle" onclick="toggleContactable(event,'${esc(String(l.id))}',null)" title="Clear status">✓</button>`
+          :`<button class="kcard-ctoggle" onclick="toggleContactable(event,'${esc(String(l.id))}',true)" title="Mark contactable">✓</button>`;
+        const cToggleNo=l.contactable===false
+          ?`<button class="kcard-ctoggle" onclick="toggleContactable(event,'${esc(String(l.id))}',null)" title="Clear status">✗</button>`
+          :`<button class="kcard-ctoggle" onclick="toggleContactable(event,'${esc(String(l.id))}',false)" title="Mark uncontactable">✗</button>`;
         return `
         <div class="kcard" id="kc-crm-${esc(String(l.id))}" data-lead-id="${esc(String(l.id))}">
           <div class="kcard-name">${esc(l.name||'—')}</div>
           <div class="kcard-meta">${esc(l.company||'—')}</div>
-          <div style="display:flex;gap:4px;margin-top:3px">
+          ${l.phone?`<div class="kcard-phone">${esc(l.phone)}</div>`:''}
+          <div style="display:flex;gap:4px;margin-top:3px;align-items:center">
             ${l.lead_type?`<span class="badge ${typeBadge(l.lead_type)}" style="font-size:8.5px">${typeLabel(l.lead_type)}</span>`:''}
             ${l.value?`<span class="kcard-val">${fmt(l.value)}</span>`:''}
           </div>
+          <div class="kcard-contact-row">${cPill}${cToggleYes}${cToggleNo}</div>
           ${isStale?`<div style="font-size:9px;color:var(--amb);font-family:var(--mono);margin-top:3px">⚠ ${ds!==null?ds+'d since contact':'not yet contacted'}</div>`:''}
         </div>`}).join('');
       col.querySelectorAll('.kcard').forEach(card=>{
@@ -2359,9 +2395,16 @@ function openEditLead(l) {
   setVal('el-email',l.email);setVal('el-phone',l.phone);setVal('el-stage',l.stage);
   setVal('el-type',l.lead_type||'ppl');setVal('el-value',l.value);
   setVal('el-source',l.source);setVal('el-notes',l.notes);
+  setVal('el-contactable',l.contactable===true?'true':l.contactable===false?'false':'');
   setText('edit-lead-sub',(l.name||'')+(l.company?' · '+l.company:''));
   checkConvertBanner();
   openModal('m-edit-lead');
+}
+async function toggleContactable(e,id,value) {
+  e.stopPropagation();
+  const {error}=await db.from('leads').update({contactable:value,updated_at:now()}).eq('id',id);
+  if (error) { toast('Error: '+error.message,true); return; }
+  loadCRM();
 }
 async function convertLead(targetType) {
   const id = $('el-id').value;
@@ -2391,7 +2434,12 @@ async function convertLead(targetType) {
 }
 async function updateLead() {
   const id=$('el-id').value;
-  const d={name:$('el-name').value.trim(),company:$('el-company').value.trim(),email:$('el-email').value.trim(),phone:$('el-phone').value.trim(),stage:$('el-stage').value,lead_type:$('el-type').value,value:parseFloat($('el-value').value)||null,source:$('el-source').value,notes:$('el-notes').value.trim(),updated_at:now()};
+  const stage=$('el-stage').value;
+  const cRaw=$('el-contactable').value;
+  // Auto-set contactable=true when stage indicates meaningful progress
+  const autoContactable=['call_back','proposal','closed_won'].includes(stage);
+  const contactable=autoContactable?true:cRaw==='true'?true:cRaw==='false'?false:null;
+  const d={name:$('el-name').value.trim(),company:$('el-company').value.trim(),email:$('el-email').value.trim(),phone:$('el-phone').value.trim(),stage,lead_type:$('el-type').value,value:parseFloat($('el-value').value)||null,source:$('el-source').value,notes:$('el-notes').value.trim(),contactable,updated_at:now()};
   if (!d.name) { toast('Name required',true); return; }
   const {error}=await db.from('leads').update(d).eq('id',id);
   if (error) { toast('Error: '+error.message,true); return; }
