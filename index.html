@@ -12,10 +12,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
 <!-- Google Maps script tag — loaded dynamically at runtime via Edge Function -->
 <script id="gmaps-script"></script>
-<!--
-  DB MIGRATION (run once in Supabase SQL editor):
-  ALTER TABLE leads ADD COLUMN IF NOT EXISTS contactable BOOLEAN DEFAULT NULL;
--->
 <style>
 
 /* ═══ TOKENS ═══ */
@@ -1074,11 +1070,11 @@ td strong{font-weight:500}
           <div class="chart-card"><div class="chart-title">Revenue vs Expenses</div><canvas id="chart-rev" height="160"></canvas></div>
           <div class="chart-card"><div class="chart-title">Meta vs True CPL</div><canvas id="chart-cpl" height="160"></canvas></div>
         </div>
-        <div class="sl">Expense Breakdown <div class="sl-line"></div></div>
+        <div class="sl">Expense Breakdown <div class="sl-line"></div><button class="btn btn-xs btn-p" style="margin-left:8px" onclick="openExpenseModal()">+ Add</button></div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Category</th><th>Description</th><th>Amount</th><th>Type</th><th>Date</th></tr></thead>
-            <tbody id="exp-tbody"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
+            <thead><tr><th>Category</th><th>Description</th><th>Amount</th><th>Type</th><th>Date</th><th></th></tr></thead>
+            <tbody id="exp-tbody"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
         <div class="sl" style="margin-top:16px">Subscriptions <div class="sl-line"></div><button class="btn btn-xs btn-p" style="margin-left:8px" onclick="openAddSub()">+ Add</button></div>
@@ -1368,6 +1364,25 @@ td strong{font-weight:500}
 </div><!-- /app -->
 
 <!-- ═══ MODALS ═══ -->
+<div class="overlay" id="m-expense">
+  <div class="modal">
+    <h2>Add Expense</h2><div class="msub">Manual expense entry</div>
+    <div class="frow"><label class="flabel">Category</label><input class="fi" id="exp-category" placeholder="e.g. Software, Advertising, Staff"></div>
+    <div class="frow"><label class="flabel">Description</label><input class="fi" id="exp-description" placeholder="e.g. Supabase Pro plan"></div>
+    <div class="frow"><label class="flabel">Amount (AUD)</label><input class="fi" id="exp-amount" type="number" step="0.01" placeholder="e.g. 299.00"></div>
+    <div class="frow"><label class="flabel">Type</label>
+      <select class="fs" id="exp-type">
+        <option value="fixed">Fixed</option>
+        <option value="variable">Variable</option>
+      </select>
+    </div>
+    <div class="frow"><label class="flabel">Date</label><input class="fi" id="exp-date" type="date"></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-expense')">Cancel</button>
+      <button class="btn btn-p" onclick="saveExpense()">Save expense</button>
+    </div>
+  </div>
+</div>
 <div class="overlay" id="m-task">
   <div class="modal">
     <h2>New Task</h2><div class="msub">Saved to Supabase tasks table</div>
@@ -1795,7 +1810,6 @@ td strong{font-weight:500}
 function updateBnavPadding(){
   const nav=document.querySelector('.bnav');
   if(!nav||window.innerWidth>700) return;
-  // rAF ensures the browser has laid out the element before reading its size
   requestAnimationFrame(()=>{
     const h=nav.getBoundingClientRect().height;
     if(h>0) document.documentElement.style.setProperty('--bnav-h', h+'px');
@@ -1816,10 +1830,8 @@ let chatHistory = {};
 let revChart = null, cplChart = null, dailyChart = null;
 let curDailyRange = 'today';
 
-// Secure data stores — avoids embedding DB objects in onclick attributes
 const _taskMap = new Map();
 
-/* Record caches — avoids embedding JSON blobs in onclick attributes */
 const LEAD_CACHE = {};
 const CLIENT_CACHE = {};
 
@@ -1880,8 +1892,7 @@ window.addEventListener('load', () => {
   const ytdOpt = document.createElement('option');
   ytdOpt.value = `ytd-${curYear}`; ytdOpt.textContent = `${curYear} YTD`; ytdOpt.selected = true;
   sel.appendChild(ytdOpt);
-  // Walk back from current month to Jan 2026 (business start) — auto-extends as months pass
-  const START_YEAR = 2026, START_MONTH = 0; // Jan 2026
+  const START_YEAR = 2026, START_MONTH = 0;
   for (let i = 0; ; i++) {
     const d = new Date(n.getFullYear(), n.getMonth() - i, 1);
     if (d.getFullYear() < START_YEAR || (d.getFullYear() === START_YEAR && d.getMonth() < START_MONTH)) break;
@@ -1961,7 +1972,6 @@ async function loadAll() {
   populateMapClientDropdown();
 }
 
-/* LEAD DISTRIBUTION */
 async function sendTestLead() {
   const btn = document.getElementById('tl-btn');
   const statusEl = document.getElementById('tl-status');
@@ -2020,14 +2030,12 @@ async function loadLeads() {
   const all = data || [];
   const filter = $('ld-filter')?.value || 'all';
 
-  // KPI counts (always from full set)
   setText('ld-total', all.length);
   setText('ld-pending', all.filter(l => l.status === 'pending').length);
   setText('ld-assigned', all.filter(l => l.status === 'assigned').length);
   setText('ld-delivered', all.filter(l => l.status === 'delivered').length);
   setText('ld-failed', all.filter(l => l.status === 'failed' || l.status === 'scrubbed').length);
 
-  // Per-client breakdown
   const clientMap = {};
   all.forEach(l => {
     if (!l.assigned_client_id) return;
@@ -2049,7 +2057,6 @@ async function loadLeads() {
       </div>`
     : '<div class="empty">No leads matched to clients yet.</div>';
 
-  // Table (filtered)
   const rows = filter === 'all' ? all : all.filter(l => l.status === filter);
   if (!rows.length) {
     $('ld-tbody').innerHTML = `<tr><td colspan="14" class="empty">No leads found.</td></tr>`;
@@ -2095,7 +2102,6 @@ async function updateLeadStatus(leadId, newStatus, selectEl) {
   selectEl.disabled = true;
   let error;
   if (newStatus === 'delivered') {
-    // Use the audit-logging function so delivered_at and delivery_audit_log are set
     ({error} = await db.rpc('mark_lead_delivered', {p_lead_id: leadId, p_note: 'Manually marked delivered'}));
   } else {
     ({error} = await db.from('solar_leads').update({status: newStatus, updated_at: new Date().toISOString()}).eq('id', leadId));
@@ -2133,7 +2139,6 @@ async function loadTaskLeadDropdowns() {
   if (editSel) editSel.innerHTML = html;
 }
 
-/* TASKS */
 async function loadTasks() {
   const {data, error} = await db.from('tasks').select('*').order('created_at', {ascending:false});
   if (error) { $('human-list').innerHTML = '<div class="empty">Error: ' + esc(error.message) + '</div>'; return; }
@@ -2213,7 +2218,6 @@ async function addTask() {
   closeModal('m-task'); loadTasks(); toast('Task created ✓');
 }
 
-/* EMAILS */
 async function loadEmails() {
   const {data,error} = await db.from('flagged_emails').select('*').eq('status','pending').order('created_at',{ascending:false});
   if (error) { $('email-list').innerHTML='<div class="empty">Could not load emails.</div>'; return; }
@@ -2244,7 +2248,6 @@ async function actionEmail(id,status) {
   $('em-'+id)?.remove(); toast(status==='discarded'?'Discarded':'Approved ✓');
 }
 
-/* KANBAN */
 function buildKanban(containerId,stages,prefix) {
   $(containerId).innerHTML=stages.map(s=>`
     <div class="kcol" data-s="${s.id}">
@@ -2275,7 +2278,6 @@ async function drop(e,prefix,newStage) {
   if (prefix==='crm') loadCRM(); else if (prefix==='ppl') loadPPL(); else loadManaged();
 }
 
-/* CRM */
 const CRM_STAGES=[{id:'new_lead',label:'New Lead'},{id:'no_answer',label:'No Answer'},{id:'call_back',label:'Call-Back'},{id:'proposal',label:'Proposal'},{id:'closed_won',label:'Closed Won'},{id:'closed_lost',label:'Closed Lost'}];
 async function loadCRM() {
   const {data,error}=await db.from('leads').select('*').order('created_at',{ascending:false});
@@ -2289,8 +2291,6 @@ function renderCRM(leads) {
   setText('crm-active',leads.filter(l=>!['closed_won','closed_lost'].includes(l.stage)).length);
   setText('crm-won',won);
   setText('crm-rate',leads.length>0?((won/leads.length)*100).toFixed(0)+'%':'—');
-  // Follow-up reminders: not closed, not uncontactable.
-  // contactable===true → only stale by last_contact; contactable===false → excluded; null → old logic
   const staleLeads=leads.filter(l=>{
     if (['closed_won','closed_lost'].includes(l.stage)) return false;
     if (l.contactable===false) return false;
@@ -2436,7 +2436,6 @@ async function updateLead() {
   const id=$('el-id').value;
   const stage=$('el-stage').value;
   const cRaw=$('el-contactable').value;
-  // Auto-set contactable=true when stage indicates meaningful progress
   const autoContactable=['call_back','proposal','closed_won'].includes(stage);
   const contactable=autoContactable?true:cRaw==='true'?true:cRaw==='false'?false:null;
   const d={name:$('el-name').value.trim(),company:$('el-company').value.trim(),email:$('el-email').value.trim(),phone:$('el-phone').value.trim(),stage,lead_type:$('el-type').value,value:parseFloat($('el-value').value)||null,source:$('el-source').value,notes:$('el-notes').value.trim(),contactable,updated_at:now()};
@@ -2471,7 +2470,6 @@ async function saveLead() {
   closeModal('m-lead'); loadCRM(); toast('Lead saved ✓');
 }
 
-/* PPL */
 const PPL_STAGES=[{id:'active_client',label:'Active'},{id:'paused',label:'Paused'},{id:'churned',label:'Churned'}];
 async function loadPPL() {
   const yr = new Date().getFullYear()+'-01-01';
@@ -2487,11 +2485,9 @@ async function loadPPL() {
 function renderPPL(clients, ytdLeads=0, spendData=[]) {
   setText('ppl-active',clients.filter(c=>c.stage==='active_client').length);
   setText('ppl-leads',ytdLeads);
-  // Overall Meta CPL: YTD spend ÷ YTD leads from ad_spend_daily (solar_ppl)
   const ytdSpend=spendData.reduce((s,r)=>s+(r.spend||0),0);
   const ytdSpendLeads=spendData.reduce((s,r)=>s+(r.leads||0),0);
   setText('ppl-meta-cpl',ytdSpend>0&&ytdSpendLeads>0?'$'+(ytdSpend/ytdSpendLeads).toFixed(2):'—');
-  // Avg True CPL: average of per-client true_cpl (auto-calc from delivered orders)
   const ac=clients.filter(c=>c.stage==='active_client'&&(c.true_cpl||0)>0);
   setText('ppl-true-cpl',ac.length?'$'+(ac.reduce((s,c)=>s+(c.true_cpl||0),0)/ac.length).toFixed(2):'—');
   const dueClients=clients.filter(c=>c.stage==='active_client'&&c.total_leads_purchased>0&&(c.leads_delivered||0)/c.total_leads_purchased>=0.75);
@@ -2509,6 +2505,7 @@ function renderPPL(clients, ytdLeads=0, spendData=[]) {
         <div class="kcard" id="kc-ppl-${esc(String(c.id))}" data-client-id="${esc(String(c.id))}" data-client-type="ppl">
           <div class="kcard-name">${esc(c.company_name)}</div>
           <div class="kcard-meta">${esc(c.niche||'Solar')} · ${c.leads_delivered||0} delivered · ${c.total_leads_purchased||0} purchased</div>
+          ${c.phone?`<div class="kcard-phone">${esc(c.phone)}</div>`:''}
           ${c.meta_cpl?`<div class="kcard-val">CPL $${Number(c.meta_cpl).toFixed(2)}</div>`:''}
           ${cplAlert==='danger'?'<div style="font-size:9px;color:var(--red);font-family:var(--mono);margin-top:3px">⚠ margin lost — true CPL exceeds sell price</div>':cplAlert==='warning'?'<div style="font-size:9px;color:var(--amb);font-family:var(--mono);margin-top:3px">⚠ low margin — true CPL near sell price</div>':''}
           ${dueReorder?'<div style="font-size:9px;color:var(--amb);font-family:var(--mono);margin-top:2px">↻ due for reorder</div>':''}
@@ -2586,7 +2583,6 @@ function calcNextPayment() {
   const d = new Date(v+'T00:00:00'); d.setDate(d.getDate()+30);
   setVal('em-next-pay', d.toISOString().split('T')[0]);
 }
-/* ── Managed client month picker ── */
 const _MG_MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const _MG_YEAR=2026;
 function renderMonthPicker(activeMonthsJson){
@@ -2657,7 +2653,6 @@ function renderManagedPayments(clients, orderLog=[]) {
   });
 }
 
-/* MANAGED ORDER LOG */
 async function loadManagedOrderLog(clientId) {
   const el=$('em-order-log'); if(!el) return;
   el.textContent='Loading…';
@@ -2714,7 +2709,6 @@ async function logRetainerPayment(clientId) {
   loadManaged();
 }
 
-/* PPL ORDER LOG */
 function renderOrderLogTable(data, clientId) {
   if (!data.length) return '<div style="color:var(--ink3);padding:4px 0">No orders logged yet.</div>';
   return `<table style="width:100%;border-collapse:collapse">
@@ -2829,7 +2823,6 @@ async function logPplOrder() {
   loadPPL();
 }
 
-/* MANAGED */
 const MG_STAGES=[{id:'active',label:'Active'},{id:'paused',label:'Paused'},{id:'churned',label:'Churned'}];
 async function loadManaged() {
   const [{data,error},{data:orderData}]=await Promise.all([
@@ -2902,7 +2895,6 @@ function openEditClient(type,c) {
     setVal('ep-price',c.lead_price);setVal('ep-meta-cpl',c.meta_cpl||'');setVal('ep-pct',c.pct_sold);
     setVal('ep-ld',c.leads_delivered||0);setVal('ep-tlp',c.total_leads_purchased||0);setVal('ep-scrubbed',c.leads_scrubbed||0);
     setVal('ep-stage',c.stage||'active_client');setVal('ep-notes',c.notes);
-    // Delivery fields
     const epPc=Array.isArray(c.postcodes)?c.postcodes.join(', '):(c.postcodes||'');
     setVal('ep-postcodes',epPc);
     setVal('ep-weekly-cap',c.weekly_cap!=null?c.weekly_cap:'');
@@ -2975,7 +2967,6 @@ async function updateClient(type) {
     const _weeklyCap=$('ep-weekly-cap').value!==''?parseInt($('ep-weekly-cap').value):null;
     const _monthlyCap=$('ep-monthly-cap').value!==''?parseInt($('ep-monthly-cap').value):null;
     d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:_price,meta_cpl:_metaCpl,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,leads_scrubbed:_scrubbed,stage:$('ep-stage').value,notes:$('ep-notes').value.trim(),postcodes:_postcodes,weekly_cap:_weeklyCap,monthly_cap:_monthlyCap,delivery_method:$('ep-delivery-method').value,delivery_email:$('ep-delivery-email').value.trim()||null,delivery_phone:$('ep-delivery-phone').value.trim()||null,custom_fields:_customFields,has_quoteleads_platform_account:$('ep-has-ql-account').value==='true',platform_email:$('ep-platform-email').value.trim()||null,twilio_phone:$('ep-twilio-phone').value.trim()||null,updated_at:now()};
-    // Only write pct_sold manually if no delivered orders exist (auto-calc takes priority)
     const {count:deliveredCount}=await db.from('ppl_order_log').select('id',{count:'exact',head:true}).eq('client_id',id).eq('status','delivered');
     if (!(deliveredCount>0)) d.pct_sold=parseFloat($('ep-pct').value)||null;
     if (!d.company_name) { toast('Company name required',true); return; }
@@ -3019,7 +3010,6 @@ async function saveClient(type) {
   type==='ppl'?loadPPL():loadManaged();
 }
 
-/* FINANCIALS */
 function nextMonthStart(m) {
   const [y,mo]=m.split('-').map(Number);
   return mo===12?`${y+1}-01-01`:`${y}-${String(mo+1).padStart(2,'0')}-01`;
@@ -3053,21 +3043,16 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const agSp=latestAg?.spend||0;
   const pplLeadsTotal=latestPpl?.leads||0;
   const metaCpl=(pplSp>0&&pplLeadsTotal>0)?'$'+(pplSp/pplLeadsTotal).toFixed(2):'—';
-  // PPL revenue: use order log if populated, otherwise fall back to leads_delivered × lead_price on client records
   const pplRevLog=pplOrders.reduce((s,o)=>s+((o.leads_qty||0)*(o.lead_price||0)),0);
   const pplRevClients=pplClients.reduce((s,c)=>s+((c.leads_delivered||0)*(c.lead_price||0)),0);
   const pplRev=pplRevLog>0?pplRevLog:pplRevClients;
-  // Managed retainer revenue: count active_months within date range × fee
   const mgRetainerRev=mgClients.reduce((s,c)=>{
     let months=[];
     try{months=JSON.parse(c.active_months||'[]');}catch(e){}
-    // compare month's first day against full from/next dates so current month is never cut off
     const inRange=months.filter(m=>(!from||m+'-01'>=from)&&(!next||m+'-01'<next));
-    // fallback to payments_made if no active_months set yet
     const cnt=c.active_months!=null?inRange.length:(c.payments_made||0);
     return s+(cnt*(c.management_fee||0));
   },0);
-  // Custom order revenue: managed_order_log filtered to the selected period
   const mgCustomRev=mgOrders.reduce((s,o)=>s+(o.amount||0),0);
   const mgTotalRev=mgRetainerRev+mgCustomRev;
   const tr=pplRev+mgTotalRev;
@@ -3075,7 +3060,6 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const trueCpl=acTrue.length?'$'+(acTrue.reduce((s,c)=>s+c.true_cpl,0)/acTrue.length).toFixed(2):'—';
   const totalExp=te+pplSp+agSp;
   const np=tr-totalExp,margin=tr>0?((np/tr)*100).toFixed(1):0;
-  // GST on revenue only (revenue is GST-inclusive, so GST component = revenue / 11)
   const gst=tr>0?tr/11:0;
   const profitAfterGst=np-gst;
   const marginAfterGst=tr>0?((profitAfterGst/tr)*100).toFixed(1):0;
@@ -3094,8 +3078,8 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   if ($('fin-mg-retainer')) setText('fin-mg-retainer',mgRetainerRev>0?fmt(mgRetainerRev):'—');
   if ($('fin-mg-custom')) setText('fin-mg-custom',mgCustomRev>0?fmt(mgCustomRev):'—');
   const tb=$('exp-tbody');
-  if (!expenses.length) { tb.innerHTML='<tr><td colspan="5" class="empty">No expenses for this period.</td></tr>'; }
-  else { tb.innerHTML=expenses.map(e=>`<tr><td>${esc(e.category||'—')}</td><td>${esc(e.description||'—')}</td><td>${fmt(e.amount)}</td><td><span class="badge ${e.type==='fixed'?'bg-blu':'bg-amb'}">${e.type||'variable'}</span></td><td style="font-family:var(--mono);font-size:10px">${e.date||'—'}</td></tr>`).join(''); }
+  if (!expenses.length) { tb.innerHTML='<tr><td colspan="6" class="empty">No expenses for this period.</td></tr>'; }
+  else { tb.innerHTML=expenses.map(e=>`<tr><td>${esc(e.category||'—')}</td><td>${esc(e.description||'—')}</td><td>${fmt(e.amount)}</td><td><span class="badge ${e.type==='fixed'?'bg-blu':'bg-amb'}">${e.type||'variable'}</span></td><td style="font-family:var(--mono);font-size:10px">${e.date||'—'}</td><td><button class="btn btn-xs" style="color:var(--red)" onclick="deleteExpense('${esc(String(e.id))}')">Delete</button></td></tr>`).join(''); }
   renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses);renderCplChart(adSpend);
 }
 function renderSubscriptionsTable(subs) {
@@ -3133,6 +3117,33 @@ async function deleteSub(id) {
   toast('Subscription deleted');
   loadFinance();
 }
+function openExpenseModal() {
+  if (!$('exp-date').value) $('exp-date').value=new Date().toISOString().split('T')[0];
+  openModal('m-expense');
+}
+async function saveExpense() {
+  const category=$('exp-category').value.trim();
+  const description=$('exp-description').value.trim();
+  const amount=parseFloat($('exp-amount').value);
+  const type=$('exp-type').value;
+  const date=$('exp-date').value;
+  if (!category) { toast('Category required',true); return; }
+  if (isNaN(amount)||amount<=0) { toast('Valid amount required',true); return; }
+  if (!date) { toast('Date required',true); return; }
+  const {error}=await db.from('expenses').insert([{category,description:description||null,amount,type,date,created_at:now()}]);
+  if (error) { toast('Error: '+error.message,true); return; }
+  ['exp-category','exp-description','exp-amount','exp-date'].forEach(id=>{$(id).value='';});
+  closeModal('m-expense');
+  toast('Expense saved ✓');
+  loadFinance();
+}
+async function deleteExpense(id) {
+  if (!confirm('Delete this expense?')) return;
+  const {error}=await db.from('expenses').delete().eq('id',id);
+  if (error) { toast('Error: '+error.message,true); return; }
+  toast('Expense deleted');
+  loadFinance();
+}
 
 function chartDefaults() {
   const dark=document.documentElement.getAttribute('data-theme')==='dark';
@@ -3156,7 +3167,6 @@ function renderCplChart(adSpend) {
   cplChart=new Chart($('chart-cpl').getContext('2d'),{type:'line',data:{labels:days,datasets:[{label:'Meta CPL',data:metaCpls,borderColor:'#4f8fff',backgroundColor:'rgba(79,143,255,.05)',tension:.4,borderWidth:2,pointRadius:3,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:tick,font:{family:'DM Mono',size:9.5},boxWidth:8}}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9},callback:v=>'$'+v},grid:{color:grid}}}}});
 }
 
-/* DAILY LOGS */
 function switchDailyTab(range,el) {
   curDailyRange=range;
   document.querySelectorAll('.daily-tab').forEach(t=>t.classList.remove('active'));
@@ -3258,7 +3268,6 @@ function renderDailyChart(data) {
   dailyChart=new Chart($('chart-daily').getContext('2d'),{type:'bar',data:{labels:data.map(d=>d[0]),datasets:[{label:'Solar PPL Leads',data:data.map(d=>d[1]),backgroundColor:'rgba(79,143,255,.14)',borderColor:'#4f8fff',borderWidth:1.5,borderRadius:4}]},options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid},beginAtZero:true}},responsive:true,maintainAspectRatio:true}});
 }
 
-/* AGENTS HUB */
 const AGENT_CFG={marketing:{name:'Marketing Agent',role:'Campaigns & CPL Optimisation'},finance:{name:'Finance Agent',role:'P&L & Revenue Tracking'},operations:{name:'Operations Agent',role:'Lead Flow & Quality Assurance'},strategy:{name:'Strategy Agent',role:'Growth Direction & Planning'},sales:{name:'Sales Agent',role:'Pipeline Analysis & Lead Prioritisation'}};
 const DEFAULT_MD={'agents.md':'# Agent Role\nDefine responsibilities here.\n\n## Key Responsibilities\n-\n\n## Behaviour\n- Reference live Supabase data\n- Be concise and data-driven','soul.md':'# Agent Soul\n\n## Tone\nProfessional, direct, data-first.','user.md':'# User Context\n\n## Business\nQuoteLeads.com.au — Solar lead gen + managed ads agency, Australia.\n\n## Operator\nJack — Founder','tools.md':'# Agent Tools\n\n## Supabase Tables\n- clients, leads, ad_spend_daily (solar_ppl + agency only), expenses, revenue, subscriptions, tasks, flagged_emails, agent_files, chat_memory, daily_snapshots','__identity__.md':'# Identity\n\nYou are a QuoteLeads agent. Always lead with data. Never speculate without labelling it.'};
 function selectAgent(name,el) {
@@ -3286,7 +3295,6 @@ async function saveAgentFile() {
   toast('File saved ✓');
 }
 
-/* AGENT CHAT */
 const PERSONAS={
   marketing:{name:'Marketing',emoji:'MKT',intro:"Marketing Agent ready. Ask me about CPL trends, campaign performance, or ad spend optimisation."},
   finance:{name:'Finance',emoji:'FIN',intro:"Finance Agent ready. Revenue, expenses, margins, and billing — including historical trends."},
@@ -3328,17 +3336,12 @@ function selectChat(name,el) {
   chatHistory[name]=chatHistory[name]||[];loadChatMemory();
 }
 
-/* ════════════════════════════════════════════════════════════════════
-   buildAgentContext — reads the same data the dashboard reads:
-   ad_spend_daily (YTD) + active PPL clients + active managed clients
-   ════════════════════════════════════════════════════════════════════ */
 async function buildAgentContext() {
   const fmtN = n => (n != null && n !== '') ? '$' + Number(n).toLocaleString('en-AU', {minimumFractionDigits:0,maximumFractionDigits:0}) : 'n/a';
   const fmtC = n => (n != null && n > 0) ? '$' + Number(n).toFixed(2) : 'n/a';
   const yr = new Date().getFullYear() + '-01-01';
   let out = '\n\n## Live Dashboard Context';
 
-  // ── Ad spend YTD (same query as finance panel) ──
   try {
     const { data: adRows } = await db.from('ad_spend_daily').select('date,account_type,spend,leads').gte('date', yr).order('date', {ascending:false});
     if (adRows && adRows.length) {
@@ -3353,7 +3356,6 @@ async function buildAgentContext() {
     }
   } catch(e) {}
 
-  // ── Active PPL clients (same as PPL panel) ──
   try {
     const { data: pplClients } = await db.from('clients').select('company_name,leads_delivered,total_leads_purchased,meta_cpl,true_cpl,pct_sold,lead_price,balance').eq('type','ppl').eq('stage','active_client').order('company_name');
     if (pplClients && pplClients.length) {
@@ -3364,7 +3366,6 @@ async function buildAgentContext() {
     }
   } catch(e) {}
 
-  // ── Active managed clients (same as Managed panel) ──
   try {
     const { data: mgClients } = await db.from('clients').select('company_name,management_fee,leads_delivered,stage').eq('type','managed').eq('stage','active').order('company_name');
     if (mgClients && mgClients.length) {
@@ -3387,7 +3388,6 @@ async function sendChat() {
   $('typing-area').style.display='flex';scrollChat();
   try { await db.from('chat_memory').insert([{agent:curChat,user_id:currentUser.id,role:'user',content:text,created_at:now()}]); } catch(e) {}
 
-  // ── Build context using the new resilient function ──
   const dailyCtx = await buildAgentContext();
 
   const p=PERSONAS[curChat];
@@ -3414,10 +3414,6 @@ async function sendChat() {
     addMsg('agent','ERR',`Proxy error: ${e.message}`);
   }
 }
-
-/* ════════════════════════════════════════════════════════════════════
-   SALES AGENT — Pipeline context, prioritisation, dedicated chat
-   ════════════════════════════════════════════════════════════════════ */
 
 let salesChatHistory = [];
 const SALES_STAGE_ORDER = {call_back:1,proposal:2,qualified:3,new_lead:4,no_answer:5,paused:6};
@@ -3607,9 +3603,6 @@ function addMsg(type,avatar,text,time) {
 }
 function scrollChat() { const m=$('chat-msgs');m.scrollTop=m.scrollHeight; }
 
-/* ═══════════════════════════════════════════════════════════
-   FILES SECTION — 5 editable .md templates stored in agent_files (agent='docs')
-   ═══════════════════════════════════════════════════════════ */
 let curFile = 'post-call-email.md';
 const FILE_DEFAULTS = {
   'post-call-email.md': `# Post-Call Email\n\nSubject: Great speaking with you, [Name]\n\nHi [Name],\n\nThank you for taking the time to speak with me today.\n\nAs discussed:\n- [Key point 1]\n- [Key point 2]\n\nNext steps:\n- [Action item]\n\nLooking forward to working together.\n\nKind regards,\n[Your name]\nQuoteLeads`,
@@ -3687,11 +3680,6 @@ function toggleTemplatePreview() {
     if(btn) btn.textContent='Preview';
   }
 }
-
-/* ═══════════════════════════════════════════════════════════
-   GOOGLE MAPS — PPL Lead Area Marking
-   Key is fetched securely from Supabase Edge Function at runtime.
-   ═══════════════════════════════════════════════════════════ */
 
 let pplMap = null, drawingManager = null, drawnOverlay = null;
 let mapAreas = []; // loaded areas for current client
@@ -3778,11 +3766,9 @@ async function loadMapAreas() {
   const clientId = $('map-client-select')?.value;
   if (!pplMap || !clientId) return;
   localStorage.setItem('ppl_selected_client', clientId);
-  // Clear existing area overlays
   mapAreas.forEach(a=>{ if(a._overlay) a._overlay.setMap(null); });
   mapAreas = [];
   const isAll = clientId === 'all';
-  // Toggle drawing controls visibility
   const drawingEl = document.querySelector('.map-controls');
   if (drawingEl) {
     $('map-area-label').style.display = isAll ? 'none' : '';
@@ -3793,11 +3779,9 @@ async function loadMapAreas() {
   }
   const el = $('map-area-list');
   if (isAll) {
-    // Fetch all areas across all clients
     const {data,error} = await db.from('ppl_lead_areas').select('*').order('client_id').order('created_at',{ascending:true});
     if (error) { toast('Could not load areas: '+error.message,true); return; }
     mapAreas = data || [];
-    // Assign a colour per client_id
     const clientIds = [...new Set(mapAreas.map(a=>String(a.client_id)))];
     const colourMap = {};
     clientIds.forEach((id,i) => { colourMap[id] = ALL_CLIENT_COLOURS[i % ALL_CLIENT_COLOURS.length]; });
@@ -3816,7 +3800,6 @@ async function loadMapAreas() {
         area._overlay = overlay;
       } catch(e){}
     });
-    // Render area list grouped by client with colour swatch
     if (el) {
       if (!mapAreas.length) { el.innerHTML='<div style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);padding:6px">No areas saved yet.</div>'; return; }
       const grouped = {};
@@ -3834,7 +3817,6 @@ async function loadMapAreas() {
     }
     return;
   }
-  // Single client mode
   const _cd = mapClientDataMap[clientId];
   if (_cd) { const vi=$('map-area-volume'); if(vi&&!vi.value) vi.value=_cd.total_leads_purchased||''; }
   const {data,error} = await db.from('ppl_lead_areas').select('*').eq('client_id',clientId).order('created_at',{ascending:true});
@@ -3905,9 +3887,6 @@ async function deleteMapArea(id) {
   loadMapAreas();
 }
 
-/* ═══════════════════════════════════════════════════════════
-   LEAD PRICING MAP — Geographic CPL pricing zones
-   ═══════════════════════════════════════════════════════════ */
 let pricingMap = null, pricingDrawingMgr = null, pricingDrawnOverlay = null;
 let pricingAreas = [];
 const PRICING_COLOURS = ['#f39c12','#2ecc8a','#e74c3c','#4f8fff','#9b59b6','#1abc9c','#e67e22','#3498db'];
@@ -3926,7 +3905,6 @@ async function initPricingMap() {
   if (window.google?.maps) { onPricingMapsReady(); return; }
   window._pricingMapPending = true;
   if (document.getElementById('gmaps-script-loaded')) {
-    // Script already loading — poll until ready
     const t = setInterval(()=>{ if (window.google?.maps) { clearInterval(t); if (window._pricingMapPending) { window._pricingMapPending=false; onPricingMapsReady(); } } }, 150);
     return;
   }
@@ -4081,7 +4059,6 @@ async function populateMapClientDropdown() {
     sel.innerHTML = '<option value="">— Select PPL Client —</option>' +
       '<option value="all">— All Clients —</option>' +
       data.map(c=>`<option value="${esc(String(c.id))}">${esc(c.company_name)}</option>`).join('');
-    // Restore last-selected client, or default to first
     const saved = localStorage.getItem('ppl_selected_client');
     const match = saved && (saved === 'all' || data.find(c => String(c.id) === saved));
     sel.value = match ? saved : String(data[0].id);
