@@ -1648,6 +1648,14 @@ td strong{font-weight:500}
     </div>
     <div class="frow"><label class="flabel">Platform Email</label><input class="fi" id="ep-platform-email" type="email" placeholder="client@quoteleads.com.au"></div>
     <div class="frow"><label class="flabel">Twilio Phone</label><input class="fi" id="ep-twilio-phone" placeholder="+61400000000"></div>
+    <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Integrations</div>
+    <div class="frow"><label class="flabel">Client Webhook URL</label><input class="fi" id="ep-client-webhook" type="url" placeholder="https://hook.make.com/…"></div>
+    <div class="frow"><label class="flabel">Has Custom Integration</label>
+      <select class="fs" id="ep-has-custom-integration">
+        <option value="false">No</option>
+        <option value="true">Yes</option>
+      </select>
+    </div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Order Log</div>
     <div id="ep-order-log" style="margin-bottom:10px;font-family:var(--mono);font-size:11px;color:var(--ink3)">Loading…</div>
     <div style="background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;margin-bottom:4px">
@@ -1701,6 +1709,14 @@ td strong{font-weight:500}
       <div id="em-month-summary" style="font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:1px">—</div>
     </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="em-notes"></textarea></div>
+    <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Integrations</div>
+    <div class="frow"><label class="flabel">Client Webhook URL</label><input class="fi" id="em-client-webhook" type="url" placeholder="https://hook.make.com/…"></div>
+    <div class="frow"><label class="flabel">Has Custom Integration</label>
+      <select class="fs" id="em-has-custom-integration">
+        <option value="false">No</option>
+        <option value="true">Yes</option>
+      </select>
+    </div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Custom Order Log</div>
     <div id="em-order-log" style="margin-bottom:10px;font-family:var(--mono);font-size:11px;color:var(--ink3)">Loading…</div>
     <div style="background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;margin-bottom:4px">
@@ -2907,6 +2923,8 @@ function openEditClient(type,c) {
     setVal('ep-has-ql-account',c.has_quoteleads_platform_account?'true':'false');
     setVal('ep-platform-email',c.platform_email||'');
     setVal('ep-twilio-phone',c.twilio_phone||'');
+    setVal('ep-client-webhook',c.client_webhook||'');
+    setVal('ep-has-custom-integration',c.has_custom_integration?'true':'false');
     toggleDeliveryFields('ep');
     setText('edit-ppl-sub',c.company_name||'');
     updatePplCalc();
@@ -2926,6 +2944,8 @@ function openEditClient(type,c) {
     if (c.last_payment_date && !c.next_payment_date) calcNextPayment();
     setVal('em-payments-made',c.payments_made||0);
     setVal('em-notes',c.notes);
+    setVal('em-client-webhook',c.client_webhook||'');
+    setVal('em-has-custom-integration',c.has_custom_integration?'true':'false');
     setVal('em-ord-date',new Date().toISOString().split('T')[0]);
     setText('edit-mg-sub',c.company_name||'');
     renderMonthPicker(c.active_months||'[]');
@@ -2967,14 +2987,14 @@ async function updateClient(type) {
     const _cfRaw=$('ep-custom-fields').value.trim();const _customFields=_cfRaw?{_text:_cfRaw}:{};
     const _weeklyCap=$('ep-weekly-cap').value!==''?parseInt($('ep-weekly-cap').value):null;
     const _monthlyCap=$('ep-monthly-cap').value!==''?parseInt($('ep-monthly-cap').value):null;
-    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:_price,meta_cpl:_metaCpl,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,leads_scrubbed:_scrubbed,stage:$('ep-stage').value,notes:$('ep-notes').value.trim(),postcodes:_postcodes,weekly_cap:_weeklyCap,monthly_cap:_monthlyCap,delivery_method:$('ep-delivery-method').value,delivery_email:$('ep-delivery-email').value.trim()||null,delivery_phone:$('ep-delivery-phone').value.trim()||null,custom_fields:_customFields,has_quoteleads_platform_account:$('ep-has-ql-account').value==='true',platform_email:$('ep-platform-email').value.trim()||null,twilio_phone:$('ep-twilio-phone').value.trim()||null,updated_at:now()};
+    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:_price,meta_cpl:_metaCpl,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,leads_scrubbed:_scrubbed,stage:$('ep-stage').value,notes:$('ep-notes').value.trim(),postcodes:_postcodes,weekly_cap:_weeklyCap,monthly_cap:_monthlyCap,delivery_method:$('ep-delivery-method').value,delivery_email:$('ep-delivery-email').value.trim()||null,delivery_phone:$('ep-delivery-phone').value.trim()||null,custom_fields:_customFields,has_quoteleads_platform_account:$('ep-has-ql-account').value==='true',platform_email:$('ep-platform-email').value.trim()||null,twilio_phone:$('ep-twilio-phone').value.trim()||null,client_webhook:$('ep-client-webhook').value.trim()||null,has_custom_integration:$('ep-has-custom-integration').value==='true',updated_at:now()};
     const {count:deliveredCount}=await db.from('ppl_order_log').select('id',{count:'exact',head:true}).eq('client_id',id).eq('status','delivered');
     if (!(deliveredCount>0)) d.pct_sold=parseFloat($('ep-pct').value)||null;
     if (!d.company_name) { toast('Company name required',true); return; }
   } else {
     id=$('em-id').value;
     const _activeMo=getActiveMgMonths();
-    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),stage:$('em-stage').value,start_date:$('em-start').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),updated_at:now()};
+    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),stage:$('em-stage').value,start_date:$('em-start').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),client_webhook:$('em-client-webhook').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   }
   const {error}=await db.from('clients').update(d).eq('id',id);
