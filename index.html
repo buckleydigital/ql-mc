@@ -2120,7 +2120,7 @@ async function loadLeads() {
       <td style="font-family:var(--mono);font-size:11px">${esc(l.phone||'—')}</td>
       <td style="font-family:var(--mono);font-size:11px">${esc(l.postcode||'—')}</td>
       <td>${l.interested_in ? `<span class="badge bg-blu">${esc(l.interested_in.replace(/_/g,' '))}</span>` : '<span style="color:var(--ink3)">—</span>'}</td>
-      <td style="font-family:var(--mono);font-size:11px">${l.avg_quarterly_bill ? '$'+Number(l.avg_quarterly_bill).toLocaleString('en-AU') : '—'}</td>
+      <td style="font-family:var(--mono);font-size:11px">${l.avg_quarterly_bill ? esc(l.avg_quarterly_bill) : '—'}</td>
       <td style="font-size:11px;color:var(--ink2);white-space:nowrap">${esc(l.purchase_timeline||'—')}</td>
       <td>${statusBadge(l.status)}</td>
       <td>${l.clients?.company_name ? `<strong>${esc(l.clients.company_name)}</strong>` : '<span style="color:var(--ink3)">—</span>'}</td>
