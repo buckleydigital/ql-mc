@@ -622,6 +622,8 @@ td strong{font-weight:500}
 .files-layout{display:grid;grid-template-columns:200px 1fr;gap:10px;height:calc(100vh - 160px)}
 .files-list{display:flex;flex-direction:column;gap:2px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:10px}
 .files-list-title{font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid var(--bd)}
+.files-cat{font-family:var(--mono);font-size:8px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;margin:12px 0 6px;opacity:.6}
+.files-cat:first-of-type{margin-top:0}
 .file-item{padding:7px 10px;border-radius:var(--r);font-size:11.5px;font-family:var(--mono);color:var(--ink3);cursor:pointer;transition:all .12s;border:1px solid transparent;line-height:1.4}
 .file-item:hover{background:var(--s2);color:var(--ink);border-color:var(--bd)}
 .file-item.active{background:var(--acc-dim);color:var(--acc);border-color:rgba(79,143,255,.15)}
@@ -1310,10 +1312,28 @@ td strong{font-weight:500}
         <div class="files-layout">
           <div class="files-list">
             <div class="files-list-title">Templates &amp; Scripts</div>
+
+            <div class="files-cat">Sales</div>
+            <div class="file-item" data-file="discovery-call-script.md" onclick="selectFile('discovery-call-script.md',this)">
+              discovery-call-script.md
+              <div class="file-desc">Discovery call framework</div>
+            </div>
+
+            <div class="files-cat">Post-Call Emails</div>
             <div class="file-item active" data-file="post-call-email.md" onclick="selectFile('post-call-email.md',this)">
               post-call-email.md
               <div class="file-desc">After-call follow-up email</div>
             </div>
+            <div class="file-item" data-file="pay-per-lead-post-call-email.md" onclick="selectFile('pay-per-lead-post-call-email.md',this)">
+              ppl-post-call-email.md
+              <div class="file-desc">PPL lead post-call follow-up</div>
+            </div>
+            <div class="file-item" data-file="both-offers-post-call-email.md" onclick="selectFile('both-offers-post-call-email.md',this)">
+              both-offers-post-call-email.md
+              <div class="file-desc">PPL + Managed post-call follow-up</div>
+            </div>
+
+            <div class="files-cat">Email Templates</div>
             <div class="file-item" data-file="follow-up-email.md" onclick="selectFile('follow-up-email.md',this)">
               follow-up-email.md
               <div class="file-desc">General follow-up email</div>
@@ -1325,18 +1345,6 @@ td strong{font-weight:500}
             <div class="file-item" data-file="pay-per-lead-welcome-email.md" onclick="selectFile('pay-per-lead-welcome-email.md',this)">
               ppl-welcome-email.md
               <div class="file-desc">PPL client onboarding</div>
-            </div>
-            <div class="file-item" data-file="pay-per-lead-post-call-email.md" onclick="selectFile('pay-per-lead-post-call-email.md',this)">
-              ppl-post-call-email.md
-              <div class="file-desc">PPL lead post-call follow-up</div>
-            </div>
-            <div class="file-item" data-file="both-offers-post-call-email.md" onclick="selectFile('both-offers-post-call-email.md',this)">
-              both-offers-post-call-email.md
-              <div class="file-desc">PPL + Managed post-call follow-up</div>
-            </div>
-            <div class="file-item" data-file="discovery-call-script.md" onclick="selectFile('discovery-call-script.md',this)">
-              discovery-call-script.md
-              <div class="file-desc">Discovery call framework</div>
             </div>
           </div>
           <div class="file-editor">
