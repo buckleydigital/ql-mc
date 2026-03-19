@@ -6,10 +6,12 @@
 <title>QL · Mission Control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co https://*.googleapis.com 'self'; img-src * data: blob:;">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co https://*.googleapis.com https://raw.githubusercontent.com 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://maps.googleapis.com; img-src * data: blob:;">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <!-- Google Maps script tag — loaded dynamically at runtime via Edge Function -->
 <script id="gmaps-script"></script>
 <style>
@@ -781,6 +783,9 @@ td strong{font-weight:500}
           <button class="navbtn" data-panel="leads" onclick="nav('leads',this)">
             <span class="ni">⚡</span>Lead Distribution
           </button>
+          <button class="navbtn" data-panel="invoices" onclick="nav('invoices',this)">
+            <span class="ni">⊞</span>Invoices
+          </button>
         </div>
 
         <div class="sb-divider"></div>
@@ -1037,6 +1042,29 @@ td strong{font-weight:500}
             <tbody id="ld-tbody"><tr><td colspan="14" class="empty">Loading…</td></tr></tbody>
           </table>
           <div class="pager" id="ld-pager"></div>
+        </div>
+      </div>
+
+      <!-- ══ INVOICES ══ -->
+      <div class="panel" id="panel-invoices">
+        <div class="ph">
+          <div class="ph-left"><h1>Invoices</h1><p>Generate &amp; manage client invoices</p></div>
+          <div class="ph-right">
+            <button class="btn btn-sm" onclick="openBizSettingsModal()" style="margin-right:6px">Business Settings</button>
+            <button class="btn btn-p btn-sm" onclick="openInvoiceModal()">+ New Invoice</button>
+          </div>
+        </div>
+        <div class="kg c4 mb4">
+          <div class="kpi"><div class="klabel">Total Invoices</div><div class="kval" id="inv-total">—</div></div>
+          <div class="kpi"><div class="klabel">Draft</div><div class="kval amb" id="inv-draft">—</div></div>
+          <div class="kpi"><div class="klabel">Sent / Overdue</div><div class="kval blu" id="inv-sent">—</div></div>
+          <div class="kpi"><div class="klabel">Paid</div><div class="kval grn" id="inv-paid">—</div></div>
+        </div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Invoice #</th><th>Client</th><th>Type</th><th>Date</th><th>Due</th><th>Total</th><th>Status</th><th></th></tr></thead>
+            <tbody id="inv-tbody"><tr><td colspan="8" class="empty">Loading...</td></tr></tbody>
+          </table>
         </div>
       </div>
 
@@ -1695,6 +1723,7 @@ td strong{font-weight:500}
     </div>
     <div class="macts">
       <button class="btn btn-red btn-sm" onclick="deleteClient('ppl')">Delete</button>
+      <button class="btn btn-sm" onclick="generateInvoiceFromClient('ppl')" style="border-color:rgba(79,143,255,.22);color:var(--acc)">Generate Invoice</button>
       <div style="flex:1"></div>
       <button class="btn" onclick="closeModal('m-edit-ppl')">Cancel</button>
       <button class="btn btn-p" onclick="updateClient('ppl')">Save changes</button>
@@ -1774,9 +1803,79 @@ td strong{font-weight:500}
     </div>
     <div class="macts">
       <button class="btn btn-red btn-sm" onclick="deleteClient('managed')">Delete</button>
+      <button class="btn btn-sm" onclick="generateInvoiceFromClient('managed')" style="border-color:rgba(79,143,255,.22);color:var(--acc)">Generate Invoice</button>
       <div style="flex:1"></div>
       <button class="btn" onclick="closeModal('m-edit-managed')">Cancel</button>
       <button class="btn btn-p" onclick="updateClient('managed')">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="m-biz-settings">
+  <div class="modal" style="max-width:480px">
+    <h2>Business Settings</h2>
+    <div class="msub">Invoice &amp; payment defaults</div>
+    <div class="frow"><label class="flabel">Business Name</label><input class="fi" id="bs-name"></div>
+    <div class="frow"><label class="flabel">ABN</label><input class="fi" id="bs-abn" placeholder="e.g. 12 345 678 901"></div>
+    <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Bank Transfer Details</div>
+    <div class="frow"><label class="flabel">BSB</label><input class="fi" id="bs-bsb" placeholder="e.g. 062-000"></div>
+    <div class="frow"><label class="flabel">Account Number</label><input class="fi" id="bs-accnum" placeholder="e.g. 1234 5678"></div>
+    <div class="frow"><label class="flabel">Account Name</label><input class="fi" id="bs-accname" placeholder="e.g. QuoteLeads Pty Ltd"></div>
+    <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">PayID</div>
+    <div class="frow"><label class="flabel">PayID</label><input class="fi" id="bs-payid" placeholder="e.g. payments@quoteleads.com.au"></div>
+    <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Invoice Defaults</div>
+    <div class="frow"><label class="flabel">Default Notes / Footer</label><textarea class="fta" id="bs-notes" placeholder="Thank you for your business."></textarea></div>
+    <div class="macts">
+      <div style="flex:1"></div>
+      <button class="btn" onclick="closeModal('m-biz-settings')">Cancel</button>
+      <button class="btn btn-p" onclick="saveBizSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="m-invoice">
+  <div class="modal" style="max-width:700px">
+    <h2 id="inv-modal-title">New Invoice</h2>
+    <div class="msub" id="inv-modal-sub"></div>
+    <input type="hidden" id="inv-id">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="frow"><label class="flabel">Client</label>
+        <select class="fs" id="inv-client" onchange="onInvClientChange()">
+          <option value="">— Select client —</option>
+        </select>
+      </div>
+      <div class="frow"><label class="flabel">Offer Type</label>
+        <select class="fs" id="inv-offer-type">
+          <option value="ppl">Pay-Per-Lead</option>
+          <option value="managed">Managed Advertising</option>
+        </select>
+      </div>
+      <div class="frow"><label class="flabel">Vertical / Niche</label><input class="fi" id="inv-vertical" placeholder="e.g. Solar Residential"></div>
+      <div class="frow"><label class="flabel">Invoice Date</label><input class="fi" id="inv-date" type="date"></div>
+      <div class="frow"><label class="flabel">Due Date</label><input class="fi" id="inv-due" type="date"></div>
+      <div class="frow"><label class="flabel">GST</label>
+        <select class="fs" id="inv-gst" onchange="recalcInvoice()">
+          <option value="exclusive">GST Exclusive (+10%)</option>
+          <option value="inclusive">GST Inclusive</option>
+        </select>
+      </div>
+      <div class="frow"><label class="flabel">Delivery Period Start</label><input class="fi" id="inv-period-start" type="date"></div>
+      <div class="frow"><label class="flabel">Delivery Period End</label><input class="fi" id="inv-period-end" type="date"></div>
+    </div>
+    <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Line Items</div>
+    <div id="inv-lines"></div>
+    <button class="btn btn-sm" onclick="addInvLine()" style="margin-top:6px">+ Add Line</button>
+    <div style="margin-top:14px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:12px">
+      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;margin-bottom:4px"><span>Subtotal</span><span id="inv-subtotal">$0.00</span></div>
+      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;margin-bottom:4px;color:var(--ink3)"><span>GST (10%)</span><span id="inv-gst-amt">$0.00</span></div>
+      <div style="display:flex;justify-content:space-between;font-family:var(--display);font-size:16px;font-weight:700;border-top:1px solid var(--bd);padding-top:6px"><span>Total</span><span id="inv-total-amt">$0.00</span></div>
+    </div>
+    <div class="frow" style="margin-top:10px"><label class="flabel">Notes</label><textarea class="fta" id="inv-notes" placeholder="Thank you for your business."></textarea></div>
+    <div class="macts">
+      <div style="flex:1"></div>
+      <button class="btn" onclick="closeModal('m-invoice')">Cancel</button>
+      <button class="btn btn-p" onclick="saveInvoice()">Save Invoice</button>
+      <button class="btn btn-p" onclick="saveAndDownloadInvoice()" style="background:var(--grn);border-color:var(--grn)">Save &amp; Download PDF</button>
     </div>
   </div>
 </div>
@@ -2029,6 +2128,7 @@ function nav(panel, el) {
   if (panel === 'files') { loadFileContent(); loadTemplateClientDropdown(); }
   if (panel === 'ppl') { populateMapClientDropdown(); }
   if (panel === 'leads') loadLeads();
+  if (panel === 'invoices') loadInvoices();
 }
 
 function updateClock() {
@@ -4209,6 +4309,447 @@ async function populateMapClientDropdown() {
     sel.value = match ? saved : String(data[0].id);
     if (pplMap) loadMapAreas();
   }
+}
+// ═══════════════════════════════════════════════════
+// INVOICES
+// ═══════════════════════════════════════════════════
+
+let QL_LOGO_B64 = null;
+(async function preloadLogo() {
+  try {
+    const r = await fetch('https://raw.githubusercontent.com/buckleydigital/ql-site/refs/heads/main/quoteleads-logo-white.png');
+    const blob = await r.blob();
+    QL_LOGO_B64 = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); });
+  } catch(e) { console.warn('Logo fetch failed, invoices will render without logo'); }
+})();
+
+async function loadBizSettings() {
+  const {data} = await db.from('business_settings').select('*').limit(1).single();
+  return data || {};
+}
+
+async function openBizSettingsModal() {
+  const s = await loadBizSettings();
+  setVal('bs-name', s.business_name || '');
+  setVal('bs-abn', s.abn || '');
+  setVal('bs-bsb', s.bsb || '');
+  setVal('bs-accnum', s.account_number || '');
+  setVal('bs-accname', s.account_name || '');
+  setVal('bs-payid', s.payid || '');
+  setVal('bs-notes', s.default_notes || '');
+  openModal('m-biz-settings');
+}
+
+async function saveBizSettings() {
+  const payload = {
+    business_name: $('bs-name').value.trim(),
+    abn: $('bs-abn').value.trim(),
+    bsb: $('bs-bsb').value.trim(),
+    account_number: $('bs-accnum').value.trim(),
+    account_name: $('bs-accname').value.trim(),
+    payid: $('bs-payid').value.trim(),
+    default_notes: $('bs-notes').value.trim(),
+    updated_at: new Date().toISOString()
+  };
+  const existing = await db.from('business_settings').select('id').limit(1).single();
+  let error;
+  if (existing.data) {
+    ({error} = await db.from('business_settings').update(payload).eq('id', existing.data.id));
+  } else {
+    ({error} = await db.from('business_settings').insert(payload));
+  }
+  if (error) { alert('Error saving: ' + error.message); return; }
+  closeModal('m-biz-settings');
+}
+
+// --- Invoice line items ---
+let invLineCount = 0;
+function addInvLine(desc, qty, price) {
+  const idx = invLineCount++;
+  const div = document.createElement('div');
+  div.className = 'inv-line';
+  div.id = 'inv-line-' + idx;
+  div.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:6px';
+  div.innerHTML = `
+    <input class="fi" placeholder="Description" style="flex:3" value="${esc(desc||'')}" data-field="desc">
+    <input class="fi" type="number" placeholder="Qty" style="flex:0.7;min-width:60px" value="${qty||''}" data-field="qty" oninput="recalcInvoice()">
+    <input class="fi" type="number" placeholder="Unit $" style="flex:0.9;min-width:80px" value="${price||''}" data-field="price" oninput="recalcInvoice()">
+    <span style="font-family:var(--mono);font-size:11px;min-width:70px;text-align:right" data-field="total">$0.00</span>
+    <button class="btn btn-xs" style="color:var(--red);padding:2px 6px" onclick="this.parentElement.remove();recalcInvoice()">✕</button>`;
+  $('inv-lines').appendChild(div);
+  recalcInvoice();
+}
+
+function getInvLines() {
+  const lines = [];
+  document.querySelectorAll('.inv-line').forEach(div => {
+    const desc = div.querySelector('[data-field="desc"]').value.trim();
+    const qty = parseFloat(div.querySelector('[data-field="qty"]').value) || 0;
+    const price = parseFloat(div.querySelector('[data-field="price"]').value) || 0;
+    lines.push({description: desc, qty, unit_price: price, line_total: qty * price});
+  });
+  return lines;
+}
+
+function recalcInvoice() {
+  const lines = getInvLines();
+  document.querySelectorAll('.inv-line').forEach((div, i) => {
+    if (lines[i]) div.querySelector('[data-field="total"]').textContent = '$' + lines[i].line_total.toFixed(2);
+  });
+  const subtotal = lines.reduce((s, l) => s + l.line_total, 0);
+  const gstType = $('inv-gst').value;
+  let gst, total;
+  if (gstType === 'exclusive') {
+    gst = subtotal * 0.1;
+    total = subtotal + gst;
+  } else {
+    total = subtotal;
+    gst = subtotal / 11;
+  }
+  $('inv-subtotal').textContent = '$' + subtotal.toFixed(2);
+  $('inv-gst-amt').textContent = '$' + gst.toFixed(2);
+  $('inv-total-amt').textContent = '$' + total.toFixed(2);
+}
+
+// --- Open invoice modal ---
+async function openInvoiceModal(clientId, offerType) {
+  invLineCount = 0;
+  $('inv-lines').innerHTML = '';
+  setVal('inv-id', '');
+  $('inv-modal-title').textContent = 'New Invoice';
+  $('inv-modal-sub').textContent = '';
+  const today = new Date().toISOString().slice(0, 10);
+  const due = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+  setVal('inv-date', today);
+  setVal('inv-due', due);
+  setVal('inv-gst', 'exclusive');
+  setVal('inv-period-start', '');
+  setVal('inv-period-end', '');
+  setVal('inv-vertical', '');
+
+  // Load business settings for default notes
+  const biz = await loadBizSettings();
+  setVal('inv-notes', biz.default_notes || '');
+
+  // Populate client dropdown
+  const {data: clients} = await db.from('clients').select('id, company_name, type, niche, lead_price, management_fee, contact_name, email').order('company_name');
+  const sel = $('inv-client');
+  sel.innerHTML = '<option value="">— Select client —</option>' +
+    (clients || []).map(c => `<option value="${esc(String(c.id))}" data-type="${esc(c.type||'')}" data-niche="${esc(c.niche||'')}" data-lead-price="${c.lead_price||0}" data-fee="${c.management_fee||0}" data-contact="${esc(c.contact_name||'')}" data-email="${esc(c.email||'')}">${esc(c.company_name)}</option>`).join('');
+
+  if (clientId) {
+    sel.value = String(clientId);
+    onInvClientChange();
+    if (offerType) setVal('inv-offer-type', offerType);
+  } else {
+    addInvLine();
+  }
+  openModal('m-invoice');
+}
+
+function onInvClientChange() {
+  const opt = $('inv-client').selectedOptions[0];
+  if (!opt || !opt.value) return;
+  const type = opt.dataset.type;
+  setVal('inv-offer-type', type === 'managed' ? 'managed' : 'ppl');
+  setVal('inv-vertical', opt.dataset.niche || '');
+  $('inv-modal-sub').textContent = opt.textContent;
+
+  // Clear existing lines and pre-fill
+  invLineCount = 0;
+  $('inv-lines').innerHTML = '';
+  if (type === 'managed') {
+    addInvLine('Managed Advertising — Monthly Retainer', 1, parseFloat(opt.dataset.fee) || 0);
+  } else {
+    // PPL: try to get latest order qty
+    prefillPplLine(opt.value, parseFloat(opt.dataset.leadPrice) || 0, opt.dataset.niche || 'Solar');
+  }
+}
+
+async function prefillPplLine(clientId, leadPrice, niche) {
+  const {data} = await db.from('ppl_order_log').select('leads_qty').eq('client_id', clientId).order('order_date', {ascending: false}).limit(1);
+  const qty = data?.[0]?.leads_qty || 0;
+  addInvLine(`${qty} x Exclusive ${niche} Leads`, qty, leadPrice);
+}
+
+// --- Generate invoice from client edit modals ---
+async function generateInvoiceFromClient(type) {
+  let clientId;
+  if (type === 'ppl') {
+    clientId = $('ep-id').value;
+    closeModal('m-edit-ppl');
+  } else {
+    clientId = $('em-id').value;
+    closeModal('m-edit-managed');
+  }
+  await openInvoiceModal(clientId, type);
+}
+
+// --- Save invoice ---
+async function saveInvoice(andDownload) {
+  const clientId = $('inv-client').value;
+  if (!clientId) { alert('Please select a client.'); return; }
+  const opt = $('inv-client').selectedOptions[0];
+  const lines = getInvLines();
+  const subtotal = lines.reduce((s, l) => s + l.line_total, 0);
+  const gstType = $('inv-gst').value;
+  const gst = gstType === 'exclusive' ? subtotal * 0.1 : subtotal / 11;
+  const total = gstType === 'exclusive' ? subtotal + gst : subtotal;
+
+  const payload = {
+    client_id: clientId,
+    client_name: opt.textContent.trim(),
+    client_email: opt.dataset.email || '',
+    offer_type: $('inv-offer-type').value,
+    vertical: $('inv-vertical').value.trim(),
+    delivery_period_start: $('inv-period-start').value || null,
+    delivery_period_end: $('inv-period-end').value || null,
+    line_items: lines,
+    subtotal, gst_type: gstType, gst_amount: gst, total,
+    notes: $('inv-notes').value.trim(),
+    status: 'draft',
+    invoice_date: $('inv-date').value || new Date().toISOString().slice(0, 10),
+    due_date: $('inv-due').value || null,
+    updated_at: new Date().toISOString()
+  };
+
+  const existingId = $('inv-id').value;
+  let result;
+  if (existingId) {
+    result = await db.from('invoices').update(payload).eq('id', existingId).select().single();
+  } else {
+    result = await db.from('invoices').insert(payload).select().single();
+  }
+  if (result.error) { alert('Error: ' + result.error.message); return; }
+  closeModal('m-invoice');
+  loadInvoices();
+  if (andDownload) downloadInvoicePDF(result.data);
+}
+
+async function saveAndDownloadInvoice() { await saveInvoice(true); }
+
+// --- Load / render invoice list ---
+async function loadInvoices() {
+  const {data, error} = await db.from('invoices').select('*').order('created_at', {ascending: false});
+  if (error) { $('inv-tbody').innerHTML = `<tr><td colspan="8" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
+  const all = data || [];
+  setText('inv-total', all.length);
+  setText('inv-draft', all.filter(i => i.status === 'draft').length);
+  setText('inv-sent', all.filter(i => i.status === 'sent' || i.status === 'overdue').length);
+  setText('inv-paid', all.filter(i => i.status === 'paid').length);
+  if (!all.length) { $('inv-tbody').innerHTML = '<tr><td colspan="8" class="empty">No invoices yet.</td></tr>'; return; }
+  const statusCls = {draft:'bg-gray',sent:'bg-blu',overdue:'bg-red',paid:'bg-grn'};
+  $('inv-tbody').innerHTML = all.map(inv => `
+    <tr>
+      <td style="font-family:var(--mono);font-size:11px">${esc(inv.invoice_number||'—')}</td>
+      <td><strong>${esc(inv.client_name||'—')}</strong></td>
+      <td><span class="badge ${inv.offer_type==='managed'?'bg-amb':'bg-blu'}">${inv.offer_type==='managed'?'Managed':'PPL'}</span></td>
+      <td style="font-family:var(--mono);font-size:10.5px">${inv.invoice_date||'—'}</td>
+      <td style="font-family:var(--mono);font-size:10.5px">${inv.due_date||'—'}</td>
+      <td style="font-family:var(--mono);font-weight:600">$${Number(inv.total||0).toLocaleString('en-AU',{minimumFractionDigits:2})}</td>
+      <td><span class="badge ${statusCls[inv.status]||'bg-gray'}">${esc(inv.status||'draft')}</span></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-xs" onclick="editInvoice('${esc(String(inv.id))}')">Edit</button>
+        <button class="btn btn-xs" onclick="redownloadInvoice('${esc(String(inv.id))}')">PDF</button>
+        ${inv.status!=='paid'?`<button class="btn btn-xs" style="color:var(--grn)" onclick="markInvoicePaid('${esc(String(inv.id))}')">Paid</button>`:''}
+      </td>
+    </tr>`).join('');
+}
+
+async function markInvoicePaid(id) {
+  const {error} = await db.from('invoices').update({status:'paid', updated_at: new Date().toISOString()}).eq('id', id);
+  if (error) { alert(error.message); return; }
+  loadInvoices();
+}
+
+async function editInvoice(id) {
+  const {data: inv} = await db.from('invoices').select('*').eq('id', id).single();
+  if (!inv) return;
+  await openInvoiceModal();
+  // Fill in fields after modal is open
+  setVal('inv-id', inv.id);
+  $('inv-modal-title').textContent = 'Edit ' + (inv.invoice_number || 'Invoice');
+  $('inv-modal-sub').textContent = inv.client_name || '';
+  setVal('inv-date', inv.invoice_date || '');
+  setVal('inv-due', inv.due_date || '');
+  setVal('inv-gst', inv.gst_type || 'exclusive');
+  setVal('inv-vertical', inv.vertical || '');
+  setVal('inv-offer-type', inv.offer_type || 'ppl');
+  setVal('inv-period-start', inv.delivery_period_start || '');
+  setVal('inv-period-end', inv.delivery_period_end || '');
+  setVal('inv-notes', inv.notes || '');
+  // Set client dropdown
+  if (inv.client_id) $('inv-client').value = String(inv.client_id);
+  // Rebuild lines
+  invLineCount = 0;
+  $('inv-lines').innerHTML = '';
+  (inv.line_items || []).forEach(li => addInvLine(li.description, li.qty, li.unit_price));
+  recalcInvoice();
+}
+
+async function redownloadInvoice(id) {
+  const {data: inv} = await db.from('invoices').select('*').eq('id', id).single();
+  if (!inv) return;
+  downloadInvoicePDF(inv);
+}
+
+// --- PDF Generation ---
+async function downloadInvoicePDF(inv) {
+  const biz = await loadBizSettings();
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({unit: 'mm', format: 'a4'});
+  const pw = 210, ph = 297, mx = 15;
+  let y = 0;
+
+  // Header banner
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, pw, 36, 'F');
+  if (QL_LOGO_B64) {
+    try { doc.addImage(QL_LOGO_B64, 'PNG', mx, 8, 50, 20); } catch(e) {}
+  } else {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(255, 255, 255);
+    doc.text('QuoteLeads', mx, 23);
+  }
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(160, 174, 192);
+  doc.text('TAX INVOICE', pw - mx, 16, {align: 'right'});
+  doc.setFontSize(14);
+  doc.setTextColor(255, 255, 255);
+  doc.text(inv.invoice_number || '', pw - mx, 26, {align: 'right'});
+  y = 44;
+
+  // From / To
+  doc.setFontSize(8);
+  doc.setTextColor(120, 130, 140);
+  doc.text('FROM', mx, y);
+  doc.text('TO', pw / 2 + 5, y);
+  y += 5;
+  doc.setFontSize(10);
+  doc.setTextColor(30, 30, 30);
+  doc.setFont('helvetica', 'bold');
+  doc.text(biz.business_name || 'QuoteLeads', mx, y);
+  doc.text(inv.client_name || '—', pw / 2 + 5, y);
+  y += 5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(80, 80, 80);
+  if (biz.abn) { doc.text('ABN: ' + biz.abn, mx, y); y += 4; } else { y += 4; }
+
+  // Client contact info on right
+  let ry = y - 4;
+  if (inv.client_email) { doc.text(inv.client_email, pw / 2 + 5, ry); ry += 4; }
+
+  // Invoice details
+  y += 4;
+  doc.setFillColor(245, 247, 250);
+  doc.rect(mx, y, pw - mx * 2, 16, 'F');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 110, 120);
+  const detY = y + 5;
+  doc.text('Invoice Date', mx + 3, detY);
+  doc.text('Due Date', mx + 48, detY);
+  doc.text('Offer Type', mx + 93, detY);
+  if (inv.delivery_period_start) doc.text('Delivery Period', mx + 133, detY);
+  doc.setFontSize(9);
+  doc.setTextColor(30, 30, 30);
+  doc.setFont('helvetica', 'bold');
+  doc.text(inv.invoice_date || '—', mx + 3, detY + 6);
+  doc.text(inv.due_date || '—', mx + 48, detY + 6);
+  doc.text(inv.offer_type === 'managed' ? 'Managed Advertising' : 'Pay-Per-Lead', mx + 93, detY + 6);
+  if (inv.delivery_period_start) doc.text((inv.delivery_period_start || '') + ' → ' + (inv.delivery_period_end || ''), mx + 133, detY + 6);
+  doc.setFont('helvetica', 'normal');
+  y += 22;
+
+  // Line items table
+  const tableBody = (inv.line_items || []).map(li => [
+    li.description || '',
+    String(li.qty || 0),
+    '$' + Number(li.unit_price || 0).toFixed(2),
+    '$' + Number(li.line_total || 0).toFixed(2)
+  ]);
+
+  doc.autoTable({
+    startY: y,
+    margin: {left: mx, right: mx},
+    head: [['Description', 'Qty', 'Unit Price', 'Line Total']],
+    body: tableBody,
+    theme: 'grid',
+    styles: {fontSize: 9, cellPadding: 3},
+    headStyles: {fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold'},
+    columnStyles: {
+      0: {cellWidth: 'auto'},
+      1: {cellWidth: 20, halign: 'center'},
+      2: {cellWidth: 28, halign: 'right'},
+      3: {cellWidth: 30, halign: 'right'}
+    }
+  });
+  y = doc.lastAutoTable.finalY + 6;
+
+  // Totals
+  const totX = pw - mx - 65;
+  doc.setFontSize(9);
+  doc.setTextColor(80, 80, 80);
+  doc.text('Subtotal', totX, y);
+  doc.text('$' + Number(inv.subtotal || 0).toFixed(2), pw - mx, y, {align: 'right'});
+  y += 5;
+  doc.text('GST (10%) ' + (inv.gst_type === 'inclusive' ? '(incl.)' : ''), totX, y);
+  doc.text('$' + Number(inv.gst_amount || 0).toFixed(2), pw - mx, y, {align: 'right'});
+  y += 6;
+  doc.setFillColor(15, 23, 42);
+  doc.rect(totX - 3, y - 4, pw - mx - totX + 3, 9, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(255, 255, 255);
+  doc.text('TOTAL', totX, y + 2);
+  doc.text('$' + Number(inv.total || 0).toFixed(2), pw - mx, y + 2, {align: 'right'});
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(30, 30, 30);
+  y += 16;
+
+  // Payment details
+  doc.setFontSize(9);
+  doc.setTextColor(100, 110, 120);
+  doc.text('PAYMENT DETAILS', mx, y);
+  y += 6;
+  doc.setFontSize(9);
+  doc.setTextColor(30, 30, 30);
+
+  if (biz.bsb || biz.account_number) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Option 1 — Bank Transfer', mx, y);
+    doc.setFont('helvetica', 'normal');
+    y += 5;
+    if (biz.bsb) { doc.text('BSB: ' + biz.bsb, mx, y); y += 4; }
+    if (biz.account_number) { doc.text('Account: ' + biz.account_number, mx, y); y += 4; }
+    if (biz.account_name) { doc.text('Account Name: ' + biz.account_name, mx, y); y += 4; }
+    y += 3;
+  }
+  if (biz.payid) {
+    doc.setFont('helvetica', 'bold');
+    doc.text((biz.bsb ? 'Option 2' : 'Option 1') + ' — PayID', mx, y);
+    doc.setFont('helvetica', 'normal');
+    y += 5;
+    doc.text('PayID: ' + biz.payid, mx, y);
+    y += 8;
+  }
+
+  // Notes
+  if (inv.notes) {
+    y += 4;
+    doc.setFontSize(8);
+    doc.setTextColor(120, 130, 140);
+    doc.text('NOTES', mx, y);
+    y += 5;
+    doc.setFontSize(9);
+    doc.setTextColor(80, 80, 80);
+    const noteLines = doc.splitTextToSize(inv.notes, pw - mx * 2);
+    doc.text(noteLines, mx, y);
+  }
+
+  doc.save((inv.invoice_number || 'invoice') + '.pdf');
 }
 </script>
 </body>
