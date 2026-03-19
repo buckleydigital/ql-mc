@@ -3903,7 +3903,7 @@ async function loadMapAreas() {
           strokeWeight:2,strokeColor:colour,map:pplMap
         });
         const clientName = mapClientDataMap[String(area.client_id)]?.company_name || 'Client';
-        const infowin = new google.maps.InfoWindow({content:`<strong>${area.label}</strong><br>${clientName}<br>${area.volume||0} leads/mo`});
+        const infowin = new google.maps.InfoWindow({content:`<strong>${esc(area.label)}</strong><br>${esc(clientName)}<br>${area.volume||0} leads/mo`});
         overlay.addListener('click',e=>infowin.open({map:pplMap,anchor:null,shouldFocus:false,position:e.latLng}));
         area._overlay = overlay;
       } catch(e){}
@@ -3939,7 +3939,7 @@ async function loadMapAreas() {
         paths:coords,fillColor:'#2ecc8a',fillOpacity:.2,
         strokeWeight:2,strokeColor:'#2ecc8a',map:pplMap
       });
-      const infowin=new google.maps.InfoWindow({content:`<strong>${area.label}</strong><br>${area.volume||0} leads/mo`});
+      const infowin=new google.maps.InfoWindow({content:`<strong>${esc(area.label)}</strong><br>${area.volume||0} leads/mo`});
       overlay.addListener('click',e=>infowin.open({map:pplMap,anchor:null,shouldFocus:false,position:e.latLng}));
       area._overlay = overlay;
     } catch(e){}
@@ -4075,7 +4075,7 @@ async function loadPricingAreas() {
         paths:coords, fillColor:colour, fillOpacity:.22, strokeWeight:2, strokeColor:colour, map:pricingMap
       });
       const _margin = area.internal_cpl && area.cpl ? Math.round((1 - area.internal_cpl/area.cpl)*100) : null;
-      const infowin = new google.maps.InfoWindow({content:`<strong>${area.label}</strong><br>Sell CPL: $${Number(area.cpl||0).toFixed(2)}${area.internal_cpl?`<br>Our cost: $${Number(area.internal_cpl).toFixed(2)}${_margin!==null?` · ${_margin}% margin`:''}`:''} ${area.notes?`<br><span style="color:#888;font-size:11px">${area.notes}</span>`:''}`});
+      const infowin = new google.maps.InfoWindow({content:`<strong>${esc(area.label)}</strong><br>Sell CPL: $${Number(area.cpl||0).toFixed(2)}${area.internal_cpl?`<br>Our cost: $${Number(area.internal_cpl).toFixed(2)}${_margin!==null?` · ${_margin}% margin`:''}`:''} ${area.notes?`<br><span style="color:#888;font-size:11px">${esc(area.notes)}</span>`:''}`});
       overlay.addListener('click',e=>infowin.open({map:pricingMap,anchor:null,shouldFocus:false,position:e.latLng}));
       area._overlay = overlay;
     } catch(e){}
