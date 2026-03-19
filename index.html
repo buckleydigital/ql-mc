@@ -322,6 +322,10 @@ body::after {
 .btn-p:hover{background:var(--acc2);border-color:var(--acc2);color:#fff;box-shadow:0 4px 18px rgba(79,143,255,.4);transform:translateY(-1px)}
 .btn-sm{padding:5px 11px;font-size:11px}
 .btn-xs{padding:3px 8px;font-size:10px}
+.pager{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 0;font-family:var(--mono);font-size:11px;color:var(--ink3)}
+.pager button{padding:4px 10px;font-size:10.5px;font-family:var(--mono);background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--ink2);cursor:pointer}
+.pager button:hover:not(:disabled){background:var(--acc-dim);color:var(--acc);border-color:rgba(79,143,255,.15)}
+.pager button:disabled{opacity:.35;cursor:default}
 .btn-red{border-color:rgba(255,69,96,.22);color:var(--red)}
 .btn-red:hover{background:var(--red-dim);border-color:var(--red);color:var(--red)}
 .btn-grn{background:var(--grn);color:#fff;border-color:var(--grn);font-weight:500;box-shadow:0 2px 10px rgba(46,204,138,.25)}
@@ -885,6 +889,7 @@ td strong{font-weight:500}
             <thead><tr><th>Name</th><th>Company</th><th>Type</th><th>Stage</th><th>Value /mo</th><th>Source</th><th>Last Contact</th><th>Notes</th><th></th></tr></thead>
             <tbody id="crm-tbody"><tr><td colspan="9" class="empty">Loading...</td></tr></tbody>
           </table>
+          <div class="pager" id="crm-pager"></div>
         </div>
       </div>
 
@@ -987,7 +992,7 @@ td strong{font-weight:500}
         <div class="ph">
           <div class="ph-left"><h1>Lead Distribution</h1><p>Incoming solar leads · assignment &amp; delivery tracking</p></div>
           <div class="ph-right">
-            <select class="fi" id="ld-filter" onchange="loadLeads()" style="width:auto;font-size:11.5px;padding:5px 10px;font-family:var(--mono)">
+            <select class="fi" id="ld-filter" onchange="loadLeads(true)" style="width:auto;font-size:11.5px;padding:5px 10px;font-family:var(--mono)">
               <option value="all">All Statuses</option>
               <option value="pending">Pending</option>
               <option value="assigned">Assigned</option>
@@ -1031,6 +1036,7 @@ td strong{font-weight:500}
             </thead>
             <tbody id="ld-tbody"><tr><td colspan="14" class="empty">Loading…</td></tr></tbody>
           </table>
+          <div class="pager" id="ld-pager"></div>
         </div>
       </div>
 
@@ -1888,6 +1894,21 @@ const _taskMap = new Map();
 
 const LEAD_CACHE = {};
 const CLIENT_CACHE = {};
+let leadsPage = 0;
+let leadsTotal = 0;
+let crmPage = 0;
+let crmAllLeads = [];
+const PAGE_SIZE = 50;
+function renderPager(elId, page, total, onPage) {
+  const pages = Math.ceil(total / PAGE_SIZE);
+  const el = $(elId);
+  if (!el || pages <= 1) { if (el) el.innerHTML = ''; return; }
+  const from = page * PAGE_SIZE + 1;
+  const to = Math.min((page + 1) * PAGE_SIZE, total);
+  el.innerHTML = `<button id="${elId}-prev" ${page===0?'disabled':''}>← Prev</button><span>${from}–${to} of ${total}</span><button id="${elId}-next" ${page>=pages-1?'disabled':''}>Next →</button>`;
+  $(`${elId}-prev`).addEventListener('click', () => onPage(page - 1));
+  $(`${elId}-next`).addEventListener('click', () => onPage(page + 1));
+}
 
 const $ = id => document.getElementById(id);
 const setText = (id, v) => { const e = $(id); if (e) e.textContent = v; };
@@ -2073,16 +2094,24 @@ async function sendTestLead() {
   }
 }
 
-async function loadLeads() {
-  const {data, error} = await db.from('solar_leads')
-    .select('*, clients(company_name)')
-    .order('created_at', {ascending: false});
-  if (error) {
-    $('ld-tbody').innerHTML = `<tr><td colspan="13" class="empty">Error: ${esc(error.message)}</td></tr>`;
+async function loadLeads(resetPage) {
+  if (resetPage) leadsPage = 0;
+  const filter = $('ld-filter')?.value || 'all';
+
+  // Stats query — lightweight, all rows, just status + client info
+  const statsQ = db.from('solar_leads').select('status, assigned_client_id, clients(company_name)');
+  // Table query — paginated, with server-side filter
+  const tableQ = db.from('solar_leads').select('*, clients(company_name)', {count:'exact'}).order('created_at', {ascending: false});
+  if (filter !== 'all') tableQ.eq('status', filter);
+  tableQ.range(leadsPage * PAGE_SIZE, (leadsPage + 1) * PAGE_SIZE - 1);
+
+  const [statsR, tableR] = await Promise.all([statsQ, tableQ]);
+  if (statsR.error || tableR.error) {
+    $('ld-tbody').innerHTML = `<tr><td colspan="14" class="empty">Error: ${esc((statsR.error||tableR.error).message)}</td></tr>`;
     return;
   }
-  const all = data || [];
-  const filter = $('ld-filter')?.value || 'all';
+  const all = statsR.data || [];
+  leadsTotal = tableR.count || 0;
 
   setText('ld-total', all.length);
   setText('ld-pending', all.filter(l => l.status === 'pending').length);
@@ -2111,9 +2140,10 @@ async function loadLeads() {
       </div>`
     : '<div class="empty">No leads matched to clients yet.</div>';
 
-  const rows = filter === 'all' ? all : all.filter(l => l.status === filter);
+  const rows = tableR.data || [];
   if (!rows.length) {
     $('ld-tbody').innerHTML = `<tr><td colspan="14" class="empty">No leads found.</td></tr>`;
+    $('ld-pager').innerHTML = '';
     return;
   }
   const statusBadge = s => {
@@ -2150,6 +2180,7 @@ async function loadLeads() {
         </select>
       </td>
     </tr>`).join('');
+  renderPager('ld-pager', leadsPage, leadsTotal, p => { leadsPage = p; loadLeads(); });
 }
 async function updateLeadStatus(leadId, newStatus, selectEl) {
   const prev = Array.from(selectEl.options).find(o => o.defaultSelected)?.value || selectEl.value;
@@ -2333,10 +2364,12 @@ async function drop(e,prefix,newStage) {
 }
 
 const CRM_STAGES=[{id:'new_lead',label:'New Lead'},{id:'no_answer',label:'No Answer'},{id:'call_back',label:'Call-Back'},{id:'proposal',label:'Proposal'},{id:'closed_won',label:'Closed Won'},{id:'closed_lost',label:'Closed Lost'}];
-async function loadCRM() {
+async function loadCRM(resetPage) {
+  if (resetPage) crmPage = 0;
   const {data,error}=await db.from('leads').select('*').order('created_at',{ascending:false});
   if (error) { $('crm-tbody').innerHTML=`<tr><td colspan="9" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
-  renderCRM(data||[]);
+  crmAllLeads = data || [];
+  renderCRM(crmAllLeads);
 }
 function renderCRM(leads) {
   const won=leads.filter(l=>l.stage==='closed_won').length;
@@ -2405,9 +2438,12 @@ function renderCRM(leads) {
     }
   });
   const tb=$('crm-tbody');
-  if (!leads.length) { tb.innerHTML='<tr><td colspan="9" class="empty">No leads yet.</td></tr>'; return; }
+  if (!leads.length) { tb.innerHTML='<tr><td colspan="9" class="empty">No leads yet.</td></tr>'; $('crm-pager').innerHTML=''; return; }
   leads.forEach(l => { LEAD_CACHE[l.id] = l; });
-  tb.innerHTML=leads.map(l=>{
+  const totalPages = Math.ceil(leads.length / PAGE_SIZE);
+  if (crmPage >= totalPages) crmPage = totalPages - 1;
+  const pageLeads = leads.slice(crmPage * PAGE_SIZE, (crmPage + 1) * PAGE_SIZE);
+  tb.innerHTML=pageLeads.map(l=>{
     const ds=l.last_contact?Math.floor((Date.now()-new Date(l.last_contact))/(1000*86400)):null;
     const isStale=staleIds.has(String(l.id));
     const contactCell=l.last_contact
@@ -2439,6 +2475,7 @@ function renderCRM(leads) {
       if (LEAD_CACHE[id]) openEditLead(LEAD_CACHE[id]);
     });
   });
+  renderPager('crm-pager', crmPage, leads.length, p => { crmPage = p; renderCRM(crmAllLeads); });
 }
 function checkConvertBanner() {
   const stage = $('el-stage').value;
