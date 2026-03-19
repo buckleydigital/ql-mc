@@ -3324,7 +3324,7 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const tb=$('exp-tbody');
   if (!expenses.length) { tb.innerHTML='<tr><td colspan="6" class="empty">No expenses for this period.</td></tr>'; }
   else { tb.innerHTML=expenses.map(e=>`<tr><td>${esc(e.category||'—')}</td><td>${esc(e.description||'—')}</td><td>${fmt(e.amount)}</td><td><span class="badge ${e.type==='fixed'?'bg-blu':'bg-amb'}">${e.type||'variable'}</span></td><td style="font-family:var(--mono);font-size:10px">${e.date||'—'}</td><td><button class="btn btn-xs" style="color:var(--red)" onclick="deleteExpense('${esc(String(e.id))}')">Delete</button></td></tr>`).join(''); }
-  renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses);renderCplChart(adSpend);
+  renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses,pplSp,agSp);renderCplChart(adSpend);
 }
 function renderSubscriptionsTable(subs) {
   const tb = $('subs-tbody');
@@ -3393,12 +3393,12 @@ function chartDefaults() {
   const dark=document.documentElement.getAttribute('data-theme')==='dark';
   return {grid:dark?'#1c1c22':'#dddde8',tick:dark?'#3e3e50':'#9494a8'};
 }
-function renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses) {
+function renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses,pplAdSpend,agAdSpend) {
   const {grid,tick}=chartDefaults();
-  const labels=['PPL Revenue','Managed Retainers','Custom Orders','Expenses'];
-  const values=[pplRev,mgRetainerRev,mgCustomRev,expenses.reduce((s,e)=>s+(e.amount||0),0)];
-  const colors=['rgba(46,204,138,.15)','rgba(79,143,255,.15)','rgba(79,143,255,.08)','rgba(255,69,96,.07)'];
-  const borders=['#2ecc8a','#4f8fff','rgba(79,143,255,.6)','rgba(255,69,96,.45)'];
+  const labels=['PPL Revenue','Managed Retainers','Custom Orders','Ad Spend','Expenses'];
+  const values=[pplRev,mgRetainerRev,mgCustomRev,(pplAdSpend||0)+(agAdSpend||0),expenses.reduce((s,e)=>s+(e.amount||0),0)];
+  const colors=['rgba(46,204,138,.15)','rgba(79,143,255,.15)','rgba(79,143,255,.08)','rgba(255,165,0,.12)','rgba(255,69,96,.07)'];
+  const borders=['#2ecc8a','#4f8fff','rgba(79,143,255,.6)','#ffa500','rgba(255,69,96,.45)'];
   if (revChart) revChart.destroy();
   revChart=new Chart($('chart-rev').getContext('2d'),{type:'bar',data:{labels,datasets:[{label:'Amount',data:values,backgroundColor:colors,borderColor:borders,borderWidth:1.5,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9},callback:v=>'$'+v.toLocaleString()},grid:{color:grid}}}}});
 }
@@ -4552,12 +4552,20 @@ async function loadInvoices() {
         <button class="btn btn-xs" onclick="editInvoice('${esc(String(inv.id))}')">Edit</button>
         <button class="btn btn-xs" onclick="redownloadInvoice('${esc(String(inv.id))}')">PDF</button>
         ${inv.status!=='paid'?`<button class="btn btn-xs" style="color:var(--grn)" onclick="markInvoicePaid('${esc(String(inv.id))}')">Paid</button>`:''}
+        <button class="btn btn-xs" style="color:var(--red)" onclick="deleteInvoice('${esc(String(inv.id))}','${esc(inv.invoice_number||'')}')">Del</button>
       </td>
     </tr>`).join('');
 }
 
 async function markInvoicePaid(id) {
   const {error} = await db.from('invoices').update({status:'paid', updated_at: new Date().toISOString()}).eq('id', id);
+  if (error) { alert(error.message); return; }
+  loadInvoices();
+}
+
+async function deleteInvoice(id, num) {
+  if (!confirm('Delete invoice ' + (num || '') + '? This cannot be undone.')) return;
+  const {error} = await db.from('invoices').delete().eq('id', id);
   if (error) { alert(error.message); return; }
   loadInvoices();
 }
@@ -4595,6 +4603,7 @@ async function redownloadInvoice(id) {
 
 // --- PDF Generation ---
 async function downloadInvoicePDF(inv) {
+  try {
   const biz = await loadBizSettings();
   const {jsPDF} = window.jspdf;
   const doc = new jsPDF({unit: 'mm', format: 'a4'});
@@ -4631,7 +4640,7 @@ async function downloadInvoicePDF(inv) {
   doc.setTextColor(30, 30, 30);
   doc.setFont('helvetica', 'bold');
   doc.text(biz.business_name || 'QuoteLeads', mx, y);
-  doc.text(inv.client_name || '—', pw / 2 + 5, y);
+  doc.text(inv.client_name || '-', pw / 2 + 5, y);
   y += 5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
@@ -4656,16 +4665,16 @@ async function downloadInvoicePDF(inv) {
   doc.setFontSize(9);
   doc.setTextColor(30, 30, 30);
   doc.setFont('helvetica', 'bold');
-  doc.text(inv.invoice_date || '—', mx + 3, detY + 6);
-  doc.text(inv.due_date || '—', mx + 48, detY + 6);
+  doc.text(inv.invoice_date || '-', mx + 3, detY + 6);
+  doc.text(inv.due_date || '-', mx + 48, detY + 6);
   doc.text(inv.offer_type === 'managed' ? 'Managed Advertising' : 'Pay-Per-Lead', mx + 93, detY + 6);
-  if (inv.delivery_period_start) doc.text((inv.delivery_period_start || '') + ' → ' + (inv.delivery_period_end || ''), mx + 133, detY + 6);
+  if (inv.delivery_period_start) doc.text((inv.delivery_period_start || '') + ' to ' + (inv.delivery_period_end || ''), mx + 133, detY + 6);
   doc.setFont('helvetica', 'normal');
   y += 22;
 
   // Line items table
   const tableBody = (inv.line_items || []).map(li => [
-    li.description || '',
+    String(li.description || '').replace(/[^\x20-\x7E]/g, ' '),
     String(li.qty || 0),
     '$' + Number(li.unit_price || 0).toFixed(2),
     '$' + Number(li.line_total || 0).toFixed(2)
@@ -4719,7 +4728,7 @@ async function downloadInvoicePDF(inv) {
 
   if (biz.bsb || biz.account_number) {
     doc.setFont('helvetica', 'bold');
-    doc.text('Option 1 — Bank Transfer', mx, y);
+    doc.text('Option 1 - Bank Transfer', mx, y);
     doc.setFont('helvetica', 'normal');
     y += 5;
     if (biz.bsb) { doc.text('BSB: ' + biz.bsb, mx, y); y += 4; }
@@ -4729,7 +4738,7 @@ async function downloadInvoicePDF(inv) {
   }
   if (biz.payid) {
     doc.setFont('helvetica', 'bold');
-    doc.text((biz.bsb ? 'Option 2' : 'Option 1') + ' — PayID', mx, y);
+    doc.text((biz.bsb ? 'Option 2' : 'Option 1') + ' - PayID', mx, y);
     doc.setFont('helvetica', 'normal');
     y += 5;
     doc.text('PayID: ' + biz.payid, mx, y);
@@ -4745,11 +4754,13 @@ async function downloadInvoicePDF(inv) {
     y += 5;
     doc.setFontSize(9);
     doc.setTextColor(80, 80, 80);
-    const noteLines = doc.splitTextToSize(inv.notes, pw - mx * 2);
+    const safeNotes = inv.notes.replace(/[^\x20-\x7E\n]/g, ' ');
+    const noteLines = doc.splitTextToSize(safeNotes, pw - mx * 2);
     doc.text(noteLines, mx, y);
   }
 
   doc.save((inv.invoice_number || 'invoice') + '.pdf');
+  } catch(e) { console.error('PDF generation error:', e); alert('PDF generation failed: ' + e.message); }
 }
 </script>
 </body>
