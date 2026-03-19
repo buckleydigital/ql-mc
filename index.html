@@ -3324,7 +3324,7 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const tb=$('exp-tbody');
   if (!expenses.length) { tb.innerHTML='<tr><td colspan="6" class="empty">No expenses for this period.</td></tr>'; }
   else { tb.innerHTML=expenses.map(e=>`<tr><td>${esc(e.category||'—')}</td><td>${esc(e.description||'—')}</td><td>${fmt(e.amount)}</td><td><span class="badge ${e.type==='fixed'?'bg-blu':'bg-amb'}">${e.type||'variable'}</span></td><td style="font-family:var(--mono);font-size:10px">${e.date||'—'}</td><td><button class="btn btn-xs" style="color:var(--red)" onclick="deleteExpense('${esc(String(e.id))}')">Delete</button></td></tr>`).join(''); }
-  renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses);renderCplChart(adSpend);
+  renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses,pplSp,agSp);renderCplChart(adSpend);
 }
 function renderSubscriptionsTable(subs) {
   const tb = $('subs-tbody');
@@ -3393,12 +3393,12 @@ function chartDefaults() {
   const dark=document.documentElement.getAttribute('data-theme')==='dark';
   return {grid:dark?'#1c1c22':'#dddde8',tick:dark?'#3e3e50':'#9494a8'};
 }
-function renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses) {
+function renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses,pplAdSpend,agAdSpend) {
   const {grid,tick}=chartDefaults();
-  const labels=['PPL Revenue','Managed Retainers','Custom Orders','Expenses'];
-  const values=[pplRev,mgRetainerRev,mgCustomRev,expenses.reduce((s,e)=>s+(e.amount||0),0)];
-  const colors=['rgba(46,204,138,.15)','rgba(79,143,255,.15)','rgba(79,143,255,.08)','rgba(255,69,96,.07)'];
-  const borders=['#2ecc8a','#4f8fff','rgba(79,143,255,.6)','rgba(255,69,96,.45)'];
+  const labels=['PPL Revenue','Managed Retainers','Custom Orders','Ad Spend','Expenses'];
+  const values=[pplRev,mgRetainerRev,mgCustomRev,(pplAdSpend||0)+(agAdSpend||0),expenses.reduce((s,e)=>s+(e.amount||0),0)];
+  const colors=['rgba(46,204,138,.15)','rgba(79,143,255,.15)','rgba(79,143,255,.08)','rgba(255,165,0,.12)','rgba(255,69,96,.07)'];
+  const borders=['#2ecc8a','#4f8fff','rgba(79,143,255,.6)','#ffa500','rgba(255,69,96,.45)'];
   if (revChart) revChart.destroy();
   revChart=new Chart($('chart-rev').getContext('2d'),{type:'bar',data:{labels,datasets:[{label:'Amount',data:values,backgroundColor:colors,borderColor:borders,borderWidth:1.5,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9},callback:v=>'$'+v.toLocaleString()},grid:{color:grid}}}}});
 }
