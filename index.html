@@ -2698,6 +2698,7 @@ function renderPPL(clients, ytdLeads=0, spendData=[]) {
           <div class="kcard-meta">${esc(c.niche||'Solar')} · ${c.leads_delivered||0} delivered · ${c.total_leads_purchased||0} purchased</div>
           ${c.phone?`<div class="kcard-phone">${esc(c.phone)}</div>`:''}
           ${c.meta_cpl?`<div class="kcard-val">CPL $${Number(c.meta_cpl).toFixed(2)}</div>`:''}
+          ${c.weekly_cap||c.monthly_cap?`<div style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-top:2px">${c.weekly_cap?'W: '+c.weekly_cap+'/wk':''}${c.weekly_cap&&c.monthly_cap?' · ':''}${c.monthly_cap?'M: '+c.monthly_cap+'/mo':''}</div>`:''}
           ${cplAlert==='danger'?'<div style="font-size:9px;color:var(--red);font-family:var(--mono);margin-top:3px">⚠ margin lost — true CPL exceeds sell price</div>':cplAlert==='warning'?'<div style="font-size:9px;color:var(--amb);font-family:var(--mono);margin-top:3px">⚠ low margin — true CPL near sell price</div>':''}
           ${dueReorder?'<div style="font-size:9px;color:var(--amb);font-family:var(--mono);margin-top:2px">↻ due for reorder</div>':''}
         </div>`}).join('');
