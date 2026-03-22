@@ -3438,9 +3438,11 @@ async function syncCampaignInsights() {
     const {data:{session}}=await db.auth.getSession();
     if(!session) throw new Error('Not logged in');
     const res=await fetch(`${_ep}/functions/v1/meta-campaign-insights`,{method:'POST',headers:{'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'},body:'{}'});
+    if(!res.ok){const txt=await res.text();throw new Error(`HTTP ${res.status}: ${txt.slice(0,200)}`);}
     const d=await res.json();
     if(d.error) throw new Error(d.error);
-    toast(`Synced ${d.synced} campaign(s)${d.failed?' · '+d.failed+' failed':''}`);
+    if(d.message&&!d.synced){toast(d.message);loadCampaigns();return;}
+    toast(`Synced ${d.synced||0} campaign(s)${d.failed?' · '+d.failed+' failed':''}`);
     loadCampaigns();
   } catch(e){toast('Sync error: '+e.message,true);}
   finally{btn.disabled=false;btn.textContent='Sync Stats';}
