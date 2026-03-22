@@ -5260,9 +5260,24 @@ async function redownloadInvoice(id) {
 }
 
 // --- PDF Generation ---
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+async function ensureJsPDF() {
+  if (window.jspdf?.jsPDF) return;
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js');
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+  if (!window.jspdf?.jsPDF) throw new Error('Failed to load jsPDF library');
+}
+
 async function downloadInvoicePDF(inv) {
   try {
   const biz = await loadBizSettings();
+  await ensureJsPDF();
   const {jsPDF} = window.jspdf;
   const doc = new jsPDF({unit: 'mm', format: 'a4'});
   const pw = 210, ph = 297, mx = 15;
