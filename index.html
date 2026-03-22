@@ -942,6 +942,10 @@ td strong{font-weight:500}
               <button class="btn btn-sm btn-p" id="map-save-btn" onclick="saveMapArea()">Save Area</button>
               <button class="btn btn-sm" id="map-clear-btn" onclick="clearMapDrawing()">Clear Drawing</button>
             </div>
+            <div class="map-controls" id="map-campaign-row" style="margin-top:4px">
+              <span style="font-size:10px;color:var(--ink3);white-space:nowrap">Link campaigns:</span>
+              <div id="map-campaign-picker" style="display:flex;flex-wrap:wrap;gap:6px;flex:1"></div>
+            </div>
             <div id="ppl-map"><div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:var(--mono);font-size:11px;color:var(--ink3)">Loading map…</div></div>
             <div class="area-list" id="map-area-list"></div>
           </div>
@@ -973,6 +977,7 @@ td strong{font-weight:500}
         <div class="ph">
           <div class="ph-left"><h1>Meta Campaigns</h1><p>Manage Meta ad campaigns and auto-pause rules</p></div>
           <div class="ph-right">
+            <button class="btn btn-sm" id="mc-sync-btn" onclick="syncCampaignInsights()" style="margin-right:6px">Sync Stats</button>
             <button class="btn btn-sm" id="meta-cap-check-btn2" onclick="metaCapCheck()" style="margin-right:6px">Check Caps Now</button>
             <button class="btn btn-p btn-sm" onclick="openModal('m-add-campaign')">+ Add Campaign</button>
           </div>
@@ -992,8 +997,8 @@ td strong{font-weight:500}
         <div class="sl">All Campaigns <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Campaign Name</th><th>Ad Account</th><th>Meta Campaign ID</th><th>Status</th><th>Linked Clients</th><th>Notes</th><th></th></tr></thead>
-            <tbody id="mc-tbody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+            <thead><tr><th>Campaign Name</th><th>Ad Account</th><th>Status</th><th>Spend MTD</th><th>Leads</th><th>CPL</th><th>Clicks</th><th>Clients</th><th>Areas</th><th></th></tr></thead>
+            <tbody id="mc-tbody"><tr><td colspan="10" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
         <div class="sl">API Log <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px">last 20 actions</span><div class="sl-line"></div></div>
@@ -1572,12 +1577,34 @@ td strong{font-weight:500}
     </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="emc-notes"></textarea></div>
     <div id="emc-linked-clients" style="margin:10px 0;font-family:var(--mono);font-size:10px;color:var(--ink3)"></div>
+    <div class="frow"><label class="flabel">Linked Areas</label>
+      <div id="emc-area-picker" style="display:flex;flex-wrap:wrap;gap:6px;max-height:120px;overflow-y:auto"></div>
+    </div>
     <div class="macts">
       <button class="btn" style="color:var(--red)" onclick="deleteCampaign()">Delete</button>
       <div style="flex:1"></div>
       <button class="btn" onclick="closeModal('m-edit-campaign')">Cancel</button>
       <button class="btn btn-sm" id="emc-toggle-btn" onclick="toggleCampaignFromModal()">Pause on Meta</button>
       <button class="btn btn-p" onclick="updateCampaign()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="m-edit-area">
+  <div class="modal">
+    <h2>Edit Area</h2><div class="msub" id="ea-sub"></div>
+    <input type="hidden" id="ea-id">
+    <div class="frow"><label class="flabel">Label</label><input class="fi" id="ea-label"></div>
+    <div class="frow"><label class="flabel">Volume (leads/mo)</label><input class="fi" id="ea-volume" type="number"></div>
+    <div class="frow"><label class="flabel">Client</label>
+      <select class="fs" id="ea-client"></select>
+    </div>
+    <div class="frow"><label class="flabel">Linked Campaigns</label>
+      <div id="ea-campaign-picker" style="display:flex;flex-wrap:wrap;gap:6px;max-height:140px;overflow-y:auto"></div>
+    </div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-edit-area')">Cancel</button>
+      <button class="btn btn-p" onclick="saveEditArea()">Save</button>
     </div>
   </div>
 </div>
@@ -3404,6 +3431,35 @@ async function metaToggleCampaigns(campaignIds, action) {
   } catch(e){toast('Meta API error: '+e.message,true);return null;}
 }
 
+async function syncCampaignInsights() {
+  const btn=$('mc-sync-btn');
+  btn.disabled=true;btn.textContent='Syncing…';
+  try {
+    const {data:{session}}=await db.auth.getSession();
+    if(!session) throw new Error('Not logged in');
+    const res=await fetch(`${_ep}/functions/v1/meta-campaign-insights`,{method:'POST',headers:{'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'},body:'{}'});
+    const d=await res.json();
+    if(d.error) throw new Error(d.error);
+    toast(`Synced ${d.synced} campaign(s)${d.failed?' · '+d.failed+' failed':''}`);
+    loadCampaigns();
+  } catch(e){toast('Sync error: '+e.message,true);}
+  finally{btn.disabled=false;btn.textContent='Sync Stats';}
+}
+
+async function inlineToggleCampaign(id, metaCampaignId, newAction) {
+  const btn=$('toggle-'+id);
+  if(btn){btn.disabled=true;btn.textContent='…';}
+  const results=await metaToggleCampaigns([metaCampaignId],newAction);
+  if(results&&results.length&&results[0].success){
+    await db.from('meta_campaigns').update({status:newAction,updated_at:now()}).eq('id',id);
+    toast(`Campaign ${newAction==='PAUSED'?'paused':'resumed'} on Meta`);
+    loadCampaigns();
+  } else {
+    toast('Toggle failed — '+(results?.[0]?.error||'unknown error'),true);
+    if(btn){btn.disabled=false;btn.textContent=newAction==='PAUSED'?'Pause':'Resume';}
+  }
+}
+
 /* ═══ META AD ACCOUNTS + CAMPAIGNS MANAGEMENT ═══ */
 let _adAccountsCache=[];
 
@@ -3472,6 +3528,14 @@ async function loadCampaigns() {
     }
   }
 
+  // Build area map for campaigns
+  const allAreaIds=[...new Set(campaigns.flatMap(c=>c.area_ids||[]))];
+  let areaMap={};
+  if(allAreaIds.length){
+    const {data:areas}=await db.from('ppl_lead_areas').select('id,label').in('id',allAreaIds);
+    if(areas) areas.forEach(a=>{areaMap[a.id]=a.label;});
+  }
+
   // KPIs
   setText('mc-total',campaigns.length||'—');
   setText('mc-active',campaigns.filter(c=>c.status==='ACTIVE').length||'0');
@@ -3479,20 +3543,33 @@ async function loadCampaigns() {
 
   // Campaigns table
   const tb=$('mc-tbody');
-  if(!campaigns.length){tb.innerHTML='<tr><td colspan="7" class="empty">No campaigns yet</td></tr>';return;}
+  if(!campaigns.length){tb.innerHTML='<tr><td colspan="10" class="empty">No campaigns yet</td></tr>';return;}
+  const fmt$=v=>v?'$'+Number(v).toLocaleString('en-AU',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
+  const fmtN=v=>v?Number(v).toLocaleString('en-AU'):'—';
+  const synced=campaigns.some(c=>c.last_synced_at);
   tb.innerHTML=campaigns.map(c=>{
     const linked=(cidToClients[c.meta_campaign_id]||[]).join(', ')||'<span style="color:var(--ink3)">none</span>';
-    const statusColor=c.status==='ACTIVE'?'var(--grn)':'var(--red)';
+    const isActive=c.status==='ACTIVE';
+    const statusColor=isActive?'var(--grn)':'var(--red)';
+    const toggleLabel=isActive?'Pause':'Resume';
+    const toggleAction=isActive?'PAUSED':'ACTIVE';
     return `<tr>
-      <td><strong>${esc(c.name)}</strong></td>
+      <td><strong>${esc(c.name)}</strong><div style="font-family:var(--mono);font-size:9px;color:var(--ink3)">${esc(c.meta_campaign_id)}</div></td>
       <td style="font-size:10px">${esc(adAccountLabel(c.ad_account_id))}</td>
-      <td style="font-family:var(--mono);font-size:10px;color:var(--ink2)">${esc(c.meta_campaign_id)}</td>
-      <td><span style="color:${statusColor};font-family:var(--mono);font-size:10px;font-weight:600">${c.status}</span></td>
+      <td>
+        <span style="color:${statusColor};font-family:var(--mono);font-size:10px;font-weight:600">${c.status}</span>
+        <button class="btn btn-xs" style="margin-left:6px;font-size:9px" id="toggle-${c.id}" onclick="inlineToggleCampaign('${c.id}','${esc(c.meta_campaign_id)}','${toggleAction}')">${toggleLabel}</button>
+      </td>
+      <td style="font-family:var(--mono);font-size:11px">${fmt$(c.spend_mtd)}</td>
+      <td style="font-family:var(--mono);font-size:11px">${fmtN(c.leads_mtd)}</td>
+      <td style="font-family:var(--mono);font-size:11px">${c.leads_mtd>0?fmt$(c.cpl_mtd):'—'}</td>
+      <td style="font-family:var(--mono);font-size:11px">${fmtN(c.clicks_mtd)}</td>
       <td style="font-size:11px">${linked}</td>
-      <td style="font-size:11px;color:var(--ink2)">${esc(c.notes||'')}</td>
+      <td style="font-size:10px">${(c.area_ids||[]).map(aid=>esc(areaMap[aid]||'?')).join(', ')||'<span style="color:var(--ink3)">—</span>'}</td>
       <td><button class="btn btn-xs" onclick="editCampaign('${c.id}')">Edit</button></td>
     </tr>`;
   }).join('');
+  if(!synced){$('mc-tbody').insertAdjacentHTML('afterbegin','<tr><td colspan="10" style="text-align:center;font-size:11px;color:var(--ink3);padding:8px">Stats not synced yet — click <strong>Sync Stats</strong> to pull live data from Meta</td></tr>');}
 
   // API log table
   const ltb=$('mc-log-tbody');
@@ -3527,7 +3604,7 @@ async function saveCampaign() {
   refreshCampaignDropdowns();
 }
 
-function editCampaign(id) {
+async function editCampaign(id) {
   const c=_campaignsCache.find(x=>x.id===id);
   if(!c) return;
   populateAdAccountDropdowns();
@@ -3536,15 +3613,44 @@ function editCampaign(id) {
   const toggleBtn=$('emc-toggle-btn');
   if(toggleBtn){toggleBtn.textContent=c.status==='ACTIVE'?'Pause on Meta':'Resume on Meta';}
   $('edit-mc-sub').textContent=c.meta_campaign_id;
+  // Populate area picker
+  const areaIds=c.area_ids||[];
+  const {data:allAreas}=await db.from('ppl_lead_areas').select('id,label,client_id').order('label');
+  const picker=$('emc-area-picker');
+  if(picker&&allAreas){
+    const selSet=new Set(areaIds);
+    picker.innerHTML=allAreas.map(a=>{
+      const cName=mapClientDataMap[String(a.client_id)]?.company_name||'';
+      return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer">
+        <input type="checkbox" value="${esc(String(a.id))}" ${selSet.has(a.id)?'checked':''} style="margin:0">
+        ${esc(a.label)}${cName?' <span style="font-size:9px;color:var(--ink3)">('+esc(cName)+')</span>':''}
+      </label>`;
+    }).join('')||'<span style="font-size:10px;color:var(--ink3)">No areas yet — draw on the PPL map first</span>';
+  }
   openModal('m-edit-campaign');
 }
 
 async function updateCampaign() {
   const id=$('emc-id').value;
-  const d={name:$('emc-name').value.trim(),ad_account_id:$('emc-ad-account').value,meta_campaign_id:$('emc-meta-id').value.trim(),status:$('emc-status').value,notes:$('emc-notes').value.trim()||null,updated_at:now()};
+  const metaCampaignId=$('emc-meta-id').value.trim();
+  const newAreaIds=[...$('emc-area-picker').querySelectorAll('input[type=checkbox]:checked')].map(cb=>cb.value);
+  const oldCamp=_campaignsCache.find(c=>c.id===id);
+  const oldAreaIds=oldCamp?.area_ids||[];
+  const d={name:$('emc-name').value.trim(),ad_account_id:$('emc-ad-account').value,meta_campaign_id:metaCampaignId,status:$('emc-status').value,notes:$('emc-notes').value.trim()||null,area_ids:newAreaIds,updated_at:now()};
   if(!d.name){toast('Name required',true);return;}
   const {error}=await db.from('meta_campaigns').update(d).eq('id',id);
   if(error){toast('Error: '+error.message,true);return;}
+  // Sync area side: add/remove this campaign's meta_campaign_id
+  const removed=oldAreaIds.filter(aid=>!newAreaIds.includes(aid));
+  const added=newAreaIds.filter(aid=>!oldAreaIds.includes(aid));
+  for(const aid of removed){
+    const {data:area}=await db.from('ppl_lead_areas').select('meta_campaign_ids').eq('id',aid).single();
+    if(area) await db.from('ppl_lead_areas').update({meta_campaign_ids:(area.meta_campaign_ids||[]).filter(m=>m!==metaCampaignId)}).eq('id',aid);
+  }
+  for(const aid of added){
+    const {data:area}=await db.from('ppl_lead_areas').select('meta_campaign_ids').eq('id',aid).single();
+    if(area){const existing=area.meta_campaign_ids||[];if(!existing.includes(metaCampaignId)) await db.from('ppl_lead_areas').update({meta_campaign_ids:[...existing,metaCampaignId]}).eq('id',aid);}
+  }
   closeModal('m-edit-campaign');toast('Campaign updated ✓');loadCampaigns();
   refreshCampaignDropdowns();
 }
@@ -4391,7 +4497,10 @@ async function loadMapAreas() {
     $('map-area-volume').style.display = isAll ? 'none' : '';
     $('map-save-btn').style.display = isAll ? 'none' : '';
     $('map-clear-btn').style.display = isAll ? 'none' : '';
+    const campRow=$('map-campaign-row');
+    if(campRow) campRow.style.display = isAll ? 'none' : '';
     if (drawingManager) drawingManager.setMap(isAll ? null : pplMap);
+    if(!isAll) refreshMapCampaignPicker();
   }
   const el = $('map-area-list');
   if (isAll) {
@@ -4411,7 +4520,8 @@ async function loadMapAreas() {
           strokeWeight:2,strokeColor:colour,map:pplMap
         });
         const clientName = mapClientDataMap[String(area.client_id)]?.company_name || 'Client';
-        const infowin = new google.maps.InfoWindow({content:`<strong>${esc(area.label)}</strong><br>${esc(clientName)}<br>${area.volume||0} leads/mo`});
+        const areaCamps=(area.meta_campaign_ids||[]).map(mid=>{const c=_campaignsCache.find(x=>x.meta_campaign_id===mid);return c?c.name:mid;}).join(', ');
+        const infowin = new google.maps.InfoWindow({content:`<strong>${esc(area.label)}</strong><br>${esc(clientName)}<br>${area.volume||0} leads/mo${areaCamps?'<br><em>'+esc(areaCamps)+'</em>':''}`});
         overlay.addListener('click',e=>infowin.open({map:pplMap,anchor:null,shouldFocus:false,position:e.latLng}));
         area._overlay = overlay;
       } catch(e){}
@@ -4427,7 +4537,7 @@ async function loadMapAreas() {
           <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">
             <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${colour};flex-shrink:0"></span>${esc(name)}
           </div>
-          ${areas.map(a=>`<div class="area-item"><span class="area-item-label">${esc(a.label||'Unnamed')}</span><span class="area-item-vol">${a.volume||0} leads/mo</span></div>`).join('')}
+          ${areas.map(a=>{const ac=(a.meta_campaign_ids||[]).map(mid=>{const c=_campaignsCache.find(x=>x.meta_campaign_id===mid);return c?c.name:mid;});return `<div class="area-item"><span class="area-item-label">${esc(a.label||'Unnamed')}</span>${ac.length?'<span style="font-size:9px;color:var(--ink3);margin:0 6px">'+ac.map(n=>'<span style="background:var(--bg2);border:1px solid var(--br);border-radius:3px;padding:1px 5px">'+esc(n)+'</span>').join(' ')+'</span>':''}<span class="area-item-vol">${a.volume||0} leads/mo</span></div>`;}).join('')}
         </div>`;
       }).join('');
     }
@@ -4447,7 +4557,8 @@ async function loadMapAreas() {
         paths:coords,fillColor:'#2ecc8a',fillOpacity:.2,
         strokeWeight:2,strokeColor:'#2ecc8a',map:pplMap
       });
-      const infowin=new google.maps.InfoWindow({content:`<strong>${esc(area.label)}</strong><br>${area.volume||0} leads/mo`});
+      const areaCamps2=(area.meta_campaign_ids||[]).map(mid=>{const c=_campaignsCache.find(x=>x.meta_campaign_id===mid);return c?c.name:mid;}).join(', ');
+      const infowin=new google.maps.InfoWindow({content:`<strong>${esc(area.label)}</strong><br>${area.volume||0} leads/mo${areaCamps2?'<br><em>'+esc(areaCamps2)+'</em>':''}`});
       overlay.addListener('click',e=>infowin.open({map:pplMap,anchor:null,shouldFocus:false,position:e.latLng}));
       area._overlay = overlay;
     } catch(e){}
@@ -4458,14 +4569,21 @@ function renderMapAreas() {
   const el = $('map-area-list');
   if (!el) return;
   if (!mapAreas.length) { el.innerHTML='<div style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);padding:6px">No areas saved yet — draw on the map.</div>'; return; }
-  el.innerHTML = mapAreas.map(a=>`
-    <div class="area-item">
+  el.innerHTML = mapAreas.map(a=>{
+    const ac=(a.meta_campaign_ids||[]).map(mid=>{const c=_campaignsCache.find(x=>x.meta_campaign_id===mid);return c?c.name:mid;});
+    return `<div class="area-item">
       <span class="area-item-label">${esc(a.label||'Unnamed area')}</span>
+      ${ac.length?'<span style="font-size:9px;color:var(--ink3);margin:0 4px">'+ac.map(n=>'<span style="background:var(--bg2);border:1px solid var(--br);border-radius:3px;padding:1px 5px">'+esc(n)+'</span>').join(' ')+'</span>':''}
       <span class="area-item-vol">${a.volume||0} leads/mo</span>
+      <button class="btn btn-xs area-edit-btn" data-area-id="${esc(String(a.id))}" style="font-size:9px;padding:1px 6px;margin-left:4px" title="Edit area">Edit</button>
       <button class="area-item-del" data-area-id="${esc(String(a.id))}" title="Delete area">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   el.querySelectorAll('.area-item-del').forEach(btn=>{
     btn.addEventListener('click',()=>deleteMapArea(btn.dataset.areaId));
+  });
+  el.querySelectorAll('.area-edit-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>openEditArea(btn.dataset.areaId));
   });
 }
 
@@ -4487,8 +4605,21 @@ async function saveMapArea() {
       if (path) geoJson = JSON.stringify(path.map ? path.map(p=>({lat:p.lat(),lng:p.lng()})) : path);
     } catch(e){}
   }
-  const {error} = await db.from('ppl_lead_areas').insert([{client_id:clientId,label,volume,geo_json:geoJson,created_at:now()}]);
+  const campIds=getCheckedCampaigns('map-campaign-picker');
+  const {data:inserted,error} = await db.from('ppl_lead_areas').insert([{client_id:clientId,label,volume,geo_json:geoJson,meta_campaign_ids:campIds,created_at:now()}]).select();
   if (error) { toast('Save failed: '+error.message,true); return; }
+  // Also update campaign area_ids
+  if(inserted&&inserted[0]&&campIds.length){
+    for(const cid of campIds){
+      const camp=_campaignsCache.find(c=>c.meta_campaign_id===cid);
+      if(camp){
+        const existing=camp.area_ids||[];
+        if(!existing.includes(inserted[0].id)){
+          await db.from('meta_campaigns').update({area_ids:[...existing,inserted[0].id],updated_at:now()}).eq('id',camp.id);
+        }
+      }
+    }
+  }
   clearMapDrawing();
   $('map-area-label').value='';$('map-area-volume').value='';
   toast('Area saved ✓');
@@ -4497,10 +4628,90 @@ async function saveMapArea() {
 
 async function deleteMapArea(id) {
   if (!confirm('Delete this area?')) return;
+  // Remove area_id from any campaigns that reference it
+  const area=mapAreas.find(a=>String(a.id)===id);
+  if(area&&area.meta_campaign_ids){
+    for(const mid of area.meta_campaign_ids){
+      const camp=_campaignsCache.find(c=>c.meta_campaign_id===mid);
+      if(camp){
+        const newIds=(camp.area_ids||[]).filter(aid=>aid!==id);
+        await db.from('meta_campaigns').update({area_ids:newIds,updated_at:now()}).eq('id',camp.id);
+      }
+    }
+  }
   const {error} = await db.from('ppl_lead_areas').delete().eq('id',id);
   if (error) { toast('Error: '+error.message,true); return; }
   toast('Area deleted');
   loadMapAreas();
+}
+
+function refreshMapCampaignPicker(){
+  const el=$('map-campaign-picker');if(!el)return;
+  if(!_campaignsCache.length){el.innerHTML='<span style="font-size:10px;color:var(--ink3)">No campaigns — add in Meta Campaigns first</span>';return;}
+  el.innerHTML=_campaignsCache.map(c=>{
+    const dot=c.status==='ACTIVE'?'color:var(--grn)':'color:var(--red)';
+    return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer">
+      <input type="checkbox" value="${esc(c.meta_campaign_id)}" style="margin:0">
+      <span style="${dot};font-size:8px">●</span>${esc(c.name)}
+    </label>`;
+  }).join('');
+}
+
+function populateAreaCampaignPicker(pickerId, selectedIds){
+  const el=$(pickerId);if(!el)return;
+  if(!_campaignsCache.length){el.innerHTML='<span style="font-size:10px;color:var(--ink3)">No campaigns yet</span>';return;}
+  const sel=new Set(selectedIds||[]);
+  el.innerHTML=_campaignsCache.map(c=>{
+    const dot=c.status==='ACTIVE'?'color:var(--grn)':'color:var(--red)';
+    return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer">
+      <input type="checkbox" value="${esc(c.meta_campaign_id)}" ${sel.has(c.meta_campaign_id)?'checked':''} style="margin:0">
+      <span style="${dot};font-size:8px">●</span>${esc(c.name)}
+    </label>`;
+  }).join('');
+}
+
+function getPickerCampaignIds(pickerId){
+  return [...$(pickerId).querySelectorAll('input[type=checkbox]:checked')].map(cb=>cb.value);
+}
+
+async function openEditArea(areaId){
+  const area=mapAreas.find(a=>String(a.id)===areaId);
+  if(!area)return;
+  setVal('ea-id',area.id);setVal('ea-label',area.label||'');setVal('ea-volume',area.volume||0);
+  $('ea-sub').textContent=area.label||'';
+  // Populate client dropdown
+  const clientSel=$('ea-client');
+  const {data:clients}=await db.from('clients').select('id,company_name').eq('type','ppl').not('stage','eq','churned').order('company_name');
+  clientSel.innerHTML=(clients||[]).map(c=>`<option value="${esc(String(c.id))}"${String(c.id)===String(area.client_id)?' selected':''}>${esc(c.company_name)}</option>`).join('');
+  // Populate campaign picker
+  populateAreaCampaignPicker('ea-campaign-picker',area.meta_campaign_ids||[]);
+  openModal('m-edit-area');
+}
+
+async function saveEditArea(){
+  const id=$('ea-id').value;
+  const label=$('ea-label').value.trim();
+  const volume=parseInt($('ea-volume').value)||0;
+  const clientId=$('ea-client').value;
+  const campIds=getPickerCampaignIds('ea-campaign-picker');
+  if(!label){toast('Label required',true);return;}
+  // Get old area to diff campaign links
+  const oldArea=mapAreas.find(a=>String(a.id)===id);
+  const oldCampIds=oldArea?.meta_campaign_ids||[];
+  const {error}=await db.from('ppl_lead_areas').update({label,volume,client_id:clientId,meta_campaign_ids:campIds}).eq('id',id);
+  if(error){toast('Error: '+error.message,true);return;}
+  // Sync campaign area_ids: remove from old, add to new
+  const removed=oldCampIds.filter(mid=>!campIds.includes(mid));
+  const added=campIds.filter(mid=>!oldCampIds.includes(mid));
+  for(const mid of removed){
+    const camp=_campaignsCache.find(c=>c.meta_campaign_id===mid);
+    if(camp) await db.from('meta_campaigns').update({area_ids:(camp.area_ids||[]).filter(a=>a!==id),updated_at:now()}).eq('id',camp.id);
+  }
+  for(const mid of added){
+    const camp=_campaignsCache.find(c=>c.meta_campaign_id===mid);
+    if(camp){const existing=camp.area_ids||[];if(!existing.includes(id)) await db.from('meta_campaigns').update({area_ids:[...existing,id],updated_at:now()}).eq('id',camp.id);}
+  }
+  closeModal('m-edit-area');toast('Area updated ✓');loadMapAreas();
 }
 
 let pricingMap = null, pricingDrawingMgr = null, pricingDrawnOverlay = null;
