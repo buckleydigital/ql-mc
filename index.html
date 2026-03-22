@@ -943,6 +943,10 @@ td strong{font-weight:500}
               <button class="btn btn-sm btn-p" id="map-save-btn" onclick="saveMapArea()">Save Area</button>
               <button class="btn btn-sm" id="map-clear-btn" onclick="clearMapDrawing()">Clear Drawing</button>
             </div>
+            <div class="map-controls" id="map-client-row" style="margin-top:4px">
+              <span style="font-size:10px;color:var(--ink3);white-space:nowrap">Clients:</span>
+              <div id="map-client-picker" style="display:flex;flex-wrap:wrap;gap:6px;flex:1"></div>
+            </div>
             <div class="map-controls" id="map-campaign-row" style="margin-top:4px">
               <span style="font-size:10px;color:var(--ink3);white-space:nowrap">Link campaigns:</span>
               <div id="map-campaign-picker" style="display:flex;flex-wrap:wrap;gap:6px;flex:1"></div>
@@ -1597,8 +1601,8 @@ td strong{font-weight:500}
     <input type="hidden" id="ea-id">
     <div class="frow"><label class="flabel">Label</label><input class="fi" id="ea-label"></div>
     <div class="frow"><label class="flabel">Volume (leads/mo)</label><input class="fi" id="ea-volume" type="number"></div>
-    <div class="frow"><label class="flabel">Client</label>
-      <select class="fs" id="ea-client"></select>
+    <div class="frow"><label class="flabel">Clients</label>
+      <div id="ea-client-picker" style="display:flex;flex-wrap:wrap;gap:6px;max-height:140px;overflow-y:auto"></div>
     </div>
     <div class="frow"><label class="flabel">Linked Campaigns</label>
       <div id="ea-campaign-picker" style="display:flex;flex-wrap:wrap;gap:6px;max-height:140px;overflow-y:auto"></div>
@@ -3618,12 +3622,12 @@ async function editCampaign(id) {
   $('edit-mc-sub').textContent=c.meta_campaign_id;
   // Populate area picker
   const areaIds=c.area_ids||[];
-  const {data:allAreas}=await db.from('ppl_lead_areas').select('id,label,client_id').order('label');
+  const {data:allAreas}=await db.from('ppl_lead_areas').select('id,label,client_id,client_ids').order('label');
   const picker=$('emc-area-picker');
   if(picker&&allAreas){
     const selSet=new Set(areaIds);
     picker.innerHTML=allAreas.map(a=>{
-      const cName=mapClientDataMap[String(a.client_id)]?.company_name||'';
+      const cName=a.client_ids&&a.client_ids.length?a.client_ids.map(cid=>mapClientDataMap[String(cid)]?.company_name||'').filter(Boolean).join(', '):mapClientDataMap[String(a.client_id)]?.company_name||'';
       return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer">
         <input type="checkbox" value="${esc(String(a.id))}" ${selSet.has(a.id)?'checked':''} style="margin:0">
         ${esc(a.label)}${cName?' <span style="font-size:9px;color:var(--ink3)">('+esc(cName)+')</span>':''}
@@ -4500,29 +4504,32 @@ async function loadMapAreas() {
     $('map-area-volume').style.display = isAll ? 'none' : '';
     $('map-save-btn').style.display = isAll ? 'none' : '';
     $('map-clear-btn').style.display = isAll ? 'none' : '';
+    const clientRow=$('map-client-row');
+    if(clientRow) clientRow.style.display = isAll ? 'none' : '';
     const campRow=$('map-campaign-row');
     if(campRow) campRow.style.display = isAll ? 'none' : '';
     if (drawingManager) drawingManager.setMap(isAll ? null : pplMap);
-    if(!isAll) refreshMapCampaignPicker();
+    if(!isAll){ refreshMapClientPicker(clientId); refreshMapCampaignPicker(); }
   }
   const el = $('map-area-list');
   if (isAll) {
     const {data,error} = await db.from('ppl_lead_areas').select('*').order('client_id').order('created_at',{ascending:true});
     if (error) { toast('Could not load areas: '+error.message,true); return; }
     mapAreas = data || [];
-    const clientIds = [...new Set(mapAreas.map(a=>String(a.client_id)))];
+    const clientIds = [...new Set(mapAreas.flatMap(a=>a.client_ids&&a.client_ids.length?a.client_ids.map(String):[String(a.client_id)]))];
     const colourMap = {};
     clientIds.forEach((id,i) => { colourMap[id] = ALL_CLIENT_COLOURS[i % ALL_CLIENT_COLOURS.length]; });
     mapAreas.forEach(area=>{
       if (!area.geo_json) return;
       try {
         const coords = JSON.parse(area.geo_json);
-        const colour = colourMap[String(area.client_id)] || '#2ecc8a';
+        const firstCid=area.client_ids&&area.client_ids.length?String(area.client_ids[0]):String(area.client_id);
+        const colour = colourMap[firstCid] || '#2ecc8a';
         const overlay = new google.maps.Polygon({
           paths:coords,fillColor:colour,fillOpacity:.22,
           strokeWeight:2,strokeColor:colour,map:pplMap
         });
-        const clientName = mapClientDataMap[String(area.client_id)]?.company_name || 'Client';
+        const clientName = (area.client_ids&&area.client_ids.length?area.client_ids.map(cid=>mapClientDataMap[String(cid)]?.company_name||'Client').join(', '):mapClientDataMap[String(area.client_id)]?.company_name||'Client');
         const areaCamps=(area.meta_campaign_ids||[]).map(mid=>{const c=_campaignsCache.find(x=>x.meta_campaign_id===mid);return c?c.name:mid;}).join(', ');
         const infowin = new google.maps.InfoWindow({content:`<strong>${esc(area.label)}</strong><br>${esc(clientName)}<br>${area.volume||0} leads/mo${areaCamps?'<br><em>'+esc(areaCamps)+'</em>':''}`});
         overlay.addListener('click',e=>infowin.open({map:pplMap,anchor:null,shouldFocus:false,position:e.latLng}));
@@ -4532,7 +4539,10 @@ async function loadMapAreas() {
     if (el) {
       if (!mapAreas.length) { el.innerHTML='<div style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);padding:6px">No areas saved yet.</div>'; return; }
       const grouped = {};
-      mapAreas.forEach(a=>{ const k=String(a.client_id); if(!grouped[k]) grouped[k]=[]; grouped[k].push(a); });
+      mapAreas.forEach(a=>{
+        const cids=a.client_ids&&a.client_ids.length?a.client_ids.map(String):[String(a.client_id)];
+        cids.forEach(k=>{ if(!grouped[k]) grouped[k]=[]; grouped[k].push(a); });
+      });
       el.innerHTML = Object.entries(grouped).map(([cid,areas])=>{
         const colour = colourMap[cid] || '#2ecc8a';
         const name = mapClientDataMap[cid]?.company_name || 'Unknown';
@@ -4548,7 +4558,7 @@ async function loadMapAreas() {
   }
   const _cd = mapClientDataMap[clientId];
   if (_cd) { const vi=$('map-area-volume'); if(vi&&!vi.value) vi.value=_cd.total_leads_purchased||''; }
-  const {data,error} = await db.from('ppl_lead_areas').select('*').eq('client_id',clientId).order('created_at',{ascending:true});
+  const {data,error} = await db.from('ppl_lead_areas').select('*').or(`client_id.eq.${clientId},client_ids.cs.{${clientId}}`).order('created_at',{ascending:true});
   if (error) { toast('Could not load areas: '+error.message,true); return; }
   mapAreas = data || [];
   renderMapAreas();
@@ -4561,7 +4571,8 @@ async function loadMapAreas() {
         strokeWeight:2,strokeColor:'#2ecc8a',map:pplMap
       });
       const areaCamps2=(area.meta_campaign_ids||[]).map(mid=>{const c=_campaignsCache.find(x=>x.meta_campaign_id===mid);return c?c.name:mid;}).join(', ');
-      const infowin=new google.maps.InfoWindow({content:`<strong>${esc(area.label)}</strong><br>${area.volume||0} leads/mo${areaCamps2?'<br><em>'+esc(areaCamps2)+'</em>':''}`});
+      const areaClients2=(area.client_ids&&area.client_ids.length?area.client_ids:[area.client_id].filter(Boolean)).map(cid=>mapClientDataMap[String(cid)]?.company_name).filter(Boolean).join(', ');
+      const infowin=new google.maps.InfoWindow({content:`<strong>${esc(area.label)}</strong>${areaClients2?'<br>'+esc(areaClients2):''}<br>${area.volume||0} leads/mo${areaCamps2?'<br><em>'+esc(areaCamps2)+'</em>':''}`});
       overlay.addListener('click',e=>infowin.open({map:pplMap,anchor:null,shouldFocus:false,position:e.latLng}));
       area._overlay = overlay;
     } catch(e){}
@@ -4574,8 +4585,10 @@ function renderMapAreas() {
   if (!mapAreas.length) { el.innerHTML='<div style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);padding:6px">No areas saved yet — draw on the map.</div>'; return; }
   el.innerHTML = mapAreas.map(a=>{
     const ac=(a.meta_campaign_ids||[]).map(mid=>{const c=_campaignsCache.find(x=>x.meta_campaign_id===mid);return c?c.name:mid;});
+    const aClients=(a.client_ids&&a.client_ids.length?a.client_ids:[a.client_id].filter(Boolean)).map(cid=>mapClientDataMap[String(cid)]?.company_name).filter(Boolean);
     return `<div class="area-item">
       <span class="area-item-label">${esc(a.label||'Unnamed area')}</span>
+      ${aClients.length>1?'<span style="font-size:9px;color:var(--ink3);margin:0 4px">'+aClients.map(n=>'<span style="background:var(--bg2);border:1px solid var(--br);border-radius:3px;padding:1px 5px">'+esc(n)+'</span>').join(' ')+'</span>':''}
       ${ac.length?'<span style="font-size:9px;color:var(--ink3);margin:0 4px">'+ac.map(n=>'<span style="background:var(--bg2);border:1px solid var(--br);border-radius:3px;padding:1px 5px">'+esc(n)+'</span>').join(' ')+'</span>':''}
       <span class="area-item-vol">${a.volume||0} leads/mo</span>
       <button class="btn btn-xs area-edit-btn" data-area-id="${esc(String(a.id))}" style="font-size:9px;padding:1px 6px;margin-left:4px" title="Edit area">Edit</button>
@@ -4591,10 +4604,10 @@ function renderMapAreas() {
 }
 
 async function saveMapArea() {
-  const clientId = $('map-client-select')?.value;
+  const clientIds = getCheckedIds('map-client-picker');
   const label = $('map-area-label')?.value.trim();
   const volume = parseInt($('map-area-volume')?.value)||0;
-  if (!clientId) { toast('Select a PPL client first',true); return; }
+  if (!clientIds.length) { toast('Select at least one client',true); return; }
   if (!label) { toast('Enter an area label',true); return; }
   let geoJson = null;
   if (drawnOverlay) {
@@ -4609,7 +4622,7 @@ async function saveMapArea() {
     } catch(e){}
   }
   const campIds=getCheckedCampaigns('map-campaign-picker');
-  const {data:inserted,error} = await db.from('ppl_lead_areas').insert([{client_id:clientId,label,volume,geo_json:geoJson,meta_campaign_ids:campIds,created_at:now()}]).select();
+  const {data:inserted,error} = await db.from('ppl_lead_areas').insert([{client_id:clientIds[0],client_ids:clientIds,label,volume,geo_json:geoJson,meta_campaign_ids:campIds,created_at:now()}]).select();
   if (error) { toast('Save failed: '+error.message,true); return; }
   // Also update campaign area_ids
   if(inserted&&inserted[0]&&campIds.length){
@@ -4648,6 +4661,37 @@ async function deleteMapArea(id) {
   loadMapAreas();
 }
 
+function refreshMapClientPicker(preselectedId){
+  const el=$('map-client-picker');if(!el)return;
+  const clients=Object.values(mapClientDataMap);
+  if(!clients.length){el.innerHTML='<span style="font-size:10px;color:var(--ink3)">No PPL clients yet</span>';return;}
+  el.innerHTML=clients.map(c=>{
+    const checked=preselectedId&&String(c.id)===String(preselectedId)?' checked':'';
+    return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer">
+      <input type="checkbox" value="${esc(String(c.id))}"${checked} style="margin:0">
+      ${esc(c.company_name)}
+    </label>`;
+  }).join('');
+}
+
+function populateClientPicker(pickerId,selectedIds){
+  const el=$(pickerId);if(!el)return;
+  const clients=Object.values(mapClientDataMap);
+  if(!clients.length){el.innerHTML='<span style="font-size:10px;color:var(--ink3)">No PPL clients yet</span>';return;}
+  const sel=new Set(selectedIds||[]);
+  el.innerHTML=clients.map(c=>{
+    return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer">
+      <input type="checkbox" value="${esc(String(c.id))}"${sel.has(String(c.id))?' checked':''} style="margin:0">
+      ${esc(c.company_name)}
+    </label>`;
+  }).join('');
+}
+
+function getCheckedIds(pickerId){
+  const el=$(pickerId);if(!el)return[];
+  return [...el.querySelectorAll('input[type=checkbox]:checked')].map(cb=>cb.value);
+}
+
 function refreshMapCampaignPicker(){
   const el=$('map-campaign-picker');if(!el)return;
   if(!_campaignsCache.length){el.innerHTML='<span style="font-size:10px;color:var(--ink3)">No campaigns — add in Meta Campaigns first</span>';return;}
@@ -4682,10 +4726,9 @@ async function openEditArea(areaId){
   if(!area)return;
   setVal('ea-id',area.id);setVal('ea-label',area.label||'');setVal('ea-volume',area.volume||0);
   $('ea-sub').textContent=area.label||'';
-  // Populate client dropdown
-  const clientSel=$('ea-client');
-  const {data:clients}=await db.from('clients').select('id,company_name').eq('type','ppl').not('stage','eq','churned').order('company_name');
-  clientSel.innerHTML=(clients||[]).map(c=>`<option value="${esc(String(c.id))}"${String(c.id)===String(area.client_id)?' selected':''}>${esc(c.company_name)}</option>`).join('');
+  // Populate client picker (multi-select)
+  const selectedClientIds=area.client_ids&&area.client_ids.length?area.client_ids.map(String):(area.client_id?[String(area.client_id)]:[]);
+  populateClientPicker('ea-client-picker',selectedClientIds);
   // Populate campaign picker
   populateAreaCampaignPicker('ea-campaign-picker',area.meta_campaign_ids||[]);
   openModal('m-edit-area');
@@ -4695,13 +4738,14 @@ async function saveEditArea(){
   const id=$('ea-id').value;
   const label=$('ea-label').value.trim();
   const volume=parseInt($('ea-volume').value)||0;
-  const clientId=$('ea-client').value;
+  const clientIds=getCheckedIds('ea-client-picker');
   const campIds=getPickerCampaignIds('ea-campaign-picker');
   if(!label){toast('Label required',true);return;}
+  if(!clientIds.length){toast('Select at least one client',true);return;}
   // Get old area to diff campaign links
   const oldArea=mapAreas.find(a=>String(a.id)===id);
   const oldCampIds=oldArea?.meta_campaign_ids||[];
-  const {error}=await db.from('ppl_lead_areas').update({label,volume,client_id:clientId,meta_campaign_ids:campIds}).eq('id',id);
+  const {error}=await db.from('ppl_lead_areas').update({label,volume,client_id:clientIds[0],client_ids:clientIds,meta_campaign_ids:campIds}).eq('id',id);
   if(error){toast('Error: '+error.message,true);return;}
   // Sync campaign area_ids: remove from old, add to new
   const removed=oldCampIds.filter(mid=>!campIds.includes(mid));
