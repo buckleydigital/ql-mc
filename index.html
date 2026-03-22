@@ -3228,7 +3228,7 @@ function renderManaged(clients, orderLog=[]) {
   });
   renderManagedPayments(clients, orderLog);
 }
-function openEditClient(type,c) {
+async function openEditClient(type,c) {
   if (type==='ppl') {
     setVal('ep-id',c.id);setVal('ep-co',c.company_name);setVal('ep-cn',c.contact_name);
     setVal('ep-em',c.email);setVal('ep-ph',c.phone);setVal('ep-niche',c.niche);
