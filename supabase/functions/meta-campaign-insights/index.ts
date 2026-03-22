@@ -104,11 +104,11 @@ serve(async (req) => {
           ctr = parseFloat(row.ctr || '0')
           cpc = parseFloat(row.cpc || '0')
 
-          // Extract lead actions (lead, onsite_conversion.lead_grouped, etc.)
+          // Extract lead actions — use granular types to avoid double-counting
+          // ('lead' is an aggregate that already includes onsite_conversion.lead_grouped)
           if (row.actions) {
             for (const action of row.actions) {
               if (
-                action.action_type === 'lead' ||
                 action.action_type === 'onsite_conversion.lead_grouped' ||
                 action.action_type === 'offsite_conversion.fb_pixel_lead'
               ) {
