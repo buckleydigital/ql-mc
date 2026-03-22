@@ -70,6 +70,15 @@ serve(async (req) => {
       }
     }
 
+    // Sync meta_campaigns table status
+    for (const r of results) {
+      if (r.success) {
+        await supabaseClient.from('meta_campaigns')
+          .update({ status: action, updated_at: new Date().toISOString() })
+          .eq('meta_campaign_id', r.campaign_id)
+      }
+    }
+
     // Log the action
     await supabaseClient.from('meta_api_log').insert({
       action,

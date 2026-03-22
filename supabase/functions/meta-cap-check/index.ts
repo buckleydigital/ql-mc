@@ -210,6 +210,15 @@ serve(async (req) => {
       apiResults.push(...results.map(r => ({ ...r, action: 'ACTIVE' })))
     }
 
+    // ── Step 5: Sync meta_campaigns table status ──
+    for (const r of apiResults) {
+      if (r.success) {
+        await dbClient.from('meta_campaigns')
+          .update({ status: r.action, updated_at: new Date().toISOString() })
+          .eq('meta_campaign_id', r.campaign_id)
+      }
+    }
+
     // Log
     await dbClient.from('meta_api_log').insert({
       action: 'CAP_CHECK',

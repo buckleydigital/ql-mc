@@ -777,6 +777,9 @@ td strong{font-weight:500}
           <button class="navbtn" data-panel="ppl" onclick="nav('ppl',this)">
             <span class="ni">◈</span>PPL Clients
           </button>
+          <button class="navbtn" data-panel="campaigns" onclick="nav('campaigns',this)">
+            <span class="ni">▶</span>Meta Campaigns
+          </button>
           <button class="navbtn" data-panel="managed" onclick="nav('managed',this)">
             <span class="ni">▣</span>Managed Ads
           </button>
@@ -962,6 +965,36 @@ td strong{font-weight:500}
               <div class="area-list" id="pricing-area-list"></div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- ══ META CAMPAIGNS ══ -->
+      <div class="panel" id="panel-campaigns">
+        <div class="ph">
+          <div class="ph-left"><h1>Meta Campaigns</h1><p>Manage Meta ad campaigns and auto-pause rules</p></div>
+          <div class="ph-right">
+            <button class="btn btn-sm" id="meta-cap-check-btn2" onclick="metaCapCheck()" style="margin-right:6px">Check Caps Now</button>
+            <button class="btn btn-p btn-sm" onclick="openModal('m-add-campaign')">+ Add Campaign</button>
+          </div>
+        </div>
+        <div class="kg c3 mb4">
+          <div class="kpi"><div class="klabel">Total Campaigns</div><div class="kval blu" id="mc-total">—</div></div>
+          <div class="kpi"><div class="klabel">Active</div><div class="kval grn" id="mc-active">—</div></div>
+          <div class="kpi"><div class="klabel">Paused</div><div class="kval" id="mc-paused" style="color:var(--red)">—</div></div>
+        </div>
+        <div class="sl">All Campaigns <div class="sl-line"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Campaign Name</th><th>Meta Campaign ID</th><th>Status</th><th>Linked Clients</th><th>Notes</th><th></th></tr></thead>
+            <tbody id="mc-tbody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="sl">API Log <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px">last 20 actions</span><div class="sl-line"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Time</th><th>Action</th><th>Campaigns</th><th>Triggered By</th><th>Details</th></tr></thead>
+            <tbody id="mc-log-tbody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+          </table>
         </div>
       </div>
 
@@ -1499,6 +1532,43 @@ td strong{font-weight:500}
   </div>
 </div>
 
+<div class="overlay" id="m-add-campaign">
+  <div class="modal">
+    <h2>Add Meta Campaign</h2><div class="msub">Link a Meta Ads campaign for cap management</div>
+    <div class="frow"><label class="flabel">Campaign Name <span style="font-size:9.5px;color:var(--ink3);font-weight:300">your label, e.g. "Solar Gold Coast"</span></label><input class="fi" id="mc-name" placeholder="e.g. Solar Gold Coast"></div>
+    <div class="frow"><label class="flabel">Meta Campaign ID <span style="font-size:9.5px;color:var(--ink3);font-weight:300">from Ads Manager</span></label><input class="fi" id="mc-meta-id" placeholder="e.g. 23851234567890"></div>
+    <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="mc-notes" placeholder="e.g. covers 2000-2020, budget $50/day"></textarea></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-add-campaign')">Cancel</button>
+      <button class="btn btn-p" onclick="saveCampaign()">Save campaign</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="m-edit-campaign">
+  <div class="modal">
+    <h2>Edit Campaign</h2><div class="msub" id="edit-mc-sub"></div>
+    <input type="hidden" id="emc-id">
+    <div class="frow"><label class="flabel">Campaign Name</label><input class="fi" id="emc-name"></div>
+    <div class="frow"><label class="flabel">Meta Campaign ID</label><input class="fi" id="emc-meta-id"></div>
+    <div class="frow"><label class="flabel">Status</label>
+      <select class="fs" id="emc-status">
+        <option value="ACTIVE">Active</option>
+        <option value="PAUSED">Paused</option>
+      </select>
+    </div>
+    <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="emc-notes"></textarea></div>
+    <div id="emc-linked-clients" style="margin:10px 0;font-family:var(--mono);font-size:10px;color:var(--ink3)"></div>
+    <div class="macts">
+      <button class="btn" style="color:var(--red)" onclick="deleteCampaign()">Delete</button>
+      <div style="flex:1"></div>
+      <button class="btn" onclick="closeModal('m-edit-campaign')">Cancel</button>
+      <button class="btn btn-sm" id="emc-toggle-btn" onclick="toggleCampaignFromModal()">Pause on Meta</button>
+      <button class="btn btn-p" onclick="updateCampaign()">Save</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="m-ppl">
   <div class="modal">
     <h2>Add PPL Client</h2><div class="msub">Pay-per-lead solar client</div>
@@ -1540,7 +1610,10 @@ td strong{font-weight:500}
       <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px"><label class="flabel">Custom Notes <span style="font-size:9.5px;color:var(--ink3);font-weight:300">any text — passed to Make.com as custom_fields</span></label><textarea class="fta" id="ppl-custom-fields" placeholder="e.g. webhook URL, API key, notes…"></textarea></div>
     </div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Meta Ads Integration</div>
-    <div class="frow"><label class="flabel">Meta Campaign IDs <span style="font-size:9.5px;color:var(--ink3);font-weight:300">comma-separated — auto-paused at cap</span></label><input class="fi" id="ppl-meta-campaign-ids" placeholder="e.g. 23851234567890, 23851234567891"></div>
+    <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px">
+      <label class="flabel">Linked Campaigns <span style="font-size:9.5px;color:var(--ink3);font-weight:300">auto-paused when cap hit</span></label>
+      <div id="ppl-campaign-picker" style="width:100%;max-height:140px;overflow-y:auto;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:6px 10px"><span style="font-size:10px;color:var(--ink3)">Loading campaigns…</span></div>
+    </div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">QuoteLeads Platform</div>
     <div class="frow"><label class="flabel">Has QuoteLeads Platform Account</label>
       <select class="fs" id="ppl-has-ql-account">
@@ -1692,7 +1765,10 @@ td strong{font-weight:500}
       <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px"><label class="flabel">Custom Notes <span style="font-size:9.5px;color:var(--ink3);font-weight:300">any text — passed to Make.com as custom_fields</span></label><textarea class="fta" id="ep-custom-fields" placeholder="e.g. webhook URL, API key, notes…"></textarea></div>
     </div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Meta Ads Integration</div>
-    <div class="frow"><label class="flabel">Meta Campaign IDs <span style="font-size:9.5px;color:var(--ink3);font-weight:300">comma-separated — auto-paused at cap</span></label><input class="fi" id="ep-meta-campaign-ids" placeholder="e.g. 23851234567890, 23851234567891"></div>
+    <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px">
+      <label class="flabel">Linked Campaigns <span style="font-size:9.5px;color:var(--ink3);font-weight:300">auto-paused when cap hit</span></label>
+      <div id="ep-campaign-picker" style="width:100%;max-height:140px;overflow-y:auto;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:6px 10px"><span style="font-size:10px;color:var(--ink3)">Loading campaigns…</span></div>
+    </div>
     <div id="ep-meta-cap-status"></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">QuoteLeads Platform</div>
     <div class="frow"><label class="flabel">Has QuoteLeads Platform Account</label>
@@ -2135,6 +2211,7 @@ function nav(panel, el) {
   if (panel === 'sales-agent') loadSalesPanel();
   if (panel === 'files') { loadFileContent(); loadTemplateClientDropdown(); }
   if (panel === 'ppl') { populateMapClientDropdown(); }
+  if (panel === 'campaigns') { loadCampaigns(); }
   if (panel === 'leads') loadLeads();
   if (panel === 'invoices') loadInvoices();
 }
@@ -2143,7 +2220,7 @@ function updateClock() {
   setText('clock', new Date().toLocaleTimeString('en-AU', {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}) + ' AEST');
 }
 
-function openModal(id)  { $(id).classList.add('open'); }
+function openModal(id)  { $(id).classList.add('open'); if(id==='m-ppl') refreshCampaignDropdowns(); }
 function closeModal(id) { $(id).classList.remove('open'); }
 document.addEventListener('click', e => { if (e.target.classList.contains('overlay')) e.target.classList.remove('open'); });
 
@@ -3149,7 +3226,7 @@ function openEditClient(type,c) {
     setVal('ep-postcodes',epPc);
     setVal('ep-weekly-cap',c.weekly_cap!=null?c.weekly_cap:'');
     setVal('ep-monthly-cap',c.monthly_cap!=null?c.monthly_cap:'');
-    setVal('ep-meta-campaign-ids',Array.isArray(c.meta_campaign_ids)?c.meta_campaign_ids.join(', '):'');
+    await refreshCampaignDropdowns();setCheckedCampaigns('ep-campaign-picker',c.meta_campaign_ids||[]);
     const capStatusEl=$('ep-meta-cap-status');
     if(capStatusEl){if(c.meta_cap_paused){capStatusEl.innerHTML=`<div style="background:var(--red-dim);border:1px solid var(--red);border-radius:var(--r);padding:8px 10px;margin:6px 0;font-family:var(--mono);font-size:10px;color:var(--red)">⚠ Campaigns paused — ${esc(c.meta_cap_pause_reason||'cap hit')}<br><span style="color:var(--ink3);font-size:9px">${c.meta_cap_paused_at?'at '+new Date(c.meta_cap_paused_at).toLocaleString():''}</span><br><button class="btn btn-xs" style="margin-top:6px" onclick="metaUnpauseClient('${c.id}')">Unpause campaigns</button></div>`;}else{capStatusEl.innerHTML='';}}
     setVal('ep-delivery-method',c.delivery_method||'email');
@@ -3223,7 +3300,7 @@ async function updateClient(type) {
     const _cfRaw=$('ep-custom-fields').value.trim();const _customFields=_cfRaw?{_text:_cfRaw}:{};
     const _weeklyCap=$('ep-weekly-cap').value!==''?parseInt($('ep-weekly-cap').value):null;
     const _monthlyCap=$('ep-monthly-cap').value!==''?parseInt($('ep-monthly-cap').value):null;
-    const _epMetaCampaignIds=$('ep-meta-campaign-ids').value.split(',').map(s=>s.trim()).filter(Boolean);
+    const _epMetaCampaignIds=getCheckedCampaigns('ep-campaign-picker');
     d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:_price,meta_cpl:_metaCpl,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,leads_scrubbed:_scrubbed,stage:$('ep-stage').value,notes:$('ep-notes').value.trim(),postcodes:_postcodes,weekly_cap:_weeklyCap,monthly_cap:_monthlyCap,meta_campaign_ids:_epMetaCampaignIds.length?_epMetaCampaignIds:null,delivery_method:$('ep-delivery-method').value,delivery_email:$('ep-delivery-email').value.trim()||null,delivery_phone:$('ep-delivery-phone').value.trim()||null,custom_fields:_customFields,has_quoteleads_platform_account:$('ep-has-ql-account').value==='true',platform_email:$('ep-platform-email').value.trim()||null,twilio_phone:$('ep-twilio-phone').value.trim()||null,client_webhook:$('ep-client-webhook').value.trim()||null,has_custom_integration:$('ep-has-custom-integration').value==='true',meta_cap_paused:false,meta_cap_paused_at:null,meta_cap_pause_reason:null,updated_at:now()};
     const {count:deliveredCount}=await db.from('ppl_order_log').select('id',{count:'exact',head:true}).eq('client_id',id).eq('status','delivered');
     if (!(deliveredCount>0)) d.pct_sold=parseFloat($('ep-pct').value)||null;
@@ -3254,7 +3331,7 @@ async function saveClient(type) {
     const _pplCfRaw=$('ppl-custom-fields')?.value.trim()||'';const _pplCf=_pplCfRaw?{_text:_pplCfRaw}:{};
     const _pplWeeklyCap=$('ppl-weekly-cap')?.value!==''?parseInt($('ppl-weekly-cap').value)||null:null;
     const _pplMonthlyCap=$('ppl-monthly-cap')?.value!==''?parseInt($('ppl-monthly-cap').value)||null:null;
-    const _pplMetaCampaignIds=$('ppl-meta-campaign-ids')?.value.split(',').map(s=>s.trim()).filter(Boolean);
+    const _pplMetaCampaignIds=getCheckedCampaigns('ppl-campaign-picker');
     d={type:'ppl',company_name:$('ppl-co').value.trim(),contact_name:$('ppl-cn').value.trim(),email:$('ppl-em').value.trim(),niche:$('ppl-niche').value,lead_price:parseFloat($('ppl-price').value)||0,meta_cpl:parseFloat($('ppl-meta-cpl').value)||null,leads_delivered:parseInt($('ppl-ld').value)||0,total_leads_purchased:parseInt($('ppl-tlp').value)||0,leads_scrubbed:parseInt($('ppl-scrubbed').value)||0,stage:$('ppl-stage').value,postcodes:_pplPostcodes,weekly_cap:_pplWeeklyCap,monthly_cap:_pplMonthlyCap,meta_campaign_ids:_pplMetaCampaignIds.length?_pplMetaCampaignIds:null,delivery_method:$('ppl-delivery-method').value,delivery_email:$('ppl-delivery-email').value.trim()||null,delivery_phone:$('ppl-delivery-phone').value.trim()||null,custom_fields:_pplCf,has_quoteleads_platform_account:$('ppl-has-ql-account').value==='true',platform_email:$('ppl-platform-email').value.trim()||null,twilio_phone:$('ppl-twilio-phone').value.trim()||null,created_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   } else {
@@ -3263,7 +3340,7 @@ async function saveClient(type) {
   }
   const {error}=await db.from('clients').insert([d]);
   if (error) { toast('DB error: '+error.message,true); return; }
-  if (type==='ppl') ['ppl-co','ppl-cn','ppl-em','ppl-price','ppl-meta-cpl','ppl-ld','ppl-tlp','ppl-scrubbed','ppl-postcodes','ppl-delivery-email','ppl-delivery-phone','ppl-platform-email','ppl-twilio-phone','ppl-meta-campaign-ids'].forEach(id=>{if($(id))$(id).value='';});
+  if (type==='ppl') {['ppl-co','ppl-cn','ppl-em','ppl-price','ppl-meta-cpl','ppl-ld','ppl-tlp','ppl-scrubbed','ppl-postcodes','ppl-delivery-email','ppl-delivery-phone','ppl-platform-email','ppl-twilio-phone'].forEach(id=>{if($(id))$(id).value='';});setCheckedCampaigns('ppl-campaign-picker',[]);}
   else ['mg-co','mg-cn','mg-em','mg-acc','mg-budget','mg-fee','mg-start','mg-last-pay','mg-next-pay'].forEach(id=>{$(id).value='';});
   closeModal('m-'+type); toast('Client saved ✓');
   type==='ppl'?loadPPL():loadManaged();
@@ -3271,23 +3348,22 @@ async function saveClient(type) {
 
 /* ═══ META GRAPH API — CAP CHECK & CAMPAIGN TOGGLE ═══ */
 async function metaCapCheck() {
-  const btn=$('meta-cap-check-btn');
-  if(btn){btn.disabled=true;btn.textContent='Checking…';}
+  const btns=[$('meta-cap-check-btn'),$('meta-cap-check-btn2')].filter(Boolean);
+  btns.forEach(b=>{b.disabled=true;b.textContent='Checking…';});
   try {
     const {data:{session}}=await db.auth.getSession();
     if(!session) throw new Error('Not authenticated');
     const res=await fetch(`${_ep}/functions/v1/meta-cap-check`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({})});
     const data=await res.json();
     if(!res.ok||data.error) throw new Error(data.error||'Cap check failed');
-    if(data.actions&&data.actions.length>0){
-      const names=data.actions.map(a=>`${a.client} (${a.reason})`).join(', ');
-      toast(`Paused campaigns: ${names}`);
+    if(data.paused&&data.paused>0){
+      toast(`Cap check: ${data.paused} campaign(s) paused, ${data.kept_active} kept active`);
     } else {
-      toast(`Cap check done — ${data.checked||0} clients checked, no caps hit`);
+      toast(`Cap check done — ${data.checked_clients||0} clients, ${data.checked_campaigns||0} campaigns checked, all under cap`);
     }
-    loadPPL();
+    loadPPL();loadCampaigns();
   } catch(e){toast('Cap check error: '+e.message,true);}
-  finally{if(btn){btn.disabled=false;btn.textContent='Check Caps Now';}}
+  finally{btns.forEach(b=>{b.disabled=false;b.textContent='Check Caps Now';});}
 }
 async function metaUnpauseClient(clientId) {
   if(!confirm('Unpause all Meta campaigns for this client?')) return;
@@ -3313,6 +3389,164 @@ async function metaToggleCampaigns(campaignIds, action) {
     if(!res.ok||data.error) throw new Error(data.error||'Toggle failed');
     return data.results;
   } catch(e){toast('Meta API error: '+e.message,true);return null;}
+}
+
+/* ═══ META CAMPAIGNS MANAGEMENT ═══ */
+let _campaignsCache=[];
+async function loadCampaigns() {
+  const [campaignsRes,logsRes,clientsRes]=await Promise.all([
+    db.from('meta_campaigns').select('*').order('name'),
+    db.from('meta_api_log').select('*').order('created_at',{ascending:false}).limit(20),
+    db.from('clients').select('id,company_name,meta_campaign_ids').eq('type','ppl').not('meta_campaign_ids','is',null),
+  ]);
+  const campaigns=campaignsRes.data||[];
+  const logs=logsRes.data||[];
+  const clients=clientsRes.data||[];
+  _campaignsCache=campaigns;
+
+  // Build reverse map: meta_campaign_id → client names
+  const cidToClients={};
+  for(const c of clients){
+    for(const mid of (c.meta_campaign_ids||[])){
+      if(!cidToClients[mid]) cidToClients[mid]=[];
+      cidToClients[mid].push(c.company_name);
+    }
+  }
+
+  // KPIs
+  setText('mc-total',campaigns.length||'—');
+  setText('mc-active',campaigns.filter(c=>c.status==='ACTIVE').length||'0');
+  setText('mc-paused',campaigns.filter(c=>c.status==='PAUSED').length||'0');
+
+  // Campaigns table
+  const tb=$('mc-tbody');
+  if(!campaigns.length){tb.innerHTML='<tr><td colspan="6" class="empty">No campaigns yet</td></tr>';return;}
+  tb.innerHTML=campaigns.map(c=>{
+    const linked=(cidToClients[c.meta_campaign_id]||[]).join(', ')||'<span style="color:var(--ink3)">none</span>';
+    const statusColor=c.status==='ACTIVE'?'var(--grn)':'var(--red)';
+    return `<tr>
+      <td><strong>${esc(c.name)}</strong></td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--ink2)">${esc(c.meta_campaign_id)}</td>
+      <td><span style="color:${statusColor};font-family:var(--mono);font-size:10px;font-weight:600">${c.status}</span></td>
+      <td style="font-size:11px">${linked}</td>
+      <td style="font-size:11px;color:var(--ink2)">${esc(c.notes||'')}</td>
+      <td><button class="btn btn-xs" onclick="editCampaign('${c.id}')">Edit</button></td>
+    </tr>`;
+  }).join('');
+
+  // API log table
+  const ltb=$('mc-log-tbody');
+  if(!logs.length){ltb.innerHTML='<tr><td colspan="5" class="empty">No logs yet</td></tr>';return;}
+  ltb.innerHTML=logs.map(l=>{
+    const t=new Date(l.created_at).toLocaleString('en-AU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    const cids=(l.campaign_ids||[]).join(', ')||'—';
+    const by=l.triggered_by==='cron'?'Cron':'Manual';
+    const det=typeof l.results==='object'?JSON.stringify(l.results).slice(0,80)+'…':'—';
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:10px">${t}</td>
+      <td><span class="badge ${l.action==='CAP_CHECK'?'badge-blue':l.action==='PAUSED'?'badge-red':'badge-green'}">${esc(l.action)}</span></td>
+      <td style="font-family:var(--mono);font-size:9px;max-width:180px;overflow:hidden;text-overflow:ellipsis">${esc(cids)}</td>
+      <td>${by}</td>
+      <td style="font-family:var(--mono);font-size:9px;color:var(--ink3);max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${esc(JSON.stringify(l.results))}">${esc(det)}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function saveCampaign() {
+  const name=$('mc-name').value.trim();
+  const metaId=$('mc-meta-id').value.trim();
+  const notes=$('mc-notes').value.trim();
+  if(!name){toast('Campaign name required',true);return;}
+  if(!metaId){toast('Meta Campaign ID required',true);return;}
+  const {error}=await db.from('meta_campaigns').insert([{name,meta_campaign_id:metaId,notes:notes||null}]);
+  if(error){toast('Error: '+error.message,true);return;}
+  ['mc-name','mc-meta-id','mc-notes'].forEach(id=>{$(id).value='';});
+  closeModal('m-add-campaign');toast('Campaign added ✓');loadCampaigns();
+  refreshCampaignDropdowns();
+}
+
+function editCampaign(id) {
+  const c=_campaignsCache.find(x=>x.id===id);
+  if(!c) return;
+  setVal('emc-id',c.id);setVal('emc-name',c.name);setVal('emc-meta-id',c.meta_campaign_id);
+  setVal('emc-status',c.status);setVal('emc-notes',c.notes||'');
+  const toggleBtn=$('emc-toggle-btn');
+  if(toggleBtn){toggleBtn.textContent=c.status==='ACTIVE'?'Pause on Meta':'Resume on Meta';}
+  $('edit-mc-sub').textContent=c.meta_campaign_id;
+  openModal('m-edit-campaign');
+}
+
+async function updateCampaign() {
+  const id=$('emc-id').value;
+  const d={name:$('emc-name').value.trim(),meta_campaign_id:$('emc-meta-id').value.trim(),status:$('emc-status').value,notes:$('emc-notes').value.trim()||null,updated_at:now()};
+  if(!d.name){toast('Name required',true);return;}
+  const {error}=await db.from('meta_campaigns').update(d).eq('id',id);
+  if(error){toast('Error: '+error.message,true);return;}
+  closeModal('m-edit-campaign');toast('Campaign updated ✓');loadCampaigns();
+  refreshCampaignDropdowns();
+}
+
+async function deleteCampaign() {
+  if(!confirm('Delete this campaign? This will not affect Meta — it only removes it from this dashboard.')) return;
+  const id=$('emc-id').value;
+  const {error}=await db.from('meta_campaigns').delete().eq('id',id);
+  if(error){toast('Error: '+error.message,true);return;}
+  closeModal('m-edit-campaign');toast('Campaign deleted');loadCampaigns();
+  refreshCampaignDropdowns();
+}
+
+async function toggleCampaignFromModal() {
+  const metaId=$('emc-meta-id').value.trim();
+  const currentStatus=$('emc-status').value;
+  const newAction=currentStatus==='ACTIVE'?'PAUSED':'ACTIVE';
+  const btn=$('emc-toggle-btn');
+  if(btn){btn.disabled=true;btn.textContent='Working…';}
+  const results=await metaToggleCampaigns([metaId],newAction);
+  if(results&&results.length&&results[0].success){
+    $('emc-status').value=newAction;
+    await db.from('meta_campaigns').update({status:newAction,updated_at:now()}).eq('id',$('emc-id').value);
+    toast(`Campaign ${newAction==='PAUSED'?'paused':'resumed'} on Meta ✓`);
+    if(btn){btn.textContent=newAction==='ACTIVE'?'Pause on Meta':'Resume on Meta';}
+  } else {
+    toast('Failed — '+(results?.[0]?.error||'unknown error'),true);
+  }
+  if(btn) btn.disabled=false;
+  loadCampaigns();
+}
+
+/* ═══ CAMPAIGN DROPDOWNS FOR CLIENT FORMS ═══ */
+async function refreshCampaignDropdowns() {
+  const {data}=await db.from('meta_campaigns').select('id,name,meta_campaign_id,status').order('name');
+  const campaigns=data||[];
+  _campaignsCache=campaigns;
+  // Update all campaign picker containers
+  ['ppl-campaign-picker','ep-campaign-picker'].forEach(pickerId=>{
+    const el=$(pickerId);
+    if(!el) return;
+    const checked=getCheckedCampaigns(pickerId);
+    el.innerHTML=campaigns.length?campaigns.map(c=>{
+      const isChecked=checked.includes(c.meta_campaign_id)?'checked':'';
+      const statusDot=c.status==='ACTIVE'?'🟢':'🔴';
+      return `<label style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;cursor:pointer">
+        <input type="checkbox" value="${esc(c.meta_campaign_id)}" ${isChecked} style="margin:0">
+        ${statusDot} <span>${esc(c.name)}</span> <span style="font-family:var(--mono);font-size:9px;color:var(--ink3)">${esc(c.meta_campaign_id)}</span>
+      </label>`;
+    }).join(''):'<span style="font-size:10px;color:var(--ink3)">No campaigns yet — add one in Meta Campaigns</span>';
+  });
+}
+
+function getCheckedCampaigns(pickerId) {
+  const el=$(pickerId);
+  if(!el) return [];
+  return [...el.querySelectorAll('input[type=checkbox]:checked')].map(cb=>cb.value);
+}
+
+function setCheckedCampaigns(pickerId, metaIds) {
+  const el=$(pickerId);
+  if(!el) return;
+  el.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.checked=(metaIds||[]).includes(cb.value);
+  });
 }
 
 function nextMonthStart(m) {
