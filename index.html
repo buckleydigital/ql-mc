@@ -973,6 +973,7 @@ td strong{font-weight:500}
         <div class="ph">
           <div class="ph-left"><h1>Meta Campaigns</h1><p>Manage Meta ad campaigns and auto-pause rules</p></div>
           <div class="ph-right">
+            <button class="btn btn-sm" id="mc-sync-btn" onclick="syncCampaignInsights()" style="margin-right:6px">Sync Stats</button>
             <button class="btn btn-sm" id="meta-cap-check-btn2" onclick="metaCapCheck()" style="margin-right:6px">Check Caps Now</button>
             <button class="btn btn-p btn-sm" onclick="openModal('m-add-campaign')">+ Add Campaign</button>
           </div>
@@ -992,8 +993,8 @@ td strong{font-weight:500}
         <div class="sl">All Campaigns <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Campaign Name</th><th>Ad Account</th><th>Meta Campaign ID</th><th>Status</th><th>Linked Clients</th><th>Notes</th><th></th></tr></thead>
-            <tbody id="mc-tbody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+            <thead><tr><th>Campaign Name</th><th>Ad Account</th><th>Status</th><th>Spend MTD</th><th>Leads</th><th>CPL</th><th>Clicks</th><th>Linked Clients</th><th></th></tr></thead>
+            <tbody id="mc-tbody"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
         <div class="sl">API Log <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px">last 20 actions</span><div class="sl-line"></div></div>
@@ -3404,6 +3405,35 @@ async function metaToggleCampaigns(campaignIds, action) {
   } catch(e){toast('Meta API error: '+e.message,true);return null;}
 }
 
+async function syncCampaignInsights() {
+  const btn=$('mc-sync-btn');
+  btn.disabled=true;btn.textContent='Syncing…';
+  try {
+    const {data:{session}}=await db.auth.getSession();
+    if(!session) throw new Error('Not logged in');
+    const res=await fetch(`${_ep}/functions/v1/meta-campaign-insights`,{method:'POST',headers:{'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'},body:'{}'});
+    const d=await res.json();
+    if(d.error) throw new Error(d.error);
+    toast(`Synced ${d.synced} campaign(s)${d.failed?' · '+d.failed+' failed':''}`);
+    loadCampaigns();
+  } catch(e){toast('Sync error: '+e.message,true);}
+  finally{btn.disabled=false;btn.textContent='Sync Stats';}
+}
+
+async function inlineToggleCampaign(id, metaCampaignId, newAction) {
+  const btn=$('toggle-'+id);
+  if(btn){btn.disabled=true;btn.textContent='…';}
+  const results=await metaToggleCampaigns([metaCampaignId],newAction);
+  if(results&&results.length&&results[0].success){
+    await db.from('meta_campaigns').update({status:newAction,updated_at:now()}).eq('id',id);
+    toast(`Campaign ${newAction==='PAUSED'?'paused':'resumed'} on Meta`);
+    loadCampaigns();
+  } else {
+    toast('Toggle failed — '+(results?.[0]?.error||'unknown error'),true);
+    if(btn){btn.disabled=false;btn.textContent=newAction==='PAUSED'?'Pause':'Resume';}
+  }
+}
+
 /* ═══ META AD ACCOUNTS + CAMPAIGNS MANAGEMENT ═══ */
 let _adAccountsCache=[];
 
@@ -3479,20 +3509,32 @@ async function loadCampaigns() {
 
   // Campaigns table
   const tb=$('mc-tbody');
-  if(!campaigns.length){tb.innerHTML='<tr><td colspan="7" class="empty">No campaigns yet</td></tr>';return;}
+  if(!campaigns.length){tb.innerHTML='<tr><td colspan="9" class="empty">No campaigns yet</td></tr>';return;}
+  const fmt$=v=>v?'$'+Number(v).toLocaleString('en-AU',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
+  const fmtN=v=>v?Number(v).toLocaleString('en-AU'):'—';
+  const synced=campaigns.some(c=>c.last_synced_at);
   tb.innerHTML=campaigns.map(c=>{
     const linked=(cidToClients[c.meta_campaign_id]||[]).join(', ')||'<span style="color:var(--ink3)">none</span>';
-    const statusColor=c.status==='ACTIVE'?'var(--grn)':'var(--red)';
+    const isActive=c.status==='ACTIVE';
+    const statusColor=isActive?'var(--grn)':'var(--red)';
+    const toggleLabel=isActive?'Pause':'Resume';
+    const toggleAction=isActive?'PAUSED':'ACTIVE';
     return `<tr>
-      <td><strong>${esc(c.name)}</strong></td>
+      <td><strong>${esc(c.name)}</strong><div style="font-family:var(--mono);font-size:9px;color:var(--ink3)">${esc(c.meta_campaign_id)}</div></td>
       <td style="font-size:10px">${esc(adAccountLabel(c.ad_account_id))}</td>
-      <td style="font-family:var(--mono);font-size:10px;color:var(--ink2)">${esc(c.meta_campaign_id)}</td>
-      <td><span style="color:${statusColor};font-family:var(--mono);font-size:10px;font-weight:600">${c.status}</span></td>
+      <td>
+        <span style="color:${statusColor};font-family:var(--mono);font-size:10px;font-weight:600">${c.status}</span>
+        <button class="btn btn-xs" style="margin-left:6px;font-size:9px" id="toggle-${c.id}" onclick="inlineToggleCampaign('${c.id}','${esc(c.meta_campaign_id)}','${toggleAction}')">${toggleLabel}</button>
+      </td>
+      <td style="font-family:var(--mono);font-size:11px">${fmt$(c.spend_mtd)}</td>
+      <td style="font-family:var(--mono);font-size:11px">${fmtN(c.leads_mtd)}</td>
+      <td style="font-family:var(--mono);font-size:11px">${c.leads_mtd>0?fmt$(c.cpl_mtd):'—'}</td>
+      <td style="font-family:var(--mono);font-size:11px">${fmtN(c.clicks_mtd)}</td>
       <td style="font-size:11px">${linked}</td>
-      <td style="font-size:11px;color:var(--ink2)">${esc(c.notes||'')}</td>
       <td><button class="btn btn-xs" onclick="editCampaign('${c.id}')">Edit</button></td>
     </tr>`;
   }).join('');
+  if(!synced){$('mc-tbody').insertAdjacentHTML('afterbegin','<tr><td colspan="9" style="text-align:center;font-size:11px;color:var(--ink3);padding:8px">Stats not synced yet — click <strong>Sync Stats</strong> to pull live data from Meta</td></tr>');}
 
   // API log table
   const ltb=$('mc-log-tbody');
