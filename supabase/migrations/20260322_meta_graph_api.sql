@@ -12,12 +12,6 @@ CREATE TABLE IF NOT EXISTS meta_ad_accounts (
   created_at timestamptz DEFAULT now()
 );
 ALTER TABLE meta_ad_accounts ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN
-  DROP POLICY IF EXISTS "Authenticated users can manage meta_ad_accounts" ON meta_ad_accounts;
-  CREATE POLICY "Authenticated users can manage meta_ad_accounts" ON meta_ad_accounts FOR ALL TO authenticated USING (true) WITH CHECK (true);
-  DROP POLICY IF EXISTS "Service role full access to meta_ad_accounts" ON meta_ad_accounts;
-  CREATE POLICY "Service role full access to meta_ad_accounts" ON meta_ad_accounts FOR ALL TO service_role USING (true) WITH CHECK (true);
-END $$;
 
 -- ═══ meta_campaigns ═══
 CREATE TABLE IF NOT EXISTS meta_campaigns (
@@ -32,12 +26,6 @@ CREATE TABLE IF NOT EXISTS meta_campaigns (
 );
 ALTER TABLE meta_campaigns ADD COLUMN IF NOT EXISTS ad_account_id text NOT NULL DEFAULT '';
 ALTER TABLE meta_campaigns ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN
-  DROP POLICY IF EXISTS "Authenticated users can manage meta_campaigns" ON meta_campaigns;
-  CREATE POLICY "Authenticated users can manage meta_campaigns" ON meta_campaigns FOR ALL TO authenticated USING (true) WITH CHECK (true);
-  DROP POLICY IF EXISTS "Service role full access to meta_campaigns" ON meta_campaigns;
-  CREATE POLICY "Service role full access to meta_campaigns" ON meta_campaigns FOR ALL TO service_role USING (true) WITH CHECK (true);
-END $$;
 
 -- ═══ meta_api_log ═══
 CREATE TABLE IF NOT EXISTS meta_api_log (
@@ -49,11 +37,25 @@ CREATE TABLE IF NOT EXISTS meta_api_log (
   created_at timestamptz DEFAULT now()
 );
 ALTER TABLE meta_api_log ENABLE ROW LEVEL SECURITY;
+
+-- ═══ Drop ALL policies first (idempotent) ═══
 DO $$ BEGIN
-  DROP POLICY IF EXISTS "Authenticated users can read meta_api_log" ON meta_api_log;
-  CREATE POLICY "Authenticated users can read meta_api_log" ON meta_api_log FOR SELECT TO authenticated USING (true);
-  DROP POLICY IF EXISTS "Authenticated users can insert meta_api_log" ON meta_api_log;
-  CREATE POLICY "Authenticated users can insert meta_api_log" ON meta_api_log FOR INSERT TO authenticated WITH CHECK (true);
-  DROP POLICY IF EXISTS "Service role full access to meta_api_log" ON meta_api_log;
-  CREATE POLICY "Service role full access to meta_api_log" ON meta_api_log FOR ALL TO service_role USING (true) WITH CHECK (true);
+  EXECUTE 'DROP POLICY IF EXISTS "Authenticated users can manage meta_ad_accounts" ON meta_ad_accounts';
+  EXECUTE 'DROP POLICY IF EXISTS "Service role full access to meta_ad_accounts" ON meta_ad_accounts';
+  EXECUTE 'DROP POLICY IF EXISTS "Authenticated users can manage meta_campaigns" ON meta_campaigns';
+  EXECUTE 'DROP POLICY IF EXISTS "Service role full access to meta_campaigns" ON meta_campaigns';
+  EXECUTE 'DROP POLICY IF EXISTS "Authenticated users can read meta_api_log" ON meta_api_log';
+  EXECUTE 'DROP POLICY IF EXISTS "Authenticated users can insert meta_api_log" ON meta_api_log';
+  EXECUTE 'DROP POLICY IF EXISTS "Service role full access to meta_api_log" ON meta_api_log';
 END $$;
+
+-- ═══ Create all policies ═══
+CREATE POLICY "Authenticated users can manage meta_ad_accounts" ON meta_ad_accounts FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access to meta_ad_accounts" ON meta_ad_accounts FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "Authenticated users can manage meta_campaigns" ON meta_campaigns FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access to meta_campaigns" ON meta_campaigns FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "Authenticated users can read meta_api_log" ON meta_api_log FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Authenticated users can insert meta_api_log" ON meta_api_log FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "Service role full access to meta_api_log" ON meta_api_log FOR ALL TO service_role USING (true) WITH CHECK (true);
