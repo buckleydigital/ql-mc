@@ -982,6 +982,13 @@ td strong{font-weight:500}
           <div class="kpi"><div class="klabel">Active</div><div class="kval grn" id="mc-active">—</div></div>
           <div class="kpi"><div class="klabel">Paused</div><div class="kval" id="mc-paused" style="color:var(--red)">—</div></div>
         </div>
+        <div class="sl">Ad Accounts <div class="sl-line"></div></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px" id="ad-accounts-list"></div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:16px">
+          <input class="fi" id="aa-account-id" placeholder="act_123456789" style="width:180px;font-size:11px">
+          <input class="fi" id="aa-label" placeholder="Label e.g. Solar QLD" style="width:160px;font-size:11px">
+          <button class="btn btn-sm btn-p" onclick="addAdAccount()">+ Add</button>
+        </div>
         <div class="sl">All Campaigns <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
@@ -3397,27 +3404,55 @@ async function metaToggleCampaigns(campaignIds, action) {
   } catch(e){toast('Meta API error: '+e.message,true);return null;}
 }
 
-/* ═══ META CAMPAIGNS MANAGEMENT ═══ */
-const META_AD_ACCOUNTS=[
-  {id:'act_ACCOUNT1',label:'Ad Account 1'},
-  {id:'act_ACCOUNT2',label:'Ad Account 2'},
-];
+/* ═══ META AD ACCOUNTS + CAMPAIGNS MANAGEMENT ═══ */
+let _adAccountsCache=[];
+
+async function loadAdAccounts(){
+  const {data}=await db.from('meta_ad_accounts').select('*').order('label');
+  _adAccountsCache=data||[];
+  renderAdAccountsList();
+  populateAdAccountDropdowns();
+}
+function renderAdAccountsList(){
+  const el=$('ad-accounts-list');if(!el)return;
+  if(!_adAccountsCache.length){el.innerHTML='<span style="font-size:11px;color:var(--ink3)">No ad accounts yet — add one below</span>';return;}
+  el.innerHTML=_adAccountsCache.map(a=>`<div style="display:inline-flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--br);border-radius:6px;padding:5px 10px;font-size:11px">
+    <strong>${esc(a.label)}</strong> <span style="font-family:var(--mono);font-size:9px;color:var(--ink3)">${esc(a.account_id)}</span>
+    <button class="btn btn-xs" style="color:var(--red);padding:0 4px" onclick="removeAdAccount('${a.id}')" title="Remove">×</button>
+  </div>`).join('');
+}
+async function addAdAccount(){
+  const accountId=$('aa-account-id').value.trim();
+  const label=$('aa-label').value.trim();
+  if(!accountId){toast('Account ID required (e.g. act_123456)',true);return;}
+  if(!label){toast('Label required',true);return;}
+  const {error}=await db.from('meta_ad_accounts').insert([{account_id:accountId,label}]);
+  if(error){toast('Error: '+error.message,true);return;}
+  $('aa-account-id').value='';$('aa-label').value='';
+  toast('Ad account added ✓');loadAdAccounts();
+}
+async function removeAdAccount(id){
+  if(!confirm('Remove this ad account?')) return;
+  const {error}=await db.from('meta_ad_accounts').delete().eq('id',id);
+  if(error){toast('Error: '+error.message,true);return;}
+  toast('Ad account removed');loadAdAccounts();
+}
 function populateAdAccountDropdowns(){
   ['mc-ad-account','emc-ad-account'].forEach(selId=>{
     const sel=$(selId);if(!sel)return;
     const cur=sel.value;
-    sel.innerHTML='<option value="">— Select —</option>'+META_AD_ACCOUNTS.map(a=>`<option value="${esc(a.id)}">${esc(a.label)} (${esc(a.id)})</option>`).join('');
+    sel.innerHTML='<option value="">— Select —</option>'+_adAccountsCache.map(a=>`<option value="${esc(a.account_id)}">${esc(a.label)} (${esc(a.account_id)})</option>`).join('');
     if(cur) sel.value=cur;
   });
 }
 function adAccountLabel(accId){
-  const a=META_AD_ACCOUNTS.find(x=>x.id===accId);
+  const a=_adAccountsCache.find(x=>x.account_id===accId);
   return a?a.label:accId||'—';
 }
 
 let _campaignsCache=[];
 async function loadCampaigns() {
-  populateAdAccountDropdowns();
+  await loadAdAccounts();
   const [campaignsRes,logsRes,clientsRes]=await Promise.all([
     db.from('meta_campaigns').select('*').order('name'),
     db.from('meta_api_log').select('*').order('created_at',{ascending:false}).limit(20),
