@@ -17,12 +17,14 @@ CREATE TABLE IF NOT EXISTS meta_campaigns (
 
 ALTER TABLE meta_campaigns ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Authenticated users can manage meta_campaigns" ON meta_campaigns;
 CREATE POLICY "Authenticated users can manage meta_campaigns"
   ON meta_campaigns FOR ALL
   TO authenticated
   USING (true)
   WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Service role full access to meta_campaigns" ON meta_campaigns;
 CREATE POLICY "Service role full access to meta_campaigns"
   ON meta_campaigns FOR ALL
   TO service_role
@@ -41,16 +43,19 @@ CREATE TABLE IF NOT EXISTS meta_api_log (
 
 ALTER TABLE meta_api_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Authenticated users can read meta_api_log" ON meta_api_log;
 CREATE POLICY "Authenticated users can read meta_api_log"
   ON meta_api_log FOR SELECT
   TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Authenticated users can insert meta_api_log" ON meta_api_log;
 CREATE POLICY "Authenticated users can insert meta_api_log"
   ON meta_api_log FOR INSERT
   TO authenticated
   WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Service role full access to meta_api_log" ON meta_api_log;
 CREATE POLICY "Service role full access to meta_api_log"
   ON meta_api_log FOR ALL
   TO service_role
