@@ -27,6 +27,15 @@ serve(async (req) => {
     const metaToken = Deno.env.get('META_ACCESS_TOKEN')
     if (!metaToken) throw new Error('META_ACCESS_TOKEN not configured')
 
+    // Parse period from request body
+    let period = 'mtd'
+    try {
+      const body = await req.json()
+      if (body.period && ['7d', '30d', 'mtd', 'ytd'].includes(body.period)) {
+        period = body.period
+      }
+    } catch (_) { /* empty body is fine, default to mtd */ }
+
     // Get all campaigns grouped by ad account
     const { data: campaigns, error: campErr } = await supabaseClient
       .from('meta_campaigns')
@@ -46,10 +55,24 @@ serve(async (req) => {
 
     const validAccounts = new Set((adAccounts || []).map(a => a.account_id))
 
-    // Date range: today for daily, this month for monthly
+    // Date range based on selected period
     const now = new Date()
     const todayStr = now.toISOString().slice(0, 10)
-    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+    let sinceStr: string
+    if (period === '7d') {
+      const d = new Date(now)
+      d.setDate(d.getDate() - 6)
+      sinceStr = d.toISOString().slice(0, 10)
+    } else if (period === '30d') {
+      const d = new Date(now)
+      d.setDate(d.getDate() - 29)
+      sinceStr = d.toISOString().slice(0, 10)
+    } else if (period === 'ytd') {
+      sinceStr = `${now.getFullYear()}-01-01`
+    } else {
+      // mtd
+      sinceStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+    }
 
     type InsightResult = {
       campaign_id: string
@@ -88,7 +111,7 @@ serve(async (req) => {
         }
 
         // Fetch insights for this month
-        const insightsUrl = `https://graph.facebook.com/v21.0/${camp.meta_campaign_id}/insights?fields=spend,impressions,clicks,actions,cpm,ctr,cpc&time_range={"since":"${monthStart}","until":"${todayStr}"}&access_token=${metaToken}`
+        const insightsUrl = `https://graph.facebook.com/v21.0/${camp.meta_campaign_id}/insights?fields=spend,impressions,clicks,actions,cpm,ctr,cpc&time_range={"since":"${sinceStr}","until":"${todayStr}"}&access_token=${metaToken}`
         const insightsRes = await fetch(insightsUrl)
         const insightsData = await insightsRes.json()
 
