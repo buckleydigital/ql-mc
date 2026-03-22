@@ -9,11 +9,15 @@ CREATE TABLE IF NOT EXISTS meta_campaigns (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
   meta_campaign_id text NOT NULL UNIQUE,
+  ad_account_id text NOT NULL DEFAULT '',
   status text NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'PAUSED')),
   notes text,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
+
+-- Add ad_account_id if table already exists
+ALTER TABLE meta_campaigns ADD COLUMN IF NOT EXISTS ad_account_id text NOT NULL DEFAULT '';
 
 ALTER TABLE meta_campaigns ENABLE ROW LEVEL SECURITY;
 

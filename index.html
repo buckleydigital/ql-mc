@@ -985,7 +985,7 @@ td strong{font-weight:500}
         <div class="sl">All Campaigns <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Campaign Name</th><th>Meta Campaign ID</th><th>Status</th><th>Linked Clients</th><th>Notes</th><th></th></tr></thead>
+            <thead><tr><th>Campaign Name</th><th>Ad Account</th><th>Meta Campaign ID</th><th>Status</th><th>Linked Clients</th><th>Notes</th><th></th></tr></thead>
             <tbody id="mc-tbody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
@@ -1536,6 +1536,9 @@ td strong{font-weight:500}
   <div class="modal">
     <h2>Add Meta Campaign</h2><div class="msub">Link a Meta Ads campaign for cap management</div>
     <div class="frow"><label class="flabel">Campaign Name <span style="font-size:9.5px;color:var(--ink3);font-weight:300">your label, e.g. "Solar Gold Coast"</span></label><input class="fi" id="mc-name" placeholder="e.g. Solar Gold Coast"></div>
+    <div class="frow"><label class="flabel">Ad Account</label>
+      <select class="fs" id="mc-ad-account"><option value="">— Select —</option></select>
+    </div>
     <div class="frow"><label class="flabel">Meta Campaign ID <span style="font-size:9.5px;color:var(--ink3);font-weight:300">from Ads Manager</span></label><input class="fi" id="mc-meta-id" placeholder="e.g. 23851234567890"></div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="mc-notes" placeholder="e.g. covers 2000-2020, budget $50/day"></textarea></div>
     <div class="macts">
@@ -1550,6 +1553,9 @@ td strong{font-weight:500}
     <h2>Edit Campaign</h2><div class="msub" id="edit-mc-sub"></div>
     <input type="hidden" id="emc-id">
     <div class="frow"><label class="flabel">Campaign Name</label><input class="fi" id="emc-name"></div>
+    <div class="frow"><label class="flabel">Ad Account</label>
+      <select class="fs" id="emc-ad-account"><option value="">— Select —</option></select>
+    </div>
     <div class="frow"><label class="flabel">Meta Campaign ID</label><input class="fi" id="emc-meta-id"></div>
     <div class="frow"><label class="flabel">Status</label>
       <select class="fs" id="emc-status">
@@ -3392,8 +3398,26 @@ async function metaToggleCampaigns(campaignIds, action) {
 }
 
 /* ═══ META CAMPAIGNS MANAGEMENT ═══ */
+const META_AD_ACCOUNTS=[
+  {id:'act_ACCOUNT1',label:'Ad Account 1'},
+  {id:'act_ACCOUNT2',label:'Ad Account 2'},
+];
+function populateAdAccountDropdowns(){
+  ['mc-ad-account','emc-ad-account'].forEach(selId=>{
+    const sel=$(selId);if(!sel)return;
+    const cur=sel.value;
+    sel.innerHTML='<option value="">— Select —</option>'+META_AD_ACCOUNTS.map(a=>`<option value="${esc(a.id)}">${esc(a.label)} (${esc(a.id)})</option>`).join('');
+    if(cur) sel.value=cur;
+  });
+}
+function adAccountLabel(accId){
+  const a=META_AD_ACCOUNTS.find(x=>x.id===accId);
+  return a?a.label:accId||'—';
+}
+
 let _campaignsCache=[];
 async function loadCampaigns() {
+  populateAdAccountDropdowns();
   const [campaignsRes,logsRes,clientsRes]=await Promise.all([
     db.from('meta_campaigns').select('*').order('name'),
     db.from('meta_api_log').select('*').order('created_at',{ascending:false}).limit(20),
@@ -3420,12 +3444,13 @@ async function loadCampaigns() {
 
   // Campaigns table
   const tb=$('mc-tbody');
-  if(!campaigns.length){tb.innerHTML='<tr><td colspan="6" class="empty">No campaigns yet</td></tr>';return;}
+  if(!campaigns.length){tb.innerHTML='<tr><td colspan="7" class="empty">No campaigns yet</td></tr>';return;}
   tb.innerHTML=campaigns.map(c=>{
     const linked=(cidToClients[c.meta_campaign_id]||[]).join(', ')||'<span style="color:var(--ink3)">none</span>';
     const statusColor=c.status==='ACTIVE'?'var(--grn)':'var(--red)';
     return `<tr>
       <td><strong>${esc(c.name)}</strong></td>
+      <td style="font-size:10px">${esc(adAccountLabel(c.ad_account_id))}</td>
       <td style="font-family:var(--mono);font-size:10px;color:var(--ink2)">${esc(c.meta_campaign_id)}</td>
       <td><span style="color:${statusColor};font-family:var(--mono);font-size:10px;font-weight:600">${c.status}</span></td>
       <td style="font-size:11px">${linked}</td>
@@ -3454,13 +3479,15 @@ async function loadCampaigns() {
 
 async function saveCampaign() {
   const name=$('mc-name').value.trim();
+  const adAccount=$('mc-ad-account').value;
   const metaId=$('mc-meta-id').value.trim();
   const notes=$('mc-notes').value.trim();
   if(!name){toast('Campaign name required',true);return;}
+  if(!adAccount){toast('Select an ad account',true);return;}
   if(!metaId){toast('Meta Campaign ID required',true);return;}
-  const {error}=await db.from('meta_campaigns').insert([{name,meta_campaign_id:metaId,notes:notes||null}]);
+  const {error}=await db.from('meta_campaigns').insert([{name,ad_account_id:adAccount,meta_campaign_id:metaId,notes:notes||null}]);
   if(error){toast('Error: '+error.message,true);return;}
-  ['mc-name','mc-meta-id','mc-notes'].forEach(id=>{$(id).value='';});
+  ['mc-name','mc-meta-id','mc-notes'].forEach(id=>{$(id).value='';});$('mc-ad-account').value='';
   closeModal('m-add-campaign');toast('Campaign added ✓');loadCampaigns();
   refreshCampaignDropdowns();
 }
@@ -3468,7 +3495,8 @@ async function saveCampaign() {
 function editCampaign(id) {
   const c=_campaignsCache.find(x=>x.id===id);
   if(!c) return;
-  setVal('emc-id',c.id);setVal('emc-name',c.name);setVal('emc-meta-id',c.meta_campaign_id);
+  populateAdAccountDropdowns();
+  setVal('emc-id',c.id);setVal('emc-name',c.name);setVal('emc-ad-account',c.ad_account_id||'');setVal('emc-meta-id',c.meta_campaign_id);
   setVal('emc-status',c.status);setVal('emc-notes',c.notes||'');
   const toggleBtn=$('emc-toggle-btn');
   if(toggleBtn){toggleBtn.textContent=c.status==='ACTIVE'?'Pause on Meta':'Resume on Meta';}
@@ -3478,7 +3506,7 @@ function editCampaign(id) {
 
 async function updateCampaign() {
   const id=$('emc-id').value;
-  const d={name:$('emc-name').value.trim(),meta_campaign_id:$('emc-meta-id').value.trim(),status:$('emc-status').value,notes:$('emc-notes').value.trim()||null,updated_at:now()};
+  const d={name:$('emc-name').value.trim(),ad_account_id:$('emc-ad-account').value,meta_campaign_id:$('emc-meta-id').value.trim(),status:$('emc-status').value,notes:$('emc-notes').value.trim()||null,updated_at:now()};
   if(!d.name){toast('Name required',true);return;}
   const {error}=await db.from('meta_campaigns').update(d).eq('id',id);
   if(error){toast('Error: '+error.message,true);return;}
@@ -3516,22 +3544,35 @@ async function toggleCampaignFromModal() {
 
 /* ═══ CAMPAIGN DROPDOWNS FOR CLIENT FORMS ═══ */
 async function refreshCampaignDropdowns() {
-  const {data}=await db.from('meta_campaigns').select('id,name,meta_campaign_id,status').order('name');
+  const {data}=await db.from('meta_campaigns').select('id,name,meta_campaign_id,ad_account_id,status').order('ad_account_id,name');
   const campaigns=data||[];
   _campaignsCache=campaigns;
+  // Group by ad account
+  const grouped={};
+  for(const c of campaigns){
+    const key=c.ad_account_id||'unassigned';
+    if(!grouped[key]) grouped[key]=[];
+    grouped[key].push(c);
+  }
   // Update all campaign picker containers
   ['ppl-campaign-picker','ep-campaign-picker'].forEach(pickerId=>{
     const el=$(pickerId);
     if(!el) return;
     const checked=getCheckedCampaigns(pickerId);
-    el.innerHTML=campaigns.length?campaigns.map(c=>{
-      const isChecked=checked.includes(c.meta_campaign_id)?'checked':'';
-      const statusDot=c.status==='ACTIVE'?'🟢':'🔴';
-      return `<label style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;cursor:pointer">
-        <input type="checkbox" value="${esc(c.meta_campaign_id)}" ${isChecked} style="margin:0">
-        ${statusDot} <span>${esc(c.name)}</span> <span style="font-family:var(--mono);font-size:9px;color:var(--ink3)">${esc(c.meta_campaign_id)}</span>
-      </label>`;
-    }).join(''):'<span style="font-size:10px;color:var(--ink3)">No campaigns yet — add one in Meta Campaigns</span>';
+    if(!campaigns.length){el.innerHTML='<span style="font-size:10px;color:var(--ink3)">No campaigns yet — add one in Meta Campaigns</span>';return;}
+    let html='';
+    for(const [accId,cmpList] of Object.entries(grouped)){
+      html+=`<div style="font-family:var(--mono);font-size:9px;font-weight:600;color:var(--ink3);margin:6px 0 3px;text-transform:uppercase;letter-spacing:.05em">${esc(adAccountLabel(accId))}</div>`;
+      html+=cmpList.map(c=>{
+        const isChecked=checked.includes(c.meta_campaign_id)?'checked':'';
+        const dot=c.status==='ACTIVE'?'<span style="color:var(--grn)">●</span>':'<span style="color:var(--red)">●</span>';
+        return `<label style="display:flex;align-items:center;gap:6px;padding:3px 0 3px 8px;font-size:11px;cursor:pointer">
+          <input type="checkbox" value="${esc(c.meta_campaign_id)}" ${isChecked} style="margin:0">
+          ${dot} <span>${esc(c.name)}</span> <span style="font-family:var(--mono);font-size:9px;color:var(--ink3)">${esc(c.meta_campaign_id)}</span>
+        </label>`;
+      }).join('');
+    }
+    el.innerHTML=html;
   });
 }
 
