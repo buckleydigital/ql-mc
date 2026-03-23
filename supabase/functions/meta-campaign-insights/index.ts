@@ -129,8 +129,9 @@ serve(async (req) => {
 
           if (row.actions) {
             for (const action of row.actions) {
-              if (action.action_type === 'offsite_conversion.fb_pixel_lead') {
-                leads += parseInt(action.value || '0', 10)
+              if (action.action_type === 'lead') {
+                leads = parseInt(action.value || '0', 10)
+                break
               }
             }
           }
