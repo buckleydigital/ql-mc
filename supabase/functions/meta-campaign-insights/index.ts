@@ -111,11 +111,12 @@ serve(async (req) => {
         }
 
         // Fetch insights for this month
-        const insightsUrl = `https://graph.facebook.com/v21.0/${camp.meta_campaign_id}/insights?fields=spend,impressions,clicks,actions,cpm,ctr,cpc&time_range={"since":"${sinceStr}","until":"${todayStr}"}&access_token=${metaToken}`
+        // Fetch spend/clicks/impressions from Meta — leads come from our own DB, not Meta's actions
+        const insightsUrl = `https://graph.facebook.com/v21.0/${camp.meta_campaign_id}/insights?fields=spend,impressions,clicks,cpm,ctr,cpc&time_range={"since":"${sinceStr}","until":"${todayStr}"}&access_token=${metaToken}`
         const insightsRes = await fetch(insightsUrl)
         const insightsData = await insightsRes.json()
 
-        let spend = 0, impressions = 0, clicks = 0, leadActions = 0
+        let spend = 0, impressions = 0, clicks = 0
         let cpm = 0, ctr = 0, cpc = 0
 
         if (insightsData.data && insightsData.data.length > 0) {
@@ -126,32 +127,15 @@ serve(async (req) => {
           cpm = parseFloat(row.cpm || '0')
           ctr = parseFloat(row.ctr || '0')
           cpc = parseFloat(row.cpc || '0')
-
-          // Extract lead actions — use granular types to avoid double-counting
-          // ('lead' is an aggregate that already includes onsite_conversion.lead_grouped)
-          if (row.actions) {
-            for (const action of row.actions) {
-              if (
-                action.action_type === 'onsite_conversion.lead_grouped' ||
-                action.action_type === 'offsite_conversion.fb_pixel_lead'
-              ) {
-                leadActions += parseInt(action.value || '0', 10)
-              }
-            }
-          }
         }
-
-        const cpl = leadActions > 0 ? spend / leadActions : 0
         const metaStatus = statusData.effective_status || statusData.status || 'UNKNOWN'
 
-        // Update DB with fresh stats
+        // Update DB — spend/clicks/impressions from Meta, leads counted separately from our DB
         await supabaseClient.from('meta_campaigns').update({
           status: metaStatus === 'ACTIVE' ? 'ACTIVE' : 'PAUSED',
           spend_mtd: spend,
           impressions_mtd: impressions,
           clicks_mtd: clicks,
-          leads_mtd: leadActions,
-          cpl_mtd: cpl,
           last_synced_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }).eq('id', camp.id)
@@ -164,11 +148,9 @@ serve(async (req) => {
           spend,
           impressions,
           clicks,
-          results: leadActions,
           cpm,
           ctr,
           cpc,
-          cpl,
         })
       } catch (err) {
         results.push({
@@ -183,9 +165,8 @@ serve(async (req) => {
     const succeeded = results.filter(r => r.success).length
     const failed = results.filter(r => !r.success).length
 
-    // ── Roll up campaign stats to linked PPL clients ──
-    // Each PPL client has meta_campaign_ids linking to specific campaigns.
-    // Calculate their meta_cpl from those campaigns' actual spend & leads.
+    // ── Roll up: spend from Meta campaigns, leads from our DB ──
+    // CPL = campaign spend / actual leads delivered to client (from ppl_order_log)
     try {
       const { data: pplClients } = await supabaseClient
         .from('clients')
@@ -194,37 +175,37 @@ serve(async (req) => {
         .not('meta_campaign_ids', 'is', null)
 
       if (pplClients && pplClients.length > 0) {
-        // Build a lookup: meta_campaign_id → { spend, leads }
-        const campStats: Record<string, { spend: number; leads: number }> = {}
+        // Build spend lookup: meta_campaign_id → spend
+        const campSpend: Record<string, number> = {}
         for (const camp of campaigns) {
           const r = results.find(x => x.campaign_id === camp.id && x.success)
-          if (r) {
-            campStats[camp.meta_campaign_id] = {
-              spend: r.spend || 0,
-              leads: r.results || 0,
-            }
-          }
+          if (r) campSpend[camp.meta_campaign_id] = r.spend || 0
         }
 
         for (const client of pplClients) {
           const linkedIds: string[] = client.meta_campaign_ids || []
           if (linkedIds.length === 0) continue
 
+          // Spend from Meta
           let totalSpend = 0
-          let totalLeads = 0
           for (const cid of linkedIds) {
-            const s = campStats[cid]
-            if (s) {
-              totalSpend += s.spend
-              totalLeads += s.leads
-            }
+            totalSpend += campSpend[cid] || 0
           }
 
-          const clientCpl = totalLeads > 0 ? totalSpend / totalLeads : null
+          // Leads from our system (delivered this month)
+          const { count: systemLeads } = await supabaseClient
+            .from('ppl_order_log')
+            .select('id', { count: 'exact', head: true })
+            .eq('client_id', client.id)
+            .eq('status', 'delivered')
+            .gte('order_date', sinceStr)
+
+          const actualLeads = systemLeads || 0
+          const clientCpl = actualLeads > 0 ? totalSpend / actualLeads : null
 
           await supabaseClient.from('clients').update({
             meta_cpl: clientCpl !== null ? Number(clientCpl.toFixed(2)) : null,
-            leads_mtd: totalLeads,
+            leads_mtd: actualLeads,
             updated_at: new Date().toISOString(),
           }).eq('id', client.id)
         }
