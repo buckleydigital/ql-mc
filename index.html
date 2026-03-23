@@ -1010,7 +1010,7 @@ td strong{font-weight:500}
         </div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Campaign Name</th><th>Ad Account</th><th>Status</th><th id="th-spend">Spend MTD</th><th>Clicks</th><th>CPC</th><th>Impressions</th><th>Clients</th><th>Areas</th><th></th></tr></thead>
+            <thead><tr><th>Campaign Name</th><th>Ad Account</th><th>Status</th><th id="th-spend">Spend MTD</th><th>Leads</th><th>CPL</th><th>Clicks</th><th>Clients</th><th>Areas</th><th></th></tr></thead>
             <tbody id="mc-tbody"><tr><td colspan="10" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
@@ -1195,14 +1195,14 @@ td strong{font-weight:500}
         <!-- Campaign Spend (always MTD from last sync) -->
         <div class="sl">Campaign Ad Spend <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px">MTD from last sync</span><div class="sl-line"></div></div>
         <div class="kg c4 mb4">
-          <div class="kpi"><div class="klabel">Ad Spend MTD</div><div class="kval" id="dl-spend">—</div><div class="ksub">from Meta</div></div>
-          <div class="kpi"><div class="klabel">Leads Delivered MTD</div><div class="kval blu" id="dl-leads">—</div><div class="ksub">from our system</div></div>
-          <div class="kpi"><div class="klabel">True CPL</div><div class="kval" id="dl-cpl">—</div><div class="ksub">spend ÷ delivered</div></div>
+          <div class="kpi"><div class="klabel">Ad Spend MTD</div><div class="kval" id="dl-spend">—</div></div>
+          <div class="kpi"><div class="klabel">Leads MTD</div><div class="kval blu" id="dl-leads">—</div></div>
+          <div class="kpi"><div class="klabel">CPL</div><div class="kval" id="dl-cpl">—</div><div class="ksub">spend ÷ leads</div></div>
           <div class="kpi"><div class="klabel">Active Campaigns</div><div class="kval grn" id="dl-active-camps">—</div></div>
         </div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Campaign</th><th>Status</th><th>Spend MTD</th><th>Clicks</th><th>Impressions</th><th>CPC</th><th>Last Synced</th></tr></thead>
+            <thead><tr><th>Campaign</th><th>Status</th><th>Spend MTD</th><th>Leads</th><th>CPL</th><th>Clicks</th><th>Last Synced</th></tr></thead>
             <tbody id="dl-camp-tbody"><tr><td colspan="7" class="empty">Loading campaigns…</td></tr></tbody>
           </table>
         </div>
@@ -2862,24 +2862,22 @@ async function saveLead() {
 const PPL_STAGES=[{id:'active_client',label:'Active'},{id:'paused',label:'Paused'},{id:'churned',label:'Churned'}];
 async function loadPPL() {
   const yr = new Date().getFullYear()+'-01-01';
-  const mtdStart=new Date();mtdStart.setDate(1);const mtdStr=mtdStart.toISOString().split('T')[0];
-  const [clientsR, ytdR, campR, mtdDelivR] = await Promise.all([
+  const [clientsR, ytdR, campR] = await Promise.all([
     db.from('clients').select('*').eq('type','ppl').order('created_at',{ascending:false}),
     db.from('ppl_order_log').select('leads_qty').gte('order_date',yr),
-    db.from('meta_campaigns').select('meta_campaign_id,spend_mtd'),
-    db.from('ppl_order_log').select('leads_qty').eq('status','delivered').gte('order_date',mtdStr),
+    db.from('meta_campaigns').select('meta_campaign_id,spend_mtd,leads_mtd'),
   ]);
   if (clientsR.error) { $('ppl-tbody').innerHTML=`<tr><td colspan="12" class="empty">Error: ${esc(clientsR.error.message)}</td></tr>`; return; }
   const ytdLeads = (ytdR.data||[]).reduce((s,r)=>s+(r.leads_qty||0),0);
-  const mtdDelivered = (mtdDelivR.data||[]).reduce((s,r)=>s+(r.leads_qty||0),0);
-  renderPPL(clientsR.data||[], ytdLeads, campR.data||[], mtdDelivered);
+  renderPPL(clientsR.data||[], ytdLeads, campR.data||[]);
 }
-function renderPPL(clients, ytdLeads=0, campaigns=[], mtdDelivered=0) {
+function renderPPL(clients, ytdLeads=0, campaigns=[]) {
   setText('ppl-active',clients.filter(c=>c.stage==='active_client').length);
   setText('ppl-leads',ytdLeads);
-  // CPL = campaign spend (from Meta) / actual leads delivered (from our system)
+  // CPL = campaign spend / campaign leads (both from Meta)
   const totalCampSpend=campaigns.reduce((s,c)=>s+(c.spend_mtd||0),0);
-  setText('ppl-meta-cpl',totalCampSpend>0&&mtdDelivered>0?'$'+(totalCampSpend/mtdDelivered).toFixed(2):'—');
+  const totalCampLeads=campaigns.reduce((s,c)=>s+(c.leads_mtd||0),0);
+  setText('ppl-meta-cpl',totalCampSpend>0&&totalCampLeads>0?'$'+(totalCampSpend/totalCampLeads).toFixed(2):'—');
   const ac=clients.filter(c=>c.stage==='active_client'&&(c.true_cpl||0)>0);
   setText('ppl-true-cpl',ac.length?'$'+(ac.reduce((s,c)=>s+(c.true_cpl||0),0)/ac.length).toFixed(2):'—');
   const dueClients=clients.filter(c=>c.stage==='active_client'&&c.total_leads_purchased>0&&(c.leads_delivered||0)/c.total_leads_purchased>=0.75);
@@ -3661,9 +3659,9 @@ async function loadCampaigns() {
         <button class="btn btn-xs" style="margin-left:6px;font-size:9px" id="toggle-${c.id}" onclick="inlineToggleCampaign('${c.id}','${esc(c.meta_campaign_id)}','${toggleAction}')">${toggleLabel}</button>
       </td>
       <td style="font-family:var(--mono);font-size:11px">${fmt$(c.spend_mtd)}</td>
+      <td style="font-family:var(--mono);font-size:11px">${fmtN(c.leads_mtd)}</td>
+      <td style="font-family:var(--mono);font-size:11px">${(c.leads_mtd||0)>0?fmt$((c.spend_mtd||0)/(c.leads_mtd||1)):'—'}</td>
       <td style="font-family:var(--mono);font-size:11px">${fmtN(c.clicks_mtd)}</td>
-      <td style="font-family:var(--mono);font-size:11px">${(c.clicks_mtd||0)>0?fmt$((c.spend_mtd||0)/(c.clicks_mtd||1)):'—'}</td>
-      <td style="font-family:var(--mono);font-size:11px">${fmtN(c.impressions_mtd)}</td>
       <td style="font-size:11px">${linked}</td>
       <td style="font-size:10px">${(c.area_ids||[]).map(aid=>esc(areaMap[aid]||'?')).join(', ')||'<span style="color:var(--ink3)">—</span>'}</td>
       <td><button class="btn btn-xs" onclick="editCampaign('${c.id}')">Edit</button></td>
@@ -3850,7 +3848,7 @@ async function loadFinance() {
     db.from('clients').select('id,company_name,management_fee,payments_made,stage,active_months').eq('type','managed'),
     db.from('managed_order_log').select('client_id,amount,order_date').gte('order_date',from).lte('order_date',next),
     db.from('ppl_order_log').select('leads_qty,lead_price,order_date').gte('order_date',from).lte('order_date',next),
-    db.from('meta_campaigns').select('name,meta_campaign_id,spend_mtd,clicks_mtd,last_synced_at'),
+    db.from('meta_campaigns').select('name,meta_campaign_id,spend_mtd,leads_mtd,clicks_mtd,last_synced_at'),
   ]);
   renderFinance(expR.data||[],spR.data||[],subR.data||[],pplR.data||[],mgR.data||[],mgOrdR.data||[],pplOrdR.data||[],from,next,campR.data||[]);
 }
@@ -3859,13 +3857,13 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const activeSubs=subs.filter(s=>s.active);
   const ts=activeSubs.length>0?activeSubs.reduce((s,sub)=>s+(sub.monthly_cost||0),0):null;
   renderSubscriptionsTable(subs);
-  // Spend from Meta campaigns, leads from our system (ppl_order_log)
+  // Spend and leads from Meta campaigns
   const campSpend=campaigns.reduce((s,c)=>s+(c.spend_mtd||0),0);
-  const systemLeads=pplOrders.reduce((s,o)=>s+(o.leads_qty||0),0);
+  const campLeads=campaigns.reduce((s,c)=>s+(c.leads_mtd||0),0);
   const latestAg=adSpend.find(a=>a.account_type==='agency');
   const pplSp=campSpend;
   const agSp=latestAg?.spend||0;
-  const pplLeadsTotal=systemLeads;
+  const pplLeadsTotal=campLeads;
   const metaCpl=(pplSp>0&&pplLeadsTotal>0)?'$'+(pplSp/pplLeadsTotal).toFixed(2):'—';
   const pplRevLog=pplOrders.reduce((s,o)=>s+((o.leads_qty||0)*(o.lead_price||0)),0);
   const pplRevClients=pplClients.reduce((s,c)=>s+((c.leads_delivered||0)*(c.lead_price||0)),0);
@@ -4014,17 +4012,13 @@ async function loadDailyLogs() {
   const toNext=new Date(to);toNext.setDate(toNext.getDate()+1);
   const toNextStr=toNext.toISOString().split('T')[0];
   const periodLabels={today:'today',yesterday:'yesterday','7d':'last 7 days','30d':'last 30 days',ytd:'YTD',custom:from};
-  // Get month start for MTD system lead count
-  const mtdStart=new Date();mtdStart.setDate(1);
-  const mtdStartStr=mtdStart.toISOString().split('T')[0];
-  const [campR, leadsR, pipelineR, ordersR, tasksR, notesR, mtdOrdersR]=await Promise.all([
-    db.from('meta_campaigns').select('name,meta_campaign_id,status,spend_mtd,clicks_mtd,impressions_mtd,last_synced_at'),
+  const [campR, leadsR, pipelineR, ordersR, tasksR, notesR]=await Promise.all([
+    db.from('meta_campaigns').select('name,meta_campaign_id,status,spend_mtd,leads_mtd,clicks_mtd,impressions_mtd,last_synced_at'),
     db.from('leads').select('id,name,company,stage,lead_type,value,source,created_at').gte('created_at',from+'T00:00:00').lt('created_at',toNextStr+'T00:00:00').order('created_at',{ascending:false}),
     db.from('leads').select('id,name,stage,lead_type,value,created_at').not('stage','in','("closed_won","closed_lost")'),
     db.from('ppl_order_log').select('*,clients!inner(company_name)').gte('order_date',from).lte('order_date',to).order('order_date',{ascending:false}),
     db.from('tasks').select('*').eq('done',true).gte('updated_at',from+'T00:00:00').lt('updated_at',toNextStr+'T00:00:00').order('updated_at',{ascending:false}),
     db.from('daily_notes').select('*').gte('date',from).lte('date',to).order('date',{ascending:false}),
-    db.from('ppl_order_log').select('id',{count:'exact',head:true}).eq('status','delivered').gte('order_date',mtdStartStr),
   ]);
   const campaigns=campR.data||[];
   const newLeads=leadsR.data||[];
@@ -4032,14 +4026,14 @@ async function loadDailyLogs() {
   const orders=ordersR.data||[];
   const tasks=tasksR.data||[];
   const notes=notesR.data||[];
-  const systemLeadsMtd=mtdOrdersR.count||0;
 
-  // Campaign KPIs — spend from Meta, leads from our system
+  // Campaign KPIs — spend and leads both from Meta, CPL = spend / leads
   const totalSpend=campaigns.reduce((s,c)=>s+(c.spend_mtd||0),0);
-  const avgCpl=systemLeadsMtd>0?totalSpend/systemLeadsMtd:0;
+  const totalLeads=campaigns.reduce((s,c)=>s+(c.leads_mtd||0),0);
+  const avgCpl=totalLeads>0?totalSpend/totalLeads:0;
   const activeCamps=campaigns.filter(c=>c.status==='ACTIVE').length;
   setText('dl-spend',totalSpend?fmt(totalSpend):'—');
-  setText('dl-leads',systemLeadsMtd||'—');
+  setText('dl-leads',totalLeads||'—');
   setText('dl-cpl',avgCpl>0?'$'+avgCpl.toFixed(2):'—');
   setText('dl-active-camps',activeCamps||'—');
 
@@ -4073,15 +4067,15 @@ function renderDailyCampaigns(campaigns) {
   const fmtN=v=>v?Number(v).toLocaleString('en-AU'):'—';
   tb.innerHTML=campaigns.map(c=>{
     const statusColor=c.status==='ACTIVE'?'var(--grn)':'var(--red)';
-    const cpc=(c.clicks_mtd||0)>0?fmt$((c.spend_mtd||0)/(c.clicks_mtd||1)):'—';
+    const cpl=(c.leads_mtd||0)>0?fmt$((c.spend_mtd||0)/(c.leads_mtd||1)):'—';
     const synced=c.last_synced_at?new Date(c.last_synced_at).toLocaleString('en-AU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'never';
     return `<tr>
       <td><strong>${esc(c.name||'')}</strong><div style="font-family:var(--mono);font-size:9px;color:var(--ink3)">${esc(c.meta_campaign_id)}</div></td>
       <td><span style="color:${statusColor};font-family:var(--mono);font-size:10px;font-weight:600">${c.status}</span></td>
       <td style="font-family:var(--mono)">${fmt$(c.spend_mtd)}</td>
+      <td style="font-family:var(--mono)">${fmtN(c.leads_mtd)}</td>
+      <td style="font-family:var(--mono);font-weight:500">${cpl}</td>
       <td style="font-family:var(--mono)">${fmtN(c.clicks_mtd)}</td>
-      <td style="font-family:var(--mono)">${fmtN(c.impressions_mtd)}</td>
-      <td style="font-family:var(--mono);font-weight:500">${cpc}</td>
       <td style="font-size:10px;color:var(--ink3)">${synced}</td>
     </tr>`;
   }).join('');
