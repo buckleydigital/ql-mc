@@ -183,6 +183,54 @@ serve(async (req) => {
     const succeeded = results.filter(r => r.success).length
     const failed = results.filter(r => !r.success).length
 
+    // ── Roll up campaign stats to linked PPL clients ──
+    // Each PPL client has meta_campaign_ids linking to specific campaigns.
+    // Calculate their meta_cpl from those campaigns' actual spend & leads.
+    try {
+      const { data: pplClients } = await supabaseClient
+        .from('clients')
+        .select('id,meta_campaign_ids')
+        .eq('type', 'ppl')
+        .not('meta_campaign_ids', 'is', null)
+
+      if (pplClients && pplClients.length > 0) {
+        // Build a lookup: meta_campaign_id → { spend, leads }
+        const campStats: Record<string, { spend: number; leads: number }> = {}
+        for (const camp of campaigns) {
+          const r = results.find(x => x.campaign_id === camp.id && x.success)
+          if (r) {
+            campStats[camp.meta_campaign_id] = {
+              spend: r.spend || 0,
+              leads: r.results || 0,
+            }
+          }
+        }
+
+        for (const client of pplClients) {
+          const linkedIds: string[] = client.meta_campaign_ids || []
+          if (linkedIds.length === 0) continue
+
+          let totalSpend = 0
+          let totalLeads = 0
+          for (const cid of linkedIds) {
+            const s = campStats[cid]
+            if (s) {
+              totalSpend += s.spend
+              totalLeads += s.leads
+            }
+          }
+
+          const clientCpl = totalLeads > 0 ? totalSpend / totalLeads : null
+
+          await supabaseClient.from('clients').update({
+            meta_cpl: clientCpl !== null ? Number(clientCpl.toFixed(2)) : null,
+            leads_mtd: totalLeads,
+            updated_at: new Date().toISOString(),
+          }).eq('id', client.id)
+        }
+      }
+    } catch (_) { /* non-critical: client rollup failed */ }
+
     return new Response(JSON.stringify({
       synced: succeeded,
       failed,

@@ -1186,16 +1186,16 @@ td strong{font-weight:500}
       <!-- ══ DAILY LOGS ══ -->
       <div class="panel" id="panel-daily">
         <div class="ph">
-          <div class="ph-left"><h1>Daily Logs</h1><p>YTD — leads, spend, CPL · snapshots auto-saved</p></div>
+          <div class="ph-left"><h1>Daily Logs</h1><p>Full daily snapshots — spend, leads, pipeline, activity & notes</p></div>
           <div class="ph-right">
             <input type="date" class="fi" id="daily-date" style="width:auto;font-size:11.5px;padding:5px 10px;display:none;font-family:var(--mono)" onchange="loadDailyLogs()">
           </div>
         </div>
         <div class="kg c4 mb4">
-          <div class="kpi"><div class="klabel">Total Leads</div><div class="kval blu" id="dl-leads">—</div></div>
-          <div class="kpi"><div class="klabel">Total Spend</div><div class="kval" id="dl-spend">—</div></div>
+          <div class="kpi"><div class="klabel">Ad Spend</div><div class="kval" id="dl-spend">—</div></div>
+          <div class="kpi"><div class="klabel">Meta Leads</div><div class="kval blu" id="dl-leads">—</div></div>
           <div class="kpi"><div class="klabel">Avg CPL</div><div class="kval" id="dl-cpl">—</div></div>
-          <div class="kpi"><div class="klabel">Active Days</div><div class="kval" id="dl-camps">—</div></div>
+          <div class="kpi"><div class="klabel">Leads Delivered</div><div class="kval grn" id="dl-delivered">—</div></div>
         </div>
         <div class="daily-tabs" id="daily-tabs">
           <div class="daily-tab active" onclick="switchDailyTab('today',this)">Today</div>
@@ -1205,17 +1205,37 @@ td strong{font-weight:500}
           <div class="daily-tab" onclick="switchDailyTab('ytd',this)">YTD 2026</div>
           <div class="daily-tab" onclick="switchDailyTab('custom',this)">Custom</div>
         </div>
-        <div class="chart-card mb4"><div class="chart-title">Daily Lead Volume</div><canvas id="chart-daily" height="130"></canvas></div>
-        <div class="sl">Breakdown by Account <div class="sl-line"></div></div>
+
+        <!-- Campaign Spend -->
+        <div class="sl">Campaign Ad Spend <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Date</th><th>Account / Client</th><th>Type</th><th>Leads</th><th>Spend</th><th>CPL</th><th>Running Total</th></tr></thead>
-            <tbody id="daily-tbody"><tr><td colspan="7" class="empty">Select a date range above</td></tr></tbody>
+            <thead><tr><th>Campaign</th><th>Status</th><th>Spend</th><th>Leads</th><th>Clicks</th><th>CPL</th><th>Last Synced</th></tr></thead>
+            <tbody id="dl-camp-tbody"><tr><td colspan="7" class="empty">Loading campaigns…</td></tr></tbody>
           </table>
         </div>
 
-        <div class="sl" style="margin-top:20px">Sales Pipeline Summary <div class="sl-line"></div></div>
-        <div class="kg c4 mb4" id="daily-crm-kpis">
+        <!-- Leads Entered -->
+        <div class="sl" style="margin-top:20px">Leads Entered <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px" id="dl-leads-count"></span><div class="sl-line"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Name</th><th>Company</th><th>Type</th><th>Stage</th><th>Value</th><th>Source</th><th>Created</th></tr></thead>
+            <tbody id="dl-leads-tbody"><tr><td colspan="7" class="empty">No new leads</td></tr></tbody>
+          </table>
+        </div>
+
+        <!-- Lead Deliveries -->
+        <div class="sl" style="margin-top:20px">Lead Deliveries <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px" id="dl-deliveries-count"></span><div class="sl-line"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Client</th><th>Leads Qty</th><th>Generated</th><th>Price</th><th>Total</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody id="dl-deliveries-tbody"><tr><td colspan="7" class="empty">No deliveries</td></tr></tbody>
+          </table>
+        </div>
+
+        <!-- Pipeline Activity -->
+        <div class="sl" style="margin-top:20px">Pipeline Activity <div class="sl-line"></div></div>
+        <div class="kg c4 mb4">
           <div class="kpi"><div class="klabel">Active Leads</div><div class="kval blu" id="ds-active">—</div></div>
           <div class="kpi"><div class="klabel">Call-Backs Due</div><div class="kval grn" id="ds-callbacks">—</div></div>
           <div class="kpi"><div class="klabel">Proposals Out</div><div class="kval" id="ds-proposals">—</div></div>
@@ -1224,9 +1244,25 @@ td strong{font-weight:500}
         <div class="twrap">
           <table>
             <thead><tr><th>Stage</th><th>Count</th><th>Pipeline Value</th><th>PPL Leads</th><th>Managed Leads</th></tr></thead>
-            <tbody id="daily-crm-tbody"><tr><td colspan="5" class="empty">Loading sales data...</td></tr></tbody>
+            <tbody id="daily-crm-tbody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
+
+        <!-- Tasks & Activity -->
+        <div class="sl" style="margin-top:20px">Tasks Completed <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px" id="dl-tasks-count"></span><div class="sl-line"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Task</th><th>Assigned To</th><th>Priority</th><th>Linked To</th><th>Completed</th></tr></thead>
+            <tbody id="dl-tasks-tbody"><tr><td colspan="5" class="empty">No tasks completed</td></tr></tbody>
+          </table>
+        </div>
+
+        <!-- Daily Notes -->
+        <div class="sl" style="margin-top:20px">Daily Notes <div class="sl-line"></div><button class="btn btn-xs btn-p" style="margin-left:8px" onclick="openDailyNoteModal()">+ Add Note</button></div>
+        <div id="dl-notes-list" style="margin-top:10px"><span style="font-size:11px;color:var(--ink3)">No notes yet</span></div>
+
+        <!-- Chart -->
+        <div class="chart-card mb4" style="margin-top:20px"><div class="chart-title">Daily Lead Volume</div><canvas id="chart-daily" height="130"></canvas></div>
       </div>
 
       <!-- ══ AGENTS HUB ══ -->
@@ -1948,6 +1984,20 @@ td strong{font-weight:500}
   </div>
 </div>
 
+<div class="overlay" id="m-daily-note">
+  <div class="modal" style="max-width:480px">
+    <h2>Add Daily Note</h2>
+    <div class="msub">Capture what happened today — context for future you</div>
+    <div class="frow"><label class="flabel">Date</label><input class="fi" id="dn-date" type="date"></div>
+    <div class="frow"><label class="flabel">Category</label><select class="fi" id="dn-category"><option value="general">General</option><option value="campaigns">Campaigns</option><option value="leads">Leads</option><option value="clients">Clients</option><option value="pipeline">Pipeline</option><option value="finance">Finance</option><option value="decision">Decision</option></select></div>
+    <div class="frow"><label class="flabel">Note</label><textarea class="fta" id="dn-content" rows="4" placeholder="What happened? What did you decide? What needs follow-up?"></textarea></div>
+    <div class="macts">
+      <div style="flex:1"></div>
+      <button class="btn" onclick="closeModal('m-daily-note')">Cancel</button>
+      <button class="btn btn-p" onclick="saveDailyNote()">Save Note</button>
+    </div>
+  </div>
+</div>
 <div class="overlay" id="m-biz-settings">
   <div class="modal" style="max-width:480px">
     <h2>Business Settings</h2>
@@ -2802,21 +2852,22 @@ async function saveLead() {
 const PPL_STAGES=[{id:'active_client',label:'Active'},{id:'paused',label:'Paused'},{id:'churned',label:'Churned'}];
 async function loadPPL() {
   const yr = new Date().getFullYear()+'-01-01';
-  const [clientsR, ytdR, spendR] = await Promise.all([
+  const [clientsR, ytdR, campR] = await Promise.all([
     db.from('clients').select('*').eq('type','ppl').order('created_at',{ascending:false}),
     db.from('ppl_order_log').select('leads_qty').gte('order_date',yr),
-    db.from('ad_spend_daily').select('spend,leads').eq('account_type','solar_ppl').gte('date',yr)
+    db.from('meta_campaigns').select('meta_campaign_id,spend_mtd,leads_mtd')
   ]);
   if (clientsR.error) { $('ppl-tbody').innerHTML=`<tr><td colspan="12" class="empty">Error: ${esc(clientsR.error.message)}</td></tr>`; return; }
   const ytdLeads = (ytdR.data||[]).reduce((s,r)=>s+(r.leads_qty||0),0);
-  renderPPL(clientsR.data||[], ytdLeads, spendR.data||[]);
+  renderPPL(clientsR.data||[], ytdLeads, campR.data||[]);
 }
-function renderPPL(clients, ytdLeads=0, spendData=[]) {
+function renderPPL(clients, ytdLeads=0, campaigns=[]) {
   setText('ppl-active',clients.filter(c=>c.stage==='active_client').length);
   setText('ppl-leads',ytdLeads);
-  const ytdSpend=spendData.reduce((s,r)=>s+(r.spend||0),0);
-  const ytdSpendLeads=spendData.reduce((s,r)=>s+(r.leads||0),0);
-  setText('ppl-meta-cpl',ytdSpend>0&&ytdSpendLeads>0?'$'+(ytdSpend/ytdSpendLeads).toFixed(2):'—');
+  // Calculate Meta CPL from actual listed campaigns (sum all campaign spend/leads)
+  const totalCampSpend=campaigns.reduce((s,c)=>s+(c.spend_mtd||0),0);
+  const totalCampLeads=campaigns.reduce((s,c)=>s+(c.leads_mtd||0),0);
+  setText('ppl-meta-cpl',totalCampSpend>0&&totalCampLeads>0?'$'+(totalCampSpend/totalCampLeads).toFixed(2):'—');
   const ac=clients.filter(c=>c.stage==='active_client'&&(c.true_cpl||0)>0);
   setText('ppl-true-cpl',ac.length?'$'+(ac.reduce((s,c)=>s+(c.true_cpl||0),0)/ac.length).toFixed(2):'—');
   const dueClients=clients.filter(c=>c.stage==='active_client'&&c.total_leads_purchased>0&&(c.leads_delivered||0)/c.total_leads_purchased>=0.75);
@@ -3478,6 +3529,7 @@ async function syncCampaignInsights() {
     if(d.message&&!d.synced){toast(d.message);loadCampaigns();return;}
     toast(`Synced ${d.synced||0} campaign(s)${d.failed?' · '+d.failed+' failed':''}`);
     loadCampaigns();
+    loadPPL(); // refresh client CPL from campaign rollup
   } catch(e){toast('Sync error: '+e.message,true);}
   finally{btn.disabled=false;btn.textContent='Sync Stats';}
 }
@@ -3778,7 +3830,7 @@ async function loadFinance() {
   const ytdYear = isYtd ? val.split('-')[1] : null;
   const from = isYtd ? `${ytdYear}-01-01` : `${val}-01`;
   const next = isYtd ? today : nextMonthStart(val);
-  const [expR,spR,subR,pplR,mgR,mgOrdR,pplOrdR]=await Promise.all([
+  const [expR,spR,subR,pplR,mgR,mgOrdR,pplOrdR,campR]=await Promise.all([
     db.from('expenses').select('*').gte('date',from).lte('date',next),
     db.from('ad_spend_daily').select('date,account_type,spend,leads').order('date',{ascending:false}),
     db.from('subscriptions').select('*').order('created_at'),
@@ -3786,19 +3838,22 @@ async function loadFinance() {
     db.from('clients').select('id,company_name,management_fee,payments_made,stage,active_months').eq('type','managed'),
     db.from('managed_order_log').select('client_id,amount,order_date').gte('order_date',from).lte('order_date',next),
     db.from('ppl_order_log').select('leads_qty,lead_price,order_date').gte('order_date',from).lte('order_date',next),
+    db.from('meta_campaigns').select('name,meta_campaign_id,spend_mtd,leads_mtd,clicks_mtd,cpl_mtd,last_synced_at'),
   ]);
-  renderFinance(expR.data||[],spR.data||[],subR.data||[],pplR.data||[],mgR.data||[],mgOrdR.data||[],pplOrdR.data||[],from,next);
+  renderFinance(expR.data||[],spR.data||[],subR.data||[],pplR.data||[],mgR.data||[],mgOrdR.data||[],pplOrdR.data||[],from,next,campR.data||[]);
 }
-function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOrders,from,next) {
+function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOrders,from,next,campaigns=[]) {
   const te=expenses.reduce((s,e)=>s+(e.amount||0),0);
   const activeSubs=subs.filter(s=>s.active);
   const ts=activeSubs.length>0?activeSubs.reduce((s,sub)=>s+(sub.monthly_cost||0),0):null;
   renderSubscriptionsTable(subs);
-  const latestPpl=adSpend.find(a=>a.account_type==='solar_ppl');
+  // Use actual campaign data for spend & CPL (not ad_spend_daily account totals)
+  const campSpend=campaigns.reduce((s,c)=>s+(c.spend_mtd||0),0);
+  const campLeads=campaigns.reduce((s,c)=>s+(c.leads_mtd||0),0);
   const latestAg=adSpend.find(a=>a.account_type==='agency');
-  const pplSp=latestPpl?.spend||0;
+  const pplSp=campSpend;
   const agSp=latestAg?.spend||0;
-  const pplLeadsTotal=latestPpl?.leads||0;
+  const pplLeadsTotal=campLeads;
   const metaCpl=(pplSp>0&&pplLeadsTotal>0)?'$'+(pplSp/pplLeadsTotal).toFixed(2):'—';
   const pplRevLog=pplOrders.reduce((s,o)=>s+((o.leads_qty||0)*(o.lead_price||0)),0);
   const pplRevClients=pplClients.reduce((s,c)=>s+((c.leads_delivered||0)*(c.lead_price||0)),0);
@@ -3837,7 +3892,7 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const tb=$('exp-tbody');
   if (!expenses.length) { tb.innerHTML='<tr><td colspan="6" class="empty">No expenses for this period.</td></tr>'; }
   else { tb.innerHTML=expenses.map(e=>`<tr><td>${esc(e.category||'—')}</td><td>${esc(e.description||'—')}</td><td>${fmt(e.amount)}</td><td><span class="badge ${e.type==='fixed'?'bg-blu':'bg-amb'}">${e.type||'variable'}</span></td><td style="font-family:var(--mono);font-size:10px">${e.date||'—'}</td><td><button class="btn btn-xs" style="color:var(--red)" onclick="deleteExpense('${esc(String(e.id))}')">Delete</button></td></tr>`).join(''); }
-  renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses,pplSp,agSp);renderCplChart(adSpend);
+  renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses,pplSp,agSp);renderCplChart(campaigns);
 }
 function renderSubscriptionsTable(subs) {
   const tb = $('subs-tbody');
@@ -3915,13 +3970,14 @@ function renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses,pplAdSpend
   if (revChart) revChart.destroy();
   revChart=new Chart($('chart-rev').getContext('2d'),{type:'bar',data:{labels,datasets:[{label:'Amount',data:values,backgroundColor:colors,borderColor:borders,borderWidth:1.5,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9},callback:v=>'$'+v.toLocaleString()},grid:{color:grid}}}}});
 }
-function renderCplChart(adSpend) {
+function renderCplChart(campaigns) {
   const {grid,tick}=chartDefaults();
-  const pplRows=adSpend.filter(a=>a.account_type==='solar_ppl').sort((a,b)=>a.date.localeCompare(b.date));
-  const days=pplRows.map(r=>r.date);
-  const metaCpls=pplRows.map(r=>r.leads>0?+(r.spend/r.leads).toFixed(2):null);
+  // Show CPL per campaign as a bar chart
+  const withLeads=campaigns.filter(c=>(c.leads_mtd||0)>0).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  const labels=withLeads.map(c=>(c.name||c.meta_campaign_id||'?').slice(0,25));
+  const cpls=withLeads.map(c=>+((c.spend_mtd||0)/(c.leads_mtd||1)).toFixed(2));
   if (cplChart) cplChart.destroy();
-  cplChart=new Chart($('chart-cpl').getContext('2d'),{type:'line',data:{labels:days,datasets:[{label:'Meta CPL',data:metaCpls,borderColor:'#4f8fff',backgroundColor:'rgba(79,143,255,.05)',tension:.4,borderWidth:2,pointRadius:3,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:tick,font:{family:'DM Mono',size:9.5},boxWidth:8}}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9},callback:v=>'$'+v},grid:{color:grid}}}}});
+  cplChart=new Chart($('chart-cpl').getContext('2d'),{type:'bar',data:{labels,datasets:[{label:'CPL by Campaign',data:cpls,backgroundColor:'rgba(79,143,255,.18)',borderColor:'#4f8fff',borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:true,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9},callback:v=>'$'+v},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}}}}});
 }
 
 function switchDailyTab(range,el) {
@@ -3945,14 +4001,108 @@ async function loadDailyLogs() {
   const {from,to}=getDateRange(curDailyRange);
   const toNext=new Date(to);toNext.setDate(toNext.getDate()+1);
   const toNextStr=toNext.toISOString().split('T')[0];
-  const [{data,error}, {data:leadsData}]=await Promise.all([
-    db.from('ad_spend_daily').select('*').gte('date',from).lt('date',toNextStr).order('date',{ascending:false}),
-    db.from('leads').select('id,name,stage,lead_type,value,created_at').not('stage','in','("closed_won","closed_lost")')
+  const [campR, leadsR, pipelineR, ordersR, tasksR, notesR]=await Promise.all([
+    db.from('meta_campaigns').select('name,meta_campaign_id,status,spend_mtd,leads_mtd,clicks_mtd,cpl_mtd,last_synced_at'),
+    db.from('leads').select('id,name,company,stage,lead_type,value,source,created_at').gte('created_at',from+'T00:00:00').lt('created_at',toNextStr+'T00:00:00').order('created_at',{ascending:false}),
+    db.from('leads').select('id,name,stage,lead_type,value,created_at').not('stage','in','("closed_won","closed_lost")'),
+    db.from('ppl_order_log').select('*,clients!inner(company_name)').gte('order_date',from).lte('order_date',to).order('order_date',{ascending:false}),
+    db.from('tasks').select('*').eq('done',true).gte('updated_at',from+'T00:00:00').lt('updated_at',toNextStr+'T00:00:00').order('updated_at',{ascending:false}),
+    db.from('daily_notes').select('*').gte('date',from).lte('date',to).order('date',{ascending:false}),
   ]);
-  if (error) { $('daily-tbody').innerHTML=`<tr><td colspan="7" class="empty">Error: ${esc(error.message)}</td></tr>`;renderDailyChart([]); }
-  else renderDailyLogs(data||[]);
-  renderDailyCrmStats(leadsData||[]);
+  const campaigns=campR.data||[];
+  const newLeads=leadsR.data||[];
+  const pipelineLeads=pipelineR.data||[];
+  const orders=ordersR.data||[];
+  const tasks=tasksR.data||[];
+  const notes=notesR.data||[];
+
+  // KPIs
+  const totalSpend=campaigns.reduce((s,c)=>s+(c.spend_mtd||0),0);
+  const totalLeads=campaigns.reduce((s,c)=>s+(c.leads_mtd||0),0);
+  const avgCpl=totalLeads>0?totalSpend/totalLeads:0;
+  const delivered=orders.filter(o=>o.status==='delivered').reduce((s,o)=>s+(o.leads_qty||0),0);
+  setText('dl-spend',totalSpend?fmt(totalSpend):'—');
+  setText('dl-leads',totalLeads||'—');
+  setText('dl-cpl',avgCpl>0?'$'+avgCpl.toFixed(2):'—');
+  setText('dl-delivered',delivered||'—');
+
+  // Campaign table
+  renderDailyCampaigns(campaigns);
+  // New leads table
+  renderDailyNewLeads(newLeads);
+  // Deliveries table
+  renderDailyDeliveries(orders);
+  // Pipeline
+  renderDailyCrmStats(pipelineLeads);
+  // Tasks
+  renderDailyTasks(tasks);
+  // Notes
+  renderDailyNotes(notes);
+  // Chart from campaigns
+  renderDailyChart(campaigns.filter(c=>(c.leads_mtd||0)>0).map(c=>[c.name||c.meta_campaign_id,c.leads_mtd]));
 }
+
+function renderDailyCampaigns(campaigns) {
+  const tb=$('dl-camp-tbody');
+  if (!campaigns.length) { tb.innerHTML='<tr><td colspan="7" class="empty">No campaigns configured</td></tr>'; return; }
+  const fmt$=v=>v?'$'+Number(v).toLocaleString('en-AU',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
+  const fmtN=v=>v?Number(v).toLocaleString('en-AU'):'—';
+  tb.innerHTML=campaigns.map(c=>{
+    const statusColor=c.status==='ACTIVE'?'var(--grn)':'var(--red)';
+    const cpl=(c.leads_mtd||0)>0?fmt$((c.spend_mtd||0)/(c.leads_mtd||1)):'—';
+    const synced=c.last_synced_at?new Date(c.last_synced_at).toLocaleString('en-AU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'never';
+    return `<tr>
+      <td><strong>${esc(c.name||'')}</strong><div style="font-family:var(--mono);font-size:9px;color:var(--ink3)">${esc(c.meta_campaign_id)}</div></td>
+      <td><span style="color:${statusColor};font-family:var(--mono);font-size:10px;font-weight:600">${c.status}</span></td>
+      <td style="font-family:var(--mono)">${fmt$(c.spend_mtd)}</td>
+      <td style="font-family:var(--mono)">${fmtN(c.leads_mtd)}</td>
+      <td style="font-family:var(--mono)">${fmtN(c.clicks_mtd)}</td>
+      <td style="font-family:var(--mono);font-weight:500">${cpl}</td>
+      <td style="font-size:10px;color:var(--ink3)">${synced}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderDailyNewLeads(leads) {
+  setText('dl-leads-count',leads.length?leads.length+' in period':'');
+  const tb=$('dl-leads-tbody');
+  if (!leads.length) { tb.innerHTML='<tr><td colspan="7" class="empty">No new leads in this period</td></tr>'; return; }
+  tb.innerHTML=leads.map(l=>{
+    const badge=l.lead_type==='ppl'?'bg-sky':'bg-vio';
+    const typeLabel=l.lead_type==='ppl'?'PPL':'Managed';
+    const t=new Date(l.created_at).toLocaleString('en-AU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    return `<tr>
+      <td><strong>${esc(l.name||'—')}</strong></td>
+      <td>${esc(l.company||'—')}</td>
+      <td><span class="badge ${badge}" style="font-size:8.5px">${typeLabel}</span></td>
+      <td><span class="badge ${stageBadge(l.stage)}">${stageLabel(l.stage)}</span></td>
+      <td>${l.value?'$'+Number(l.value).toLocaleString()+'/mo':'—'}</td>
+      <td style="font-size:10px;color:var(--ink3)">${esc(l.source||'—')}</td>
+      <td style="font-family:var(--mono);font-size:10px">${t}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderDailyDeliveries(orders) {
+  setText('dl-deliveries-count',orders.length?orders.length+' orders':'');
+  const tb=$('dl-deliveries-tbody');
+  if (!orders.length) { tb.innerHTML='<tr><td colspan="7" class="empty">No deliveries in this period</td></tr>'; return; }
+  tb.innerHTML=orders.map(o=>{
+    const clientName=o.clients?.company_name||'—';
+    const total=(o.leads_qty||0)*(o.lead_price||0);
+    const statusBadge=o.status==='delivered'?'bg-grn':o.status==='pending'?'bg-amb':'bg-gray';
+    return `<tr>
+      <td><strong>${esc(clientName)}</strong></td>
+      <td style="font-family:var(--mono)">${o.leads_qty||0}</td>
+      <td style="font-family:var(--mono)">${o.leads_generated||'—'}</td>
+      <td style="font-family:var(--mono)">$${Number(o.lead_price||0).toFixed(2)}</td>
+      <td style="font-family:var(--mono);font-weight:500">${fmt(total)}</td>
+      <td><span class="badge ${statusBadge}" style="font-size:8.5px">${o.status||'—'}</span></td>
+      <td style="font-family:var(--mono);font-size:10px">${o.order_date||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
 function renderDailyCrmStats(leads) {
   const active=leads.filter(l=>!['closed_won','closed_lost'].includes(l.stage));
   const callbacks=active.filter(l=>l.stage==='call_back').length;
@@ -3983,46 +4133,70 @@ function renderDailyCrmStats(leads) {
     </tr>`;
   }).join('');
 }
-function renderDailyLogs(rows) {
-  const getLeads=r=>r.leads??0;
-  const getSpend=r=>r.spend??0;
-  const latestPpl=rows.find(r=>r.account_type==='solar_ppl');
-  const latestAg=rows.find(r=>r.account_type==='agency');
-  const tl=getLeads(latestPpl||{});
-  const ts=getSpend(latestPpl||{})+getSpend(latestAg||{});
-  setText('dl-leads',tl||'—');setText('dl-spend',ts?fmt(ts):'—');
-  setText('dl-cpl',tl>0&&latestPpl?'$'+(getSpend(latestPpl)/tl).toFixed(2):'—');
-  setText('dl-camps',new Set(rows.map(r=>r.date)).size||'—');
-  const tb=$('daily-tbody');
-  if (!rows.length) { tb.innerHTML='<tr><td colspan="7" class="empty">No data for this range.</td></tr>';renderDailyChart([]); return; }
-  let running=0;
-  const sorted=[...rows].sort((a,b)=>a.date.localeCompare(b.date));
-  const runningMap={};
-  sorted.forEach(r=>{running+=getLeads(r);runningMap[r.date+r.account_type+(r.client_name||'')]=running;});
-  tb.innerHTML=rows.map(r=>{
-    const leads=getLeads(r),spend=getSpend(r);
-    const cpl=leads>0&&spend>0?'$'+(spend/leads).toFixed(2):'—';
-    const acType=r.account_type||'—';
-    const badge=acType==='solar_ppl'?'bg-blu':acType==='agency'?'bg-sky':'bg-gray';
-    const typeLabel=acType==='solar_ppl'?'Solar PPL':acType==='agency'?'Agency':'—';
-    const key=r.date+r.account_type+(r.client_name||'');
+
+function renderDailyTasks(tasks) {
+  setText('dl-tasks-count',tasks.length?tasks.length+' done':'');
+  const tb=$('dl-tasks-tbody');
+  if (!tasks.length) { tb.innerHTML='<tr><td colspan="5" class="empty">No tasks completed in this period</td></tr>'; return; }
+  tb.innerHTML=tasks.map(t=>{
+    const ts=new Date(t.updated_at).toLocaleString('en-AU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
     return `<tr>
-      <td style="font-family:var(--mono);font-size:10.5px">${r.date||'—'}</td>
-      <td><strong>${esc(r.client_name||acType)}</strong></td>
-      <td><span class="badge ${badge}">${typeLabel}</span></td>
-      <td>${leads||'—'}</td>
-      <td>${spend?fmt(spend):'—'}</td>
-      <td>${cpl}</td>
-      <td style="font-family:var(--mono);font-size:10px;color:var(--ink3)">${runningMap[key]||'—'}</td>
+      <td><strong>${esc(t.title||'—')}</strong>${t.notes?'<div style="font-size:10px;color:var(--ink3)">'+esc(t.notes)+'</div>':''}</td>
+      <td style="font-size:10px">${esc(t.assigned_to||'—')}</td>
+      <td><span class="badge ${t.priority==='ai'?'bg-vio':'bg-sky'}" style="font-size:8.5px">${t.priority||'normal'}</span></td>
+      <td style="font-size:10px">${t.linked_name?esc(t.linked_name):'—'}</td>
+      <td style="font-family:var(--mono);font-size:10px">${ts}</td>
     </tr>`;
   }).join('');
-  const pplByDate=rows.filter(r=>r.account_type==='solar_ppl').sort((a,b)=>a.date.localeCompare(b.date));
-  renderDailyChart(pplByDate.map(r=>[r.date,getLeads(r)]));
+}
+
+function renderDailyNotes(notes) {
+  const el=$('dl-notes-list');
+  if (!notes.length) { el.innerHTML='<span style="font-size:11px;color:var(--ink3)">No notes for this period</span>'; return; }
+  const catColors={general:'bg-gray',campaigns:'bg-blu',leads:'bg-sky',clients:'bg-grn',pipeline:'bg-amb',finance:'bg-vio',decision:'bg-red'};
+  el.innerHTML=notes.map(n=>{
+    const t=new Date(n.created_at||n.date).toLocaleString('en-AU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    return `<div style="background:var(--bg2);border:1px solid var(--br);border-radius:8px;padding:12px 14px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span class="badge ${catColors[n.category]||'bg-gray'}" style="font-size:8.5px">${esc(n.category||'general')}</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--ink3)">${n.date} · ${t}</span>
+        <span style="flex:1"></span>
+        <button class="btn btn-xs" style="color:var(--red);padding:0 4px" onclick="deleteDailyNote('${n.id}')" title="Delete">x</button>
+      </div>
+      <div style="font-size:12px;line-height:1.5;white-space:pre-wrap">${esc(n.content||'')}</div>
+    </div>`;
+  }).join('');
+}
+
+// Daily note CRUD
+function openDailyNoteModal() {
+  setVal('dn-date',new Date().toISOString().split('T')[0]);
+  setVal('dn-category','general');
+  setVal('dn-content','');
+  openModal('m-daily-note');
+}
+async function saveDailyNote() {
+  const date=$('dn-date').value;
+  const category=$('dn-category').value;
+  const content=$('dn-content').value.trim();
+  if (!content) { toast('Note content required',true); return; }
+  const {error}=await db.from('daily_notes').insert([{date,category,content,created_at:now()}]);
+  if (error) { toast('Error: '+error.message,true); return; }
+  closeModal('m-daily-note');
+  toast('Note saved');
+  loadDailyLogs();
+}
+async function deleteDailyNote(id) {
+  if (!confirm('Delete this note?')) return;
+  await db.from('daily_notes').delete().eq('id',id);
+  toast('Note deleted');
+  loadDailyLogs();
 }
 function renderDailyChart(data) {
   const {grid,tick}=chartDefaults();
   if (dailyChart) dailyChart.destroy();
-  dailyChart=new Chart($('chart-daily').getContext('2d'),{type:'bar',data:{labels:data.map(d=>d[0]),datasets:[{label:'Solar PPL Leads',data:data.map(d=>d[1]),backgroundColor:'rgba(79,143,255,.14)',borderColor:'#4f8fff',borderWidth:1.5,borderRadius:4}]},options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid},beginAtZero:true}},responsive:true,maintainAspectRatio:true}});
+  const labels=data.map(d=>String(d[0]).slice(0,22));
+  dailyChart=new Chart($('chart-daily').getContext('2d'),{type:'bar',data:{labels,datasets:[{label:'Leads by Campaign',data:data.map(d=>d[1]),backgroundColor:'rgba(79,143,255,.14)',borderColor:'#4f8fff',borderWidth:1.5,borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid},beginAtZero:true},y:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}}},responsive:true,maintainAspectRatio:true}});
 }
 
 const AGENT_CFG={marketing:{name:'Marketing Agent',role:'Campaigns & CPL Optimisation'},finance:{name:'Finance Agent',role:'P&L & Revenue Tracking'},operations:{name:'Operations Agent',role:'Lead Flow & Quality Assurance'},strategy:{name:'Strategy Agent',role:'Growth Direction & Planning'},sales:{name:'Sales Agent',role:'Pipeline Analysis & Lead Prioritisation'}};
@@ -4982,8 +5156,10 @@ let QL_LOGO_B64 = null;
 })();
 
 async function loadBizSettings() {
-  const {data} = await db.from('business_settings').select('*').limit(1).single();
-  return data || {};
+  try {
+    const {data} = await db.from('business_settings').select('*').limit(1).maybeSingle();
+    return data || {};
+  } catch(_) { return {}; }
 }
 
 async function openBizSettingsModal() {
@@ -5433,7 +5609,7 @@ async function downloadInvoicePDF(inv) {
   }
 
   doc.save((inv.invoice_number || 'invoice') + '.pdf');
-  } catch(e) { console.error('PDF generation error:', e); alert('PDF generation failed: ' + e.message); }
+  } catch(e) { console.error('PDF generation error:', e); alert('PDF generation failed: ' + (e instanceof Error ? e.message : String(e))); }
 }
 </script>
 </body>
