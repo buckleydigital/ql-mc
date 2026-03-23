@@ -1341,7 +1341,7 @@ td strong{font-weight:500}
       <!-- ══ AGENT CHAT ══ -->
       <div class="panel" id="panel-chat">
         <div class="ph">
-          <div class="ph-left"><h1>Agent Chat</h1><p>Persistent memory · YTD + live DB context injected</p></div>
+          <div class="ph-left"><h1>Agent Chat</h1><p>Persistent memory · live context</p></div>
           <div class="ph-right">
             <button class="btn btn-sm btn-red" onclick="clearChatMemory()">Clear memory</button>
           </div>
@@ -1366,7 +1366,7 @@ td strong{font-weight:500}
               <div class="msg">
                 <div class="msg-av">MKT</div>
                 <div>
-                  <div class="msg-bubble">Marketing Agent ready with live Supabase access, persistent memory, and full YTD context. I can see today's numbers, yesterday's data, and year-to-date trends. What do you need?</div>
+                  <div class="msg-bubble">Marketing Agent ready. What do you need?</div>
                   <div class="msg-time">System</div>
                 </div>
               </div>
@@ -1419,7 +1419,7 @@ td strong{font-weight:500}
             <div class="msg">
               <div class="msg-av">SLS</div>
               <div>
-                <div class="msg-bubble">Sales Agent ready. I have full access to your pipeline, all lead notes, contact history, and deal values. Ask me who to call today, which leads to prioritise, or for a full pipeline review.</div>
+                <div class="msg-bubble">Sales Agent ready. What do you need?</div>
                 <div class="msg-time">System</div>
               </div>
             </div>
@@ -2340,7 +2340,7 @@ function closeModal(id) { $(id).classList.remove('open'); }
 document.addEventListener('click', e => { if (e.target.classList.contains('overlay')) e.target.classList.remove('open'); });
 
 async function loadAll() {
-  await Promise.all([loadTasks(), loadEmails(), loadCRM(), loadPPL(), loadManaged(), loadFinance()]);
+  await Promise.all([loadTasks(), loadEmails(), loadCRM(), loadPPL(), loadManaged(), loadFinance(), loadAgentConfig()]);
   loadAgentFile();
   loadTaskLeadDropdowns();
   loadFileContent();
@@ -4256,12 +4256,21 @@ function renderDailyChart(leads) {
   dailyChart=new Chart($('chart-daily').getContext('2d'),{type:'bar',data:{labels:days,datasets:[{label:'Leads Entered',data:counts,backgroundColor:'rgba(79,143,255,.14)',borderColor:'#4f8fff',borderWidth:1.5,borderRadius:4}]},options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid},beginAtZero:true}},responsive:true,maintainAspectRatio:true}});
 }
 
-const AGENT_CFG={marketing:{name:'Marketing Agent',role:'Campaigns & CPL Optimisation'},finance:{name:'Finance Agent',role:'P&L & Revenue Tracking'},operations:{name:'Operations Agent',role:'Lead Flow & Quality Assurance'},strategy:{name:'Strategy Agent',role:'Growth Direction & Planning'},sales:{name:'Sales Agent',role:'Pipeline Analysis & Lead Prioritisation'}};
-const DEFAULT_MD={'agents.md':'# Agent Role\nDefine responsibilities here.\n\n## Key Responsibilities\n-\n\n## Behaviour\n- Reference live Supabase data\n- Be concise and data-driven','soul.md':'# Agent Soul\n\n## Tone\nProfessional, direct, data-first.','user.md':'# User Context\n\n## Business\nQuoteLeads.com.au — Solar lead gen + managed ads agency, Australia.\n\n## Operator\nJack — Founder','tools.md':'# Agent Tools\n\n## Supabase Tables\n- clients, leads, ad_spend_daily (solar_ppl + agency only), expenses, revenue, subscriptions, tasks, flagged_emails, agent_files, chat_memory, daily_snapshots','__identity__.md':'# Identity\n\nYou are a QuoteLeads agent. Always lead with data. Never speculate without labelling it.'};
+let AGENT_CFG={}, DEFAULT_MD={};
+async function loadAgentConfig() {
+  try {
+    const {data}=await db.from('agent_config').select('agent,name,role,emoji,intro');
+    if(data) data.forEach(r=>{AGENT_CFG[r.agent]={name:r.name,role:r.role};PERSONAS[r.agent]={name:r.name.replace(' Agent',''),emoji:r.emoji,intro:r.intro};});
+  } catch(_){}
+  try {
+    const {data}=await db.from('agent_files').select('filename,content').eq('agent','__defaults__');
+    if(data) data.forEach(r=>{DEFAULT_MD[r.filename]=r.content;});
+  } catch(_){}
+}
 function selectAgent(name,el) {
   document.querySelectorAll('.agent-card').forEach(c=>c.classList.remove('active-agent'));
   el.classList.add('active-agent');curAgent=name;
-  setText('sel-agent-name',AGENT_CFG[name].name);setText('sel-agent-role',AGENT_CFG[name].role);
+  const cfg=AGENT_CFG[name]||{name:name,role:''};setText('sel-agent-name',cfg.name);setText('sel-agent-role',cfg.role);
   setText('md-filename',`${name}/${curMd}`);loadAgentFile();
 }
 function switchMd(filename,el) {
@@ -4283,13 +4292,7 @@ async function saveAgentFile() {
   toast('File saved ✓');
 }
 
-const PERSONAS={
-  marketing:{name:'Marketing',emoji:'MKT',intro:"Marketing Agent ready. Ask me about CPL trends, campaign performance, or ad spend optimisation."},
-  finance:{name:'Finance',emoji:'FIN',intro:"Finance Agent ready. Revenue, expenses, margins, and billing — including historical trends."},
-  operations:{name:'Operations',emoji:'OPS',intro:"Operations Agent ready. Lead flow, delivery performance, and quality metrics."},
-  strategy:{name:'Strategy',emoji:'STR',intro:"Strategy Agent ready. Pipeline trends, growth opportunities, and positioning."},
-  sales:{name:'Sales',emoji:'SLS',intro:"Sales Agent ready. I have your full pipeline loaded — all leads, notes, values, and contact history. Ask me who to call today, which deals to prioritise, or for a full pipeline review."}
-};
+let PERSONAS={};
 
 async function loadChatMemory() {
   if (!db||!currentUser) return;
@@ -4298,7 +4301,7 @@ async function loadChatMemory() {
     if (data&&data.length>0) {
       chatHistory[curChat]=data.map(m=>({role:m.role,content:m.content}));
       const msgs=$('chat-msgs');
-      const p=PERSONAS[curChat];
+      const p=PERSONAS[curChat]||{name:curChat,emoji:'?',intro:'Agent ready.'};
       msgs.innerHTML=''; msgs.appendChild(_buildMsg('agent',p.emoji,p.intro,null));
       data.forEach(m=>{if (m.role!=='system') addMsg(m.role==='user'?'user':'agent',m.role==='user'?'YOU':p.emoji,m.content,new Date(m.created_at));});
       setText('chat-mem-info',`${data.length} messages in memory · ${new Date(data[data.length-1].created_at).toLocaleDateString('en-AU')}`);
@@ -4311,61 +4314,20 @@ async function loadChatMemory() {
 }
 async function clearChatMemory() {
   if (!db||!currentUser) return;
-  if (!confirm(`Clear all messages for ${PERSONAS[curChat].name}?`)) return;
+  if (!confirm(`Clear all messages for ${(PERSONAS[curChat]||{name:curChat}).name}?`)) return;
   const {error}=await db.from('chat_memory').delete().eq('agent',curChat).eq('user_id',currentUser.id);
   if (error) { toast('Error: '+error.message,true); return; }
   chatHistory[curChat]=[];selectChat(curChat,document.querySelector('.chat-item.active'));toast('Memory cleared');
 }
 function selectChat(name,el) {
   if (el) {document.querySelectorAll('.chat-item').forEach(i=>i.classList.remove('active'));el.classList.add('active');}
-  curChat=name;const p=PERSONAS[name];
+  curChat=name;const p=PERSONAS[name]||{name:name,emoji:'?',intro:'Agent ready.'};
   setText('chat-name',p.name+' Agent');
   const cm=$('chat-msgs'); cm.innerHTML=''; cm.appendChild(_buildMsg('agent',p.emoji,p.intro,null));
   chatHistory[name]=chatHistory[name]||[];loadChatMemory();
 }
 
-async function buildAgentContext() {
-  const fmtN = n => (n != null && n !== '') ? '$' + Number(n).toLocaleString('en-AU', {minimumFractionDigits:0,maximumFractionDigits:0}) : 'n/a';
-  const fmtC = n => (n != null && n > 0) ? '$' + Number(n).toFixed(2) : 'n/a';
-  const yr = new Date().getFullYear() + '-01-01';
-  let out = '\n\n## Live Dashboard Context';
-
-  try {
-    const { data: adRows } = await db.from('ad_spend_daily').select('date,account_type,spend,leads').gte('date', yr).order('date', {ascending:false});
-    if (adRows && adRows.length) {
-      const ppl = adRows.filter(r => r.account_type === 'solar_ppl');
-      const agency = adRows.filter(r => r.account_type === 'agency');
-      const pplSpend = ppl.reduce((s,r) => s + (r.spend||0), 0);
-      const pplLeads = ppl.reduce((s,r) => s + (r.leads||0), 0);
-      const agencySpend = agency.reduce((s,r) => s + (r.spend||0), 0);
-      out += `\n### Ad Spend YTD (${yr.slice(0,4)})`;
-      out += `\n- Solar PPL spend: ${fmtN(pplSpend)} · ${pplLeads} leads · Meta CPL ${pplLeads > 0 ? fmtC(pplSpend/pplLeads) : 'n/a'}`;
-      out += `\n- Agency acquisition spend: ${fmtN(agencySpend)}`;
-    }
-  } catch(e) {}
-
-  try {
-    const { data: pplClients } = await db.from('clients').select('company_name,leads_delivered,total_leads_purchased,meta_cpl,true_cpl,pct_sold,lead_price,balance').eq('type','ppl').eq('stage','active_client').order('company_name');
-    if (pplClients && pplClients.length) {
-      out += '\n### Active PPL Clients';
-      pplClients.forEach(c => {
-        out += `\n- ${c.company_name}: ${c.leads_delivered||0} delivered · ${c.total_leads_purchased||0} purchased · Meta CPL ${fmtC(c.meta_cpl)} · True CPL ${fmtC(c.true_cpl)} · ${c.pct_sold||0}% sold · $${c.lead_price||0}/lead · balance ${fmtN(c.balance)}`;
-      });
-    }
-  } catch(e) {}
-
-  try {
-    const { data: mgClients } = await db.from('clients').select('company_name,management_fee,leads_delivered,stage').eq('type','managed').eq('stage','active').order('company_name');
-    if (mgClients && mgClients.length) {
-      out += '\n### Active Managed Ads Clients';
-      mgClients.forEach(c => {
-        out += `\n- ${c.company_name}: ${fmtN(c.management_fee)}/mo fee`;
-      });
-    }
-  } catch(e) {}
-
-  return out;
-}
+// Context building moved server-side to anthropic-proxy edge function
 
 async function sendChat() {
   const inp=$('chat-inp'),text=inp.value.trim();
@@ -4376,15 +4338,13 @@ async function sendChat() {
   $('typing-area').style.display='flex';scrollChat();
   try { await db.from('chat_memory').insert([{agent:curChat,user_id:currentUser.id,role:'user',content:text,created_at:now()}]); } catch(e) {}
 
-  const dailyCtx = await buildAgentContext();
-
-  const p=PERSONAS[curChat];
+  const p=PERSONAS[curChat]||{emoji:'?'};
 
   try {
     const {data:{session}}=await db.auth.getSession();
     if (!session) throw new Error('Not authenticated.');
     const history=(chatHistory[curChat]||[]).slice(-20);
-    const res=await fetch(`${_ep}/functions/v1/anthropic-proxy`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({agent:curChat,context:dailyCtx,messages:history})});
+    const res=await fetch(`${_ep}/functions/v1/anthropic-proxy`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({agent:curChat,messages:history})});
     const data=await res.json();
     if (!res.ok||data.error) throw new Error(data.error?.message||`Proxy error ${res.status}`);
     const reply=data.content?.map(c=>c.text||'').join('')||'No response.';
@@ -4406,43 +4366,21 @@ async function sendChat() {
 let salesChatHistory = [];
 const SALES_STAGE_ORDER = {call_back:1,proposal:2,qualified:3,new_lead:4,no_answer:5,paused:6};
 
-async function buildSalesPipelineContext() {
+async function fetchSalesLeads() {
   try {
-    const { data: leads, error } = await db
-      .from('leads')
+    const { data: leads, error } = await db.from('leads')
       .select('id,name,company,stage,lead_type,value,source,notes,last_contact,created_at,updated_at')
-      .not('stage','in','("closed_won","closed_lost")')
-      .order('updated_at',{ascending:false});
-
-    if (error || !leads || !leads.length) return { leads: [], context: '\n\n## Sales Pipeline\nNo active leads in pipeline.' };
-
-    const sorted = [...leads].sort((a,b) => {
+      .not('stage','in','("closed_won","closed_lost")').order('updated_at',{ascending:false});
+    if (error || !leads || !leads.length) return [];
+    return [...leads].sort((a,b) => {
       const so = (SALES_STAGE_ORDER[a.stage]||9) - (SALES_STAGE_ORDER[b.stage]||9);
       return so !== 0 ? so : (b.value||0) - (a.value||0);
     });
-
-    const lines = sorted.map(l => {
-      const lastContact = l.last_contact ? new Date(l.last_contact).toLocaleDateString('en-AU') : 'never contacted';
-      const value = l.value ? `$${Number(l.value).toLocaleString()}/mo` : 'value TBD';
-      const daysSince = l.last_contact ? Math.floor((Date.now()-new Date(l.last_contact))/(1000*86400)) : null;
-      const urgency = daysSince !== null && daysSince > 7 ? ` ⚠ ${daysSince}d since contact` : '';
-      return `  - [${stageLabel(l.stage)}] ${l.name}${l.company?' @ '+l.company:''} · ${value} · ${l.lead_type==='ppl'?'PPL':'Managed Ads'} · Last: ${lastContact}${urgency}\n    Notes: ${l.notes||'none'}`;
-    });
-
-    const ctx = `\n\n## Full Active Sales Pipeline (${leads.length} leads)\n${lines.join('\n')}\n\n### Counts by Stage\n${
-      Object.entries(
-        sorted.reduce((acc,l)=>{acc[l.stage]=(acc[l.stage]||0)+1;return acc;},{})
-      ).map(([s,n])=>`  - ${stageLabel(s)}: ${n}`).join('\n')
-    }\n\n### Total Pipeline Value\n  $${sorted.reduce((s,l)=>s+(l.value||0),0).toLocaleString()}/mo across ${leads.length} leads`;
-
-    return { leads: sorted, context: ctx };
-  } catch(e) {
-    return { leads: [], context: '\n\n## Sales Pipeline\nUnable to load pipeline data.' };
-  }
+  } catch(_) { return []; }
 }
 
 async function refreshSalesContext() {
-  const { leads } = await buildSalesPipelineContext();
+  const leads = await fetchSalesLeads();
   renderSalesPriorityList(leads);
   toast('Pipeline refreshed ✓');
 }
@@ -4484,7 +4422,7 @@ function renderSalesPriorityList(leads) {
 }
 
 async function loadSalesPanel() {
-  const { leads } = await buildSalesPipelineContext();
+  const leads = await fetchSalesLeads();
   renderSalesPriorityList(leads);
   await loadSalesMemory();
 }
@@ -4496,7 +4434,7 @@ async function loadSalesMemory() {
     if (data && data.length > 0) {
       salesChatHistory = data.map(m=>({role:m.role,content:m.content}));
       const msgs = $('sa-msgs');
-      msgs.innerHTML = ''; msgs.appendChild(_buildMsg('agent','SLS',PERSONAS.sales.intro,null));
+      msgs.innerHTML = ''; msgs.appendChild(_buildMsg('agent','SLS',(PERSONAS.sales||{intro:'Agent ready.'}).intro,null));
       data.forEach(m=>{ if (m.role!=='system') addSalesMsg(m.role==='user'?'user':'agent',m.role==='user'?'YOU':'SLS',m.content,new Date(m.created_at)); });
       setText('sa-mem-info',`${data.length} messages in memory · ${new Date(data[data.length-1].created_at).toLocaleDateString('en-AU')}`);
       setText('sa-mem-status',`Memory active — ${data.length} messages saved`);
@@ -4518,7 +4456,7 @@ async function clearSalesMemory() {
   const { error } = await db.from('chat_memory').delete().eq('agent','sales').eq('user_id',currentUser.id);
   if (error) { toast('Error: '+error.message, true); return; }
   salesChatHistory = [];
-  const sm=$('sa-msgs'); sm.innerHTML=''; sm.appendChild(_buildMsg('agent','SLS',PERSONAS.sales.intro,null));
+  const sm=$('sa-msgs'); sm.innerHTML=''; sm.appendChild(_buildMsg('agent','SLS',(PERSONAS.sales||{intro:'Agent ready.'}).intro,null));
   setText('sa-mem-info','Memory cleared');
   setText('sa-mem-status','Memory active — will save as you chat');
   toast('Sales memory cleared');
@@ -4534,13 +4472,11 @@ async function sendSalesChat() {
   scrollSalesChat();
   try { await db.from('chat_memory').insert([{agent:'sales',user_id:currentUser.id,role:'user',content:text,created_at:now()}]); } catch(e) {}
 
-  const { context: pipelineCtx } = await buildSalesPipelineContext();
-
   try {
     const { data: { session } } = await db.auth.getSession();
     if (!session) throw new Error('Not authenticated.');
     const history = salesChatHistory.slice(-30);
-    const res = await fetch(`${_ep}/functions/v1/anthropic-proxy`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({agent:'sales',context:pipelineCtx,messages:history})});
+    const res = await fetch(`${_ep}/functions/v1/anthropic-proxy`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({agent:'sales',messages:history})});
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error?.message || `Proxy error ${res.status}`);
     const reply = data.content?.map(c=>c.text||'').join('') || 'No response.';
@@ -4592,15 +4528,7 @@ function addMsg(type,avatar,text,time) {
 function scrollChat() { const m=$('chat-msgs');m.scrollTop=m.scrollHeight; }
 
 let curFile = 'post-call-email.md';
-const FILE_DEFAULTS = {
-  'post-call-email.md': `# Post-Call Email\n\nSubject: Great speaking with you, [Name]\n\nHi [Name],\n\nThank you for taking the time to speak with me today.\n\nAs discussed:\n- [Key point 1]\n- [Key point 2]\n\nNext steps:\n- [Action item]\n\nLooking forward to working together.\n\nKind regards,\n[Your name]\nQuoteLeads`,
-  'follow-up-email.md': `# Follow-Up Email\n\nSubject: Following up — [Company Name]\n\nHi [Name],\n\nI wanted to follow up from our conversation last [day].\n\nI know you were considering [service] — I'd love to answer any questions you have before you decide.\n\n[Specific value prop or offer]\n\nWould you be open to a quick 10-minute call this week?\n\nKind regards,\n[Your name]`,
-  'welcome-email.md': `# Welcome Email — New Client\n\nSubject: Welcome to QuoteLeads — Let's get started!\n\nHi [Name],\n\nWelcome to QuoteLeads! We're excited to have [Company] on board.\n\nHere's what happens next:\n1. We'll set up your campaign within 48 hours\n2. You'll receive a welcome call from your account manager\n3. First leads typically arrive within 3–5 business days\n\nYour dedicated contact:\n[Account Manager Name] — [email]\n\nLet's go!\n\nKind regards,\nJack\nQuoteLeads`,
-  'pay-per-lead-welcome-email.md': `# PPL Welcome Email\n\nSubject: Your solar leads are coming — welcome to QuoteLeads PPL\n\nHi [Name],\n\nWelcome to the QuoteLeads Pay-Per-Lead program!\n\nHere's how it works:\n- We run Meta ads to generate exclusive solar leads for your area\n- You receive leads directly — name, number, address, interest\n- You pay [$X] per lead, invoiced [weekly/fortnightly]\n- Leads are guaranteed to be from your territory: [Area]\n\nImportant:\n- Leads are exclusive to you in your area\n- Please call leads within 1 hour for best results\n- Contact us within 24h to dispute any invalid leads\n\nTarget volume agreed: [X leads/month]\nPrice per lead: $[X]\n\nWelcome aboard!\n\nJack\nQuoteLeads`,
-  'pay-per-lead-post-call-email.md': `# PPL Post-Call Email\n\nSubject: Great speaking with you, [Name] — solar leads from QuoteLeads\n\nHi [Name],\n\nThanks for taking the time to chat today — really appreciate it.\n\nAs discussed, QuoteLeads generates exclusive solar leads in your area through targeted Meta ads. Here's a quick summary of what we offer:\n\n**How it works:**\n- We run the ads, you receive the leads directly (name, number, address, interest)\n- Pay per lead — no retainer, no lock-in\n- Leads are exclusive to you in your territory\n- Call leads within 1 hour for the best results\n\n**Your agreed terms:**\n- Area: [Service Area]\n- Price per lead: $[X]\n- Target volume: [X leads/month]\n\n**Next steps:**\n- [ ] Confirm your details so we can get the campaign live\n- [ ] We aim to have your first leads within 3–5 business days\n\nFeel free to reply or call me if you have any questions.\n\nLooking forward to getting you results!\n\nKind regards,\nJack\nQuoteLeads\n[Phone]\n[Email]`,
-  'both-offers-post-call-email.md': `# Both Offers Post-Call Email\n\nSubject: Great speaking with you, [Name] — solar leads & managed ads from QuoteLeads\n\nHi [Name],\n\nThanks for taking the time to chat today — really appreciate it.\n\nAs discussed, QuoteLeads can help grow your solar business in two ways. Here's a quick recap of both options:\n\n---\n\n## Option 1: Pay-Per-Lead (PPL)\n\n- We run targeted Meta ads and send you exclusive solar leads (name, number, address, interest)\n- Pay per lead — no retainer, no lock-in\n- Leads are exclusive to you in your territory\n- Call leads within 1 hour for best results\n\n**PPL Terms:**\n- Area: [Service Area]\n- Price per lead: $[X]\n- Target volume: [X leads/month]\n\n---\n\n## Option 2: Managed Ads\n\n- We manage your Meta/Google ads account end-to-end — you own the account\n- Full strategy, creative, targeting, and optimisation handled by us\n- Monthly reporting and ongoing refinement\n\n**Managed Terms:**\n- Management fee: $[X]/month\n- Recommended ad budget: $[X–Y]/month\n- Expected lead volume: [X–Y leads/month]\n\n---\n\n## My Recommendation\n\nBased on what you told me about your business, I'd suggest starting with [PPL / Managed / a combination] because [reason].\n\n## Next Steps\n- [ ] Let me know which option suits you best (or if you'd like to combine both)\n- [ ] Confirm your details so we can get started\n- [ ] We aim to have your first leads within 3–5 business days\n\nFeel free to reply or call me if you have any questions.\n\nLooking forward to getting you results!\n\nKind regards,\nJack\nQuoteLeads\n[Phone]\n[Email]`,
-  'discovery-call-script.md': `# Discovery Call Script\n\n## Before the Call\n- Review their business online\n- Check their current ad presence\n- Have pricing sheet ready\n\n---\n\n## Opening (2 min)\n"Hi [Name], thanks for jumping on the call. Just to give this context — I'll ask a few questions about your business first so I can work out if we're actually a good fit for you. Sound good?"\n\n## Discovery Questions (10 min)\n1. How are you currently generating leads?\n2. What's your monthly marketing budget?\n3. How many leads/jobs do you need per month?\n4. What areas do you service?\n5. What's your close rate on qualified leads?\n6. What would a good lead look like for you?\n\n## Pain Identification\n"So it sounds like [pain point] is the main challenge — is that right?"\n\n## Present Solution (5 min)\n- PPL: "We run Meta ads, generate the leads, you pay per lead. No retainer, no risk."\n- Managed: "We manage your ads account — you own the account, we handle the strategy and execution."\n\n## Pricing\n- PPL: [$X per lead], [volume], [area exclusivity]\n- Managed: [$X/mo management fee], [budget range]\n\n## Close\n"Based on what you've told me, [X] seems like a good fit. Do you want to move forward this week?"\n\n## Objections\n- "Too expensive" → Focus on ROI: "If each job is worth $X and you close Y%, one lead pays for itself"\n- "Need to think" → "What would you need to see to feel confident moving forward?"\n- "We have someone" → "What's working well? What could be better?"\n\n## Next Steps\n- Send proposal same day\n- Follow up within 48 hours\n- Book onboarding call if yes`
-};
+let FILE_DEFAULTS = {};
 
 function selectFile(filename, el) {
   document.querySelectorAll('.file-item').forEach(i=>i.classList.remove('active'));
@@ -4760,16 +4688,17 @@ async function loadMapAreas() {
   const isAll = clientId === 'all';
   const drawingEl = document.querySelector('.map-controls');
   if (drawingEl) {
-    $('map-area-label').style.display = isAll ? 'none' : '';
-    $('map-area-volume').style.display = isAll ? 'none' : '';
-    $('map-save-btn').style.display = isAll ? 'none' : '';
-    $('map-clear-btn').style.display = isAll ? 'none' : '';
+    $('map-area-label').style.display = '';
+    $('map-area-volume').style.display = '';
+    $('map-save-btn').style.display = '';
+    $('map-clear-btn').style.display = '';
     const clientRow=$('map-client-row');
-    if(clientRow) clientRow.style.display = isAll ? 'none' : '';
+    if(clientRow) clientRow.style.display = '';
     const campRow=$('map-campaign-row');
-    if(campRow) campRow.style.display = isAll ? 'none' : '';
-    if (drawingManager) drawingManager.setMap(isAll ? null : pplMap);
-    if(!isAll){ refreshMapClientPicker(clientId); refreshMapCampaignPicker(); }
+    if(campRow) campRow.style.display = '';
+    if (drawingManager) drawingManager.setMap(pplMap);
+    if(isAll){ refreshMapClientPicker(null); } else { refreshMapClientPicker(clientId); }
+    refreshMapCampaignPicker();
   }
   const el = $('map-area-list');
   if (isAll) {
@@ -4797,12 +4726,14 @@ async function loadMapAreas() {
       } catch(e){}
     });
     if (el) {
-      if (!mapAreas.length) { el.innerHTML='<div style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);padding:6px">No areas saved yet.</div>'; return; }
+      if (!mapAreas.length) { el.innerHTML='<div style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);padding:6px">No areas saved yet.</div>'; }
+      else {
       const grouped = {};
       mapAreas.forEach(a=>{
         const cids=a.client_ids&&a.client_ids.length?a.client_ids.map(String):[String(a.client_id)];
         cids.forEach(k=>{ if(!grouped[k]) grouped[k]=[]; grouped[k].push(a); });
       });
+      const seen=new Set();
       el.innerHTML = Object.entries(grouped).map(([cid,areas])=>{
         const colour = colourMap[cid] || '#2ecc8a';
         const name = mapClientDataMap[cid]?.company_name || 'Unknown';
@@ -4810,10 +4741,16 @@ async function loadMapAreas() {
           <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">
             <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${colour};flex-shrink:0"></span>${esc(name)}
           </div>
-          ${areas.map(a=>{const ac=(a.meta_campaign_ids||[]).map(mid=>{const c=_campaignsCache.find(x=>x.meta_campaign_id===mid);return c?c.name:mid;});return `<div class="area-item"><span class="area-item-label">${esc(a.label||'Unnamed')}</span>${ac.length?'<span style="font-size:9px;color:var(--ink3);margin:0 6px">'+ac.map(n=>'<span style="background:var(--bg2);border:1px solid var(--br);border-radius:3px;padding:1px 5px">'+esc(n)+'</span>').join(' ')+'</span>':''}<span class="area-item-vol">${a.volume||0} leads/mo</span></div>`;}).join('')}
+          ${areas.map(a=>{if(seen.has(a.id))return'';seen.add(a.id);const ac=(a.meta_campaign_ids||[]).map(mid=>{const c=_campaignsCache.find(x=>x.meta_campaign_id===mid);return c?c.name:mid;});const aClients=(a.client_ids&&a.client_ids.length?a.client_ids:[a.client_id].filter(Boolean)).map(cid2=>mapClientDataMap[String(cid2)]?.company_name).filter(Boolean);return `<div class="area-item"><span class="area-item-label">${esc(a.label||'Unnamed')}</span>${aClients.length>1?'<span style="font-size:9px;color:var(--ink3);margin:0 4px">'+aClients.map(n=>'<span style="background:var(--bg2);border:1px solid var(--br);border-radius:3px;padding:1px 5px">'+esc(n)+'</span>').join(' ')+'</span>':''}${ac.length?'<span style="font-size:9px;color:var(--ink3);margin:0 6px">'+ac.map(n=>'<span style="background:var(--bg2);border:1px solid var(--br);border-radius:3px;padding:1px 5px">'+esc(n)+'</span>').join(' ')+'</span>':''}<span class="area-item-vol">${a.volume||0} leads/mo</span><button class="btn btn-xs area-edit-btn" data-area-id="${esc(String(a.id))}" style="font-size:9px;padding:1px 6px;margin-left:4px" title="Edit area">Edit</button><button class="area-item-del" data-area-id="${esc(String(a.id))}" title="Delete area">✕</button></div>`;}).join('')}
         </div>`;
       }).join('');
-    }
+      el.querySelectorAll('.area-item-del').forEach(btn=>{
+        btn.addEventListener('click',()=>deleteMapArea(btn.dataset.areaId));
+      });
+      el.querySelectorAll('.area-edit-btn').forEach(btn=>{
+        btn.addEventListener('click',()=>openEditArea(btn.dataset.areaId));
+      });
+      }
     return;
   }
   const _cd = mapClientDataMap[clientId];
@@ -5496,7 +5433,7 @@ async function redownloadInvoice(id) {
 function loadScript(src) {
   return new Promise((resolve, reject) => {
     const s = document.createElement('script');
-    s.src = src; s.onload = resolve; s.onerror = reject;
+    s.src = src; s.onload = resolve; s.onerror = () => reject(new Error('Failed to load script: ' + src));
     document.head.appendChild(s);
   });
 }
