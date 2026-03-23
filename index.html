@@ -3517,6 +3517,9 @@ function setCampPeriod(p) {
   const labels = { '7d': 'Spend 7D', '30d': 'Spend 30D', 'mtd': 'Spend MTD', 'ytd': 'Spend YTD' };
   const th = $('th-spend');
   if (th) th.textContent = labels[p] || 'Spend';
+  // Show loading state in table
+  const tb=$('mc-tbody');
+  if(tb) tb.innerHTML='<tr><td colspan="10" style="text-align:center;font-size:11px;color:var(--ink3);padding:12px">Syncing '+( labels[p]||p)+' data from Meta…</td></tr>';
   syncCampaignInsights();
 }
 
@@ -3528,9 +3531,12 @@ function setCampPeriod(p) {
   if (th) th.textContent = labels[_campPeriod] || 'Spend MTD';
 })();
 
+let _syncingCampaigns=false;
 async function syncCampaignInsights() {
+  if(_syncingCampaigns) return;
+  _syncingCampaigns=true;
   const btn=$('mc-sync-btn');
-  btn.disabled=true;btn.textContent='Syncing…';
+  if(btn){btn.disabled=true;btn.textContent='Syncing…';}
   try {
     const {data:{session}}=await db.auth.getSession();
     if(!session) throw new Error('Not logged in');
@@ -3542,8 +3548,8 @@ async function syncCampaignInsights() {
     toast(`Synced ${d.synced||0} campaign(s)${d.failed?' · '+d.failed+' failed':''}`);
     loadCampaigns();
     loadPPL(); // refresh client CPL from campaign rollup
-  } catch(e){toast('Sync error: '+e.message,true);}
-  finally{btn.disabled=false;btn.textContent='Sync Stats';}
+  } catch(e){toast('Sync error: '+(e instanceof Error?e.message:String(e)),true);loadCampaigns();}
+  finally{_syncingCampaigns=false;if(btn){btn.disabled=false;btn.textContent='Sync Stats';}}
 }
 
 async function inlineToggleCampaign(id, metaCampaignId, newAction) {
