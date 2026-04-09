@@ -2241,7 +2241,7 @@ const _ak = 'sb_publishable_UHQNxVCjHJnFjssYwTiwcQ_3FYovX8I';
 let db, currentUser;
 let curAgent = 'marketing', curMd = 'agents.md', curChat = 'marketing';
 let chatHistory = {};
-let revChart = null, cplChart = null, dailyChart = null;
+let revChart = null, cplChart = null, dailyChart = null, goalRevChart = null, goalMarginChart = null;
 let curDailyRange = 'today';
 
 const _taskMap = new Map();
@@ -2304,6 +2304,7 @@ function toggleTheme() {
   localStorage.setItem('ql-theme', dark ? 'light' : 'dark');
   if (revChart || cplChart) loadFinance();
   if (dailyChart) loadDailyLogs();
+  if (goalRevChart || goalMarginChart) loadGoals();
 }
 
 window.addEventListener('load', () => {
@@ -2331,6 +2332,13 @@ window.addEventListener('load', () => {
     sel.appendChild(opt);
   }
   $('daily-date').value = new Date().toISOString().split('T')[0];
+  // Goal Board year selector
+  const goalSel = $('goal-year');
+  for (let y = curYear; y >= 2026; y--) {
+    const opt = document.createElement('option');
+    opt.value = y; opt.textContent = y; if (y === curYear) opt.selected = true;
+    goalSel.appendChild(opt);
+  }
   buildKanban('crm-kanban', CRM_STAGES, 'crm');
   buildKanban('ppl-kanban', PPL_STAGES, 'ppl');
   buildKanban('mg-kanban',  MG_STAGES,  'mg');
@@ -2385,6 +2393,7 @@ function nav(panel, el) {
   if (panel === 'campaigns') { loadCampaigns(); renderMetaTokenBanner(); }
   if (panel === 'leads') loadLeads();
   if (panel === 'invoices') loadInvoices();
+  if (panel === 'goals') loadGoals();
 }
 
 function updateClock() {
@@ -4134,6 +4143,168 @@ async function deleteExpense(id) {
   if (error) { toast('Error: '+error.message,true); return; }
   toast('Expense deleted');
   loadFinance();
+}
+
+/* ═══ GOAL BOARD ═══ */
+async function loadGoals() {
+  const year = $('goal-year')?.value || new Date().getFullYear();
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const today = new Date();
+  const curMonth = today.getFullYear() === +year ? today.getMonth() : 11;
+
+  // Load goals + actuals in parallel
+  const [goalsR, pplOrdR, mgR, mgOrdR, expR, campR] = await Promise.all([
+    db.from('monthly_goals').select('*').gte('month', `${year}-01`).lte('month', `${year}-12`).order('month'),
+    db.from('ppl_order_log').select('leads_qty,lead_price,order_date').gte('order_date', `${year}-01-01`).lte('order_date', `${year}-12-31`),
+    db.from('clients').select('id,company_name,management_fee,payments_made,stage,active_months').eq('type','managed'),
+    db.from('managed_order_log').select('client_id,amount,order_date').gte('order_date', `${year}-01-01`).lte('order_date', `${year}-12-31`),
+    db.from('expenses').select('amount,date').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),
+    db.from('meta_campaigns').select('spend_mtd,leads_mtd'),
+  ]);
+
+  const goals = goalsR.data || [];
+  const goalMap = {};
+  goals.forEach(g => { goalMap[g.month] = g; });
+
+  const pplOrders = pplOrdR.data || [];
+  const mgClients = mgR.data || [];
+  const mgOrders = mgOrdR.data || [];
+  const expenses = expR.data || [];
+  const campaigns = campR.data || [];
+
+  // Build monthly actuals
+  const rows = [];
+  let ytdRev = 0, ytdExp = 0, ytdGoalRev = 0;
+  const monthsWithGoals = [];
+
+  for (let m = 0; m <= curMonth; m++) {
+    const key = `${year}-${String(m+1).padStart(2,'0')}`;
+    const from = `${key}-01`;
+    const next = m === 11 ? `${+year+1}-01-01` : `${year}-${String(m+2).padStart(2,'0')}-01`;
+
+    // PPL revenue for this month
+    const pplRev = pplOrders
+      .filter(o => o.order_date >= from && o.order_date < next)
+      .reduce((s, o) => s + ((o.leads_qty||0) * (o.lead_price||0)), 0);
+
+    // Managed retainer revenue for this month
+    const mgRetainer = mgClients.reduce((s, c) => {
+      let months = [];
+      try { months = JSON.parse(c.active_months || '[]'); } catch(e) {}
+      const inRange = months.filter(mo => mo === key);
+      return s + (inRange.length * (c.management_fee || 0));
+    }, 0);
+
+    // Managed custom orders for this month
+    const mgCustom = mgOrders
+      .filter(o => o.order_date >= from && o.order_date < next)
+      .reduce((s, o) => s + (o.amount || 0), 0);
+
+    // Expenses for this month
+    const monthExp = expenses
+      .filter(e => e.date >= from && e.date < next)
+      .reduce((s, e) => s + (e.amount || 0), 0);
+
+    // Ad spend — for current month use campaign MTD, for past months use 0 (historical not available per-month)
+    const adSpend = (m === today.getMonth() && +year === today.getFullYear())
+      ? campaigns.reduce((s, c) => s + (c.spend_mtd || 0), 0) : 0;
+
+    const rev = pplRev + mgRetainer + mgCustom;
+    const totalExp = monthExp + adSpend;
+    const profit = rev - totalExp;
+    const margin = rev > 0 ? (profit / rev) * 100 : 0;
+
+    const goal = goalMap[key] || { revenue_goal: 0, margin_goal: 0, notes: '' };
+
+    ytdRev += rev;
+    ytdExp += totalExp;
+    if (goal.revenue_goal > 0) ytdGoalRev += goal.revenue_goal;
+    if (goal.margin_goal > 0) monthsWithGoals.push(goal.margin_goal);
+
+    rows.push({ month: key, label: monthNames[m], rev, totalExp, profit, margin, goal });
+  }
+
+  // YTD KPIs
+  const ytdProfit = ytdRev - ytdExp;
+  const ytdMargin = ytdRev > 0 ? (ytdProfit / ytdRev) * 100 : 0;
+  const avgGoalMargin = monthsWithGoals.length ? monthsWithGoals.reduce((a, b) => a + b, 0) / monthsWithGoals.length : 0;
+
+  setText('goal-ytd-rev', fmt(ytdRev));
+  $('goal-ytd-rev-sub').textContent = ytdGoalRev > 0 ? `${((ytdRev / ytdGoalRev) * 100).toFixed(0)}% of $${ytdGoalRev.toLocaleString()} goal` : 'no goals set';
+  setText('goal-ytd-margin', ytdMargin.toFixed(1) + '%');
+  $('goal-ytd-margin-sub').textContent = avgGoalMargin > 0 ? `goal: ${avgGoalMargin.toFixed(0)}%` : 'no margin goals set';
+  setText('goal-ytd-profit', fmt(ytdProfit));
+  $('goal-ytd-profit').className = `kval ${ytdProfit >= 0 ? 'grn' : 'red'}`;
+  $('goal-ytd-profit-sub').textContent = `${ytdRev > 0 ? ytdMargin.toFixed(1) : '0'}% margin`;
+
+  // Render table
+  const tb = $('goal-tbody');
+  tb.innerHTML = rows.map(r => {
+    const revPct = r.goal.revenue_goal > 0 ? ((r.rev / r.goal.revenue_goal) * 100).toFixed(0) : '—';
+    const revPctColor = revPct === '—' ? 'var(--ink3)' : +revPct >= 100 ? 'var(--grn)' : +revPct >= 75 ? 'var(--amb)' : 'var(--red)';
+    const marginColor = r.goal.margin_goal > 0 ? (r.margin >= r.goal.margin_goal ? 'var(--grn)' : r.margin >= r.goal.margin_goal * 0.75 ? 'var(--amb)' : 'var(--red)') : 'var(--ink3)';
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:11px;font-weight:500">${r.label}</td>
+      <td><input class="fi goal-input" data-month="${r.month}" data-field="revenue_goal" type="number" value="${r.goal.revenue_goal||''}" placeholder="—" style="width:90px;font-size:11px;padding:3px 6px;text-align:right"></td>
+      <td style="font-family:var(--mono);font-size:11px;font-weight:500">${fmt(r.rev)}</td>
+      <td style="font-family:var(--mono);font-size:11px;font-weight:500;color:${revPctColor}">${revPct === '—' ? '—' : revPct + '%'}</td>
+      <td><input class="fi goal-input" data-month="${r.month}" data-field="margin_goal" type="number" value="${r.goal.margin_goal||''}" placeholder="—" style="width:70px;font-size:11px;padding:3px 6px;text-align:right" step="1" min="0" max="100">%</td>
+      <td style="font-family:var(--mono);font-size:11px;font-weight:500;color:${marginColor}">${r.margin.toFixed(1)}%</td>
+      <td style="font-family:var(--mono);font-size:11px;font-weight:500;color:${r.profit>=0?'var(--grn)':'var(--red)'}">${fmt(r.profit)}</td>
+      <td><input class="fi goal-input" data-month="${r.month}" data-field="notes" type="text" value="${esc(r.goal.notes||'')}" placeholder="—" style="width:120px;font-size:11px;padding:3px 6px"></td>
+      <td><button class="btn btn-xs" onclick="saveGoal('${r.month}')">Save</button></td>
+    </tr>`;
+  }).join('');
+
+  // Charts
+  renderGoalCharts(rows);
+}
+
+async function saveGoal(month) {
+  const inputs = document.querySelectorAll(`.goal-input[data-month="${month}"]`);
+  const vals = {};
+  inputs.forEach(inp => { vals[inp.dataset.field] = inp.dataset.field === 'notes' ? inp.value : (parseFloat(inp.value) || 0); });
+  vals.updated_at = now();
+  const { error } = await db.from('monthly_goals').upsert({ month, ...vals }, { onConflict: 'month' });
+  if (error) { toast('Error saving goal: ' + error.message, true); return; }
+  toast(`${month} goal saved ✓`);
+}
+
+function renderGoalCharts(rows) {
+  const {grid, tick} = chartDefaults();
+  const labels = rows.map(r => r.label);
+  const goalRevs = rows.map(r => r.goal.revenue_goal || 0);
+  const actualRevs = rows.map(r => r.rev);
+  const goalMargins = rows.map(r => r.goal.margin_goal || 0);
+  const actualMargins = rows.map(r => +r.margin.toFixed(1));
+
+  if (goalRevChart) goalRevChart.destroy();
+  goalRevChart = new Chart($('chart-goal-rev').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Goal', data: goalRevs, backgroundColor: 'rgba(79,143,255,.1)', borderColor: 'rgba(79,143,255,.5)', borderWidth: 1.5, borderRadius: 3, borderDash: [4,2] },
+        { label: 'Actual', data: actualRevs, backgroundColor: 'rgba(46,204,138,.15)', borderColor: '#2ecc8a', borderWidth: 1.5, borderRadius: 3 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: tick, font: { family: 'DM Mono', size: 9 } } } },
+      scales: { x: { ticks: { color: tick, font: { family: 'DM Mono', size: 9 } }, grid: { color: grid } }, y: { ticks: { color: tick, font: { family: 'DM Mono', size: 9 }, callback: v => '$' + v.toLocaleString() }, grid: { color: grid } } } }
+  });
+
+  if (goalMarginChart) goalMarginChart.destroy();
+  goalMarginChart = new Chart($('chart-goal-margin').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Goal %', data: goalMargins, borderColor: 'rgba(79,143,255,.6)', borderWidth: 2, borderDash: [6,3], pointRadius: 3, fill: false },
+        { label: 'Actual %', data: actualMargins, borderColor: '#2ecc8a', borderWidth: 2, pointRadius: 4, fill: false }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: tick, font: { family: 'DM Mono', size: 9 } } } },
+      scales: { x: { ticks: { color: tick, font: { family: 'DM Mono', size: 9 } }, grid: { color: grid } }, y: { ticks: { color: tick, font: { family: 'DM Mono', size: 9 }, callback: v => v + '%' }, grid: { color: grid }, min: 0 } } }
+  });
 }
 
 function chartDefaults() {
