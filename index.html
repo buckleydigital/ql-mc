@@ -2487,9 +2487,8 @@ async function loadLeads(resetPage) {
     return `<span class="badge ${cls[s]||'bg-gray'}">${esc(s||'unknown')}</span>`;
   };
   const leadTypeBadge = t => {
-    const cls = t === 'custom' ? 'bg-vio' : 'bg-sky';
-    const label = t === 'custom' ? 'Custom' : 'Solar';
-    return `<span class="badge ${cls}">${label}</span>`;
+    if (t === 'custom') return `<span class="badge bg-vio">Custom</span>`;
+    return `<span class="badge bg-sky">Solar</span>`;
   };
   const fmtDate = (d, time) => {
     if (!d) return '—';
