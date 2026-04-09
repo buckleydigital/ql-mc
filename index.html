@@ -4205,7 +4205,7 @@ async function loadGoals() {
       .filter(e => e.date >= from && e.date < next)
       .reduce((s, e) => s + (e.amount || 0), 0);
 
-    // Ad spend — for current month use campaign MTD, for past months use 0 (historical not available per-month)
+    // Ad spend — only available for current month via campaign MTD; historical months require daily ad_spend records (not tracked per-month here)
     const adSpend = (m === today.getMonth() && +year === today.getFullYear())
       ? campaigns.reduce((s, c) => s + (c.spend_mtd || 0), 0) : 0;
 
@@ -4240,8 +4240,9 @@ async function loadGoals() {
   // Render table
   const tb = $('goal-tbody');
   tb.innerHTML = rows.map(r => {
-    const revPct = r.goal.revenue_goal > 0 ? ((r.rev / r.goal.revenue_goal) * 100).toFixed(0) : '—';
-    const revPctColor = revPct === '—' ? 'var(--ink3)' : +revPct >= 100 ? 'var(--grn)' : +revPct >= 75 ? 'var(--amb)' : 'var(--red)';
+    const revPctNum = r.goal.revenue_goal > 0 ? (r.rev / r.goal.revenue_goal) * 100 : null;
+    const revPct = revPctNum !== null ? revPctNum.toFixed(0) : '—';
+    const revPctColor = revPctNum === null ? 'var(--ink3)' : revPctNum >= 100 ? 'var(--grn)' : revPctNum >= 75 ? 'var(--amb)' : 'var(--red)';
     const marginColor = r.goal.margin_goal > 0 ? (r.margin >= r.goal.margin_goal ? 'var(--grn)' : r.margin >= r.goal.margin_goal * 0.75 ? 'var(--amb)' : 'var(--red)') : 'var(--ink3)';
     return `<tr>
       <td style="font-family:var(--mono);font-size:11px;font-weight:500">${r.label}</td>
