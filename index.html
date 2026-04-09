@@ -799,6 +799,9 @@ td strong{font-weight:500}
           <button class="navbtn" data-panel="finance" onclick="nav('finance',this)">
             <span class="ni">$</span>Financials
           </button>
+          <button class="navbtn" data-panel="goals" onclick="nav('goals',this)">
+            <span class="ni">◎</span>Goal Board
+          </button>
           <button class="navbtn" data-panel="daily" onclick="nav('daily',this)">
             <span class="ni">≋</span>Daily Logs
           </button>
@@ -924,8 +927,8 @@ td strong{font-weight:500}
         <div class="sl">All PPL Clients <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Client</th><th>Stage</th><th>Niche</th><th>Leads MTD</th><th>Delivered</th><th>Purchased</th><th>Remaining</th><th>Price/Lead</th><th>$ Balance</th><th>% Sold</th><th>Re-ordered</th><th></th></tr></thead>
-            <tbody id="ppl-tbody"><tr><td colspan="12" class="empty">Loading...</td></tr></tbody>
+            <thead><tr><th>Client</th><th>Stage</th><th>CX</th><th>Niche</th><th>Leads MTD</th><th>Delivered</th><th>Purchased</th><th>Remaining</th><th>Price/Lead</th><th>$ Balance</th><th>% Sold</th><th>Re-ordered</th><th></th></tr></thead>
+            <tbody id="ppl-tbody"><tr><td colspan="13" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
         <div class="map-section">
@@ -1049,8 +1052,8 @@ td strong{font-weight:500}
         <div class="sl">CPL Tracking <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Client</th><th>Stage</th><th>Ad Account</th><th>Spend MTD</th><th>CPL Today</th><th>CPL 7d Avg</th><th>Leads MTD</th><th>Mgmt Fee</th><th></th></tr></thead>
-            <tbody id="mg-tbody"><tr><td colspan="9" class="empty">Loading...</td></tr></tbody>
+            <thead><tr><th>Client</th><th>Stage</th><th>CX</th><th>Ad Account</th><th>Spend MTD</th><th>CPL Today</th><th>CPL 7d Avg</th><th>Leads MTD</th><th>Mgmt Fee</th><th></th></tr></thead>
+            <tbody id="mg-tbody"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
         <div class="sl">Payment Tracker <div class="sl-line"></div></div>
@@ -1065,8 +1068,13 @@ td strong{font-weight:500}
       <!-- ══ LEAD DISTRIBUTION ══ -->
       <div class="panel" id="panel-leads">
         <div class="ph">
-          <div class="ph-left"><h1>Lead Distribution</h1><p>Incoming solar leads · assignment &amp; delivery tracking</p></div>
+          <div class="ph-left"><h1>Lead Distribution</h1><p>Incoming leads · assignment &amp; delivery tracking</p></div>
           <div class="ph-right">
+            <select class="fi" id="ld-type-filter" onchange="loadLeads(true)" style="width:auto;font-size:11.5px;padding:5px 10px;font-family:var(--mono)">
+              <option value="all">All Types</option>
+              <option value="solar">Solar</option>
+              <option value="custom">Custom</option>
+            </select>
             <select class="fi" id="ld-filter" onchange="loadLeads(true)" style="width:auto;font-size:11.5px;padding:5px 10px;font-family:var(--mono)">
               <option value="all">All Statuses</option>
               <option value="pending">Pending</option>
@@ -1094,6 +1102,7 @@ td strong{font-weight:500}
             <thead>
               <tr>
                 <th>Received</th>
+                <th>Type</th>
                 <th>Name</th>
                 <th>Phone</th>
                 <th>Postcode</th>
@@ -1109,7 +1118,7 @@ td strong{font-weight:500}
                 <th>Actions</th>
               </tr>
             </thead>
-            <tbody id="ld-tbody"><tr><td colspan="14" class="empty">Loading…</td></tr></tbody>
+            <tbody id="ld-tbody"><tr><td colspan="15" class="empty">Loading…</td></tr></tbody>
           </table>
           <div class="pager" id="ld-pager"></div>
         </div>
@@ -1189,6 +1198,32 @@ td strong{font-weight:500}
             <thead><tr><th>Name</th><th>Monthly Cost</th><th>Status</th><th></th></tr></thead>
             <tbody id="subs-tbody"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- ══ GOAL BOARD ══ -->
+      <div class="panel" id="panel-goals">
+        <div class="ph">
+          <div class="ph-left"><h1>Goal Board</h1><p>Monthly revenue, margin &amp; profit targets vs actuals</p></div>
+          <div class="ph-right">
+            <select class="fi" id="goal-year" onchange="loadGoals()" style="width:auto;font-size:11.5px;padding:5px 10px;font-family:var(--mono)"></select>
+          </div>
+        </div>
+        <div class="kg c3 mb4">
+          <div class="kpi"><div class="klabel">YTD Revenue</div><div class="kval blu" id="goal-ytd-rev">—</div><div class="ksub" id="goal-ytd-rev-sub"></div></div>
+          <div class="kpi"><div class="klabel">YTD Avg Margin</div><div class="kval" id="goal-ytd-margin">—</div><div class="ksub" id="goal-ytd-margin-sub"></div></div>
+          <div class="kpi"><div class="klabel">YTD Net Profit</div><div class="kval grn" id="goal-ytd-profit">—</div><div class="ksub" id="goal-ytd-profit-sub"></div></div>
+        </div>
+        <div class="sl">Monthly Goals vs Actuals <div class="sl-line"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Month</th><th>Rev Goal</th><th>Rev Actual</th><th>Rev %</th><th>Margin Goal %</th><th>Margin Actual %</th><th>Net Profit</th><th>Notes</th><th></th></tr></thead>
+            <tbody id="goal-tbody"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="g2 mb4" style="margin-top:14px">
+          <div class="chart-card"><div class="chart-title">Revenue: Goal vs Actual</div><canvas id="chart-goal-rev" height="160"></canvas></div>
+          <div class="chart-card"><div class="chart-title">Margin: Goal vs Actual</div><canvas id="chart-goal-margin" height="160"></canvas></div>
         </div>
       </div>
 
@@ -1700,6 +1735,7 @@ td strong{font-weight:500}
         <option value="active_client">Active</option><option value="paused">Paused</option><option value="churned">Churned</option>
       </select>
     </div>
+    <div class="frow"><label class="flabel">CX Score <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10 — client experience rating</span></label><input class="fi" id="ppl-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Lead Delivery</div>
     <div class="frow"><label class="flabel">Postcodes Covered <span style="font-size:9.5px;color:var(--ink3);font-weight:300">comma-separated</span></label><input class="fi" id="ppl-postcodes" placeholder="e.g. 2000, 2010, 2020"></div>
     <div class="frow" style="gap:8px">
@@ -1755,6 +1791,7 @@ td strong{font-weight:500}
         <option value="paused">Paused</option><option value="churned">Churned</option>
       </select>
     </div>
+    <div class="frow"><label class="flabel">CX Score <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10 — client experience rating</span></label><input class="fi" id="mg-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
     <div class="frow"><label class="flabel">Start Date</label><input class="fi" id="mg-start" type="date"></div>
     <div class="frow"><label class="flabel">Last Payment Date</label><input class="fi" id="mg-last-pay" type="date" oninput="calcNextPaymentNew()"></div>
     <div class="frow"><label class="flabel">Next Payment Due</label><input class="fi" id="mg-next-pay" type="date"></div>
@@ -1854,6 +1891,7 @@ td strong{font-weight:500}
         <option value="active_client">Active</option><option value="paused">Paused</option><option value="churned">Churned</option>
       </select>
     </div>
+    <div class="frow"><label class="flabel">CX Score <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10 — client experience rating</span></label><input class="fi" id="ep-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="ep-notes"></textarea></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Lead Delivery</div>
     <div class="frow"><label class="flabel">Postcodes Covered <span style="font-size:9.5px;color:var(--ink3);font-weight:300">comma-separated</span></label><input class="fi" id="ep-postcodes" placeholder="e.g. 2000, 2010, 2020"></div>
@@ -1966,6 +2004,7 @@ td strong{font-weight:500}
         <option value="paused">Paused</option><option value="churned">Churned</option>
       </select>
     </div>
+    <div class="frow"><label class="flabel">CX Score <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10 — client experience rating</span></label><input class="fi" id="em-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
     <div class="frow"><label class="flabel">Start Date</label><input class="fi" id="em-start" type="date"></div>
     <div class="frow"><label class="flabel">Last Payment Date</label><input class="fi" id="em-last-pay" type="date" oninput="calcNextPayment()"></div>
     <div class="frow"><label class="flabel">Next Payment Due</label><input class="fi" id="em-next-pay" type="date"></div>
@@ -2126,31 +2165,39 @@ td strong{font-weight:500}
 <div class="overlay" id="m-test-lead">
   <div class="modal">
     <h2>Submit Test Lead</h2><div class="msub">Simulates an incoming ad lead through the full pipeline</div>
+    <div class="frow"><label class="flabel">Lead Type</label>
+      <select class="fs" id="tl-lead-type" onchange="toggleTestLeadFields()">
+        <option value="solar">Solar</option>
+        <option value="custom">Custom</option>
+      </select>
+    </div>
     <div class="frow"><label class="flabel">Full Name</label><input class="fi" id="tl-name" value="Jane Test"></div>
     <div class="frow"><label class="flabel">Email</label><input class="fi" id="tl-email" type="email" value="jane@test.com"></div>
     <div class="frow"><label class="flabel">Phone</label><input class="fi" id="tl-phone" value="0444444444"></div>
     <div class="frow"><label class="flabel">Postcode</label><input class="fi" id="tl-postcode" value="4218"></div>
-    <div class="frow"><label class="flabel">Homeowner?</label>
-      <select class="fs" id="tl-homeowner">
-        <option value="true">Yes</option>
-        <option value="false">No</option>
-      </select>
-    </div>
-    <div class="frow"><label class="flabel">Avg Quarterly Bill ($)</label><input class="fi" id="tl-bill" type="number" value="320"></div>
-    <div class="frow"><label class="flabel">Interested In</label>
-      <select class="fs" id="tl-interest">
-        <option value="solar">Solar</option>
-        <option value="battery">Battery</option>
-        <option value="both">Solar + Battery</option>
-      </select>
-    </div>
-    <div class="frow"><label class="flabel">Purchase Timeline</label>
-      <select class="fs" id="tl-timeline">
-        <option value="0-3 months">0–3 months</option>
-        <option value="3-6 months" selected>3–6 months</option>
-        <option value="6-12 months">6–12 months</option>
-        <option value="12+ months">12+ months</option>
-      </select>
+    <div id="tl-solar-fields">
+      <div class="frow"><label class="flabel">Homeowner?</label>
+        <select class="fs" id="tl-homeowner">
+          <option value="true">Yes</option>
+          <option value="false">No</option>
+        </select>
+      </div>
+      <div class="frow"><label class="flabel">Avg Quarterly Bill ($)</label><input class="fi" id="tl-bill" type="number" value="320"></div>
+      <div class="frow"><label class="flabel">Interested In</label>
+        <select class="fs" id="tl-interest">
+          <option value="solar">Solar</option>
+          <option value="battery">Battery</option>
+          <option value="both">Solar + Battery</option>
+        </select>
+      </div>
+      <div class="frow"><label class="flabel">Purchase Timeline</label>
+        <select class="fs" id="tl-timeline">
+          <option value="0-3 months">0–3 months</option>
+          <option value="3-6 months" selected>3–6 months</option>
+          <option value="6-12 months">6–12 months</option>
+          <option value="12+ months">12+ months</option>
+        </select>
+      </div>
     </div>
     <div class="frow" style="align-items:flex-start">
       <label class="flabel" style="padding-top:6px">Custom Fields</label>
@@ -2194,7 +2241,7 @@ const _ak = 'sb_publishable_UHQNxVCjHJnFjssYwTiwcQ_3FYovX8I';
 let db, currentUser;
 let curAgent = 'marketing', curMd = 'agents.md', curChat = 'marketing';
 let chatHistory = {};
-let revChart = null, cplChart = null, dailyChart = null;
+let revChart = null, cplChart = null, dailyChart = null, goalRevChart = null, goalMarginChart = null;
 let curDailyRange = 'today';
 
 const _taskMap = new Map();
@@ -2257,6 +2304,7 @@ function toggleTheme() {
   localStorage.setItem('ql-theme', dark ? 'light' : 'dark');
   if (revChart || cplChart) loadFinance();
   if (dailyChart) loadDailyLogs();
+  if (goalRevChart || goalMarginChart) loadGoals();
 }
 
 window.addEventListener('load', () => {
@@ -2284,6 +2332,13 @@ window.addEventListener('load', () => {
     sel.appendChild(opt);
   }
   $('daily-date').value = new Date().toISOString().split('T')[0];
+  // Goal Board year selector
+  const goalSel = $('goal-year');
+  for (let y = curYear; y >= 2026; y--) {
+    const opt = document.createElement('option');
+    opt.value = y; opt.textContent = y; if (y === curYear) opt.selected = true;
+    goalSel.appendChild(opt);
+  }
   buildKanban('crm-kanban', CRM_STAGES, 'crm');
   buildKanban('ppl-kanban', PPL_STAGES, 'ppl');
   buildKanban('mg-kanban',  MG_STAGES,  'mg');
@@ -2338,6 +2393,7 @@ function nav(panel, el) {
   if (panel === 'campaigns') { loadCampaigns(); renderMetaTokenBanner(); }
   if (panel === 'leads') loadLeads();
   if (panel === 'invoices') loadInvoices();
+  if (panel === 'goals') loadGoals();
 }
 
 function updateClock() {
@@ -2356,6 +2412,11 @@ async function loadAll() {
   populateMapClientDropdown();
 }
 
+function toggleTestLeadFields() {
+  const isSolar = document.getElementById('tl-lead-type').value === 'solar';
+  document.getElementById('tl-solar-fields').style.display = isSolar ? '' : 'none';
+}
+
 async function sendTestLead() {
   const btn = document.getElementById('tl-btn');
   const statusEl = document.getElementById('tl-status');
@@ -2368,18 +2429,23 @@ async function sendTestLead() {
     if (!session) throw new Error('Not logged in');
 
     const customDataRaw = document.getElementById('tl-custom').value.trim();
+    const leadType = document.getElementById('tl-lead-type').value;
 
     const payload = {
       name: document.getElementById('tl-name').value,
       email: document.getElementById('tl-email').value,
       phone: document.getElementById('tl-phone').value,
       postcode: document.getElementById('tl-postcode').value,
-      is_homeowner: document.getElementById('tl-homeowner').value === 'true',
-      avg_quarterly_bill: Number(document.getElementById('tl-bill').value),
-      interested_in: document.getElementById('tl-interest').value,
-      purchase_timeline: document.getElementById('tl-timeline').value,
+      lead_type: leadType,
       custom_data: customDataRaw,
     };
+
+    if (leadType === 'solar') {
+      payload.is_homeowner = document.getElementById('tl-homeowner').value === 'true';
+      payload.avg_quarterly_bill = Number(document.getElementById('tl-bill').value);
+      payload.interested_in = document.getElementById('tl-interest').value;
+      payload.purchase_timeline = document.getElementById('tl-timeline').value;
+    }
 
     const res = await fetch(`${_ep}/functions/v1/submit-lead`, {
       method: 'POST',
@@ -2406,17 +2472,20 @@ async function sendTestLead() {
 async function loadLeads(resetPage) {
   if (resetPage) leadsPage = 0;
   const filter = $('ld-filter')?.value || 'all';
+  const typeFilter = $('ld-type-filter')?.value || 'all';
 
-  // Stats query — lightweight, all rows, just status + client info
-  const statsQ = db.from('solar_leads').select('status, assigned_client_id, clients(company_name)');
+  // Stats query — lightweight, all rows, just status + client info + lead_type
+  const statsQ = db.from('solar_leads').select('status, lead_type, assigned_client_id, clients(company_name)');
+  if (typeFilter !== 'all') statsQ.eq('lead_type', typeFilter);
   // Table query — paginated, with server-side filter
   const tableQ = db.from('solar_leads').select('*, clients(company_name)', {count:'exact'}).order('created_at', {ascending: false});
   if (filter !== 'all') tableQ.eq('status', filter);
+  if (typeFilter !== 'all') tableQ.eq('lead_type', typeFilter);
   tableQ.range(leadsPage * PAGE_SIZE, (leadsPage + 1) * PAGE_SIZE - 1);
 
   const [statsR, tableR] = await Promise.all([statsQ, tableQ]);
   if (statsR.error || tableR.error) {
-    $('ld-tbody').innerHTML = `<tr><td colspan="14" class="empty">Error: ${esc((statsR.error||tableR.error).message)}</td></tr>`;
+    $('ld-tbody').innerHTML = `<tr><td colspan="15" class="empty">Error: ${esc((statsR.error||tableR.error).message)}</td></tr>`;
     return;
   }
   const all = statsR.data || [];
@@ -2451,13 +2520,17 @@ async function loadLeads(resetPage) {
 
   const rows = tableR.data || [];
   if (!rows.length) {
-    $('ld-tbody').innerHTML = `<tr><td colspan="14" class="empty">No leads found.</td></tr>`;
+    $('ld-tbody').innerHTML = `<tr><td colspan="15" class="empty">No leads found.</td></tr>`;
     $('ld-pager').innerHTML = '';
     return;
   }
   const statusBadge = s => {
     const cls = {pending:'bg-amb',assigned:'bg-blu',delivered:'bg-grn',failed:'bg-red',scrubbed:'bg-gray'};
     return `<span class="badge ${cls[s]||'bg-gray'}">${esc(s||'unknown')}</span>`;
+  };
+  const leadTypeBadge = t => {
+    if (t === 'custom') return `<span class="badge bg-vio">Custom</span>`;
+    return `<span class="badge bg-sky">Solar</span>`;
   };
   const fmtDate = (d, time) => {
     if (!d) return '—';
@@ -2467,6 +2540,7 @@ async function loadLeads(resetPage) {
   $('ld-tbody').innerHTML = rows.map(l => `
     <tr>
       <td style="white-space:nowrap;font-family:var(--mono);font-size:10px;color:var(--ink3)">${fmtDate(l.created_at, true)}</td>
+      <td>${leadTypeBadge(l.lead_type)}</td>
       <td><strong>${esc(l.name||'—')}</strong><br><span style="font-family:var(--mono);font-size:9.5px;color:var(--ink3)">${esc(l.email||'')}</span></td>
       <td style="font-family:var(--mono);font-size:11px">${esc(l.phone||'—')}</td>
       <td style="font-family:var(--mono);font-size:11px">${esc(l.postcode||'—')}</td>
@@ -2906,6 +2980,7 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
         <div class="kcard" id="kc-ppl-${esc(String(c.id))}" data-client-id="${esc(String(c.id))}" data-client-type="ppl">
           <div class="kcard-name">${esc(c.company_name)}</div>
           <div class="kcard-meta">${esc(c.niche||'Solar')} · ${c.leads_delivered||0} delivered · ${c.total_leads_purchased||0} purchased</div>
+          ${c.cx_score!=null?`<div style="font-size:9px;font-family:var(--mono);margin-top:2px;color:${c.cx_score>=8?'var(--grn)':c.cx_score>=5?'var(--amb)':'var(--red)'}">CX ${c.cx_score}/10</div>`:''}
           ${c.phone?`<div class="kcard-phone">${esc(c.phone)}</div>`:''}
           ${c.meta_cpl?`<div class="kcard-val">CPL $${Number(c.meta_cpl).toFixed(2)}</div>`:''}
           ${c.weekly_cap||c.monthly_cap?`<div style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-top:2px">${c.weekly_cap?'W: '+c.weekly_cap+'/wk':''}${c.weekly_cap&&c.monthly_cap?' · ':''}${c.monthly_cap?'M: '+c.monthly_cap+'/mo':''}</div>`:''}
@@ -2921,7 +2996,7 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
     }
   });
   const tb=$('ppl-tbody');
-  if (!clients.length) { tb.innerHTML='<tr><td colspan="12" class="empty">No PPL clients yet.</td></tr>'; return; }
+  if (!clients.length) { tb.innerHTML='<tr><td colspan="13" class="empty">No PPL clients yet.</td></tr>'; return; }
   clients.forEach(c => { CLIENT_CACHE[c.id] = c; });
   const stageOrder=s=>s==='active_client'?0:s==='paused'?1:2;
   tb.innerHTML=[...clients].sort((a,b)=>stageOrder(a.stage)-stageOrder(b.stage)).map(c=>{
@@ -2939,6 +3014,7 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
     <tr data-client-id="${esc(String(c.id))}" data-client-type="ppl" class="client-row" style="cursor:pointer">
       <td><strong>${esc(c.company_name)}</strong></td>
       <td><span class="badge ${stageBadge(c.stage)}">${stageLabel(c.stage)}</span></td>
+      <td style="font-family:var(--mono);font-size:11px;color:${c.cx_score!=null?(c.cx_score>=8?'var(--grn)':c.cx_score>=5?'var(--amb)':'var(--red)'):'var(--ink3)'}">${c.cx_score!=null?c.cx_score+'/10':'—'}</td>
       <td>${esc(c.niche||'—')}</td>
       <td>${c.leads_mtd||0}</td>
       <td style="color:var(--grn);font-weight:500">${c.leads_delivered||0}</td>
@@ -2951,7 +3027,7 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
       <td><button class="btn btn-xs client-edit-btn" data-client-id="${esc(String(c.id))}" data-client-type="ppl">Edit</button></td>
     </tr>
     <tr id="ol-row-${esc(String(c.id))}" style="display:none">
-      <td colspan="12" style="padding:0;border-top:none">
+      <td colspan="13" style="padding:0;border-top:none">
         <div id="ol-cell-${esc(String(c.id))}" style="padding:10px 14px;background:var(--s2);border-bottom:1px solid var(--bd);font-family:var(--mono);font-size:11px">Loading…</div>
       </td>
     </tr>`}).join('');
@@ -3299,6 +3375,7 @@ function renderManaged(clients, orderLog=[]) {
         <div class="kcard" id="kc-mg-${esc(String(c.id))}" data-client-id="${esc(String(c.id))}" data-client-type="managed">
           <div class="kcard-name">${esc(c.company_name)}</div>
           <div class="kcard-meta">${fmt(c.spend_mtd||0)} MTD</div>
+          ${c.cx_score!=null?`<div style="font-size:9px;font-family:var(--mono);margin-top:2px;color:${c.cx_score>=8?'var(--grn)':c.cx_score>=5?'var(--amb)':'var(--red)'}">CX ${c.cx_score}/10</div>`:''}
           ${c.phone?`<div class="kcard-phone">${esc(c.phone)}</div>`:''}
           ${c.management_fee?`<div class="kcard-val">${fmt(c.management_fee)}/mo fee</div>`:''}
         </div>`).join('');
@@ -3310,12 +3387,13 @@ function renderManaged(clients, orderLog=[]) {
     }
   });
   const tb=$('mg-tbody');
-  if (!clients.length) { tb.innerHTML='<tr><td colspan="9" class="empty">No managed clients yet.</td></tr>'; return; }
+  if (!clients.length) { tb.innerHTML='<tr><td colspan="10" class="empty">No managed clients yet.</td></tr>'; return; }
   clients.forEach(c => { CLIENT_CACHE[c.id] = c; });
   tb.innerHTML=clients.map(c=>`
     <tr style="cursor:pointer" data-client-id="${esc(String(c.id))}" data-client-type="managed" class="client-row">
       <td><strong>${esc(c.company_name)}</strong></td>
       <td><span class="badge ${stageBadge(c.stage)}">${stageLabel(c.stage)}</span></td>
+      <td style="font-family:var(--mono);font-size:11px;color:${c.cx_score!=null?(c.cx_score>=8?'var(--grn)':c.cx_score>=5?'var(--amb)':'var(--red)'):'var(--ink3)'}">${c.cx_score!=null?c.cx_score+'/10':'—'}</td>
       <td style="font-family:var(--mono);font-size:10px;color:var(--ink2)">${esc(c.ad_account_id||'—')}</td>
       <td>${fmt(c.spend_mtd||0)}</td>
       <td>${fmtCpl(c.cpl_today)}</td>
@@ -3346,7 +3424,7 @@ async function openEditClient(type,c) {
     setVal('ep-em',c.email);setVal('ep-ph',c.phone);setVal('ep-niche',c.niche);
     setVal('ep-price',c.lead_price);setVal('ep-meta-cpl',c.meta_cpl||'');setVal('ep-pct',c.pct_sold);
     setVal('ep-ld',c.leads_delivered||0);setVal('ep-tlp',c.total_leads_purchased||0);setVal('ep-scrubbed',c.leads_scrubbed||0);setVal('ep-total-gen',c.total_leads_generated||'');
-    setVal('ep-stage',c.stage||'active_client');setVal('ep-notes',c.notes);
+    setVal('ep-stage',c.stage||'active_client');setVal('ep-cx',c.cx_score!=null?c.cx_score:'');setVal('ep-notes',c.notes);
     const epPc=Array.isArray(c.postcodes)?c.postcodes.join(', '):(c.postcodes||'');
     setVal('ep-postcodes',epPc);
     setVal('ep-weekly-cap',c.weekly_cap!=null?c.weekly_cap:'');
@@ -3376,6 +3454,7 @@ async function openEditClient(type,c) {
     setVal('em-budget',c.monthly_budget);setVal('em-fee',c.management_fee);
     const mgStage=['active','paused','churned'].includes(c.stage)?c.stage:'active';
     setVal('em-stage',mgStage);
+    setVal('em-cx',c.cx_score!=null?c.cx_score:'');
     setVal('em-start',c.start_date||'');
     setVal('em-last-pay',c.last_payment_date||'');
     setVal('em-next-pay',c.next_payment_date||'');
@@ -3426,14 +3505,14 @@ async function updateClient(type) {
     const _weeklyCap=$('ep-weekly-cap').value!==''?parseInt($('ep-weekly-cap').value):null;
     const _monthlyCap=$('ep-monthly-cap').value!==''?parseInt($('ep-monthly-cap').value):null;
     const _epMetaCampaignIds=getCheckedCampaigns('ep-campaign-picker');
-    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:_price,meta_cpl:_metaCpl,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,leads_scrubbed:_scrubbed,stage:$('ep-stage').value,notes:$('ep-notes').value.trim(),postcodes:_postcodes,weekly_cap:_weeklyCap,monthly_cap:_monthlyCap,meta_campaign_ids:_epMetaCampaignIds.length?_epMetaCampaignIds:null,delivery_method:$('ep-delivery-method').value,delivery_email:$('ep-delivery-email').value.trim()||null,delivery_phone:$('ep-delivery-phone').value.trim()||null,custom_fields:_customFields,has_quoteleads_platform_account:$('ep-has-ql-account').value==='true',platform_email:$('ep-platform-email').value.trim()||null,twilio_phone:$('ep-twilio-phone').value.trim()||null,client_webhook:$('ep-client-webhook').value.trim()||null,has_custom_integration:$('ep-has-custom-integration').value==='true',meta_cap_paused:false,meta_cap_paused_at:null,meta_cap_pause_reason:null,updated_at:now()};
+    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:_price,meta_cpl:_metaCpl,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,leads_scrubbed:_scrubbed,stage:$('ep-stage').value,cx_score:$('ep-cx').value!==''?parseInt($('ep-cx').value):null,notes:$('ep-notes').value.trim(),postcodes:_postcodes,weekly_cap:_weeklyCap,monthly_cap:_monthlyCap,meta_campaign_ids:_epMetaCampaignIds.length?_epMetaCampaignIds:null,delivery_method:$('ep-delivery-method').value,delivery_email:$('ep-delivery-email').value.trim()||null,delivery_phone:$('ep-delivery-phone').value.trim()||null,custom_fields:_customFields,has_quoteleads_platform_account:$('ep-has-ql-account').value==='true',platform_email:$('ep-platform-email').value.trim()||null,twilio_phone:$('ep-twilio-phone').value.trim()||null,client_webhook:$('ep-client-webhook').value.trim()||null,has_custom_integration:$('ep-has-custom-integration').value==='true',meta_cap_paused:false,meta_cap_paused_at:null,meta_cap_pause_reason:null,updated_at:now()};
     const {count:deliveredCount}=await db.from('ppl_order_log').select('id',{count:'exact',head:true}).eq('client_id',id).eq('status','delivered');
     if (!(deliveredCount>0)) d.pct_sold=parseFloat($('ep-pct').value)||null;
     if (!d.company_name) { toast('Company name required',true); return; }
   } else {
     id=$('em-id').value;
     const _activeMo=getActiveMgMonths();
-    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),stage:$('em-stage').value,start_date:$('em-start').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),client_webhook:$('em-client-webhook').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
+    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),stage:$('em-stage').value,cx_score:$('em-cx').value!==''?parseInt($('em-cx').value):null,start_date:$('em-start').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),client_webhook:$('em-client-webhook').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   }
   const {error}=await db.from('clients').update(d).eq('id',id);
@@ -3457,10 +3536,10 @@ async function saveClient(type) {
     const _pplWeeklyCap=$('ppl-weekly-cap')?.value!==''?parseInt($('ppl-weekly-cap').value)||null:null;
     const _pplMonthlyCap=$('ppl-monthly-cap')?.value!==''?parseInt($('ppl-monthly-cap').value)||null:null;
     const _pplMetaCampaignIds=getCheckedCampaigns('ppl-campaign-picker');
-    d={type:'ppl',company_name:$('ppl-co').value.trim(),contact_name:$('ppl-cn').value.trim(),email:$('ppl-em').value.trim(),niche:$('ppl-niche').value,lead_price:parseFloat($('ppl-price').value)||0,meta_cpl:parseFloat($('ppl-meta-cpl').value)||null,leads_delivered:parseInt($('ppl-ld').value)||0,total_leads_purchased:parseInt($('ppl-tlp').value)||0,leads_scrubbed:parseInt($('ppl-scrubbed').value)||0,stage:$('ppl-stage').value,postcodes:_pplPostcodes,weekly_cap:_pplWeeklyCap,monthly_cap:_pplMonthlyCap,meta_campaign_ids:_pplMetaCampaignIds.length?_pplMetaCampaignIds:null,delivery_method:$('ppl-delivery-method').value,delivery_email:$('ppl-delivery-email').value.trim()||null,delivery_phone:$('ppl-delivery-phone').value.trim()||null,custom_fields:_pplCf,has_quoteleads_platform_account:$('ppl-has-ql-account').value==='true',platform_email:$('ppl-platform-email').value.trim()||null,twilio_phone:$('ppl-twilio-phone').value.trim()||null,created_at:now()};
+    d={type:'ppl',company_name:$('ppl-co').value.trim(),contact_name:$('ppl-cn').value.trim(),email:$('ppl-em').value.trim(),niche:$('ppl-niche').value,lead_price:parseFloat($('ppl-price').value)||0,meta_cpl:parseFloat($('ppl-meta-cpl').value)||null,leads_delivered:parseInt($('ppl-ld').value)||0,total_leads_purchased:parseInt($('ppl-tlp').value)||0,leads_scrubbed:parseInt($('ppl-scrubbed').value)||0,stage:$('ppl-stage').value,cx_score:$('ppl-cx').value!==''?parseInt($('ppl-cx').value):null,postcodes:_pplPostcodes,weekly_cap:_pplWeeklyCap,monthly_cap:_pplMonthlyCap,meta_campaign_ids:_pplMetaCampaignIds.length?_pplMetaCampaignIds:null,delivery_method:$('ppl-delivery-method').value,delivery_email:$('ppl-delivery-email').value.trim()||null,delivery_phone:$('ppl-delivery-phone').value.trim()||null,custom_fields:_pplCf,has_quoteleads_platform_account:$('ppl-has-ql-account').value==='true',platform_email:$('ppl-platform-email').value.trim()||null,twilio_phone:$('ppl-twilio-phone').value.trim()||null,created_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   } else {
-    d={type:'managed',company_name:$('mg-co').value.trim(),contact_name:$('mg-cn').value.trim(),email:$('mg-em').value.trim(),ad_account_id:$('mg-acc').value.trim(),monthly_budget:parseFloat($('mg-budget').value)||0,management_fee:parseFloat($('mg-fee').value)||0,stage:$('mg-stage').value,start_date:$('mg-start').value||null,last_payment_date:$('mg-last-pay').value||null,next_payment_date:$('mg-next-pay').value||null,created_at:now()};
+    d={type:'managed',company_name:$('mg-co').value.trim(),contact_name:$('mg-cn').value.trim(),email:$('mg-em').value.trim(),ad_account_id:$('mg-acc').value.trim(),monthly_budget:parseFloat($('mg-budget').value)||0,management_fee:parseFloat($('mg-fee').value)||0,stage:$('mg-stage').value,cx_score:$('mg-cx').value!==''?parseInt($('mg-cx').value):null,start_date:$('mg-start').value||null,last_payment_date:$('mg-last-pay').value||null,next_payment_date:$('mg-next-pay').value||null,created_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   }
   const {error}=await db.from('clients').insert([d]);
@@ -4064,6 +4143,169 @@ async function deleteExpense(id) {
   if (error) { toast('Error: '+error.message,true); return; }
   toast('Expense deleted');
   loadFinance();
+}
+
+/* ═══ GOAL BOARD ═══ */
+async function loadGoals() {
+  const year = $('goal-year')?.value || new Date().getFullYear();
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const today = new Date();
+  const curMonth = today.getFullYear() === +year ? today.getMonth() : 11;
+
+  // Load goals + actuals in parallel
+  const [goalsR, pplOrdR, mgR, mgOrdR, expR, campR] = await Promise.all([
+    db.from('monthly_goals').select('*').gte('month', `${year}-01`).lte('month', `${year}-12`).order('month'),
+    db.from('ppl_order_log').select('leads_qty,lead_price,order_date').gte('order_date', `${year}-01-01`).lte('order_date', `${year}-12-31`),
+    db.from('clients').select('id,company_name,management_fee,payments_made,stage,active_months').eq('type','managed'),
+    db.from('managed_order_log').select('client_id,amount,order_date').gte('order_date', `${year}-01-01`).lte('order_date', `${year}-12-31`),
+    db.from('expenses').select('amount,date').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),
+    db.from('meta_campaigns').select('spend_mtd,leads_mtd'),
+  ]);
+
+  const goals = goalsR.data || [];
+  const goalMap = {};
+  goals.forEach(g => { goalMap[g.month] = g; });
+
+  const pplOrders = pplOrdR.data || [];
+  const mgClients = mgR.data || [];
+  const mgOrders = mgOrdR.data || [];
+  const expenses = expR.data || [];
+  const campaigns = campR.data || [];
+
+  // Build monthly actuals
+  const rows = [];
+  let ytdRev = 0, ytdExp = 0, ytdGoalRev = 0;
+  const monthsWithGoals = [];
+
+  for (let m = 0; m <= curMonth; m++) {
+    const key = `${year}-${String(m+1).padStart(2,'0')}`;
+    const from = `${key}-01`;
+    const next = m === 11 ? `${+year+1}-01-01` : `${year}-${String(m+2).padStart(2,'0')}-01`;
+
+    // PPL revenue for this month
+    const pplRev = pplOrders
+      .filter(o => o.order_date >= from && o.order_date < next)
+      .reduce((s, o) => s + ((o.leads_qty||0) * (o.lead_price||0)), 0);
+
+    // Managed retainer revenue for this month
+    const mgRetainer = mgClients.reduce((s, c) => {
+      let months = [];
+      try { months = JSON.parse(c.active_months || '[]'); } catch(e) {}
+      const inRange = months.filter(mo => mo === key);
+      return s + (inRange.length * (c.management_fee || 0));
+    }, 0);
+
+    // Managed custom orders for this month
+    const mgCustom = mgOrders
+      .filter(o => o.order_date >= from && o.order_date < next)
+      .reduce((s, o) => s + (o.amount || 0), 0);
+
+    // Expenses for this month
+    const monthExp = expenses
+      .filter(e => e.date >= from && e.date < next)
+      .reduce((s, e) => s + (e.amount || 0), 0);
+
+    // Ad spend — only available for current month via campaign MTD; historical months require daily ad_spend records (not tracked per-month here)
+    const adSpend = (m === today.getMonth() && +year === today.getFullYear())
+      ? campaigns.reduce((s, c) => s + (c.spend_mtd || 0), 0) : 0;
+
+    const rev = pplRev + mgRetainer + mgCustom;
+    const totalExp = monthExp + adSpend;
+    const profit = rev - totalExp;
+    const margin = rev > 0 ? (profit / rev) * 100 : 0;
+
+    const goal = goalMap[key] || { revenue_goal: 0, margin_goal: 0, notes: '' };
+
+    ytdRev += rev;
+    ytdExp += totalExp;
+    if (goal.revenue_goal > 0) ytdGoalRev += goal.revenue_goal;
+    if (goal.margin_goal > 0) monthsWithGoals.push(goal.margin_goal);
+
+    rows.push({ month: key, label: monthNames[m], rev, totalExp, profit, margin, goal });
+  }
+
+  // YTD KPIs
+  const ytdProfit = ytdRev - ytdExp;
+  const ytdMargin = ytdRev > 0 ? (ytdProfit / ytdRev) * 100 : 0;
+  const avgGoalMargin = monthsWithGoals.length ? monthsWithGoals.reduce((a, b) => a + b, 0) / monthsWithGoals.length : 0;
+
+  setText('goal-ytd-rev', fmt(ytdRev));
+  $('goal-ytd-rev-sub').textContent = ytdGoalRev > 0 ? `${((ytdRev / ytdGoalRev) * 100).toFixed(0)}% of $${ytdGoalRev.toLocaleString()} goal` : 'no goals set';
+  setText('goal-ytd-margin', ytdMargin.toFixed(1) + '%');
+  $('goal-ytd-margin-sub').textContent = avgGoalMargin > 0 ? `goal: ${avgGoalMargin.toFixed(0)}%` : 'no margin goals set';
+  setText('goal-ytd-profit', fmt(ytdProfit));
+  $('goal-ytd-profit').className = `kval ${ytdProfit >= 0 ? 'grn' : 'red'}`;
+  $('goal-ytd-profit-sub').textContent = `${ytdRev > 0 ? ytdMargin.toFixed(1) : '0'}% margin`;
+
+  // Render table
+  const tb = $('goal-tbody');
+  tb.innerHTML = rows.map(r => {
+    const revPctNum = r.goal.revenue_goal > 0 ? (r.rev / r.goal.revenue_goal) * 100 : null;
+    const revPct = revPctNum !== null ? revPctNum.toFixed(0) : '—';
+    const revPctColor = revPctNum === null ? 'var(--ink3)' : revPctNum >= 100 ? 'var(--grn)' : revPctNum >= 75 ? 'var(--amb)' : 'var(--red)';
+    const marginColor = r.goal.margin_goal > 0 ? (r.margin >= r.goal.margin_goal ? 'var(--grn)' : r.margin >= r.goal.margin_goal * 0.75 ? 'var(--amb)' : 'var(--red)') : 'var(--ink3)';
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:11px;font-weight:500">${r.label}</td>
+      <td><input class="fi goal-input" data-month="${r.month}" data-field="revenue_goal" type="number" value="${r.goal.revenue_goal||''}" placeholder="—" style="width:90px;font-size:11px;padding:3px 6px;text-align:right"></td>
+      <td style="font-family:var(--mono);font-size:11px;font-weight:500">${fmt(r.rev)}</td>
+      <td style="font-family:var(--mono);font-size:11px;font-weight:500;color:${revPctColor}">${revPct === '—' ? '—' : revPct + '%'}</td>
+      <td><input class="fi goal-input" data-month="${r.month}" data-field="margin_goal" type="number" value="${r.goal.margin_goal||''}" placeholder="—" style="width:70px;font-size:11px;padding:3px 6px;text-align:right" step="1" min="0" max="100">%</td>
+      <td style="font-family:var(--mono);font-size:11px;font-weight:500;color:${marginColor}">${r.margin.toFixed(1)}%</td>
+      <td style="font-family:var(--mono);font-size:11px;font-weight:500;color:${r.profit>=0?'var(--grn)':'var(--red)'}">${fmt(r.profit)}</td>
+      <td><input class="fi goal-input" data-month="${r.month}" data-field="notes" type="text" value="${esc(r.goal.notes||'')}" placeholder="—" style="width:120px;font-size:11px;padding:3px 6px"></td>
+      <td><button class="btn btn-xs" onclick="saveGoal('${r.month}')">Save</button></td>
+    </tr>`;
+  }).join('');
+
+  // Charts
+  renderGoalCharts(rows);
+}
+
+async function saveGoal(month) {
+  const inputs = document.querySelectorAll(`.goal-input[data-month="${month}"]`);
+  const vals = {};
+  inputs.forEach(inp => { vals[inp.dataset.field] = inp.dataset.field === 'notes' ? inp.value : (parseFloat(inp.value) || 0); });
+  vals.updated_at = now();
+  const { error } = await db.from('monthly_goals').upsert({ month, ...vals }, { onConflict: 'month' });
+  if (error) { toast('Error saving goal: ' + error.message, true); return; }
+  toast(`${month} goal saved ✓`);
+}
+
+function renderGoalCharts(rows) {
+  const {grid, tick} = chartDefaults();
+  const labels = rows.map(r => r.label);
+  const goalRevs = rows.map(r => r.goal.revenue_goal || 0);
+  const actualRevs = rows.map(r => r.rev);
+  const goalMargins = rows.map(r => r.goal.margin_goal || 0);
+  const actualMargins = rows.map(r => +r.margin.toFixed(1));
+
+  if (goalRevChart) goalRevChart.destroy();
+  goalRevChart = new Chart($('chart-goal-rev').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Goal', data: goalRevs, backgroundColor: 'rgba(79,143,255,.1)', borderColor: 'rgba(79,143,255,.5)', borderWidth: 1.5, borderRadius: 3, borderDash: [4,2] },
+        { label: 'Actual', data: actualRevs, backgroundColor: 'rgba(46,204,138,.15)', borderColor: '#2ecc8a', borderWidth: 1.5, borderRadius: 3 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: tick, font: { family: 'DM Mono', size: 9 } } } },
+      scales: { x: { ticks: { color: tick, font: { family: 'DM Mono', size: 9 } }, grid: { color: grid } }, y: { ticks: { color: tick, font: { family: 'DM Mono', size: 9 }, callback: v => '$' + v.toLocaleString() }, grid: { color: grid } } } }
+  });
+
+  if (goalMarginChart) goalMarginChart.destroy();
+  goalMarginChart = new Chart($('chart-goal-margin').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Goal %', data: goalMargins, borderColor: 'rgba(79,143,255,.6)', borderWidth: 2, borderDash: [6,3], pointRadius: 3, fill: false },
+        { label: 'Actual %', data: actualMargins, borderColor: '#2ecc8a', borderWidth: 2, pointRadius: 4, fill: false }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: tick, font: { family: 'DM Mono', size: 9 } } } },
+      scales: { x: { ticks: { color: tick, font: { family: 'DM Mono', size: 9 } }, grid: { color: grid } }, y: { ticks: { color: tick, font: { family: 'DM Mono', size: 9 }, callback: v => v + '%' }, grid: { color: grid }, min: 0 } } }
+  });
 }
 
 function chartDefaults() {
