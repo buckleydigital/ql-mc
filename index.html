@@ -2350,6 +2350,14 @@ function initSupabase() {
     db = window.supabase.createClient(_ep, _ak);
     db.auth.onAuthStateChange((event, session) => {
       if (session) {
+        if (session.user.app_metadata?.account_type === 'lead_buyer') {
+          db.auth.signOut();
+          $('login-error').textContent = 'Access denied. Please use the buyer portal to log in.';
+          currentUser = null;
+          $('login-screen').style.display = 'flex';
+          $('app').classList.remove('visible');
+          return;
+        }
         currentUser = session.user;
         setText('uname', currentUser.email.split('@')[0]);
         $('login-screen').style.display = 'none';
