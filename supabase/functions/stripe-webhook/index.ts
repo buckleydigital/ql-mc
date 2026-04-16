@@ -13,7 +13,7 @@ function normalisePhone(raw: string): string | null {
   else if (p.startsWith("614")) p = "+" + p;
   else if (p.startsWith("61") && !p.startsWith("+")) p = "+" + p;
   if (/^\+614[0-9]{8}$/.test(p)) return p;
-  return p || null; // Return cleaned value even if not strictly valid
+  return p || null; // Return cleaned value for non-AU numbers
 }
 
 Deno.serve(async (req: Request) => {

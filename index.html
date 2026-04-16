@@ -1100,7 +1100,6 @@ td strong{font-weight:500}
             <thead>
               <tr>
                 <th>Received</th>
-                <th>Type</th>
                 <th>Niche</th>
                 <th>Name</th>
                 <th>Phone</th>
@@ -1118,7 +1117,7 @@ td strong{font-weight:500}
                 <th>Actions</th>
               </tr>
             </thead>
-            <tbody id="ld-tbody"><tr><td colspan="17" class="empty">Loading…</td></tr></tbody>
+            <tbody id="ld-tbody"><tr><td colspan="16" class="empty">Loading…</td></tr></tbody>
           </table>
           <div class="pager" id="ld-pager"></div>
         </div>
@@ -2597,7 +2596,7 @@ async function loadLeads(resetPage) {
   }
 
   if (statsR.error || tableR.error) {
-    $('ld-tbody').innerHTML = `<tr><td colspan="17" class="empty">Error: ${esc((statsR.error||tableR.error).message)}</td></tr>`;
+    $('ld-tbody').innerHTML = `<tr><td colspan="16" class="empty">Error: ${esc((statsR.error||tableR.error).message)}</td></tr>`;
     return;
   }
   const all = statsR.data || [];
@@ -2632,7 +2631,7 @@ async function loadLeads(resetPage) {
 
   const rows = tableR.data || [];
   if (!rows.length) {
-    $('ld-tbody').innerHTML = `<tr><td colspan="17" class="empty">No leads found.</td></tr>`;
+    $('ld-tbody').innerHTML = `<tr><td colspan="16" class="empty">No leads found.</td></tr>`;
     $('ld-pager').innerHTML = '';
     return;
   }
@@ -2664,7 +2663,6 @@ async function loadLeads(resetPage) {
     <tr>
       <td style="white-space:nowrap;font-family:var(--mono);font-size:10px;color:var(--ink3)">${fmtDate(l.created_at, true)}</td>
       <td>${nicheBadge(l.niche)}</td>
-      <td><span class="badge bg-gray">${esc((l.niche||'solar'))}</span></td>
       <td><strong>${esc(l.name||'—')}</strong><br><span style="font-family:var(--mono);font-size:9.5px;color:var(--ink3)">${esc(l.email||'')}</span></td>
       <td style="font-family:var(--mono);font-size:11px">${esc(l.phone||'—')}</td>
       <td style="font-family:var(--mono);font-size:11px">${esc(l.postcode||'—')}</td>

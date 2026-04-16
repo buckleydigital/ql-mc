@@ -249,10 +249,12 @@ Deno.serve(async (req: Request) => {
       throw new Error(insertError?.message || "Failed to insert lead");
     }
 
-    // STEP 7 — TRIGGER DELIVERY (fire and forget)
+    // Fire-and-forget delivery — log but don't block
     if (matchedClient) {
       supabaseAdmin.functions.invoke("deliver-webhook", {
         body: { lead_id: inserted.id, client_id: matchedClient.id },
+      }).catch((err: Error) => {
+        console.error("deliver-webhook invocation failed:", err.message);
       });
     }
 
