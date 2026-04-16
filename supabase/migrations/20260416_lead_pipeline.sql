@@ -1,13 +1,19 @@
 -- 1b. Extend leads (table already exists, just add columns)
 ALTER TABLE leads
-  ADD COLUMN IF NOT EXISTS niche             text NOT NULL DEFAULT 'solar',
-  ADD COLUMN IF NOT EXISTS subtype           text,
-  ADD COLUMN IF NOT EXISTS suburb            text,
-  ADD COLUMN IF NOT EXISTS state             text,
-  ADD COLUMN IF NOT EXISTS custom_data       jsonb NOT NULL DEFAULT '{}',
-  ADD COLUMN IF NOT EXISTS delivery_attempts integer NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS last_delivery_at  timestamptz,
-  ADD COLUMN IF NOT EXISTS delivery_error    text;
+  ADD COLUMN IF NOT EXISTS niche              text NOT NULL DEFAULT 'solar',
+  ADD COLUMN IF NOT EXISTS subtype            text,
+  ADD COLUMN IF NOT EXISTS suburb             text,
+  ADD COLUMN IF NOT EXISTS state              text,
+  ADD COLUMN IF NOT EXISTS custom_data        jsonb NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS delivery_attempts  integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS last_delivery_at   timestamptz,
+  ADD COLUMN IF NOT EXISTS delivery_error     text,
+  ADD COLUMN IF NOT EXISTS assigned_client_id uuid,
+  ADD COLUMN IF NOT EXISTS assigned_at        timestamptz,
+  ADD COLUMN IF NOT EXISTS is_homeowner       boolean,
+  ADD COLUMN IF NOT EXISTS avg_quarterly_bill numeric,
+  ADD COLUMN IF NOT EXISTS interested_in      text,
+  ADD COLUMN IF NOT EXISTS purchase_timeline  text;
 
 -- 1c. Extend clients
 ALTER TABLE clients

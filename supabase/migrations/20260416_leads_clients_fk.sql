@@ -1,3 +1,9 @@
+-- Ensure the assigned_client_id column exists before adding the FK.
+-- The column is created in 20260416_lead_pipeline.sql for fresh setups,
+-- but this handles environments where that migration already ran without it.
+ALTER TABLE leads
+  ADD COLUMN IF NOT EXISTS assigned_client_id uuid;
+
 -- Add foreign key from leads.assigned_client_id to clients so PostgREST
 -- can resolve the relationship for nested selects like clients(company_name).
 DO $$
