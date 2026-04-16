@@ -1071,9 +1071,7 @@ td strong{font-weight:500}
           <div class="ph-left"><h1>Lead Distribution</h1><p>Incoming leads · assignment &amp; delivery tracking</p></div>
           <div class="ph-right">
             <select class="fi" id="ld-type-filter" onchange="loadLeads(true)" style="width:auto;font-size:11.5px;padding:5px 10px;font-family:var(--mono)">
-              <option value="all">All Types</option>
-              <option value="solar">Solar</option>
-              <option value="custom">Custom</option>
+              <option value="all">All Niches</option>
             </select>
             <select class="fi" id="ld-filter" onchange="loadLeads(true)" style="width:auto;font-size:11.5px;padding:5px 10px;font-family:var(--mono)">
               <option value="all">All Statuses</option>
@@ -1084,7 +1082,7 @@ td strong{font-weight:500}
               <option value="scrubbed">Scrubbed</option>
             </select>
             <button class="btn btn-sm" onclick="loadLeads()">↻ Refresh</button>
-            <button class="btn btn-sm" onclick="openModal('m-test-lead')">＋ Test Lead</button>
+            <button class="btn btn-sm" onclick="populateTestLeadNiches();openModal('m-test-lead')">＋ Test Lead</button>
           </div>
         </div>
         <div class="kg c5 mb4">
@@ -1103,6 +1101,7 @@ td strong{font-weight:500}
               <tr>
                 <th>Received</th>
                 <th>Type</th>
+                <th>Niche</th>
                 <th>Name</th>
                 <th>Phone</th>
                 <th>Postcode</th>
@@ -1114,11 +1113,12 @@ td strong{font-weight:500}
                 <th>Delivered At</th>
                 <th>Method</th>
                 <th>Source</th>
+                <th>Details</th>
                 <th>Notes</th>
                 <th>Actions</th>
               </tr>
             </thead>
-            <tbody id="ld-tbody"><tr><td colspan="15" class="empty">Loading…</td></tr></tbody>
+            <tbody id="ld-tbody"><tr><td colspan="17" class="empty">Loading…</td></tr></tbody>
           </table>
           <div class="pager" id="ld-pager"></div>
         </div>
@@ -1722,7 +1722,7 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Email</label><input class="fi" id="ppl-em" type="email" placeholder="john@example.com"></div>
     <div class="frow"><label class="flabel">Niche</label>
       <select class="fs" id="ppl-niche">
-        <option>Solar Residential</option><option>Solar Commercial</option><option>Battery Storage</option><option>EV Charger</option>
+        <option>Solar Residential</option><option>Solar Commercial</option><option>Battery Storage</option><option>EV Charger</option><option>HVAC</option><option>Roofing — Restorations</option><option>Roofing — Replacements</option><option>Renovation — Kitchens</option><option>Renovation — Bathrooms</option><option>Renovation — Decks</option><option>Renovation — Fencing</option><option>Carpentry</option><option>Other</option>
       </select>
     </div>
     <div class="frow"><label class="flabel">Lead Price (AUD)</label><input class="fi" id="ppl-price" type="number" placeholder="e.g. 85"></div>
@@ -1869,9 +1869,10 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Phone</label><input class="fi" id="ep-ph"></div>
     <div class="frow"><label class="flabel">Niche</label>
       <select class="fs" id="ep-niche">
-        <option>Solar Residential</option><option>Solar Commercial</option><option>Battery Storage</option><option>EV Charger</option>
+        <option>Solar Residential</option><option>Solar Commercial</option><option>Battery Storage</option><option>EV Charger</option><option>HVAC</option><option>Roofing — Restorations</option><option>Roofing — Replacements</option><option>Renovation — Kitchens</option><option>Renovation — Bathrooms</option><option>Renovation — Decks</option><option>Renovation — Fencing</option><option>Carpentry</option><option>Other</option>
       </select>
     </div>
+    <div class="frow"><label class="flabel">Active Niches <span style="font-size:9.5px;color:var(--ink3);font-weight:300">all niches this client accepts</span></label><input class="fi" id="ep-active-niches" placeholder="solar, hvac, roofing"></div>
     <div class="frow"><label class="flabel">Price Per Lead Sold (AUD)</label><input class="fi" id="ep-price" type="number" oninput="updatePplCalc()"></div>
     <div class="frow"><label class="flabel">Meta CPL (AUD) <span style="font-size:9.5px;color:var(--ink3);font-weight:300">optional — overrides global avg</span></label><input class="fi" id="ep-meta-cpl" type="number" placeholder="e.g. 28.50"></div>
     <div class="frow"><label class="flabel">% Sold</label><input class="fi" id="ep-pct" type="number" placeholder="e.g. 70"></div>
@@ -2165,10 +2166,9 @@ td strong{font-weight:500}
 <div class="overlay" id="m-test-lead">
   <div class="modal">
     <h2>Submit Test Lead</h2><div class="msub">Simulates an incoming ad lead through the full pipeline</div>
-    <div class="frow"><label class="flabel">Lead Type</label>
-      <select class="fs" id="tl-lead-type" onchange="toggleTestLeadFields()">
+    <div class="frow"><label class="flabel">Niche</label>
+      <select class="fs" id="tl-niche" onchange="toggleTestLeadFields()">
         <option value="solar">Solar</option>
-        <option value="custom">Custom</option>
       </select>
     </div>
     <div class="frow"><label class="flabel">Full Name</label><input class="fi" id="tl-name" value="Jane Test"></div>
@@ -2199,6 +2199,14 @@ td strong{font-weight:500}
         </select>
       </div>
     </div>
+    <div id="tl-custom-json-row" style="display:none">
+      <div class="frow" style="align-items:flex-start">
+        <label class="flabel" style="padding-top:6px">Custom JSON</label>
+        <div style="flex:1">
+          <textarea class="fi" id="tl-custom-json" rows="3" placeholder='{"key": "value"}' style="resize:vertical;font-family:var(--mono);font-size:11px"></textarea>
+        </div>
+      </div>
+    </div>
     <div class="frow" style="align-items:flex-start">
       <label class="flabel" style="padding-top:6px">Custom Fields</label>
       <div style="flex:1">
@@ -2209,6 +2217,26 @@ td strong{font-weight:500}
     <div class="macts">
       <button class="btn" onclick="closeModal('m-test-lead')">Cancel</button>
       <button class="btn btn-p" id="tl-btn" onclick="sendTestLead()">Send Test Lead</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="m-sms-lead">
+  <div class="modal" style="max-width:420px">
+    <h2>Send SMS</h2>
+    <div class="msub" id="sms-lead-info" style="font-family:var(--mono);font-size:12px"></div>
+    <input type="hidden" id="sms-lead-id">
+    <input type="hidden" id="sms-lead-phone">
+    <div class="frow" style="align-items:flex-start">
+      <label class="flabel" style="padding-top:6px">Message</label>
+      <div style="flex:1">
+        <textarea class="fi" id="sms-message" rows="3" maxlength="160" oninput="updateSmsCounter()" style="resize:vertical;font-size:12px"></textarea>
+        <div id="sms-counter" style="font-family:var(--mono);font-size:10px;color:var(--ink3);text-align:right;margin-top:2px">0 / 160</div>
+      </div>
+    </div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-sms-lead')">Cancel</button>
+      <button class="btn btn-p" id="sms-send-btn" onclick="sendSms()">Send SMS</button>
     </div>
   </div>
 </div>
@@ -2420,9 +2448,23 @@ async function loadAll() {
   populateMapClientDropdown();
 }
 
+async function populateTestLeadNiches() {
+  const sel = $('tl-niche');
+  if (!sel) return;
+  try {
+    const { data } = await db.from('leads').select('niche').limit(500);
+    const niches = [...new Set((data||[]).map(r => r.niche).filter(Boolean))].sort();
+    const cur = sel.value;
+    const allNiches = niches.length ? niches : ['solar'];
+    sel.innerHTML = allNiches.map(n => `<option value="${esc(n)}"${n===cur?' selected':''}>${esc(n.charAt(0).toUpperCase()+n.slice(1))}</option>`).join('');
+  } catch(e) { /* keep existing options */ }
+}
+
 function toggleTestLeadFields() {
-  const isSolar = document.getElementById('tl-lead-type').value === 'solar';
+  const niche = document.getElementById('tl-niche').value;
+  const isSolar = niche === 'solar';
   document.getElementById('tl-solar-fields').style.display = isSolar ? '' : 'none';
+  document.getElementById('tl-custom-json-row').style.display = isSolar ? 'none' : '';
 }
 
 async function sendTestLead() {
@@ -2437,22 +2479,33 @@ async function sendTestLead() {
     if (!session) throw new Error('Not logged in');
 
     const customDataRaw = document.getElementById('tl-custom').value.trim();
-    const leadType = document.getElementById('tl-lead-type').value;
+    const niche = document.getElementById('tl-niche').value;
 
     const payload = {
       name: document.getElementById('tl-name').value,
       email: document.getElementById('tl-email').value,
       phone: document.getElementById('tl-phone').value,
       postcode: document.getElementById('tl-postcode').value,
-      lead_type: leadType,
+      niche: niche,
       custom_data: customDataRaw,
     };
 
-    if (leadType === 'solar') {
+    if (niche === 'solar') {
       payload.is_homeowner = document.getElementById('tl-homeowner').value === 'true';
       payload.avg_quarterly_bill = Number(document.getElementById('tl-bill').value);
       payload.interested_in = document.getElementById('tl-interest').value;
       payload.purchase_timeline = document.getElementById('tl-timeline').value;
+    } else {
+      // Parse custom JSON and spread into payload
+      const customJsonRaw = document.getElementById('tl-custom-json').value.trim();
+      if (customJsonRaw) {
+        try {
+          const parsed = JSON.parse(customJsonRaw);
+          Object.assign(payload, parsed);
+        } catch (e) {
+          throw new Error('Invalid JSON in Custom JSON field');
+        }
+      }
     }
 
     const res = await fetch(`${_ep}/functions/v1/submit-lead`, {
@@ -2477,23 +2530,74 @@ async function sendTestLead() {
   }
 }
 
+function updateSmsCounter() {
+  const msg = $('sms-message')?.value || '';
+  const counter = $('sms-counter');
+  if (counter) {
+    counter.textContent = msg.length + ' / 160';
+    counter.style.color = msg.length > 160 ? 'var(--red)' : 'var(--ink3)';
+  }
+}
+
+async function sendSms() {
+  const btn = $('sms-send-btn');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) throw new Error('Not logged in');
+    const res = await fetch(`${_ep}/functions/v1/send-sms`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        to:      $('sms-lead-phone').value,
+        message: $('sms-message').value,
+        lead_id: $('sms-lead-id').value
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'SMS failed');
+    closeModal('m-sms-lead');
+    toast('SMS sent ✓');
+  } catch (err) {
+    toast('SMS failed: ' + err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send SMS';
+  }
+}
+
 async function loadLeads(resetPage) {
   if (resetPage) leadsPage = 0;
   const filter = $('ld-filter')?.value || 'all';
   const typeFilter = $('ld-type-filter')?.value || 'all';
 
-  // Stats query — lightweight, all rows, just status + client info + lead_type
-  const statsQ = db.from('solar_leads').select('status, lead_type, assigned_client_id, clients(company_name)');
-  if (typeFilter !== 'all') statsQ.eq('lead_type', typeFilter);
+  // Populate niche filter dynamically
+  const nicheQ = db.from('leads').select('niche').limit(500);
+  // Stats query — lightweight, all rows, just status + niche + client info
+  const statsQ = db.from('leads').select('status, niche, assigned_client_id, clients(company_name)');
+  if (typeFilter !== 'all') statsQ.eq('niche', typeFilter);
   // Table query — paginated, with server-side filter
-  const tableQ = db.from('solar_leads').select('*, clients(company_name)', {count:'exact'}).order('created_at', {ascending: false});
+  const tableQ = db.from('leads').select('*, clients(company_name)', {count:'exact'}).order('created_at', {ascending: false});
   if (filter !== 'all') tableQ.eq('status', filter);
-  if (typeFilter !== 'all') tableQ.eq('lead_type', typeFilter);
+  if (typeFilter !== 'all') tableQ.eq('niche', typeFilter);
   tableQ.range(leadsPage * PAGE_SIZE, (leadsPage + 1) * PAGE_SIZE - 1);
 
-  const [statsR, tableR] = await Promise.all([statsQ, tableQ]);
+  const [nicheR, statsR, tableR] = await Promise.all([nicheQ, statsQ, tableQ]);
+
+  // Rebuild niche filter options
+  if (nicheR.data) {
+    const niches = [...new Set(nicheR.data.map(r => r.niche).filter(Boolean))].sort();
+    const sel = $('ld-type-filter');
+    const curVal = sel.value;
+    sel.innerHTML = '<option value="all">All Niches</option>' + niches.map(n => `<option value="${esc(n)}"${n===curVal?' selected':''}>${esc(n.charAt(0).toUpperCase()+n.slice(1))}</option>`).join('');
+  }
+
   if (statsR.error || tableR.error) {
-    $('ld-tbody').innerHTML = `<tr><td colspan="15" class="empty">Error: ${esc((statsR.error||tableR.error).message)}</td></tr>`;
+    $('ld-tbody').innerHTML = `<tr><td colspan="17" class="empty">Error: ${esc((statsR.error||tableR.error).message)}</td></tr>`;
     return;
   }
   const all = statsR.data || [];
@@ -2528,7 +2632,7 @@ async function loadLeads(resetPage) {
 
   const rows = tableR.data || [];
   if (!rows.length) {
-    $('ld-tbody').innerHTML = `<tr><td colspan="15" class="empty">No leads found.</td></tr>`;
+    $('ld-tbody').innerHTML = `<tr><td colspan="17" class="empty">No leads found.</td></tr>`;
     $('ld-pager').innerHTML = '';
     return;
   }
@@ -2536,9 +2640,20 @@ async function loadLeads(resetPage) {
     const cls = {pending:'bg-amb',assigned:'bg-blu',delivered:'bg-grn',failed:'bg-red',scrubbed:'bg-gray'};
     return `<span class="badge ${cls[s]||'bg-gray'}">${esc(s||'unknown')}</span>`;
   };
-  const leadTypeBadge = t => {
-    if (t === 'custom') return `<span class="badge bg-vio">Custom</span>`;
-    return `<span class="badge bg-sky">Solar</span>`;
+  const nicheBadge = n => {
+    if (!n) return '<span class="badge bg-gray">—</span>';
+    return `<span class="badge bg-sky">${esc(n.charAt(0).toUpperCase()+n.slice(1))}</span>`;
+  };
+  const fmtCustomData = cd => {
+    if (!cd || typeof cd !== 'object' || !Object.keys(cd).length) return '';
+    const parts = Object.entries(cd).filter(([,v])=>v!=null&&v!=='').map(([k,v])=>k.replace(/[_-]/g,' ')+': '+v);
+    const full = parts.join(', ');
+    const short = full.length > 80 ? full.slice(0,77)+'…' : full;
+    return short;
+  };
+  const fmtCustomDataFull = cd => {
+    if (!cd || typeof cd !== 'object' || !Object.keys(cd).length) return '';
+    return Object.entries(cd).filter(([,v])=>v!=null&&v!=='').map(([k,v])=>k.replace(/[_-]/g,' ')+': '+v).join(', ');
   };
   const fmtDate = (d, time) => {
     if (!d) return '—';
@@ -2548,20 +2663,22 @@ async function loadLeads(resetPage) {
   $('ld-tbody').innerHTML = rows.map(l => `
     <tr>
       <td style="white-space:nowrap;font-family:var(--mono);font-size:10px;color:var(--ink3)">${fmtDate(l.created_at, true)}</td>
-      <td>${leadTypeBadge(l.lead_type)}</td>
+      <td>${nicheBadge(l.niche)}</td>
+      <td><span class="badge bg-gray">${esc((l.niche||'solar'))}</span></td>
       <td><strong>${esc(l.name||'—')}</strong><br><span style="font-family:var(--mono);font-size:9.5px;color:var(--ink3)">${esc(l.email||'')}</span></td>
       <td style="font-family:var(--mono);font-size:11px">${esc(l.phone||'—')}</td>
       <td style="font-family:var(--mono);font-size:11px">${esc(l.postcode||'—')}</td>
       <td>${l.interested_in ? `<span class="badge bg-blu">${esc(l.interested_in.replace(/_/g,' '))}</span>` : '<span style="color:var(--ink3)">—</span>'}</td>
-      <td style="font-family:var(--mono);font-size:11px">${l.avg_quarterly_bill ? esc(l.avg_quarterly_bill) : '—'}</td>
+      <td style="font-family:var(--mono);font-size:11px">${l.avg_quarterly_bill ? esc(String(l.avg_quarterly_bill)) : '—'}</td>
       <td style="font-size:11px;color:var(--ink2);white-space:nowrap">${esc(l.purchase_timeline||'—')}</td>
       <td>${statusBadge(l.status)}</td>
       <td>${l.clients?.company_name ? `<strong>${esc(l.clients.company_name)}</strong>` : '<span style="color:var(--ink3)">—</span>'}</td>
       <td style="font-family:var(--mono);font-size:10px;color:var(--ink3);white-space:nowrap">${fmtDate(l.assigned_at, false)}</td>
       <td style="font-family:var(--mono);font-size:10px;color:var(--ink3)">${esc(l.delivery_method||'—')}</td>
-      <td><span class="badge bg-gray">${esc(l.source||'make')}</span></td>
+      <td><span class="badge bg-gray">${esc(l.source||'webhook')}</span></td>
+      <td style="font-size:10px;color:var(--ink2);max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(fmtCustomDataFull(l.custom_data))}">${esc(fmtCustomData(l.custom_data))}</td>
       <td style="font-size:11px;color:var(--ink2);max-width:180px;white-space:pre-wrap;word-break:break-word">${esc(l.custom_fields||'')}</td>
-      <td>
+      <td style="white-space:nowrap">
         <select class="fi" style="font-size:10.5px;padding:3px 6px;width:auto;font-family:var(--mono)" onchange="updateLeadStatus('${esc(l.id)}', this.value, this)">
           <option value="pending" ${l.status==='pending'?'selected':''}>Pending</option>
           <option value="assigned" ${l.status==='assigned'?'selected':''}>Assigned</option>
@@ -2569,9 +2686,22 @@ async function loadLeads(resetPage) {
           <option value="scrubbed" ${l.status==='scrubbed'?'selected':''}>Scrubbed</option>
           <option value="failed" ${l.status==='failed'?'selected':''}>Failed</option>
         </select>
+        ${l.phone ? `<button class="btn btn-xs sms-lead-btn" data-lead-id="${esc(l.id)}" data-phone="${esc(l.phone)}" data-name="${esc(l.name||'')}">SMS</button>` : ''}
       </td>
     </tr>`).join('');
   renderPager('ld-pager', leadsPage, leadsTotal, p => { leadsPage = p; loadLeads(); });
+  // Attach SMS button listeners
+  document.querySelectorAll('.sms-lead-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      $('sms-lead-id').value = btn.dataset.leadId;
+      $('sms-lead-phone').value = btn.dataset.phone;
+      $('sms-lead-info').textContent = (btn.dataset.name || '') + ' · ' + (btn.dataset.phone || '');
+      $('sms-message').value = `Hi ${btn.dataset.name || ''}, this is QuoteLeads following up on your enquiry. Are you still interested? Reply or call us back.`;
+      updateSmsCounter();
+      openModal('m-sms-lead');
+    });
+  });
 }
 async function updateLeadStatus(leadId, newStatus, selectEl) {
   const prev = Array.from(selectEl.options).find(o => o.defaultSelected)?.value || selectEl.value;
@@ -2580,7 +2710,7 @@ async function updateLeadStatus(leadId, newStatus, selectEl) {
   if (newStatus === 'delivered') {
     ({error} = await db.rpc('mark_lead_delivered', {p_lead_id: leadId, p_note: 'Manually marked delivered'}));
   } else {
-    ({error} = await db.from('solar_leads').update({status: newStatus, updated_at: new Date().toISOString()}).eq('id', leadId));
+    ({error} = await db.from('leads').update({status: newStatus, updated_at: new Date().toISOString()}).eq('id', leadId));
   }
   selectEl.disabled = false;
   if (error) {
@@ -3430,6 +3560,7 @@ async function openEditClient(type,c) {
   if (type==='ppl') {
     setVal('ep-id',c.id);setVal('ep-co',c.company_name);setVal('ep-cn',c.contact_name);
     setVal('ep-em',c.email);setVal('ep-ph',c.phone);setVal('ep-niche',c.niche);
+    setVal('ep-active-niches',Array.isArray(c.active_niches)?c.active_niches.join(', '):'');
     setVal('ep-price',c.lead_price);setVal('ep-meta-cpl',c.meta_cpl||'');setVal('ep-pct',c.pct_sold);
     setVal('ep-ld',c.leads_delivered||0);setVal('ep-tlp',c.total_leads_purchased||0);setVal('ep-scrubbed',c.leads_scrubbed||0);setVal('ep-total-gen',c.total_leads_generated||'');
     setVal('ep-stage',c.stage||'active_client');setVal('ep-cx',c.cx_score!=null?c.cx_score:'');setVal('ep-notes',c.notes);
@@ -3513,7 +3644,8 @@ async function updateClient(type) {
     const _weeklyCap=$('ep-weekly-cap').value!==''?parseInt($('ep-weekly-cap').value):null;
     const _monthlyCap=$('ep-monthly-cap').value!==''?parseInt($('ep-monthly-cap').value):null;
     const _epMetaCampaignIds=getCheckedCampaigns('ep-campaign-picker');
-    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,lead_price:_price,meta_cpl:_metaCpl,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,leads_scrubbed:_scrubbed,stage:$('ep-stage').value,cx_score:$('ep-cx').value!==''?parseInt($('ep-cx').value):null,notes:$('ep-notes').value.trim(),postcodes:_postcodes,weekly_cap:_weeklyCap,monthly_cap:_monthlyCap,meta_campaign_ids:_epMetaCampaignIds.length?_epMetaCampaignIds:null,delivery_method:$('ep-delivery-method').value,delivery_email:$('ep-delivery-email').value.trim()||null,delivery_phone:$('ep-delivery-phone').value.trim()||null,custom_fields:_customFields,has_quoteleads_platform_account:$('ep-has-ql-account').value==='true',platform_email:$('ep-platform-email').value.trim()||null,twilio_phone:$('ep-twilio-phone').value.trim()||null,client_webhook:$('ep-client-webhook').value.trim()||null,has_custom_integration:$('ep-has-custom-integration').value==='true',meta_cap_paused:false,meta_cap_paused_at:null,meta_cap_pause_reason:null,updated_at:now()};
+    const _activeNiches=$('ep-active-niches').value.split(',').map(s=>s.trim()).filter(Boolean);
+    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,active_niches:_activeNiches,lead_price:_price,meta_cpl:_metaCpl,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,leads_scrubbed:_scrubbed,stage:$('ep-stage').value,cx_score:$('ep-cx').value!==''?parseInt($('ep-cx').value):null,notes:$('ep-notes').value.trim(),postcodes:_postcodes,weekly_cap:_weeklyCap,monthly_cap:_monthlyCap,meta_campaign_ids:_epMetaCampaignIds.length?_epMetaCampaignIds:null,delivery_method:$('ep-delivery-method').value,delivery_email:$('ep-delivery-email').value.trim()||null,delivery_phone:$('ep-delivery-phone').value.trim()||null,custom_fields:_customFields,has_quoteleads_platform_account:$('ep-has-ql-account').value==='true',platform_email:$('ep-platform-email').value.trim()||null,twilio_phone:$('ep-twilio-phone').value.trim()||null,client_webhook:$('ep-client-webhook').value.trim()||null,has_custom_integration:$('ep-has-custom-integration').value==='true',meta_cap_paused:false,meta_cap_paused_at:null,meta_cap_pause_reason:null,updated_at:now()};
     const {count:deliveredCount}=await db.from('ppl_order_log').select('id',{count:'exact',head:true}).eq('client_id',id).eq('status','delivered');
     if (!(deliveredCount>0)) d.pct_sold=parseFloat($('ep-pct').value)||null;
     if (!d.company_name) { toast('Company name required',true); return; }
