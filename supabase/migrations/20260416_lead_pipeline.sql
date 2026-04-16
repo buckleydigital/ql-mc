@@ -1,7 +1,4 @@
--- 1a. Rename table
-ALTER TABLE IF EXISTS solar_leads RENAME TO leads;
-
--- 1b. Extend leads
+-- 1b. Extend leads (table already exists, just add columns)
 ALTER TABLE leads
   ADD COLUMN IF NOT EXISTS niche             text NOT NULL DEFAULT 'solar',
   ADD COLUMN IF NOT EXISTS subtype           text,
@@ -57,21 +54,21 @@ CREATE TABLE IF NOT EXISTS lead_sms_log (
 
 -- 1g. RLS policies
 ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN EXECUTE 'DROP POLICY IF EXISTS "admin_all" ON leads'; EXCEPTION WHEN undefined_table THEN NULL; END $$;
+DROP POLICY IF EXISTS "admin_all" ON leads;
 CREATE POLICY "admin_all" ON leads FOR ALL TO authenticated
   USING (true) WITH CHECK (true);
 
 ALTER TABLE lead_delivery_log ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN EXECUTE 'DROP POLICY IF EXISTS "admin_all" ON lead_delivery_log'; EXCEPTION WHEN undefined_table THEN NULL; END $$;
+DROP POLICY IF EXISTS "admin_all" ON lead_delivery_log;
 CREATE POLICY "admin_all" ON lead_delivery_log FOR ALL TO authenticated
   USING (true) WITH CHECK (true);
 
 ALTER TABLE pending_orders ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN EXECUTE 'DROP POLICY IF EXISTS "admin_all" ON pending_orders'; EXCEPTION WHEN undefined_table THEN NULL; END $$;
+DROP POLICY IF EXISTS "admin_all" ON pending_orders;
 CREATE POLICY "admin_all" ON pending_orders FOR ALL TO authenticated
   USING (true) WITH CHECK (true);
 
 ALTER TABLE lead_sms_log ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN EXECUTE 'DROP POLICY IF EXISTS "admin_all" ON lead_sms_log'; EXCEPTION WHEN undefined_table THEN NULL; END $$;
+DROP POLICY IF EXISTS "admin_all" ON lead_sms_log;
 CREATE POLICY "admin_all" ON lead_sms_log FOR ALL TO authenticated
   USING (true) WITH CHECK (true);
