@@ -6849,8 +6849,14 @@ async function initTwilioDevice() {
       });
       return true;
     } catch(err) {
-      toast('Twilio init failed: ' + err.message, true);
+      toast('Twilio init failed: ' + (err?.message || String(err) || 'unknown error'), true);
       console.error('[call] init failed', err);
+      // Destroy the partially-initialised device so the next attempt starts fresh.
+      if (_twilioDevice) {
+        try { _twilioDevice.destroy(); } catch(_) {}
+        _twilioDevice = null;
+      }
+      _twilioDeviceReady = false;
       _twilioDevicePromise = null;
       return false;
     }
