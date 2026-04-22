@@ -4208,8 +4208,9 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   // Spend and leads from campaign_spend_log (persists even after campaigns are deleted)
   const campSpend=spendLog.reduce((s,e)=>s+(e.spend||0),0);
   const campLeads=spendLog.reduce((s,e)=>s+(e.leads||0),0);
-  // Agency acquisition spend: sum of all daily agency entries in the period
-  const agSp=adSpend.filter(a=>a.account_type==='agency').reduce((s,a)=>s+(a.spend||0),0);
+  // Agency acquisition spend: use the latest daily entry (cumulative MTD snapshot)
+  const latestAg=adSpend.find(a=>a.account_type==='agency');
+  const agSp=latestAg?.spend||0;
   const pplSp=campSpend;
   const pplLeadsTotal=campLeads;
   const metaCpl=(pplSp>0&&pplLeadsTotal>0)?'$'+(pplSp/pplLeadsTotal).toFixed(2):'—';
