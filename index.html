@@ -6721,6 +6721,7 @@ async function loadPSCallLog() {
 // ── Twilio Voice ──────────────────────────────────────────────────────────────
 let _twilioDevice = null;
 let _twilioDeviceReady = false;
+let _twilioDevicePromise = null; // singleton init promise — prevents double-init
 let _activeCall = null;
 let _activeApptId = null;
 let _activeApptName = '';
@@ -6731,38 +6732,75 @@ let _callLogId = null;
 const CALL_CAP_SEC = 600;          // 10 minutes hard cap
 const CALL_WARN_SEC = 480;         // 8 minutes → amber warning
 const CALL_DANGER_SEC = 540;       // 9 minutes → red danger
-const DEVICE_READY_TIMEOUT_MS = 1500; // ms to wait for Twilio Device to become ready
+const DEVICE_READY_TIMEOUT_MS = 8000; // ms to wait for Twilio Device to become ready
 
+// Returns true when device is ready, false on any error.
+// Concurrent calls reuse the same in-flight promise to avoid creating multiple Device instances.
 async function initTwilioDevice() {
-  if (_twilioDeviceReady) return;
-  if (!window.Twilio) { toast('Twilio SDK not loaded', true); return; }
-  try {
-    const { data: { session } } = await db.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
-    const res = await fetch(`${_ep}/functions/v1/twilio-voice-token`, {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + session.access_token },
-    });
-    const json = await res.json();
-    if (!res.ok || !json.token) {
-      toast('Could not get call token: ' + (json.error || 'unknown'), true);
-      return;
+  if (_twilioDeviceReady) return true;
+  if (_twilioDevicePromise) return _twilioDevicePromise;
+  if (!window.Twilio) { toast('Twilio SDK not loaded — please reload the page', true); return false; }
+
+  _twilioDevicePromise = (async () => {
+    try {
+      const { data: { session } } = await db.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      const res = await fetch(`${_ep}/functions/v1/twilio-voice-token`, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + session.access_token },
+      });
+      const json = await res.json();
+      if (!res.ok || !json.token) {
+        toast('Could not get call token: ' + (json.error || 'unknown'), true);
+        _twilioDevicePromise = null;
+        return false;
+      }
+      _twilioDevice = new Twilio.Device(json.token, {
+        codecPreferences: ['opus', 'pcmu'],
+        fakeLocalDTMF: true,
+        enableRingingState: true,
+      });
+
+      // Wait for the Device 'ready' event (or fail on timeout/error)
+      const ok = await new Promise((resolve) => {
+        let settled = false;
+        const settle = (result) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          _twilioDevice.off('ready', onReady);
+          _twilioDevice.off('error', onInitError);
+          resolve(result);
+        };
+        const timer = setTimeout(() => settle(false), DEVICE_READY_TIMEOUT_MS);
+        const onReady = () => { _twilioDeviceReady = true; settle(true); };
+        const onInitError = () => settle(false);
+        _twilioDevice.on('ready', onReady);
+        _twilioDevice.on('error', onInitError);
+      });
+
+      if (!ok) {
+        toast('Twilio device did not become ready — please reload the page', true);
+        _twilioDevice = null;
+        _twilioDevicePromise = null;
+        return false;
+      }
+
+      _twilioDevice.on('error', (err) => {
+        toast('Twilio error: ' + err.message, true);
+        console.error('Twilio Device error', err);
+      });
+      _twilioDevice.on('disconnect', () => { onCallDisconnected(); });
+      _twilioDevice.on('cancel', () => { onCallDisconnected(); });
+      return true;
+    } catch(err) {
+      toast('Twilio init failed: ' + err.message, true);
+      _twilioDevicePromise = null;
+      return false;
     }
-    _twilioDevice = new Twilio.Device(json.token, {
-      codecPreferences: ['opus', 'pcmu'],
-      fakeLocalDTMF: true,
-      enableRingingState: true,
-    });
-    _twilioDevice.on('ready', () => { _twilioDeviceReady = true; });
-    _twilioDevice.on('error', (err) => {
-      toast('Twilio error: ' + err.message, true);
-      console.error('Twilio Device error', err);
-    });
-    _twilioDevice.on('disconnect', () => { onCallDisconnected(); });
-    _twilioDevice.on('cancel', () => { onCallDisconnected(); });
-  } catch(err) {
-    toast('Twilio init failed: ' + err.message, true);
-  }
+  })();
+
+  return _twilioDevicePromise;
 }
 
 async function startPSCall(apptId, phone, name) {
@@ -6771,12 +6809,10 @@ async function startPSCall(apptId, phone, name) {
   // Validate phone is in appointment list (extra client-side check)
   if (!PS_CACHE[apptId]) { toast('Appointment not found', true); return; }
 
-  // Init device if needed
-  if (!_twilioDevice || !_twilioDeviceReady) {
-    await initTwilioDevice();
-    // Wait briefly for device to be ready
-    await new Promise(r => setTimeout(r, DEVICE_READY_TIMEOUT_MS));
-    if (!_twilioDeviceReady) { toast('Device not ready — try again in a moment', true); return; }
+  // Init device if needed; initTwilioDevice awaits the 'ready' event internally
+  if (!_twilioDeviceReady) {
+    const ready = await initTwilioDevice();
+    if (!ready) return; // toast already shown inside initTwilioDevice
   }
 
   _activeApptId = apptId;
