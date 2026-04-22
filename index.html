@@ -6,7 +6,7 @@
 <title>QL · Mission Control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co https://*.googleapis.com https://raw.githubusercontent.com 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://maps.googleapis.com; img-src * data: blob:;">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co https://*.googleapis.com https://raw.githubusercontent.com https://*.twilio.com wss://*.twilio.com https://graph.facebook.com 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://maps.googleapis.com https://sdk.twilio.com; img-src * data: blob:;">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
@@ -14,6 +14,8 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <!-- Google Maps script tag — loaded dynamically at runtime via Edge Function -->
 <script id="gmaps-script"></script>
+<!-- Twilio Voice JS SDK — browser calling -->
+<script src="https://sdk.twilio.com/js/client/releases/1.14.1/twilio.min.js"></script>
 <style>
 
 /* ═══ TOKENS ═══ */
@@ -415,6 +417,8 @@ body::after {
 .kcol[data-s="proposal"] .kcolh,.kcol[data-s="proposal_sent"] .kcolh{border-top-color:var(--amb);}
 .kcol[data-s="closed_won"] .kcolh,.kcol[data-s="active"] .kcolh,.kcol[data-s="active_client"] .kcolh{border-top-color:var(--grn);}
 .kcol[data-s="closed_lost"] .kcolh,.kcol[data-s="churned"] .kcolh{border-top-color:var(--red);}
+.kcol[data-s="appointment_booked"] .kcolh{border-top-color:var(--grn);}
+.kcol[data-s="disputed"] .kcolh{border-top-color:var(--red);}
 
 /* ═══ TASKS ═══ */
 .task-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -830,8 +834,47 @@ td strong{font-weight:500}
             <span class="ni">⚑</span>Sales Agent
           </button>
         </div>
+
+        <div class="sb-divider"></div>
+
+        <div class="sb-group" id="ps-nav-group">
+          <span class="sb-group-label">PS Services</span>
+          <button class="navbtn" data-panel="ps-appt" onclick="nav('ps-appt',this)">
+            <span class="ni">☎</span>PS Appt Setting
+          </button>
+        </div>
       </div>
 
+      <div class="sb-bottom">
+        <button class="navbtn" onclick="doLogout()">
+          <span class="ni">⎋</span>Sign out
+        </button>
+      </div>
+    </div>
+
+    <!-- PS-SERVICES ONLY SIDEBAR -->
+    <div class="sidebar" id="ps-sidebar" style="display:none">
+      <div class="sb-header">
+        <div class="sb-logo-row">
+          <div class="sb-logo">PS</div>
+          <div>
+            <div class="sb-brand">PS Services</div>
+            <div class="sb-brand-sub">Appt Setting</div>
+          </div>
+        </div>
+        <div class="sb-status">
+          <div class="sb-status-dot"></div>
+          Live pipeline
+        </div>
+      </div>
+      <div class="sb-nav">
+        <div class="sb-group">
+          <span class="sb-group-label">Workspace</span>
+          <button class="navbtn active" data-panel="ps-appt" onclick="nav('ps-appt',this)">
+            <span class="ni">☎</span>PS Appt Setting
+          </button>
+        </div>
+      </div>
       <div class="sb-bottom">
         <button class="navbtn" onclick="doLogout()">
           <span class="ni">⎋</span>Sign out
@@ -1551,6 +1594,80 @@ td strong{font-weight:500}
         </div>
       </div>
 
+      <!-- ══ PS APPT SETTING ══ -->
+      <div class="panel" id="panel-ps-appt">
+        <div class="ph">
+          <div class="ph-left"><h1>PS Appt Setting</h1><p>Commercial solar appointment pipeline</p></div>
+          <div class="ph-right" id="ps-appt-admin-actions">
+            <button class="btn btn-sm" onclick="loadPSAppt()">↻ Refresh</button>
+            <button class="btn btn-p btn-sm" data-action="add-ps-lead" onclick="openModal('m-ps-lead')">+ Add Lead</button>
+          </div>
+        </div>
+
+        <!-- KPI Strip -->
+        <div class="kg c4" style="margin-bottom:16px">
+          <div class="kpi"><div class="klabel">Total Leads</div><div class="kval blu" id="ps-kpi-total">—</div></div>
+          <div class="kpi"><div class="klabel">Appts Booked</div><div class="kval grn" id="ps-kpi-booked">—</div></div>
+          <div class="kpi"><div class="klabel">Booking Rate</div><div class="kval" id="ps-kpi-rate">—</div></div>
+          <div class="kpi"><div class="klabel">Disputed</div><div class="kval red" id="ps-kpi-disputed">—</div></div>
+        </div>
+
+        <!-- Pipeline Kanban -->
+        <div class="sl"><span>Pipeline</span><div class="sl-line"></div></div>
+        <div class="kanban-wrap">
+          <div class="kanban" id="ps-kanban"></div>
+        </div>
+
+        <!-- Revenue & Ad Spend -->
+        <div class="sl" style="margin-top:24px"><span>Ad Performance vs Revenue</span><div class="sl-line"></div></div>
+        <div class="kg c3" style="margin-bottom:14px">
+          <div class="kpi"><div class="klabel">Total Revenue (ps_clients)</div><div class="kval grn" id="ps-kpi-revenue">—</div></div>
+          <div class="kpi"><div class="klabel">Lifetime Ad Spend (Meta)</div><div class="kval red" id="ps-kpi-adspend">—</div></div>
+          <div class="kpi"><div class="klabel">Net (Revenue – Spend)</div><div class="kval" id="ps-kpi-net">—</div></div>
+        </div>
+
+        <!-- Meta Sync Config -->
+        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:16px;margin-bottom:14px">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">Meta Ad Account Sync</div>
+          <div style="display:grid;grid-template-columns:1fr 2fr auto;gap:8px;align-items:end">
+            <div>
+              <div class="flabel">Ad Account ID</div>
+              <input class="fi" id="ps-ad-account-id" placeholder="act_123456789">
+            </div>
+            <div>
+              <div class="flabel">Campaign IDs (comma-separated)</div>
+              <input class="fi" id="ps-campaign-ids" placeholder="12345, 67890, 11223">
+            </div>
+            <button class="btn btn-p btn-sm" onclick="syncPSMeta()" id="ps-sync-btn" style="white-space:nowrap">↻ Sync Stats</button>
+          </div>
+          <div id="ps-sync-status" style="margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--ink3)"></div>
+          <div id="ps-sync-error" style="margin-top:4px;font-family:var(--mono);font-size:10px;color:var(--red);display:none"></div>
+        </div>
+
+        <!-- PS Clients -->
+        <div class="sl"><span>PS Clients (Revenue)</span><div class="sl-line">
+          </div><button class="btn btn-xs" onclick="openModal('m-ps-client')">+ Add Client</button></div>
+        <div class="twrap" style="margin-bottom:14px">
+          <table>
+            <thead><tr>
+              <th>Name</th><th>Revenue</th><th>Closed</th><th>Notes</th><th></th>
+            </tr></thead>
+            <tbody id="ps-clients-tbody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+
+        <!-- Call Log -->
+        <div class="sl"><span>Call Log</span><div class="sl-line"></div></div>
+        <div class="twrap" style="margin-bottom:14px">
+          <table>
+            <thead><tr>
+              <th>Time</th><th>Name</th><th>Phone</th><th>Duration</th><th>Status</th><th>Called By</th><th>Error</th>
+            </tr></thead>
+            <tbody id="ps-call-log-tbody"><tr><td colspan="7" class="empty">No calls yet.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
     </div><!-- /content -->
   </div><!-- /layout -->
 
@@ -1565,6 +1682,19 @@ td strong{font-weight:500}
     <button class="bnbtn" data-panel="files" onclick="nav('files',this)"><span class="bnbtn-icon">📄</span><span class="bnbtn-lbl">Files</span></button>
   </div>
 </div><!-- /app -->
+
+<!-- ═══ ACTIVE CALL INDICATOR ═══ -->
+<div id="ps-call-indicator">
+  <div class="call-ind-top">
+    <div class="call-dot"></div>
+    <div>
+      <div class="call-ind-name" id="call-ind-name">Calling…</div>
+      <div class="call-ind-phone" id="call-ind-phone"></div>
+    </div>
+  </div>
+  <div class="call-ind-timer" id="call-ind-timer">0:00</div>
+  <button class="btn btn-red btn-sm" onclick="endPSCall()" style="width:100%">■ End Call</button>
+</div>
 
 <!-- ═══ MODALS ═══ -->
 <div class="overlay" id="m-expense">
@@ -2262,12 +2392,76 @@ td strong{font-weight:500}
   </div>
 </div>
 
+<!-- PS Lead modal (admin only — hidden for ps_services via JS) -->
+<div class="overlay" id="m-ps-lead">
+  <div class="modal">
+    <h2>Add Appointment Lead</h2><div class="msub">comm_solar_appointments</div>
+    <input type="hidden" id="psl-id">
+    <div class="frow"><label class="flabel">Full Name *</label><input class="fi" id="psl-name" placeholder="e.g. John Smith"></div>
+    <div class="frow"><label class="flabel">Phone *</label><input class="fi" id="psl-phone" type="tel" placeholder="e.g. 0412 345 678"></div>
+    <div class="frow"><label class="flabel">Email</label><input class="fi" id="psl-email" type="email" placeholder="john@example.com"></div>
+    <div class="frow"><label class="flabel">Stage</label>
+      <select class="fs" id="psl-stage">
+        <option value="new_lead">New Lead</option>
+        <option value="no_answer">No Answer</option>
+        <option value="appointment_booked">Appointment Booked</option>
+        <option value="disputed">Disputed</option>
+      </select>
+    </div>
+    <div class="frow"><label class="flabel">Source</label><input class="fi" id="psl-source" placeholder="e.g. Meta Ad, Referral"></div>
+    <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="psl-notes" placeholder="Any additional info…"></textarea></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-ps-lead')">Cancel</button>
+      <button class="btn btn-p" onclick="savePSLead()" id="psl-btn">Save Lead</button>
+    </div>
+  </div>
+</div>
+
+<!-- PS Client modal -->
+<div class="overlay" id="m-ps-client">
+  <div class="modal">
+    <h2>Add PS Client</h2><div class="msub">Revenue entry for ROI calculation</div>
+    <input type="hidden" id="psc-id">
+    <div class="frow"><label class="flabel">Client Name *</label><input class="fi" id="psc-name" placeholder="e.g. SunPower QLD"></div>
+    <div class="frow"><label class="flabel">Revenue (AUD) *</label><input class="fi" id="psc-revenue" type="number" step="0.01" min="0" placeholder="e.g. 5000.00"></div>
+    <div class="frow"><label class="flabel">Date Closed</label><input class="fi" id="psc-closed" type="date"></div>
+    <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="psc-notes" placeholder="e.g. 10kW system, Gold Coast"></textarea></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-ps-client')">Cancel</button>
+      <button class="btn btn-p" onclick="savePSClient()" id="psc-btn">Save Client</button>
+    </div>
+  </div>
+</div>
+
 <style>
 @media(max-width:700px){
   .bnav{height:auto !important;flex-wrap:wrap;padding:4px 0 env(safe-area-inset-bottom,0) !important;}
   .bnbtn{flex:0 0 calc(100%/4);padding:5px 2px;}
   .panel{padding:11px 11px calc(var(--bnav-h, 200px) + 40px + env(safe-area-inset-bottom,0px)) !important;}
 }
+
+/* ═══ PS SERVICES MODE ═══ */
+#app.ps-mode .sidebar { display:none !important; }
+#app.ps-mode #ps-sidebar { display:flex !important; }
+#app.ps-mode .bnav { display:none !important; }
+#app.ps-mode .panel:not(#panel-ps-appt) { display:none !important; }
+
+/* ═══ CALL INDICATOR ═══ */
+#ps-call-indicator {
+  position:fixed;bottom:20px;right:20px;z-index:9000;
+  background:var(--s1);border:1px solid var(--grn);
+  border-radius:var(--r3);padding:14px 18px;
+  box-shadow:0 8px 32px rgba(0,0,0,.5),0 0 0 1px var(--bd);
+  display:none;min-width:220px;
+}
+#ps-call-indicator.active { display:block; }
+.call-ind-top { display:flex;align-items:center;gap:8px;margin-bottom:10px; }
+.call-dot { width:8px;height:8px;border-radius:50%;background:var(--grn);animation:blink 1s infinite;box-shadow:0 0 8px var(--grn); }
+.call-ind-name { font-size:13px;font-weight:500;color:var(--ink); }
+.call-ind-phone { font-family:var(--mono);font-size:10px;color:var(--grn); }
+.call-ind-timer { font-family:var(--mono);font-size:22px;font-weight:700;color:var(--ink);letter-spacing:-.5px;margin-bottom:10px; }
+.call-ind-timer.warn { color:var(--amb); }
+.call-ind-timer.danger { color:var(--red); }
 </style>
 <script>
 function updateBnavPadding(){
@@ -2391,6 +2585,7 @@ window.addEventListener('load', () => {
   buildKanban('crm-kanban', CRM_STAGES, 'crm');
   buildKanban('ppl-kanban', PPL_STAGES, 'ppl');
   buildKanban('mg-kanban',  MG_STAGES,  'mg');
+  // PS kanban built on login (after auth determines account type)
 });
 
 function initSupabase() {
@@ -2411,8 +2606,29 @@ function initSupabase() {
         setText('uname', currentUser.email.split('@')[0]);
         $('login-screen').style.display = 'none';
         $('app').classList.add('visible');
-        loadAll();
-        setTimeout(updateBnavPadding, 300);
+
+        const isPsServices = currentUser.app_metadata?.account_type === 'ps_services';
+        if (isPsServices) {
+          // PS Services: lock to PS panel only
+          $('app').classList.add('ps-mode');
+          // Hide admin-only "Add Lead" button in the PS panel
+          const adminActions = $('ps-appt-admin-actions');
+          if (adminActions) {
+            const addBtn = adminActions.querySelector('[data-action="add-ps-lead"]');
+            if (addBtn) addBtn.remove();
+          }
+          buildKanban('ps-kanban', PS_STAGES, 'ps');
+          loadPSAppt();
+          loadPSCallLog();
+          loadPSClients();
+          loadPSAdAccount();
+          nav('ps-appt', null);
+        } else {
+          $('app').classList.remove('ps-mode');
+          loadAll();
+          buildKanban('ps-kanban', PS_STAGES, 'ps');
+          setTimeout(updateBnavPadding, 300);
+        }
       } else {
         currentUser = null;
         $('login-screen').style.display = 'flex';
@@ -2437,6 +2653,8 @@ document.addEventListener('keydown', e => {
 async function doLogout() { if (db) await db.auth.signOut(); }
 
 function nav(panel, el) {
+  // Restrict ps_services users to only ps-appt
+  if (currentUser?.app_metadata?.account_type === 'ps_services' && panel !== 'ps-appt') return;
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   $('panel-' + panel).classList.add('active');
   document.querySelectorAll('.navbtn').forEach(b => b.classList.remove('active'));
@@ -2451,6 +2669,7 @@ function nav(panel, el) {
   if (panel === 'leads') loadLeads();
   if (panel === 'invoices') loadInvoices();
   if (panel === 'goals') loadGoals();
+  if (panel === 'ps-appt') { loadPSAppt(); loadPSCallLog(); loadPSClients(); loadPSAdAccount(); }
 }
 
 function updateClock() {
@@ -2467,6 +2686,11 @@ async function loadAll() {
   loadTaskLeadDropdowns();
   loadFileContent();
   populateMapClientDropdown();
+  // Also pre-load PS data for admin
+  loadPSAppt();
+  loadPSCallLog();
+  loadPSClients();
+  loadPSAdAccount();
 }
 
 async function populateTestLeadNiches() {
@@ -2894,14 +3118,15 @@ function dragLeave(e){e.currentTarget.classList.remove('drag-over');}
 async function drop(e,prefix,newStage) {
   e.preventDefault();e.currentTarget.classList.remove('drag-over');
   if (!draggedId||draggedPrefix!==prefix) return;
-  const table=prefix==='crm'?'leads':'clients';
+  const TABLE_MAP = { crm: 'leads', ps: 'comm_solar_appointments' };
+  const table = TABLE_MAP[prefix] || 'clients';
   const updateData={stage:newStage,updated_at:now()};
   if (prefix==='crm'&&['call_back','proposal','closed_won'].includes(newStage)) updateData.contactable=true;
   const {error}=await db.from(table).update(updateData).eq('id',draggedId);
   if (error) { toast('Move failed: '+error.message,true); return; }
-  toast('→ '+stageLabel(newStage));
+  toast('→ ' + (psStageLabel(newStage) || stageLabel(newStage)));
   draggedId=null;draggedPrefix=null;
-  if (prefix==='crm') loadCRM(); else if (prefix==='ppl') loadPPL(); else loadManaged();
+  if (prefix==='crm') loadCRM(); else if (prefix==='ppl') loadPPL(); else if (prefix==='ps') loadPSAppt(); else loadManaged();
 }
 
 const CRM_STAGES=[{id:'new_lead',label:'New Lead'},{id:'no_answer',label:'No Answer'},{id:'call_back',label:'Call-Back'},{id:'proposal',label:'Proposal'},{id:'closed_won',label:'Closed Won'},{id:'closed_lost',label:'Closed Lost'}];
@@ -6196,6 +6421,451 @@ async function downloadInvoicePDF(inv) {
 
   doc.save((inv.invoice_number || 'invoice') + '.pdf');
   } catch(e) { console.error('PDF generation error:', e); alert('PDF generation failed: ' + (e instanceof Error ? e.message : String(e))); }
+}
+</script>
+
+<!-- ═══ PS APPT SETTING LOGIC ═══ -->
+<script>
+'use strict';
+
+// ── Stages ──────────────────────────────────────────────────────────────────
+const PS_STAGES = [
+  {id:'new_lead',         label:'New Lead'},
+  {id:'no_answer',        label:'No Answer'},
+  {id:'appointment_booked', label:'Appt Booked'},
+  {id:'disputed',         label:'Disputed'},
+];
+
+function psStageLabel(s) {
+  return {new_lead:'New Lead',no_answer:'No Answer',appointment_booked:'Appt Booked',disputed:'Disputed'}[s] || s;
+}
+
+function psStageBadge(s) {
+  if (s === 'appointment_booked') return 'bg-grn';
+  if (s === 'disputed') return 'bg-red';
+  if (s === 'no_answer') return 'bg-amb';
+  return 'bg-blu';
+}
+
+// ── Stage top-border colours added to main CSS (appointment_booked, disputed) ─
+
+// ── Load / Render PS Appt Pipeline ──────────────────────────────────────────
+const PS_CACHE = {};
+async function loadPSAppt() {
+  const { data, error } = await db.from('comm_solar_appointments')
+    .select('*').order('created_at', { ascending: false });
+  if (error) { toast('PS load error: ' + error.message, true); return; }
+  const appts = data || [];
+  appts.forEach(a => { PS_CACHE[a.id] = a; });
+  renderPSAppt(appts);
+}
+
+function renderPSAppt(appts) {
+  const total = appts.length;
+  const booked = appts.filter(a => a.stage === 'appointment_booked').length;
+  const disputed = appts.filter(a => a.stage === 'disputed').length;
+  const rate = total > 0 ? ((booked / total) * 100).toFixed(0) + '%' : '—';
+
+  setText('ps-kpi-total', total);
+  setText('ps-kpi-booked', booked);
+  setText('ps-kpi-rate', rate);
+  setText('ps-kpi-disputed', disputed);
+
+  PS_STAGES.forEach(s => {
+    const col = $('ps-col-' + s.id);
+    const cnt = $('psc-' + s.id);
+    const sl = appts.filter(a => a.stage === s.id);
+    if (cnt) cnt.textContent = sl.length;
+    if (col) {
+      col.innerHTML = sl.map(a => {
+        const callBtn = `<button class="btn btn-xs btn-grn" style="margin-top:4px;width:100%" onclick="event.stopPropagation();startPSCall('${esc(String(a.id))}','${esc(a.phone)}','${esc(a.name)}')">📞 Call</button>`;
+        return `
+        <div class="kcard" id="kc-ps-${esc(String(a.id))}" data-appt-id="${esc(String(a.id))}">
+          <div class="kcard-name">${esc(a.name || '—')}</div>
+          <div class="kcard-phone">${esc(a.phone || '—')}</div>
+          ${a.source ? `<div class="kcard-meta" style="margin-top:2px">${esc(a.source)}</div>` : ''}
+          <div style="display:flex;gap:4px;margin-top:4px;align-items:center;flex-wrap:wrap">
+            <span class="badge ${psStageBadge(a.stage)}" style="font-size:8px">${psStageLabel(a.stage)}</span>
+          </div>
+          ${callBtn}
+        </div>`;
+      }).join('');
+
+      col.querySelectorAll('.kcard').forEach(card => {
+        const id = card.dataset.apptId;
+        initCardDrag(card, id, 'ps');
+        card.addEventListener('click', () => {
+          if (PS_CACHE[id]) openEditPSLead(PS_CACHE[id]);
+        });
+      });
+    }
+  });
+}
+
+// ── Edit PS Lead ─────────────────────────────────────────────────────────────
+function openEditPSLead(appt) {
+  $('psl-id').value = appt.id;
+  $('psl-name').value = appt.name || '';
+  $('psl-phone').value = appt.phone || '';
+  $('psl-email').value = appt.email || '';
+  $('psl-stage').value = appt.stage || 'new_lead';
+  $('psl-source').value = appt.source || '';
+  $('psl-notes').value = appt.notes || '';
+  openModal('m-ps-lead');
+}
+
+// ── Save PS Lead (add or edit) ────────────────────────────────────────────────
+async function savePSLead() {
+  const id = $('psl-id').value;
+  const name = $('psl-name').value.trim();
+  const phone = $('psl-phone').value.trim();
+  if (!name || !phone) { toast('Name and phone required', true); return; }
+  const payload = {
+    name, phone,
+    email: $('psl-email').value.trim() || null,
+    stage: $('psl-stage').value,
+    source: $('psl-source').value.trim() || null,
+    notes: $('psl-notes').value.trim() || null,
+    updated_at: now(),
+  };
+  const btn = $('psl-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  let error;
+  if (id) {
+    ({ error } = await db.from('comm_solar_appointments').update(payload).eq('id', id));
+  } else {
+    ({ error } = await db.from('comm_solar_appointments').insert([payload]));
+  }
+  btn.disabled = false; btn.textContent = 'Save Lead';
+  if (error) { toast('Save failed: ' + error.message, true); return; }
+  // Clear
+  ['psl-id','psl-name','psl-phone','psl-email','psl-source','psl-notes'].forEach(f => { const e=$(f); if(e) e.value=''; });
+  closeModal('m-ps-lead');
+  toast(id ? 'Lead updated ✓' : 'Lead added ✓');
+  loadPSAppt();
+}
+
+// ── PS Clients ───────────────────────────────────────────────────────────────
+const PS_CLIENT_CACHE = {};
+async function loadPSClients() {
+  const { data, error } = await db.from('ps_clients').select('*').order('created_at', { ascending: false });
+  const tb = $('ps-clients-tbody');
+  if (error) { tb.innerHTML = `<tr><td colspan="5" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
+  const clients = data || [];
+  clients.forEach(c => { PS_CLIENT_CACHE[c.id] = c; });
+  const totalRevenue = clients.reduce((s, c) => s + Number(c.revenue || 0), 0);
+  setText('ps-kpi-revenue', fmt(totalRevenue));
+  updatePSNet();
+
+  if (!clients.length) { tb.innerHTML = '<tr><td colspan="5" class="empty">No clients yet.</td></tr>'; return; }
+  tb.innerHTML = clients.map(c => `
+    <tr>
+      <td><strong>${esc(c.name)}</strong></td>
+      <td style="color:var(--grn)">${fmt(c.revenue)}</td>
+      <td style="font-family:var(--mono);font-size:10px">${c.closed_at ? c.closed_at : '—'}</td>
+      <td style="color:var(--ink2);font-size:11px">${esc(c.notes || '—')}</td>
+      <td><button class="btn btn-xs" onclick="openEditPSClient('${esc(c.id)}')">Edit</button>
+          <button class="btn btn-xs btn-red" onclick="deletePSClient('${esc(c.id)}')">✕</button></td>
+    </tr>`).join('');
+}
+
+function openEditPSClient(id) {
+  const c = PS_CLIENT_CACHE[id];
+  if (!c) return;
+  $('psc-id').value = c.id;
+  $('psc-name').value = c.name || '';
+  $('psc-revenue').value = c.revenue || '';
+  $('psc-closed').value = c.closed_at || '';
+  $('psc-notes').value = c.notes || '';
+  openModal('m-ps-client');
+}
+
+async function savePSClient() {
+  const id = $('psc-id').value;
+  const name = $('psc-name').value.trim();
+  const revenue = parseFloat($('psc-revenue').value);
+  if (!name || isNaN(revenue)) { toast('Name and revenue required', true); return; }
+  const payload = {
+    name, revenue,
+    closed_at: $('psc-closed').value || null,
+    notes: $('psc-notes').value.trim() || null,
+    updated_at: now(),
+  };
+  const btn = $('psc-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  let error;
+  if (id) {
+    ({ error } = await db.from('ps_clients').update(payload).eq('id', id));
+  } else {
+    ({ error } = await db.from('ps_clients').insert([payload]));
+  }
+  btn.disabled = false; btn.textContent = 'Save Client';
+  if (error) { toast('Save failed: ' + error.message, true); return; }
+  ['psc-id','psc-name','psc-revenue','psc-closed','psc-notes'].forEach(f => { const e=$(f); if(e) e.value=''; });
+  closeModal('m-ps-client');
+  toast(id ? 'Client updated ✓' : 'Client added ✓');
+  loadPSClients();
+}
+
+async function deletePSClient(id) {
+  if (!confirm('Delete this client?')) return;
+  const { error } = await db.from('ps_clients').delete().eq('id', id);
+  if (error) { toast('Delete failed: ' + error.message, true); return; }
+  toast('Client removed');
+  loadPSClients();
+}
+
+// ── PS Ad Account Sync ────────────────────────────────────────────────────────
+let _psAdSpend = 0;
+
+async function loadPSAdAccount() {
+  const { data } = await db.from('ps_ad_accounts').select('*').limit(1).maybeSingle();
+  if (!data) return;
+  // Pre-fill the inputs
+  const acctEl = $('ps-ad-account-id');
+  const campEl = $('ps-campaign-ids');
+  if (acctEl && !acctEl.value) acctEl.value = data.account_id || '';
+  if (campEl && !campEl.value) campEl.value = (data.campaign_ids || []).join(', ');
+  _psAdSpend = Number(data.lifetime_spend || 0);
+  setText('ps-kpi-adspend', fmt(_psAdSpend));
+  updatePSNet();
+  if (data.last_synced_at) {
+    const syncEl = $('ps-sync-status');
+    if (syncEl) syncEl.textContent = 'Last synced: ' + new Date(data.last_synced_at).toLocaleString('en-AU');
+  }
+  if (data.sync_error) {
+    const errEl = $('ps-sync-error');
+    if (errEl) { errEl.style.display = ''; errEl.textContent = 'Error: ' + data.sync_error; }
+  }
+}
+
+function updatePSNet() {
+  // Revenue minus ad spend
+  const revText = $('ps-kpi-revenue')?.textContent || '0';
+  const revNum = parseFloat(revText.replace(/[^0-9.]/g,'')) || 0;
+  const net = revNum - _psAdSpend;
+  const netEl = $('ps-kpi-net');
+  if (netEl) {
+    netEl.textContent = (net >= 0 ? '+' : '') + '$' + Math.abs(net).toLocaleString('en-AU', {minimumFractionDigits:0,maximumFractionDigits:0});
+    netEl.className = 'kval ' + (net >= 0 ? 'grn' : 'red');
+  }
+}
+
+async function syncPSMeta() {
+  const accountId = $('ps-ad-account-id')?.value.trim();
+  const campaignRaw = $('ps-campaign-ids')?.value.trim();
+  if (!accountId || !campaignRaw) { toast('Enter ad account ID and campaign IDs', true); return; }
+  const campaignIds = campaignRaw.split(',').map(s => s.trim()).filter(Boolean);
+  if (!campaignIds.length) { toast('No campaign IDs provided', true); return; }
+
+  const btn = $('ps-sync-btn');
+  const statusEl = $('ps-sync-status');
+  const errEl = $('ps-sync-error');
+  btn.disabled = true; btn.textContent = '↻ Syncing…';
+  if (statusEl) statusEl.textContent = 'Syncing…';
+  if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) throw new Error('Not authenticated');
+    const res = await fetch(`${_ep}/functions/v1/ps-meta-sync`, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + session.access_token,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ account_id: accountId, campaign_ids: campaignIds }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Sync failed');
+
+    _psAdSpend = Number(json.total_lifetime_spend || 0);
+    setText('ps-kpi-adspend', fmt(_psAdSpend));
+    updatePSNet();
+    if (statusEl) statusEl.textContent = `Synced ${json.succeeded}/${json.campaign_count} campaigns · Lifetime spend: ${fmt(_psAdSpend)} · ${new Date().toLocaleTimeString('en-AU')}`;
+    if (json.sync_error && errEl) { errEl.style.display = ''; errEl.textContent = 'Partial error: ' + json.sync_error; }
+    toast('Meta sync complete ✓');
+  } catch(err) {
+    if (statusEl) statusEl.textContent = 'Sync failed';
+    if (errEl) { errEl.style.display = ''; errEl.textContent = err.message; }
+    toast('Sync failed: ' + err.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = '↻ Sync Stats';
+  }
+}
+
+// ── Call Log ──────────────────────────────────────────────────────────────────
+async function loadPSCallLog() {
+  const { data, error } = await db.from('ps_call_log')
+    .select('*').order('started_at', { ascending: false }).limit(100);
+  const tb = $('ps-call-log-tbody');
+  if (!tb) return;
+  if (error) { tb.innerHTML = `<tr><td colspan="7" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
+  const rows = data || [];
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="7" class="empty">No calls yet.</td></tr>'; return; }
+  tb.innerHTML = rows.map(r => {
+    const dur = r.duration_sec != null ? Math.floor(r.duration_sec/60)+':'+(r.duration_sec%60).toString().padStart(2,'0') : '—';
+    const statusBadge = r.status === 'completed' ? 'bg-grn' : r.status === 'failed' ? 'bg-red' : 'bg-amb';
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:10px">${r.started_at ? new Date(r.started_at).toLocaleString('en-AU') : '—'}</td>
+      <td>${esc(r.lead_name || '—')}</td>
+      <td style="font-family:var(--mono)">${esc(r.lead_phone || '—')}</td>
+      <td style="font-family:var(--mono)">${dur}</td>
+      <td><span class="badge ${statusBadge}">${esc(r.status || '—')}</span></td>
+      <td style="font-size:11px;color:var(--ink2)">${esc(r.called_by || '—')}</td>
+      <td style="color:var(--red);font-size:11px;font-family:var(--mono);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.error_message || '')}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Twilio Voice ──────────────────────────────────────────────────────────────
+let _twilioDevice = null;
+let _twilioDeviceReady = false;
+let _activeCall = null;
+let _activeApptId = null;
+let _activeApptName = '';
+let _activeApptPhone = '';
+let _callTimerInterval = null;
+let _callStartTime = null;
+let _callLogId = null;
+const CALL_CAP_SEC = 600;          // 10 minutes hard cap
+const CALL_WARN_SEC = 480;         // 8 minutes → amber warning
+const CALL_DANGER_SEC = 540;       // 9 minutes → red danger
+const DEVICE_READY_TIMEOUT_MS = 1500; // ms to wait for Twilio Device to become ready
+
+async function initTwilioDevice() {
+  if (_twilioDeviceReady) return;
+  if (!window.Twilio) { toast('Twilio SDK not loaded', true); return; }
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) throw new Error('Not authenticated');
+    const res = await fetch(`${_ep}/functions/v1/twilio-voice-token`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + session.access_token },
+    });
+    const json = await res.json();
+    if (!res.ok || !json.token) {
+      toast('Could not get call token: ' + (json.error || 'unknown'), true);
+      return;
+    }
+    _twilioDevice = new Twilio.Device(json.token, {
+      codecPreferences: ['opus', 'pcmu'],
+      fakeLocalDTMF: true,
+      enableRingingState: true,
+    });
+    _twilioDevice.on('ready', () => { _twilioDeviceReady = true; });
+    _twilioDevice.on('error', (err) => {
+      toast('Twilio error: ' + err.message, true);
+      console.error('Twilio Device error', err);
+    });
+    _twilioDevice.on('disconnect', () => { onCallDisconnected(); });
+    _twilioDevice.on('cancel', () => { onCallDisconnected(); });
+  } catch(err) {
+    toast('Twilio init failed: ' + err.message, true);
+  }
+}
+
+async function startPSCall(apptId, phone, name) {
+  if (_activeCall) { toast('A call is already in progress', true); return; }
+
+  // Validate phone is in appointment list (extra client-side check)
+  if (!PS_CACHE[apptId]) { toast('Appointment not found', true); return; }
+
+  // Init device if needed
+  if (!_twilioDevice || !_twilioDeviceReady) {
+    await initTwilioDevice();
+    // Wait briefly for device to be ready
+    await new Promise(r => setTimeout(r, DEVICE_READY_TIMEOUT_MS));
+    if (!_twilioDeviceReady) { toast('Device not ready — try again in a moment', true); return; }
+  }
+
+  _activeApptId = apptId;
+  _activeApptName = name;
+  _activeApptPhone = phone;
+
+  // Create call log entry
+  const logEntry = {
+    appointment_id: apptId,
+    lead_name: name,
+    lead_phone: phone,
+    called_by: currentUser?.email || 'unknown',
+    status: 'initiated',
+    started_at: now(),
+  };
+  const { data: logRow } = await db.from('ps_call_log').insert([logEntry]).select('id').single();
+  _callLogId = logRow?.id || null;
+
+  try {
+    _activeCall = _twilioDevice.connect({ params: { To: phone } });
+    _activeCall.on('disconnect', () => onCallDisconnected());
+    _activeCall.on('error', async (err) => {
+      toast('Call error: ' + err.message, true);
+      if (_callLogId) {
+        await db.from('ps_call_log').update({ status: 'failed', error_message: err.message, ended_at: now() }).eq('id', _callLogId);
+      }
+      onCallDisconnected();
+    });
+  } catch(err) {
+    toast('Call failed: ' + err.message, true);
+    if (_callLogId) {
+      await db.from('ps_call_log').update({ status: 'failed', error_message: err.message, ended_at: now() }).eq('id', _callLogId);
+    }
+    return;
+  }
+
+  // Show call indicator
+  setText('call-ind-name', name);
+  setText('call-ind-phone', phone);
+  $('ps-call-indicator').classList.add('active');
+
+  // Start timer
+  _callStartTime = Date.now();
+  _callTimerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - _callStartTime) / 1000);
+    const mins = Math.floor(Math.abs(elapsed) / 60);
+    const secs = (Math.abs(elapsed) % 60).toString().padStart(2, '0');
+    const el = $('call-ind-timer');
+    if (el) {
+      el.textContent = mins + ':' + secs;
+      el.className = 'call-ind-timer' + (elapsed >= CALL_DANGER_SEC ? ' danger' : elapsed >= CALL_WARN_SEC ? ' warn' : '');
+    }
+    // Hard cap: disconnect at 10 minutes
+    if (elapsed >= CALL_CAP_SEC) { endPSCall(); }
+  }, 1000);
+}
+
+async function endPSCall() {
+  if (_activeCall) {
+    try { _activeCall.disconnect(); } catch(e) { /* already ended */ }
+    _activeCall = null;
+  }
+  await onCallDisconnected();
+}
+
+async function onCallDisconnected() {
+  if (_callTimerInterval) { clearInterval(_callTimerInterval); _callTimerInterval = null; }
+  $('ps-call-indicator').classList.remove('active');
+  const el = $('call-ind-timer');
+  if (el) { el.textContent = '0:00'; el.className = 'call-ind-timer'; }
+
+  const durationSec = _callStartTime ? Math.floor((Date.now() - _callStartTime) / 1000) : null;
+  _callStartTime = null;
+
+  // Update call log
+  if (_callLogId) {
+    await db.from('ps_call_log').update({
+      status: 'completed',
+      duration_sec: durationSec,
+      ended_at: now(),
+    }).eq('id', _callLogId);
+    _callLogId = null;
+  }
+
+  _activeCall = null;
+  _activeApptId = null;
+  _activeApptName = '';
+  _activeApptPhone = '';
+  loadPSCallLog();
 }
 </script>
 </body>
