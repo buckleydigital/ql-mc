@@ -6813,6 +6813,7 @@ async function initTwilioDevice() {
 
   _twilioDevicePromise = (async () => {
     try {
+      console.log('[call] fetching voice token…');
       const { data: { session } } = await db.auth.getSession();
       if (!session) throw new Error('Not authenticated');
       const res = await fetch(`${_ep}/functions/v1/twilio-voice-token`, {
@@ -6825,14 +6826,21 @@ async function initTwilioDevice() {
         _twilioDevicePromise = null;
         return false;
       }
+      console.log('[call] token ok, creating Device…');
       _twilioDevice = new Twilio.Device(json.token, {
         codecPreferences: ['opus', 'pcmu'],
         fakeLocalDTMF: true,
         enableRingingState: true,
       });
 
-      // v2: register() replaces the 'ready' event — resolves when the device is ready
-      await _twilioDevice.register();
+      // v2: register() replaces the 'ready' event — resolves when the device is ready.
+      // Wrap with a timeout so a failed signaling handshake can't hang forever with no UI.
+      console.log('[call] device.register…');
+      await Promise.race([
+        _twilioDevice.register(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('register() timed out after 15s')), 15000)),
+      ]);
+      console.log('[call] device registered');
       _twilioDeviceReady = true;
 
       _twilioDevice.on('error', (err) => {
@@ -6842,6 +6850,7 @@ async function initTwilioDevice() {
       return true;
     } catch(err) {
       toast('Twilio init failed: ' + err.message, true);
+      console.error('[call] init failed', err);
       _twilioDevicePromise = null;
       return false;
     }
@@ -6851,20 +6860,41 @@ async function initTwilioDevice() {
 }
 
 async function startPSCall(apptId, phone, name) {
+  console.log('[call] click', { apptId, phone, name });
   if (_activeCall) { toast('A call is already in progress', true); return; }
 
   // Validate phone is in appointment list (extra client-side check)
   if (!PS_CACHE[apptId]) { toast('Appointment not found', true); return; }
 
-  // Init device if needed; initTwilioDevice awaits register() internally
-  if (!_twilioDeviceReady) {
-    const ready = await initTwilioDevice();
-    if (!ready) return; // toast already shown inside initTwilioDevice
-  }
-
   _activeApptId = apptId;
   _activeApptName = name;
   _activeApptPhone = phone;
+
+  // Show the call indicator IMMEDIATELY so the user gets feedback while the
+  // 2–10s pipeline (token fetch → Device register → getUserMedia → connect)
+  // runs. Without this, clicking the button looks identical to nothing
+  // happening.
+  const indEl = $('ps-call-indicator');
+  const timerEl = $('call-ind-timer');
+  setText('call-ind-name', name || 'Calling…');
+  setText('call-ind-phone', phone || '');
+  if (timerEl) { timerEl.textContent = '…'; timerEl.className = 'call-ind-timer'; }
+  if (indEl) indEl.classList.add('active');
+
+  const bail = (msg) => {
+    if (msg) toast(msg, true);
+    if (indEl) indEl.classList.remove('active');
+    if (timerEl) { timerEl.textContent = '0:00'; timerEl.className = 'call-ind-timer'; }
+    _activeApptId = _activeApptName = _activeApptPhone = null;
+  };
+
+  // Init device if needed; initTwilioDevice awaits register() internally
+  if (!_twilioDeviceReady) {
+    console.log('[call] initTwilioDevice…');
+    const ready = await initTwilioDevice();
+    console.log('[call] initTwilioDevice →', ready);
+    if (!ready) { bail(); return; } // toast already shown inside initTwilioDevice
+  }
 
   // Create call log entry
   const logEntry = {
@@ -6875,11 +6905,14 @@ async function startPSCall(apptId, phone, name) {
     status: 'initiated',
     started_at: now(),
   };
-  const { data: logRow } = await db.from('ps_call_log').insert([logEntry]).select('id').single();
+  const { data: logRow, error: logErr } = await db.from('ps_call_log').insert([logEntry]).select('id').single();
+  if (logErr) console.warn('[call] call-log insert failed (non-fatal):', logErr.message);
   _callLogId = logRow?.id || null;
 
   try {
+    console.log('[call] device.connect…', { To: phone });
     _activeCall = await _twilioDevice.connect({ params: { To: phone } });
+    console.log('[call] device.connect resolved');
     _activeCall.on('disconnect', () => onCallDisconnected());
     _activeCall.on('error', async (err) => {
       toast('Call error: ' + err.message, true);
@@ -6889,19 +6922,15 @@ async function startPSCall(apptId, phone, name) {
       onCallDisconnected();
     });
   } catch(err) {
-    toast('Call failed: ' + err.message, true);
+    console.error('[call] device.connect failed', err);
+    bail('Call failed: ' + (err?.message || err));
     if (_callLogId) {
-      await db.from('ps_call_log').update({ status: 'failed', error_message: err.message, ended_at: now() }).eq('id', _callLogId);
+      await db.from('ps_call_log').update({ status: 'failed', error_message: err?.message || String(err), ended_at: now() }).eq('id', _callLogId);
     }
     return;
   }
 
-  // Show call indicator
-  setText('call-ind-name', name);
-  setText('call-ind-phone', phone);
-  $('ps-call-indicator').classList.add('active');
-
-  // Start timer
+  // Start timer (indicator is already visible from above)
   _callStartTime = Date.now();
   _callTimerInterval = setInterval(() => {
     const elapsed = Math.floor((Date.now() - _callStartTime) / 1000);
