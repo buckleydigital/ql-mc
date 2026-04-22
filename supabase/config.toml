@@ -1,0 +1,10 @@
+# Supabase project configuration.
+#
+# Edge Functions verify a Supabase JWT by default. Webhooks called by third
+# parties (e.g. Twilio) have no way to present one, so they must opt out here.
+
+[functions.twilio-voice-twiml]
+# Twilio POSTs to this endpoint when the browser initiates an outbound call.
+# It has no Supabase JWT to present; security is enforced in-function by
+# validating that the `To` number exists in comm_solar_appointments.
+verify_jwt = false
