@@ -1033,6 +1033,13 @@ td strong{font-weight:500}
             <tbody id="mc-log-tbody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
+        <div class="sl" style="margin-top:16px">Manual Spend Log <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px">external &amp; non-connected campaigns</span><div class="sl-line"></div><button class="btn btn-xs btn-p" style="margin-left:8px" onclick="openManualSpendModal()">+ Log Spend</button></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Campaign</th><th>Period</th><th>Spend</th><th>Leads</th><th>CPL</th><th>Source</th><th>Notes</th><th></th></tr></thead>
+            <tbody id="spend-log-tbody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
       </div>
 
       <!-- ══ MANAGED ADS ══ -->
@@ -1163,11 +1170,11 @@ td strong{font-weight:500}
         </div>
         <div class="sl">Ad Spend <div class="sl-line"></div></div>
         <div class="kg c3 mb4">
-          <div class="kpi"><div class="klabel">Solar PPL Spend</div><div class="kval blu" id="fin-ppl-spend">—</div><div class="ksub">our accounts</div></div>
-          <div class="kpi"><div class="klabel">Agency Acquisition</div><div class="kval blu" id="fin-ag-spend">—</div></div>
-          <div class="kpi"><div class="klabel">Managed Client Spend</div><div class="kval" id="fin-mg-spend">—</div><div class="ksub">monthly reports only</div></div>
+          <div class="kpi"><div class="klabel">Campaign Ad Spend</div><div class="kval blu" id="fin-ppl-spend">—</div><div class="ksub">from spend log (synced + manual)</div></div>
+          <div class="kpi"><div class="klabel">Agency Acquisition</div><div class="kval blu" id="fin-ag-spend">—</div><div class="ksub">agency account spend</div></div>
+          <div class="kpi"><div class="klabel">Managed Client Revenue</div><div class="kval grn" id="fin-mg-spend">—</div><div class="ksub">retainer + custom orders</div></div>
         </div>
-        <div class="sl">Solar PPL CPL Analysis <div class="sl-line"></div></div>
+        <div class="sl">PPL CPL Analysis <div class="sl-line"></div></div>
         <div class="kg c4 mb4">
           <div class="kpi"><div class="klabel">Meta CPL</div><div class="kval" id="fin-meta-cpl">—</div></div>
           <div class="kpi"><div class="klabel">True CPL</div><div class="kval blu" id="fin-true-cpl">—</div><div class="ksub">after sold %</div></div>
@@ -1182,7 +1189,7 @@ td strong{font-weight:500}
         </div>
         <div class="g2 mb4">
           <div class="chart-card"><div class="chart-title">Revenue vs Expenses</div><canvas id="chart-rev" height="160"></canvas></div>
-          <div class="chart-card"><div class="chart-title">Meta vs True CPL</div><canvas id="chart-cpl" height="160"></canvas></div>
+          <div class="chart-card"><div class="chart-title">CPL by Campaign (Spend Log)</div><canvas id="chart-cpl" height="160"></canvas></div>
         </div>
         <div class="sl">Expense Breakdown <div class="sl-line"></div><button class="btn btn-xs btn-p" style="margin-left:8px" onclick="openExpenseModal()">+ Add</button></div>
         <div class="twrap">
@@ -1690,6 +1697,21 @@ td strong{font-weight:500}
       <button class="btn" onclick="closeModal('m-edit-campaign')">Cancel</button>
       <button class="btn btn-sm" id="emc-toggle-btn" onclick="toggleCampaignFromModal()">Pause on Meta</button>
       <button class="btn btn-p" onclick="updateCampaign()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="m-manual-spend">
+  <div class="modal">
+    <h2>Log Manual Spend</h2><div class="msub">Record spend for external or non-connected campaigns</div>
+    <div class="frow"><label class="flabel">Campaign Name</label><input class="fi" id="msl-name" placeholder="e.g. Solar QLD – External Agency"></div>
+    <div class="frow"><label class="flabel">Period (Month)</label><input class="fi" id="msl-period" type="month"></div>
+    <div class="frow"><label class="flabel">Spend (AUD)</label><input class="fi" id="msl-spend" type="number" step="0.01" min="0" placeholder="e.g. 1250.00"></div>
+    <div class="frow"><label class="flabel">Leads</label><input class="fi" id="msl-leads" type="number" min="0" placeholder="e.g. 42"></div>
+    <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="msl-notes" placeholder="e.g. Imported from agency monthly report"></textarea></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-manual-spend')">Cancel</button>
+      <button class="btn btn-p" onclick="saveManualSpend()">Save</button>
     </div>
   </div>
 </div>
@@ -3772,7 +3794,8 @@ async function syncCampaignInsights() {
     if(d.error) throw new Error(d.error);
     if(d.message&&!d.synced){toast(d.message);loadCampaigns();return;}
     toast(`Synced ${d.synced||0} campaign(s)${d.failed?' · '+d.failed+' failed':''}`);
-    loadCampaigns();
+    await loadCampaigns();
+    await writeSyncToSpendLog(); // persist spend to spend log so history survives campaign deletions
     loadPPL(); // refresh client CPL from campaign rollup
   } catch(e){toast('Sync error: '+(e instanceof Error?e.message:String(e)),true);loadCampaigns();}
   finally{_syncingCampaigns=false;if(btn){btn.disabled=false;btn.textContent='Sync Stats';}}
@@ -3974,6 +3997,7 @@ async function loadCampaigns() {
       <td style="font-family:var(--mono);font-size:9px;color:var(--ink3);max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${esc(JSON.stringify(l.results))}">${esc(det)}</td>
     </tr>`;
   }).join('');
+  loadSpendLog();
 }
 
 async function saveCampaign() {
@@ -4156,29 +4180,36 @@ async function loadFinance() {
   const ytdYear = isYtd ? val.split('-')[1] : null;
   const from = isYtd ? `${ytdYear}-01-01` : `${val}-01`;
   const next = isYtd ? today : nextMonthStart(val);
-  const [expR,spR,subR,pplR,mgR,mgOrdR,pplOrdR,campR]=await Promise.all([
+  // Build campaign_spend_log period filter: single month or full YTD range
+  let spendLogQ = db.from('campaign_spend_log').select('id,campaign_name,period,spend,leads,source,notes');
+  if (isYtd) {
+    spendLogQ = spendLogQ.gte('period',`${ytdYear}-01`).lte('period',`${ytdYear}-12`);
+  } else {
+    spendLogQ = spendLogQ.eq('period', val);
+  }
+  const [expR,spR,subR,pplR,mgR,mgOrdR,pplOrdR,spendLogR]=await Promise.all([
     db.from('expenses').select('*').gte('date',from).lte('date',next),
-    db.from('ad_spend_daily').select('date,account_type,spend,leads').order('date',{ascending:false}),
+    db.from('ad_spend_daily').select('date,account_type,spend,leads').gte('date',from).lt('date',next).order('date',{ascending:false}),
     db.from('subscriptions').select('*').order('created_at'),
     db.from('clients').select('leads_delivered,lead_price,leads_mtd,pct_sold,meta_cpl,true_cpl,stage').eq('type','ppl'),
     db.from('clients').select('id,company_name,management_fee,payments_made,stage,active_months').eq('type','managed'),
     db.from('managed_order_log').select('client_id,amount,order_date').gte('order_date',from).lte('order_date',next),
     db.from('ppl_order_log').select('leads_qty,lead_price,order_date').gte('order_date',from).lte('order_date',next),
-    db.from('meta_campaigns').select('name,meta_campaign_id,spend_mtd,leads_mtd,clicks_mtd,last_synced_at'),
+    spendLogQ,
   ]);
-  renderFinance(expR.data||[],spR.data||[],subR.data||[],pplR.data||[],mgR.data||[],mgOrdR.data||[],pplOrdR.data||[],from,next,campR.data||[]);
+  renderFinance(expR.data||[],spR.data||[],subR.data||[],pplR.data||[],mgR.data||[],mgOrdR.data||[],pplOrdR.data||[],from,next,spendLogR.data||[]);
 }
-function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOrders,from,next,campaigns=[]) {
+function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOrders,from,next,spendLog=[]) {
   const te=expenses.reduce((s,e)=>s+(e.amount||0),0);
   const activeSubs=subs.filter(s=>s.active);
   const ts=activeSubs.length>0?activeSubs.reduce((s,sub)=>s+(sub.monthly_cost||0),0):null;
   renderSubscriptionsTable(subs);
-  // Spend and leads from Meta campaigns
-  const campSpend=campaigns.reduce((s,c)=>s+(c.spend_mtd||0),0);
-  const campLeads=campaigns.reduce((s,c)=>s+(c.leads_mtd||0),0);
-  const latestAg=adSpend.find(a=>a.account_type==='agency');
+  // Spend and leads from campaign_spend_log (persists even after campaigns are deleted)
+  const campSpend=spendLog.reduce((s,e)=>s+(e.spend||0),0);
+  const campLeads=spendLog.reduce((s,e)=>s+(e.leads||0),0);
+  // Agency acquisition spend: sum of all daily agency entries in the period
+  const agSp=adSpend.filter(a=>a.account_type==='agency').reduce((s,a)=>s+(a.spend||0),0);
   const pplSp=campSpend;
-  const agSp=latestAg?.spend||0;
   const pplLeadsTotal=campLeads;
   const metaCpl=(pplSp>0&&pplLeadsTotal>0)?'$'+(pplSp/pplLeadsTotal).toFixed(2):'—';
   const pplRevLog=pplOrders.reduce((s,o)=>s+((o.leads_qty||0)*(o.lead_price||0)),0);
@@ -4218,7 +4249,7 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const tb=$('exp-tbody');
   if (!expenses.length) { tb.innerHTML='<tr><td colspan="6" class="empty">No expenses for this period.</td></tr>'; }
   else { tb.innerHTML=expenses.map(e=>`<tr><td>${esc(e.category||'—')}</td><td>${esc(e.description||'—')}</td><td>${fmt(e.amount)}</td><td><span class="badge ${e.type==='fixed'?'bg-blu':'bg-amb'}">${e.type||'variable'}</span></td><td style="font-family:var(--mono);font-size:10px">${e.date||'—'}</td><td><button class="btn btn-xs" style="color:var(--red)" onclick="deleteExpense('${esc(String(e.id))}')">Delete</button></td></tr>`).join(''); }
-  renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses,pplSp,agSp);renderCplChart(campaigns);
+  renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses,pplSp,agSp);renderCplChart(spendLog);
 }
 function renderSubscriptionsTable(subs) {
   const tb = $('subs-tbody');
@@ -4283,6 +4314,110 @@ async function deleteExpense(id) {
   loadFinance();
 }
 
+/* ═══ CAMPAIGN SPEND LOG ═══ */
+// Write (or overwrite) this month's sync data into campaign_spend_log so spend
+// history survives campaign deletions and is accurate in financials.
+async function writeSyncToSpendLog() {
+  if (!_campaignsCache.length) return;
+  const period = new Date().toISOString().slice(0, 7); // YYYY-MM
+  for (const c of _campaignsCache) {
+    if (!c.id) continue;
+    // Delete any existing sync entry for this campaign+period, then re-insert.
+    // This is equivalent to upsert but works reliably with the partial unique index.
+    await db.from('campaign_spend_log')
+      .delete()
+      .eq('campaign_id', c.id)
+      .eq('period', period)
+      .eq('source', 'sync');
+    await db.from('campaign_spend_log').insert([{
+      campaign_id:     c.id,
+      campaign_name:   c.name,
+      meta_campaign_id:c.meta_campaign_id,
+      period,
+      spend:           c.spend_mtd   || 0,
+      leads:           c.leads_mtd   || 0,
+      clicks:          c.clicks_mtd  || 0,
+      impressions:     c.impressions_mtd || 0,
+      source:          'sync',
+      updated_at:      now(),
+    }]);
+  }
+  loadSpendLog();
+}
+
+async function loadSpendLog() {
+  const tb = $('spend-log-tbody');
+  if (!tb) return;
+  const {data, error} = await db.from('campaign_spend_log')
+    .select('*')
+    .order('period', {ascending: false})
+    .order('campaign_name');
+  if (error) { tb.innerHTML=`<tr><td colspan="8" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
+  const rows = data || [];
+  if (!rows.length) { tb.innerHTML='<tr><td colspan="8" class="empty">No spend logged yet — run Sync Stats or add a manual entry.</td></tr>'; return; }
+  const fmt$ = v => v ? '$'+Number(v).toLocaleString('en-AU',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+  tb.innerHTML = rows.map(r => {
+    const cpl = (r.leads||0) > 0 ? fmt$((r.spend||0)/(r.leads||1)) : '—';
+    const srcBadge = r.source === 'sync'
+      ? `<span style="font-family:var(--mono);font-size:9px;color:var(--grn)">sync</span>`
+      : `<span style="font-family:var(--mono);font-size:9px;color:var(--amb)">manual</span>`;
+    const delBtn = r.source === 'manual'
+      ? `<button class="btn btn-xs" style="color:var(--red)" onclick="deleteSpendLogEntry('${esc(String(r.id))}')">Delete</button>`
+      : `<span style="font-size:10px;color:var(--ink3)">—</span>`;
+    return `<tr>
+      <td><strong>${esc(r.campaign_name||'—')}</strong></td>
+      <td style="font-family:var(--mono);font-size:10px">${esc(r.period||'—')}</td>
+      <td style="font-family:var(--mono)">${fmt$(r.spend)}</td>
+      <td style="font-family:var(--mono)">${r.leads||'—'}</td>
+      <td style="font-family:var(--mono)">${cpl}</td>
+      <td>${srcBadge}</td>
+      <td style="font-size:10px;color:var(--ink3)">${esc(r.notes||'—')}</td>
+      <td>${delBtn}</td>
+    </tr>`;
+  }).join('');
+}
+
+function openManualSpendModal() {
+  // Default to current month
+  if (!$('msl-period').value) $('msl-period').value = new Date().toISOString().slice(0,7);
+  openModal('m-manual-spend');
+}
+
+async function saveManualSpend() {
+  const name   = $('msl-name').value.trim();
+  const period = $('msl-period').value;
+  const spend  = parseFloat($('msl-spend').value);
+  const leads  = parseInt($('msl-leads').value) || 0;
+  const notes  = $('msl-notes').value.trim();
+  if (!name)   { toast('Campaign name required', true); return; }
+  if (!period) { toast('Period required', true); return; }
+  if (isNaN(spend) || spend < 0) { toast('Valid spend amount required', true); return; }
+  const {error} = await db.from('campaign_spend_log').insert([{
+    campaign_name: name,
+    period,
+    spend,
+    leads,
+    source: 'manual',
+    notes: notes || null,
+    updated_at: now(),
+  }]);
+  if (error) { toast('Error: '+error.message, true); return; }
+  ['msl-name','msl-spend','msl-leads','msl-notes'].forEach(id => { $(id).value=''; });
+  closeModal('m-manual-spend');
+  toast('Spend logged ✓');
+  loadSpendLog();
+  loadFinance();
+}
+
+async function deleteSpendLogEntry(id) {
+  if (!confirm('Delete this manual spend entry?')) return;
+  const {error} = await db.from('campaign_spend_log').delete().eq('id', id);
+  if (error) { toast('Error: '+error.message, true); return; }
+  toast('Entry deleted');
+  loadSpendLog();
+  loadFinance();
+}
+
 /* ═══ GOAL BOARD ═══ */
 async function loadGoals() {
   const year = $('goal-year')?.value || new Date().getFullYear();
@@ -4291,13 +4426,13 @@ async function loadGoals() {
   const curMonth = today.getFullYear() === +year ? today.getMonth() : 11;
 
   // Load goals + actuals in parallel
-  const [goalsR, pplOrdR, mgR, mgOrdR, expR, campR] = await Promise.all([
+  const [goalsR, pplOrdR, mgR, mgOrdR, expR, spendLogR] = await Promise.all([
     db.from('monthly_goals').select('*').gte('month', `${year}-01`).lte('month', `${year}-12`).order('month'),
     db.from('ppl_order_log').select('leads_qty,lead_price,order_date').gte('order_date', `${year}-01-01`).lte('order_date', `${year}-12-31`),
     db.from('clients').select('id,company_name,management_fee,payments_made,stage,active_months').eq('type','managed'),
     db.from('managed_order_log').select('client_id,amount,order_date').gte('order_date', `${year}-01-01`).lte('order_date', `${year}-12-31`),
     db.from('expenses').select('amount,date').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),
-    db.from('meta_campaigns').select('spend_mtd,leads_mtd'),
+    db.from('campaign_spend_log').select('period,spend').gte('period',`${year}-01`).lte('period',`${year}-12`),
   ]);
 
   const goals = goalsR.data || [];
@@ -4308,7 +4443,10 @@ async function loadGoals() {
   const mgClients = mgR.data || [];
   const mgOrders = mgOrdR.data || [];
   const expenses = expR.data || [];
-  const campaigns = campR.data || [];
+  const spendLog = spendLogR.data || [];
+  // Build a per-month spend map from the spend log
+  const spendByMonth = {};
+  spendLog.forEach(e => { spendByMonth[e.period] = (spendByMonth[e.period] || 0) + (e.spend || 0); });
 
   // Build monthly actuals
   const rows = [];
@@ -4343,9 +4481,8 @@ async function loadGoals() {
       .filter(e => e.date >= from && e.date < next)
       .reduce((s, e) => s + (e.amount || 0), 0);
 
-    // Ad spend — only available for current month via campaign MTD; historical months require daily ad_spend records (not tracked per-month here)
-    const adSpend = (m === today.getMonth() && +year === today.getFullYear())
-      ? campaigns.reduce((s, c) => s + (c.spend_mtd || 0), 0) : 0;
+    // Ad spend from campaign_spend_log — now available for all historical months
+    const adSpend = spendByMonth[key] || 0;
 
     const rev = pplRev + mgRetainer + mgCustom;
     const totalExp = monthExp + adSpend;
@@ -4459,12 +4596,12 @@ function renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses,pplAdSpend
   if (revChart) revChart.destroy();
   revChart=new Chart($('chart-rev').getContext('2d'),{type:'bar',data:{labels,datasets:[{label:'Amount',data:values,backgroundColor:colors,borderColor:borders,borderWidth:1.5,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9},callback:v=>'$'+v.toLocaleString()},grid:{color:grid}}}}});
 }
-function renderCplChart(campaigns) {
+function renderCplChart(spendLog) {
   const {grid,tick}=chartDefaults();
-  // Show CPL per campaign as a bar chart
-  const withLeads=campaigns.filter(c=>(c.leads_mtd||0)>0).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-  const labels=withLeads.map(c=>(c.name||c.meta_campaign_id||'?').slice(0,25));
-  const cpls=withLeads.map(c=>+((c.spend_mtd||0)/(c.leads_mtd||1)).toFixed(2));
+  // Show CPL per campaign from spend log (spend / leads)
+  const withLeads=spendLog.filter(e=>(e.leads||0)>0).sort((a,b)=>(a.campaign_name||'').localeCompare(b.campaign_name||''));
+  const labels=withLeads.map(e=>(e.campaign_name||'?').slice(0,25));
+  const cpls=withLeads.map(e=>+((e.spend||0)/(e.leads||1)).toFixed(2));
   if (cplChart) cplChart.destroy();
   cplChart=new Chart($('chart-cpl').getContext('2d'),{type:'bar',data:{labels,datasets:[{label:'CPL by Campaign',data:cpls,backgroundColor:'rgba(79,143,255,.18)',borderColor:'#4f8fff',borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:true,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9},callback:v=>'$'+v},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}}}}});
 }
