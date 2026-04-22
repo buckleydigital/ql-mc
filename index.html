@@ -4188,7 +4188,14 @@ async function loadFinance() {
   } else {
     spendLogQ = spendLogQ.eq('period', val);
   }
-  const [expR,spR,subR,pplR,mgR,mgOrdR,pplOrdR,spendLogR]=await Promise.all([
+  // For monthly view: also fetch the latest agency row before the period starts so we can
+  // compute a delta. Each row in ad_spend_daily stores the exact cumulative YTD spend at
+  // that point in time, so the actual spend for a month = (latest row in period) − (latest
+  // row before period). For YTD the latest row IS the total, so no prior baseline needed.
+  const priorAgQ = isYtd
+    ? Promise.resolve({data:[]})
+    : db.from('ad_spend_daily').select('spend').eq('account_type','agency').lt('date',from).order('date',{ascending:false}).limit(1);
+  const [expR,spR,subR,pplR,mgR,mgOrdR,pplOrdR,spendLogR,priorAgR]=await Promise.all([
     db.from('expenses').select('*').gte('date',from).lte('date',next),
     db.from('ad_spend_daily').select('date,account_type,spend,leads').gte('date',from).lt('date',next).order('date',{ascending:false}),
     db.from('subscriptions').select('*').order('created_at'),
@@ -4197,10 +4204,14 @@ async function loadFinance() {
     db.from('managed_order_log').select('client_id,amount,order_date').gte('order_date',from).lte('order_date',next),
     db.from('ppl_order_log').select('leads_qty,lead_price,order_date').gte('order_date',from).lte('order_date',next),
     spendLogQ,
+    priorAgQ,
   ]);
-  renderFinance(expR.data||[],spR.data||[],subR.data||[],pplR.data||[],mgR.data||[],mgOrdR.data||[],pplOrdR.data||[],from,next,spendLogR.data||[]);
+  const latestAgSpend = (spR.data||[]).find(a=>a.account_type==='agency')?.spend || 0;
+  const priorAgSpend  = priorAgR.data?.[0]?.spend || 0;
+  const agSp = isYtd ? latestAgSpend : Math.max(0, latestAgSpend - priorAgSpend);
+  renderFinance(expR.data||[],spR.data||[],subR.data||[],pplR.data||[],mgR.data||[],mgOrdR.data||[],pplOrdR.data||[],from,next,spendLogR.data||[],agSp);
 }
-function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOrders,from,next,spendLog=[]) {
+function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOrders,from,next,spendLog=[],agSp=0) {
   const te=expenses.reduce((s,e)=>s+(e.amount||0),0);
   const activeSubs=subs.filter(s=>s.active);
   const ts=activeSubs.length>0?activeSubs.reduce((s,sub)=>s+(sub.monthly_cost||0),0):null;
@@ -4208,8 +4219,7 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   // Spend and leads from campaign_spend_log (persists even after campaigns are deleted)
   const campSpend=spendLog.reduce((s,e)=>s+(e.spend||0),0);
   const campLeads=spendLog.reduce((s,e)=>s+(e.leads||0),0);
-  // Agency acquisition spend: sum of all daily agency entries in the period
-  const agSp=adSpend.filter(a=>a.account_type==='agency').reduce((s,a)=>s+(a.spend||0),0);
+  // agSp is pre-computed in loadFinance as a period delta of the cumulative YTD ad_spend_daily rows
   const pplSp=campSpend;
   const pplLeadsTotal=campLeads;
   const metaCpl=(pplSp>0&&pplLeadsTotal>0)?'$'+(pplSp/pplLeadsTotal).toFixed(2):'—';
