@@ -15,9 +15,12 @@
 <!-- Google Maps script tag — loaded dynamically at runtime via Edge Function -->
 <script id="gmaps-script"></script>
 <!-- Twilio Voice JS SDK — browser calling.
-     Note: as of v2.0 Twilio no longer hosts the SDK on sdk.twilio.com (that path is v1.x only),
-     so we load the npm package from jsDelivr (permitted by CSP). -->
-<script src="https://cdn.jsdelivr.net/npm/@twilio/voice-sdk@2.10.2/dist/twilio.min.js"></script>
+     Loaded dynamically (see loadTwilioSDK below) so we can fall back to an
+     alternate CDN path if the primary URL fails, surface onerror diagnostics,
+     and retry on demand instead of showing "Twilio SDK not loaded" forever.
+     Note: as of v2.0 Twilio no longer hosts the SDK on sdk.twilio.com (that
+     path is v1.x only), so we use the @twilio/voice-sdk npm package on
+     jsDelivr (permitted by CSP). -->
 <style>
 
 /* ═══ TOKENS ═══ */
@@ -6725,6 +6728,63 @@ async function loadPSCallLog() {
 let _twilioDevice = null;
 let _twilioDeviceReady = false;
 let _twilioDevicePromise = null; // singleton init promise — prevents double-init
+let _twilioSdkPromise = null;    // singleton SDK-load promise
+
+// Twilio SDK loader — loads the Voice SDK on demand from a CDN, with fallback.
+// Returns a promise that resolves to true when window.Twilio.Device is
+// available, or rejects with a descriptive error. Caches the in-flight promise
+// so concurrent callers share a single load attempt. Loading dynamically (as
+// opposed to a static <script> tag) lets us attach onerror handlers, try a
+// secondary URL if the primary fails (e.g. CDN hiccup, privacy extension
+// blocking one path), and retry on a later user action instead of leaving the
+// page in a permanently broken "SDK not loaded" state.
+function loadTwilioSDK() {
+  if (window.Twilio && window.Twilio.Device) return Promise.resolve(true);
+  if (_twilioSdkPromise) return _twilioSdkPromise;
+
+  // Both URLs are on cdn.jsdelivr.net (already in CSP script-src). The
+  // version-pinned URL is the primary; the major-version tag is a fallback so
+  // that a single bad cached asset can't break us.
+  const urls = [
+    'https://cdn.jsdelivr.net/npm/@twilio/voice-sdk@2.10.2/dist/twilio.min.js',
+    'https://cdn.jsdelivr.net/npm/@twilio/voice-sdk@2/dist/twilio.min.js',
+  ];
+
+  _twilioSdkPromise = (async () => {
+    const errors = [];
+    for (const url of urls) {
+      try {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = url;
+          s.async = true;
+          s.crossOrigin = 'anonymous';
+          s.onload = () => resolve();
+          s.onerror = () => reject(new Error('failed to load script from ' + url));
+          document.head.appendChild(s);
+        });
+        if (window.Twilio && window.Twilio.Device) return true;
+        errors.push(url + ' loaded but window.Twilio.Device is missing');
+      } catch (e) {
+        errors.push(e.message);
+        console.warn('Twilio SDK load attempt failed:', e.message);
+      }
+    }
+    throw new Error('Twilio SDK could not be loaded (' + errors.join('; ') + ')');
+  })();
+  // If loading fails, clear the cache so a later user action can retry.
+  _twilioSdkPromise.catch(() => { _twilioSdkPromise = null; });
+  return _twilioSdkPromise;
+}
+
+// Kick off the SDK load eagerly once the page is idle so the first call
+// button click doesn't pay the network round-trip. Failures here are
+// non-fatal — initTwilioDevice will retry.
+if (typeof window !== 'undefined') {
+  const _preloadTwilio = () => { loadTwilioSDK().catch(() => {}); };
+  if (document.readyState === 'complete') _preloadTwilio();
+  else window.addEventListener('load', _preloadTwilio, { once: true });
+}
 let _activeCall = null;
 let _activeApptId = null;
 let _activeApptName = '';
@@ -6741,7 +6801,15 @@ const CALL_DANGER_SEC = 540;       // 9 minutes → red danger
 async function initTwilioDevice() {
   if (_twilioDeviceReady) return true;
   if (_twilioDevicePromise) return _twilioDevicePromise;
-  if (!window.Twilio) { toast('Twilio SDK not loaded — please reload the page', true); return false; }
+  if (!(window.Twilio && window.Twilio.Device)) {
+    try {
+      await loadTwilioSDK();
+    } catch (e) {
+      toast('Twilio SDK not loaded — ' + e.message, true);
+      console.error('Twilio SDK load failed', e);
+      return false;
+    }
+  }
 
   _twilioDevicePromise = (async () => {
     try {
