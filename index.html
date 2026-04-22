@@ -14,8 +14,10 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <!-- Google Maps script tag — loaded dynamically at runtime via Edge Function -->
 <script id="gmaps-script"></script>
-<!-- Twilio Voice JS SDK — browser calling -->
-<script src="https://sdk.twilio.com/js/client/releases/2.10.2/twilio.min.js"></script>
+<!-- Twilio Voice JS SDK — browser calling.
+     Note: as of v2.0 Twilio no longer hosts the SDK on sdk.twilio.com (that path is v1.x only),
+     so we load the npm package from jsDelivr (permitted by CSP). -->
+<script src="https://cdn.jsdelivr.net/npm/@twilio/voice-sdk@2.10.2/dist/twilio.min.js"></script>
 <style>
 
 /* ═══ TOKENS ═══ */
