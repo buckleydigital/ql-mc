@@ -6483,7 +6483,9 @@ function renderPSAppt(appts) {
     const sl = appts.filter(a => a.stage === s.id);
     if (cnt) cnt.textContent = sl.length;
     if (col) {
-      col.innerHTML = sl.map(a => `
+      col.innerHTML = sl.map(a => {
+        const callBtn = `<button class="btn btn-xs btn-grn" style="margin-top:4px;width:100%" onclick="event.stopPropagation();startPSCall('${esc(String(a.id))}','${esc(a.phone)}','${esc(a.name)}')">📞 Call</button>`;
+        return `
         <div class="kcard" id="kc-ps-${esc(String(a.id))}" data-appt-id="${esc(String(a.id))}">
           <div class="kcard-name">${esc(a.name || '—')}</div>
           <div class="kcard-phone">${esc(a.phone || '—')}</div>
@@ -6491,8 +6493,9 @@ function renderPSAppt(appts) {
           <div style="display:flex;gap:4px;margin-top:4px;align-items:center;flex-wrap:wrap">
             <span class="badge ${psStageBadge(a.stage)}" style="font-size:8px">${psStageLabel(a.stage)}</span>
           </div>
-          <button type="button" class="btn btn-xs btn-grn ps-call-btn" style="margin-top:4px;width:100%">📞 Call</button>
-        </div>`).join('');
+          ${callBtn}
+        </div>`;
+      }).join('');
 
       col.querySelectorAll('.kcard').forEach(card => {
         const id = card.dataset.apptId;
@@ -6500,15 +6503,6 @@ function renderPSAppt(appts) {
         card.addEventListener('click', () => {
           if (PS_CACHE[id]) openEditPSLead(PS_CACHE[id]);
         });
-        const btn = card.querySelector('.ps-call-btn');
-        if (btn) {
-          btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const a = PS_CACHE[id];
-            if (!a) { toast('Appointment not found', true); return; }
-            startPSCall(String(a.id), a.phone || '', a.name || '');
-          });
-        }
       });
     }
   });
