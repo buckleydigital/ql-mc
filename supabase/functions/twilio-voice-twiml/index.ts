@@ -3,7 +3,10 @@
  *
  * Twilio calls this endpoint when the browser initiates an outbound call.
  * It returns TwiML that dials the destination number using the Twilio number
- * stored in PHONETIC_TWILIO_NUMBER.
+ * stored in TWILIO_FROM_NUMBER (same secret used by send-sms / deliver-webhook).
+ *
+ * Note: this endpoint must be reachable by Twilio without a Supabase JWT.
+ * See supabase/config.toml — `verify_jwt = false` for this function.
  *
  * Security: validates that the 'To' number exists in comm_solar_appointments
  * so random numbers cannot be dialled.
@@ -55,7 +58,11 @@ Deno.serve(async (req: Request) => {
       return twimlError("Destination number is not in the appointment list.");
     }
 
-    const fromNumber = Deno.env.get("PHONETIC_TWILIO_NUMBER");
+    // Read caller-ID from the same secret used by the SMS functions.
+    // Fall back to the old name for backward compatibility.
+    const fromNumber =
+      Deno.env.get("TWILIO_FROM_NUMBER") ||
+      Deno.env.get("PHONETIC_TWILIO_NUMBER");
     if (!fromNumber) return twimlError("Caller ID not configured.");
 
     // Hard 10-minute cap at the Twilio level too
