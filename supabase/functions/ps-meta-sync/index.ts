@@ -66,6 +66,7 @@ Deno.serve(async (req: Request) => {
     for (const cid of campaign_ids) {
       try {
         // Fetch lifetime spend
+        // Note: Meta Graph API requires the token as a query parameter (standard Meta API pattern)
         const url =
           `https://graph.facebook.com/v21.0/${encodeURIComponent(cid)}/insights?fields=spend&date_preset=lifetime&access_token=${metaToken}`;
         const res = await fetch(url);
@@ -106,14 +107,15 @@ Deno.serve(async (req: Request) => {
       : null;
 
     if (existing) {
-      await supabase.from("ps_ad_accounts").update({
+      const updatePayload: Record<string, unknown> = {
         campaign_ids,
-        label: label || undefined,
         lifetime_spend: totalSpend,
         last_synced_at: now,
         sync_error: syncError,
         updated_at: now,
-      }).eq("id", existing.id);
+      };
+      if (label) updatePayload.label = label;
+      await supabase.from("ps_ad_accounts").update(updatePayload).eq("id", existing.id);
     } else {
       await supabase.from("ps_ad_accounts").insert([{
         account_id,

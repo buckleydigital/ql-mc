@@ -47,7 +47,8 @@ Deno.serve(async (req: Request) => {
 
     const { data: rows } = await supabase
       .from("comm_solar_appointments")
-      .select("id, phone");
+      .select("id, phone")
+      .in("stage", ["new_lead", "no_answer", "appointment_booked", "disputed"]);
 
     const valid = (rows || []).some((r: { phone: string }) => normalise(r.phone) === normTo);
     if (!valid) {

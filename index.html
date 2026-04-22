@@ -1600,7 +1600,7 @@ td strong{font-weight:500}
           <div class="ph-left"><h1>PS Appt Setting</h1><p>Commercial solar appointment pipeline</p></div>
           <div class="ph-right" id="ps-appt-admin-actions">
             <button class="btn btn-sm" onclick="loadPSAppt()">↻ Refresh</button>
-            <button class="btn btn-p btn-sm" onclick="openModal('m-ps-lead')">+ Add Lead</button>
+            <button class="btn btn-p btn-sm" data-action="add-ps-lead" onclick="openModal('m-ps-lead')">+ Add Lead</button>
           </div>
         </div>
 
@@ -2614,8 +2614,7 @@ function initSupabase() {
           // Hide admin-only "Add Lead" button in the PS panel
           const adminActions = $('ps-appt-admin-actions');
           if (adminActions) {
-            // Remove add-lead button but keep refresh
-            const addBtn = [...adminActions.querySelectorAll('button')].find(b => b.textContent.includes('Add Lead'));
+            const addBtn = adminActions.querySelector('[data-action="add-ps-lead"]');
             if (addBtn) addBtn.remove();
           }
           buildKanban('ps-kanban', PS_STAGES, 'ps');
@@ -3119,7 +3118,8 @@ function dragLeave(e){e.currentTarget.classList.remove('drag-over');}
 async function drop(e,prefix,newStage) {
   e.preventDefault();e.currentTarget.classList.remove('drag-over');
   if (!draggedId||draggedPrefix!==prefix) return;
-  const table = prefix==='crm' ? 'leads' : prefix==='ps' ? 'comm_solar_appointments' : 'clients';
+  const TABLE_MAP = { crm: 'leads', ps: 'comm_solar_appointments' };
+  const table = TABLE_MAP[prefix] || 'clients';
   const updateData={stage:newStage,updated_at:now()};
   if (prefix==='crm'&&['call_back','proposal','closed_won'].includes(newStage)) updateData.contactable=true;
   const {error}=await db.from(table).update(updateData).eq('id',draggedId);
@@ -6728,7 +6728,10 @@ let _activeApptPhone = '';
 let _callTimerInterval = null;
 let _callStartTime = null;
 let _callLogId = null;
-const CALL_CAP_SEC = 600; // 10 minutes
+const CALL_CAP_SEC = 600;          // 10 minutes hard cap
+const CALL_WARN_SEC = 480;         // 8 minutes → amber warning
+const CALL_DANGER_SEC = 540;       // 9 minutes → red danger
+const DEVICE_READY_TIMEOUT_MS = 1500; // ms to wait for Twilio Device to become ready
 
 async function initTwilioDevice() {
   if (_twilioDeviceReady) return;
@@ -6772,7 +6775,7 @@ async function startPSCall(apptId, phone, name) {
   if (!_twilioDevice || !_twilioDeviceReady) {
     await initTwilioDevice();
     // Wait briefly for device to be ready
-    await new Promise(r => setTimeout(r, 1500));
+    await new Promise(r => setTimeout(r, DEVICE_READY_TIMEOUT_MS));
     if (!_twilioDeviceReady) { toast('Device not ready — try again in a moment', true); return; }
   }
 
@@ -6819,13 +6822,12 @@ async function startPSCall(apptId, phone, name) {
   _callStartTime = Date.now();
   _callTimerInterval = setInterval(() => {
     const elapsed = Math.floor((Date.now() - _callStartTime) / 1000);
-    const remaining = CALL_CAP_SEC - elapsed;
     const mins = Math.floor(Math.abs(elapsed) / 60);
     const secs = (Math.abs(elapsed) % 60).toString().padStart(2, '0');
     const el = $('call-ind-timer');
     if (el) {
       el.textContent = mins + ':' + secs;
-      el.className = 'call-ind-timer' + (elapsed >= 540 ? ' danger' : elapsed >= 480 ? ' warn' : '');
+      el.className = 'call-ind-timer' + (elapsed >= CALL_DANGER_SEC ? ' danger' : elapsed >= CALL_WARN_SEC ? ' warn' : '');
     }
     // Hard cap: disconnect at 10 minutes
     if (elapsed >= CALL_CAP_SEC) { endPSCall(); }
