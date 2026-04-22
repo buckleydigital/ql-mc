@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS campaign_spend_log (
   campaign_id      uuid        REFERENCES meta_campaigns(id) ON DELETE SET NULL,
   campaign_name    text        NOT NULL,
   meta_campaign_id text,
-  period           text        NOT NULL,   -- YYYY-MM
+  period           text        NOT NULL CHECK (period ~ '^\d{4}-(0[1-9]|1[0-2])$'),   -- YYYY-MM
   spend            numeric     DEFAULT 0,
   leads            integer     DEFAULT 0,
   clicks           integer     DEFAULT 0,

@@ -4180,10 +4180,11 @@ async function loadFinance() {
   const ytdYear = isYtd ? val.split('-')[1] : null;
   const from = isYtd ? `${ytdYear}-01-01` : `${val}-01`;
   const next = isYtd ? today : nextMonthStart(val);
-  // Build campaign_spend_log period filter: single month or full YTD range
+  // Build campaign_spend_log period filter: single month or full YTD range (capped at current month)
+  const curPeriod = new Date().toISOString().slice(0,7); // YYYY-MM
   let spendLogQ = db.from('campaign_spend_log').select('id,campaign_name,period,spend,leads,source,notes');
   if (isYtd) {
-    spendLogQ = spendLogQ.gte('period',`${ytdYear}-01`).lte('period',`${ytdYear}-12`);
+    spendLogQ = spendLogQ.gte('period',`${ytdYear}-01`).lte('period',curPeriod);
   } else {
     spendLogQ = spendLogQ.eq('period', val);
   }
@@ -4318,30 +4319,29 @@ async function deleteExpense(id) {
 // Write (or overwrite) this month's sync data into campaign_spend_log so spend
 // history survives campaign deletions and is accurate in financials.
 async function writeSyncToSpendLog() {
-  if (!_campaignsCache.length) return;
-  const period = new Date().toISOString().slice(0, 7); // YYYY-MM
-  for (const c of _campaignsCache) {
-    if (!c.id) continue;
-    // Delete any existing sync entry for this campaign+period, then re-insert.
-    // This is equivalent to upsert but works reliably with the partial unique index.
-    await db.from('campaign_spend_log')
-      .delete()
-      .eq('campaign_id', c.id)
-      .eq('period', period)
-      .eq('source', 'sync');
-    await db.from('campaign_spend_log').insert([{
-      campaign_id:     c.id,
-      campaign_name:   c.name,
-      meta_campaign_id:c.meta_campaign_id,
-      period,
-      spend:           c.spend_mtd   || 0,
-      leads:           c.leads_mtd   || 0,
-      clicks:          c.clicks_mtd  || 0,
-      impressions:     c.impressions_mtd || 0,
-      source:          'sync',
-      updated_at:      now(),
-    }]);
-  }
+  const campaigns = _campaignsCache.filter(c => c.id);
+  if (!campaigns.length) return;
+  const period = new Date().toISOString().slice(0, 7); // YYYY-MM (UTC)
+  const campaignIds = campaigns.map(c => c.id);
+  // Batch delete all existing sync entries for these campaigns in this period, then batch insert
+  await db.from('campaign_spend_log')
+    .delete()
+    .in('campaign_id', campaignIds)
+    .eq('period', period)
+    .eq('source', 'sync');
+  const rows = campaigns.map(c => ({
+    campaign_id:      c.id,
+    campaign_name:    c.name,
+    meta_campaign_id: c.meta_campaign_id,
+    period,
+    spend:            c.spend_mtd        || 0,
+    leads:            c.leads_mtd        || 0,
+    clicks:           c.clicks_mtd       || 0,
+    impressions:      c.impressions_mtd  || 0,
+    source:           'sync',
+    updated_at:       now(),
+  }));
+  await db.from('campaign_spend_log').insert(rows);
   loadSpendLog();
 }
 
@@ -4357,7 +4357,7 @@ async function loadSpendLog() {
   if (!rows.length) { tb.innerHTML='<tr><td colspan="8" class="empty">No spend logged yet — run Sync Stats or add a manual entry.</td></tr>'; return; }
   const fmt$ = v => v ? '$'+Number(v).toLocaleString('en-AU',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
   tb.innerHTML = rows.map(r => {
-    const cpl = (r.leads||0) > 0 ? fmt$((r.spend||0)/(r.leads||1)) : '—';
+    const cpl = (r.leads||0) > 0 ? fmt$((r.spend||0)/r.leads) : '—';
     const srcBadge = r.source === 'sync'
       ? `<span style="font-family:var(--mono);font-size:9px;color:var(--grn)">sync</span>`
       : `<span style="font-family:var(--mono);font-size:9px;color:var(--amb)">manual</span>`;
@@ -4601,7 +4601,7 @@ function renderCplChart(spendLog) {
   // Show CPL per campaign from spend log (spend / leads)
   const withLeads=spendLog.filter(e=>(e.leads||0)>0).sort((a,b)=>(a.campaign_name||'').localeCompare(b.campaign_name||''));
   const labels=withLeads.map(e=>(e.campaign_name||'?').slice(0,25));
-  const cpls=withLeads.map(e=>+((e.spend||0)/(e.leads||1)).toFixed(2));
+  const cpls=withLeads.map(e=>+((e.spend||0)/e.leads).toFixed(2));
   if (cplChart) cplChart.destroy();
   cplChart=new Chart($('chart-cpl').getContext('2d'),{type:'bar',data:{labels,datasets:[{label:'CPL by Campaign',data:cpls,backgroundColor:'rgba(79,143,255,.18)',borderColor:'#4f8fff',borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:true,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9},callback:v=>'$'+v},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}}}}});
 }
