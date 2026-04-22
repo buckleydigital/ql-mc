@@ -6484,7 +6484,11 @@ function renderPSAppt(appts) {
     if (cnt) cnt.textContent = sl.length;
     if (col) {
       col.innerHTML = sl.map(a => {
-        const callBtn = `<button class="btn btn-xs btn-grn" style="margin-top:4px;width:100%" onclick="event.stopPropagation();startPSCall('${esc(String(a.id))}','${esc(a.phone)}','${esc(a.name)}')">📞 Call</button>`;
+        // NOTE: the 📞 Call button is bound via addEventListener below rather
+        // than an inline onclick, because the lead name/phone can contain
+        // apostrophes (e.g. "O'Brien"), which `esc()` does not escape and
+        // which would silently break an inline `onclick="...startPSCall('…')"`
+        // handler — making the button appear to do nothing when clicked.
         return `
         <div class="kcard" id="kc-ps-${esc(String(a.id))}" data-appt-id="${esc(String(a.id))}">
           <div class="kcard-name">${esc(a.name || '—')}</div>
@@ -6493,7 +6497,7 @@ function renderPSAppt(appts) {
           <div style="display:flex;gap:4px;margin-top:4px;align-items:center;flex-wrap:wrap">
             <span class="badge ${psStageBadge(a.stage)}" style="font-size:8px">${psStageLabel(a.stage)}</span>
           </div>
-          ${callBtn}
+          <button class="btn btn-xs btn-grn ps-call-btn" style="margin-top:4px;width:100%">📞 Call</button>
         </div>`;
       }).join('');
 
@@ -6503,6 +6507,15 @@ function renderPSAppt(appts) {
         card.addEventListener('click', () => {
           if (PS_CACHE[id]) openEditPSLead(PS_CACHE[id]);
         });
+        const btn = card.querySelector('.ps-call-btn');
+        if (btn) {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const a = PS_CACHE[id];
+            if (!a) { toast('Appointment not found', true); return; }
+            startPSCall(String(a.id), a.phone || '', a.name || '');
+          });
+        }
       });
     }
   });
