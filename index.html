@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>QL · Mission Control</title>
+<title>Mission Control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
-<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co https://*.googleapis.com https://raw.githubusercontent.com https://*.twilio.com wss://*.twilio.com https://graph.facebook.com 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://maps.googleapis.com https://sdk.twilio.com; img-src * data: blob:;">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co https://*.googleapis.com https://*.twilio.com wss://*.twilio.com https://graph.facebook.com 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://maps.googleapis.com https://sdk.twilio.com; img-src * data: blob:;">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
@@ -811,10 +811,10 @@ td strong{font-weight:500}
 <!-- ═══ LOGIN ═══ -->
 <div id="login-screen">
   <div class="login-box">
-    <div class="login-mark">QL</div>
+    <div class="login-mark">◆</div>
     <h1>Mission Control</h1>
     <p>Sign in to your workspace</p>
-    <div class="lf"><label>Email</label><input type="email" id="login-email" placeholder="you@quoteleads.com.au" autocomplete="email"></div>
+    <div class="lf"><label>Email</label><input type="email" id="login-email" placeholder="you@example.com" autocomplete="email"></div>
     <div class="lf"><label>Password</label><input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Sign in →</button>
     <div class="login-err" id="login-error"></div>
@@ -2738,6 +2738,7 @@ async function loadAll() {
   loadFileContent();
   populateMapClientDropdown();
   // HQ Fleet
+  await loadHQRooms();
   renderHQ();
   renderHumans();
   buildHQWorkflows();
@@ -5131,98 +5132,28 @@ function renderDailyChart(leads) {
 
 let AGENT_CFG={}, DEFAULT_MD={};
 // ─── HQ FLEET (pixel art) ───────────────────────────────────────────────────
-const HQ_ROOMS = [
-  {
-    id:'sales',
-    name:'🏢 SALES',
-    bg:'#070f07', border:'#4797ff', label:'#4797ff',
-    decor:{ window:true, plant:true, desks:true, monitors:true, tag:'BULLPEN' },
-    agents:[
-      {id:'prospector', name:'Prospector', role:'Outbound',  color:'#4797ff'},
-      {id:'qualifier',  name:'Qualifier',  role:'Inbound',   color:'#a78bfa'},
-      {id:'closer',     name:'Closer',     role:'Proposals', color:'#fb923c'},
-    ]
-  },
-  {
-    id:'delivery',
-    name:'⚙️ DELIVERY',
-    bg:'#070a14', border:'#38bdf8', label:'#60a5fa',
-    decor:{ window:true, plant:false, desks:true, monitors:true, tag:'BUILD BAY' },
-    agents:[
-      {id:'builder',   name:'Builder',   role:'Onboarding',  color:'#38bdf8'},
-      {id:'adbot',     name:'Adbot',     role:'Meta/Google', color:'#facc15'},
-      {id:'landingpg', name:'LandingPg', role:'Pages',       color:'#4797ff'},
-    ]
-  },
-  {
-    id:'leadengine',
-    name:'📲 LEAD ENGINE',
-    bg:'#140714', border:'#f472b6', label:'#f472b6',
-    decor:{ window:false, plant:true, desks:true, monitors:true, tag:'CALL CENTRE' },
-    agents:[
-      {id:'smsagent', name:'SMSAgent', role:'Respond',   color:'#f472b6'},
-      {id:'voicebot', name:'VoiceBot', role:'Calls',     color:'#fb923c'},
-      {id:'quoter',   name:'Quoter',   role:'Quotes',    color:'#4797ff'},
-      {id:'chaser',   name:'Chaser',   role:'Follow-up', color:'#a78bfa'},
-    ]
-  },
-  {
-    id:'retention',
-    name:'🛡️ RETENTION',
-    bg:'#071410', border:'#4797ff', label:'#4797ff',
-    decor:{ window:true, plant:true, desks:true, monitors:true, tag:'CARE TEAM' },
-    agents:[
-      {id:'pulsecheck', name:'PulseCheck', role:'Health',  color:'#4797ff'},
-      {id:'churnbot',   name:'ChurnBot',   role:'At-risk', color:'#f87171'},
-      {id:'reporter',   name:'Reporter',   role:'Reports', color:'#60a5fa'},
-    ]
-  },
-  {
-    id:'ops',
-    name:'🧠 OPS',
-    bg:'#0f0714', border:'#a78bfa', label:'#a78bfa',
-    decor:{ window:true, plant:true, desks:true, monitors:true, tag:'BACK OFFICE' },
-    agents:[
-      {id:'inbox',      name:'Inbox',      role:'Comms',   color:'#facc15'},
-      {id:'bookkeeper', name:'Bookkeeper', role:'Finance', color:'#a78bfa'},
-      {id:'datasyncer', name:'DataSyncer', role:'CRM',     color:'#38bdf8'},
-    ]
-  },
-];
+// Room/agent/human catalogue is loaded from Supabase (public.hq_rooms) so the
+// deployed HTML doesn't expose internal team structure or naming. See
+// migrations/20260425_hq_rooms.sql. Populated by loadHQRooms() at startup.
+let HQ_ROOMS = [];
+let HQ_HUMANS = [];
 
-// Humans tab — real people on the team. Ids prefixed with `h-` so they
-// can't clash with AI agent ids (which are tracked in the `agents` table).
-const HQ_HUMANS = [
-  {
-    id:'executive',
-    name:'👔 EXECUTIVE',
-    bg:'#0a0a14', border:'#facc15', label:'#facc15',
-    decor:{ window:true, plant:true, desks:true, monitors:true, tag:'C-SUITE' },
-    agents:[
-      {id:'h-ceo', name:'CEO', role:'Chief Exec', color:'#facc15'},
-    ]
-  },
-  {
-    id:'sales-floor',
-    name:'💼 SALES FLOOR',
-    bg:'#070f07', border:'#4797ff', label:'#4797ff',
-    decor:{ window:true, plant:true, desks:true, monitors:true, tag:'REVENUE' },
-    agents:[
-      {id:'h-sales-1', name:'Sales Rep 1', role:'Account Exec', color:'#4797ff'},
-      {id:'h-sales-2', name:'Sales Rep 2', role:'Account Exec', color:'#60a5fa'},
-    ]
-  },
-  {
-    id:'support',
-    name:'🎧 CUSTOMER SUPPORT',
-    bg:'#071410', border:'#34d399', label:'#34d399',
-    decor:{ window:false, plant:true, desks:true, monitors:true, tag:'HELPDESK' },
-    agents:[
-      {id:'h-cs-1', name:'CS Rep 1', role:'Support', color:'#34d399'},
-      {id:'h-cs-2', name:'CS Rep 2', role:'Support', color:'#22c55e'},
-    ]
-  },
-];
+async function loadHQRooms() {
+  if (!db) return;
+  try {
+    const { data } = await db.from('hq_rooms')
+      .select('id,kind,name,bg,border,label,decor,agents,sort_order')
+      .eq('enabled', true)
+      .order('sort_order');
+    const rows = data || [];
+    HQ_ROOMS  = rows.filter(r => r.kind === 'agent');
+    HQ_HUMANS = rows.filter(r => r.kind === 'human');
+  } catch (e) {
+    console.error('Failed to load HQ rooms:', e);
+    HQ_ROOMS = [];
+    HQ_HUMANS = [];
+  }
+}
 
 // Workflow catalogue is loaded from Supabase (public.hq_workflows) so the
 // tool stack isn't exposed in the deployed HTML. See migrations/20260425_hq_workflows.sql.
@@ -6585,14 +6516,11 @@ async function populateMapClientDropdown() {
 // INVOICES
 // ═══════════════════════════════════════════════════
 
+// Logo for invoices is loaded from business_settings.logo_url (if set) by
+// loadBizSettings(). The deployed HTML no longer fetches assets from any
+// external repo — set business_settings.logo_url to a Supabase Storage URL
+// (or any CSP-allowed URL) to render a logo on PDF invoices.
 let QL_LOGO_B64 = null;
-(async function preloadLogo() {
-  try {
-    const r = await fetch('https://raw.githubusercontent.com/buckleydigital/ql-site/refs/heads/main/quoteleads-logo-white.png');
-    const blob = await r.blob();
-    QL_LOGO_B64 = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); });
-  } catch(e) { console.warn('Logo fetch failed, invoices will render without logo'); }
-})();
 
 async function loadBizSettings() {
   try {
