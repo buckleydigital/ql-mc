@@ -5669,9 +5669,12 @@ async function saveTechStack() {
         .eq('id', _tsEditId);
       if (error) throw error;
     } else {
+      // Use max existing sort_order + 10 to avoid collisions
+      const { data: maxRow } = await db.from('hq_workflows')
+        .select('sort_order').order('sort_order', { ascending: false }).limit(1).maybeSingle();
+      const sort_order = ((maxRow?.sort_order) || 0) + 10;
       const { error } = await db.from('hq_workflows')
-        .insert({ icon, name, tech_stack, room, color, enabled: true,
-                  sort_order: Date.now() % 100000 });
+        .insert({ icon, name, tech_stack, room, color, enabled: true, sort_order });
       if (error) throw error;
     }
     closeModal('m-tech-stack');
