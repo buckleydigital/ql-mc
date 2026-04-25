@@ -40,7 +40,11 @@ Deno.serve(async (req: Request) => {
       name = [first_name, last_name].filter(Boolean).join(" ");
     }
     if (lead_type && !niche) niche = lead_type;
-    if (!niche) niche = "solar";
+    if (!niche) {
+      return new Response(JSON.stringify({ error: "missing_niche" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     if (!source) source = "webhook";
 
     const custom_data: Record<string, unknown> = {};

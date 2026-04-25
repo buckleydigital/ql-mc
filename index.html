@@ -2793,7 +2793,8 @@ async function populateTestLeadNiches() {
     const { data } = await db.from('leads').select('niche').limit(500);
     const niches = [...new Set((data||[]).map(r => r.niche).filter(Boolean))].sort();
     const cur = sel.value;
-    const allNiches = niches.length ? niches : ['solar'];
+    const allNiches = niches.length ? niches : [];
+    if (!allNiches.length) return;
     sel.innerHTML = allNiches.map(n => `<option value="${esc(n)}"${n===cur?' selected':''}>${esc(n.charAt(0).toUpperCase()+n.slice(1))}</option>`).join('');
   } catch(e) { /* keep existing options */ }
 }
@@ -3455,7 +3456,7 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
         return `
         <div class="kcard" id="kc-ppl-${esc(String(c.id))}" data-client-id="${esc(String(c.id))}" data-client-type="ppl">
           <div class="kcard-name">${esc(c.company_name)}</div>
-          <div class="kcard-meta">${esc(c.niche||'Solar')} · ${c.leads_delivered||0} delivered · ${c.total_leads_purchased||0} purchased</div>
+          <div class="kcard-meta">${esc(c.niche||'')} · ${c.leads_delivered||0} delivered · ${c.total_leads_purchased||0} purchased</div>
           ${c.cx_score!=null?`<div style="font-size:9px;font-family:var(--mono);margin-top:2px;color:${c.cx_score>=8?'var(--grn)':c.cx_score>=5?'var(--amb)':'var(--red)'}">CX ${c.cx_score}/10</div>`:''}
           ${c.phone?`<div class="kcard-phone">${esc(c.phone)}</div>`:''}
           ${c.meta_cpl?`<div class="kcard-val">CPL $${Number(c.meta_cpl).toFixed(2)}</div>`:''}
@@ -6048,7 +6049,7 @@ function applyTemplateVars(text, client) {
   return text
     .replace(/\{\{client_name\}\}/gi, client.company_name||'')
     .replace(/\{\{contact_name\}\}/gi, client.contact_name||'')
-    .replace(/\{\{niche\}\}/gi, client.niche||'Solar')
+    .replace(/\{\{niche\}\}/gi, client.niche||'')
     .replace(/\{\{lead_price\}\}/gi, client.lead_price?'$'+client.lead_price:'')
     .replace(/\{\{leads_purchased\}\}/gi, client.total_leads_purchased||'')
     .replace(/\{\{leads_delivered\}\}/gi, client.leads_delivered||'');
@@ -6766,7 +6767,7 @@ function onInvClientChange() {
     addInvLine('Managed Advertising — Monthly Retainer', 1, parseFloat(opt.dataset.fee) || 0);
   } else {
     // PPL: try to get latest order qty
-    prefillPplLine(opt.value, parseFloat(opt.dataset.leadPrice) || 0, opt.dataset.niche || 'Solar');
+    prefillPplLine(opt.value, parseFloat(opt.dataset.leadPrice) || 0, opt.dataset.niche || '');
   }
 }
 

@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
       // 3. Normalise phone
       const normPhone = normalisePhone(od.phone || "");
       const normDeliveryPhone = normalisePhone(od.delivery_phone || od.phone || "");
-      const nicheVal = od.niche || od.trade?.toLowerCase() || "solar";
+      const nicheVal = od.niche || od.trade?.toLowerCase() || "";
 
       // 4. Upsert client
       const clientData = {
@@ -120,7 +120,7 @@ Deno.serve(async (req: Request) => {
       }
 
       // 5. Create task
-      const tradeLabel = od.niche || od.trade || "solar";
+      const tradeLabel = od.niche || od.trade || "";
       await supabaseAdmin.from("tasks").insert([{
         title: `New order — ${od.company} · ${od.quantity} x ${tradeLabel} leads`,
         assigned_to: "human",
