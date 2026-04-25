@@ -480,27 +480,6 @@ body::after {
 .ai-draft-txt{font-size:11.5px;line-height:1.6;font-weight:300}
 .email-acts{display:flex;gap:4px;flex-wrap:wrap}
 
-/* ═══ AGENTS ═══ */
-.agent-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:12px}
-.agent-card{
-  background:var(--s1);border:1px solid var(--bd);
-  border-radius:var(--r2);padding:14px;cursor:pointer;
-  transition:all .14s;position:relative;overflow:hidden;
-}
-.agent-card::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:var(--bd)}
-.agent-card:hover{border-color:var(--bd2);box-shadow:0 4px 16px rgba(0,0,0,.15)}
-.agent-card.active-agent{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-dim)}
-.agent-card.active-agent::after{background:var(--acc);box-shadow:0 0 12px rgba(79,143,255,.5)}
-.agent-icon{
-  font-family:var(--mono);font-size:9.5px;font-weight:500;color:var(--acc);
-  background:var(--acc-dim);border:1px solid rgba(79,143,255,.13);
-  display:inline-flex;padding:2px 7px;border-radius:3px;margin-bottom:9px;letter-spacing:.05em;
-}
-.agent-name{font-family:var(--display);font-size:13.5px;font-weight:600;color:var(--ink)}
-.agent-role{font-size:10.5px;color:var(--ink3);margin-top:2px;font-weight:300}
-.adot{width:5px;height:5px;border-radius:50%;background:var(--grn);flex-shrink:0;box-shadow:0 0 6px var(--grn)}
-.agent-stxt{font-family:var(--mono);font-size:9px;color:var(--ink3)}
-
 /* ═══ MD EDITOR ═══ */
 .md-layout{display:grid;grid-template-columns:130px 1fr;gap:7px;height:370px}
 .md-files{display:flex;flex-direction:column;gap:2px}
@@ -696,7 +675,6 @@ td strong{font-weight:500}
 /* ═══ RESPONSIVE ═══ */
 @media(max-width:960px){
   .kg.c4,.kg.c3{grid-template-columns:repeat(2,1fr)}
-  .agent-grid{grid-template-columns:repeat(3,1fr)}
   .md-layout{grid-template-columns:1fr;height:auto}
   .md-files{flex-direction:row;flex-wrap:wrap}
   .chat-layout{grid-template-columns:1fr}
@@ -710,7 +688,6 @@ td strong{font-weight:500}
   .panel{padding:11px 11px calc(var(--bnav-h, 200px) + 40px + env(safe-area-inset-bottom,0px))}
   .kg.c4,.kg.c3{grid-template-columns:1fr 1fr}
   .task-grid{grid-template-columns:1fr}
-  .agent-grid{grid-template-columns:1fr 1fr}
   .g2{grid-template-columns:1fr}
   .ph{flex-direction:column}
   .ph-right{width:100%}
@@ -719,19 +696,19 @@ td strong{font-weight:500}
 @media(max-width:400px){.kg.c4,.kg.c3,.kg.c2{grid-template-columns:1fr}}
 
 /* ══ HQ FLEET — pixel art (baked in from bake-in.html) ══ */
-#panel-hq.panel{background:#030a03;color:#fff;font-family:'Press Start 2P',monospace;padding:16px;border-radius:var(--r2);border:1px solid #4ade8022;position:relative;overflow:hidden}
+#panel-hq.panel{background:#030a03;color:#fff;font-family:'Press Start 2P',monospace;padding:16px;border-radius:var(--r2);border:1px solid #4797ff22;position:relative;overflow:hidden}
 #panel-hq *,#panel-hq *::before,#panel-hq *::after{box-sizing:border-box;font-family:'Press Start 2P',monospace}
-#panel-hq .ph{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #4ade8022;padding-bottom:14px;margin-bottom:14px}
-#panel-hq .ph-left h1{font-family:'Press Start 2P',monospace;font-size:11px;color:#4ade80;text-shadow:0 0 16px #4ade80;letter-spacing:2px;font-weight:400;line-height:1}
-#panel-hq .ph-left p{font-family:'Press Start 2P',monospace;font-size:5px;color:#4ade8055;margin-top:6px;letter-spacing:1px}
+#panel-hq .ph{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #4797ff22;padding-bottom:14px;margin-bottom:14px}
+#panel-hq .ph-left h1{font-family:'Press Start 2P',monospace;font-size:11px;color:#4797ff;text-shadow:0 0 16px #4797ff;letter-spacing:2px;font-weight:400;line-height:1}
+#panel-hq .ph-left p{font-family:'Press Start 2P',monospace;font-size:5px;color:#4797ff55;margin-top:6px;letter-spacing:1px}
 #panel-hq .ph-right{text-align:right}
-#panel-hq #hq-clock-line{font-size:7px;color:#4ade80;text-shadow:0 0 6px #4ade80;letter-spacing:1px}
-#panel-hq #hq-active-line{font-size:5px;color:#4ade8044;margin-top:4px;letter-spacing:1px}
-#panel-hq #hq-blink{animation:hq-blink 1s infinite;display:inline-block;margin-left:4px;color:#4ade80}
-#panel-hq .btn{font-family:'Press Start 2P',monospace;font-size:6px;letter-spacing:1px;background:#070f07;color:#4ade80;border:1px solid #4ade8055;padding:6px 10px;cursor:pointer}
-#panel-hq .btn:hover{background:#4ade8011}
+#panel-hq #hq-clock-line{font-size:7px;color:#4797ff;text-shadow:0 0 6px #4797ff;letter-spacing:1px}
+#panel-hq #hq-active-line{font-size:5px;color:#4797ff44;margin-top:4px;letter-spacing:1px}
+#panel-hq #hq-blink{animation:hq-blink 1s infinite;display:inline-block;margin-left:4px;color:#4797ff}
+#panel-hq .btn{font-family:'Press Start 2P',monospace;font-size:6px;letter-spacing:1px;background:#070f07;color:#4797ff;border:1px solid #4797ff55;padding:6px 10px;cursor:pointer}
+#panel-hq .btn:hover{background:#4797ff11}
 
-#panel-hq #hq-crt-scan{position:absolute;top:0;left:0;right:0;height:50px;background:linear-gradient(transparent,rgba(74,222,128,0.035),transparent);animation:hq-scan 5s linear infinite;pointer-events:none;z-index:5}
+#panel-hq #hq-crt-scan{position:absolute;top:0;left:0;right:0;height:50px;background:linear-gradient(transparent,rgba(71,151,255,0.035),transparent);animation:hq-scan 5s linear infinite;pointer-events:none;z-index:5}
 
 #panel-hq #hq-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px;position:relative;z-index:2}
 #panel-hq .hq-stat-card{background:#070f07;padding:7px 8px;text-align:center;border:1px solid transparent}
@@ -739,8 +716,8 @@ td strong{font-weight:500}
 #panel-hq .hq-stat-value{font-size:9px}
 
 #panel-hq .hq-tabs{display:flex;gap:6px;margin-bottom:14px;position:relative;z-index:2}
-#panel-hq .hq-tab{font-family:'Press Start 2P',monospace;font-size:6px;padding:6px 10px;cursor:pointer;border:none;letter-spacing:.5px;transition:all .2s;background:#070f07;color:#4ade8088;border-bottom:2px solid #4ade8033;border-radius:0}
-#panel-hq .hq-tab.active{background:#4ade80;color:#030a03;border-bottom-color:#4ade80}
+#panel-hq .hq-tab{font-family:'Press Start 2P',monospace;font-size:6px;padding:6px 10px;cursor:pointer;border:none;letter-spacing:.5px;transition:all .2s;background:#070f07;color:#4797ff88;border-bottom:2px solid #4797ff33;border-radius:0}
+#panel-hq .hq-tab.active{background:#4797ff;color:#030a03;border-bottom-color:#4797ff}
 
 #panel-hq .hq-tab-panel{display:none;position:relative;z-index:2}
 #panel-hq .hq-tab-panel.active{display:block}
@@ -772,7 +749,7 @@ td strong{font-weight:500}
 #panel-hq .hq-sprite-leg.r.walking{animation:hq-leg-r .35s steps(1) infinite}
 
 #panel-hq .hq-sprite-status{position:absolute;top:-3px;right:-3px;width:7px;height:7px;border:1px solid #000;z-index:5}
-#panel-hq .hq-sprite-status.online{background:#22c55e;animation:hq-pulse-dot 1s infinite}
+#panel-hq .hq-sprite-status.online{background:#4797ff;animation:hq-pulse-dot 1s infinite}
 #panel-hq .hq-sprite-status.offline{background:#ef4444}
 
 #panel-hq .hq-agent-name{font-size:5.5px;text-align:center;max-width:62px;line-height:1.3}
@@ -781,7 +758,7 @@ td strong{font-weight:500}
 #panel-hq .hq-agent-tooltip{display:none;position:absolute;bottom:110%;left:50%;transform:translateX(-50%);background:#0a1a0a;padding:4px 6px;font-size:5px;white-space:nowrap;z-index:20;border:1px solid transparent}
 #panel-hq .hq-agent-wrap:hover .hq-agent-tooltip{display:block}
 
-#panel-hq .hq-wf-header{font-size:6px;color:#4ade8066;margin-bottom:12px;letter-spacing:1px}
+#panel-hq .hq-wf-header{font-size:6px;color:#4797ff66;margin-bottom:12px;letter-spacing:1px}
 #panel-hq .hq-wf-list{display:flex;flex-direction:column;gap:8px}
 #panel-hq .hq-wf-item{background:#070f07;padding:10px 12px;display:flex;justify-content:space-between;align-items:center}
 #panel-hq .hq-wf-left{display:flex;align-items:center;gap:10px}
@@ -789,9 +766,9 @@ td strong{font-weight:500}
 #panel-hq .hq-wf-name{font-size:6.5px;margin-bottom:3px}
 #panel-hq .hq-wf-tool{font-size:5px;color:#ffffff44}
 #panel-hq .hq-wf-tag{font-size:5px;padding:3px 6px}
-#panel-hq .hq-wf-tip{margin-top:14px;font-size:5px;color:#4ade8033;border-top:1px solid #4ade8011;padding-top:10px;line-height:2}
+#panel-hq .hq-wf-tip{margin-top:14px;font-size:5px;color:#4797ff33;border-top:1px solid #4797ff11;padding-top:10px;line-height:2}
 
-#panel-hq .hq-footer{margin-top:14px;text-align:center;font-size:4.5px;color:#4ade8022;letter-spacing:2px}
+#panel-hq .hq-footer{margin-top:14px;text-align:center;font-size:4.5px;color:#4797ff22;letter-spacing:2px}
 
 @keyframes hq-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 @keyframes hq-idle{0%,100%{transform:translateY(0) rotate(0deg)}33%{transform:translateY(-1px) rotate(-2deg)}66%{transform:translateY(-1px) rotate(2deg)}}
@@ -917,9 +894,6 @@ td strong{font-weight:500}
           <span class="sb-group-label">AI</span>
           <button class="navbtn" data-panel="hq" onclick="nav('hq',this)">
             <span class="ni">🏢</span>Agent Fleet
-          </button>
-          <button class="navbtn" data-panel="agents" onclick="nav('agents',this)">
-            <span class="ni">⬡</span>Agents Hub
           </button>
           <button class="navbtn" data-panel="chat" onclick="nav('chat',this)">
             <span class="ni">◉</span>Agent Chat
@@ -1454,74 +1428,12 @@ td strong{font-weight:500}
         <div class="chart-card mb4" style="margin-top:20px"><div class="chart-title">Daily Lead Volume</div><canvas id="chart-daily" height="130"></canvas></div>
       </div>
 
-      <!-- ══ AGENTS HUB ══ -->
-      <div class="panel" id="panel-agents">
-        <div class="ph">
-          <div class="ph-left"><h1>Agents Hub</h1><p>Edit agent configuration files</p></div>
-        </div>
-        <div class="agent-grid">
-          <div class="agent-card active-agent" onclick="selectAgent('marketing',this)">
-            <div class="agent-icon">MKT</div>
-            <div class="agent-name">Marketing</div><div class="agent-role">Campaigns & CPL</div>
-            <div class="row ac gap6" style="margin-top:9px"><div class="adot"></div><span class="agent-stxt">Active</span></div>
-          </div>
-          <div class="agent-card" onclick="selectAgent('finance',this)">
-            <div class="agent-icon">FIN</div>
-            <div class="agent-name">Finance</div><div class="agent-role">P&L & Revenue</div>
-            <div class="row ac gap6" style="margin-top:9px"><div class="adot"></div><span class="agent-stxt">Active</span></div>
-          </div>
-          <div class="agent-card" onclick="selectAgent('operations',this)">
-            <div class="agent-icon">OPS</div>
-            <div class="agent-name">Operations</div><div class="agent-role">Lead Flow & QA</div>
-            <div class="row ac gap6" style="margin-top:9px"><div class="adot"></div><span class="agent-stxt">Active</span></div>
-          </div>
-          <div class="agent-card" onclick="selectAgent('strategy',this)">
-            <div class="agent-icon">STR</div>
-            <div class="agent-name">Strategy</div><div class="agent-role">Growth Direction</div>
-            <div class="row ac gap6" style="margin-top:9px"><div class="adot"></div><span class="agent-stxt">Active</span></div>
-          </div>
-          <div class="agent-card" onclick="selectAgent('sales',this)">
-            <div class="agent-icon">SLS</div>
-            <div class="agent-name">Sales</div><div class="agent-role">Pipeline & Lead Priority</div>
-            <div class="row ac gap6" style="margin-top:9px"><div class="adot"></div><span class="agent-stxt">Active</span></div>
-          </div>
-        </div>
-        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:14px">
-          <div class="row-btw mb3">
-            <div>
-              <div style="font-family:var(--display);font-size:14px;font-weight:600" id="sel-agent-name">Marketing Agent</div>
-              <div style="font-family:var(--mono);font-size:9.5px;color:var(--ink3);margin-top:3px;letter-spacing:.04em" id="sel-agent-role">Campaigns & CPL Optimisation</div>
-            </div>
-            <div class="row gap6">
-              <button class="btn btn-sm" onclick="loadAgentFile()">↻ Reload</button>
-              <button class="btn btn-p btn-sm" onclick="saveAgentFile()">Save file</button>
-            </div>
-          </div>
-          <div class="md-layout">
-            <div class="md-files">
-              <div style="font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px">Files</div>
-              <div class="md-file active" onclick="switchMd('agents.md',this)">agents.md</div>
-              <div class="md-file" onclick="switchMd('soul.md',this)">soul.md</div>
-              <div class="md-file" onclick="switchMd('user.md',this)">user.md</div>
-              <div class="md-file" onclick="switchMd('tools.md',this)">tools.md</div>
-              <div class="md-file" onclick="switchMd('__identity__.md',this)">__identity__.md</div>
-            </div>
-            <div class="md-box">
-              <div class="md-topbar">
-                <span class="md-fname" id="md-filename">marketing/agents.md</span>
-                <span style="font-family:var(--mono);font-size:9px;color:var(--ink3)">Supabase · agent_files</span>
-              </div>
-              <textarea class="md-ta" id="md-content" placeholder="Loading from Supabase..."></textarea>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- ══ AGENT CHAT ══ -->
       <div class="panel" id="panel-chat">
         <div class="ph">
-          <div class="ph-left"><h1>Agent Chat</h1><p>Persistent memory · live context</p></div>
+          <div class="ph-left"><h1>Agent Chat</h1><p>Persistent memory · live context · config files</p></div>
           <div class="ph-right">
+            <button class="btn btn-sm" onclick="toggleChatConfig()" id="chat-config-btn">⬡ Config files</button>
             <button class="btn btn-sm btn-red" onclick="clearChatMemory()">Clear memory</button>
           </div>
         </div>
@@ -1588,6 +1500,35 @@ td strong{font-weight:500}
             </div>
           </div>
         </div>
+        <div id="chat-config-panel" style="display:none;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:14px;margin-top:10px">
+          <div class="row-btw mb3">
+            <div>
+              <div style="font-family:var(--display);font-size:14px;font-weight:600" id="sel-agent-name">Marketing Agent</div>
+              <div style="font-family:var(--mono);font-size:9.5px;color:var(--ink3);margin-top:3px;letter-spacing:.04em" id="sel-agent-role">Campaigns & CPL Optimisation</div>
+            </div>
+            <div class="row gap6">
+              <button class="btn btn-sm" onclick="loadAgentFile()">↻ Reload</button>
+              <button class="btn btn-p btn-sm" onclick="saveAgentFile()">Save file</button>
+            </div>
+          </div>
+          <div class="md-layout">
+            <div class="md-files">
+              <div style="font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px">Files</div>
+              <div class="md-file active" onclick="switchMd('agents.md',this)">agents.md</div>
+              <div class="md-file" onclick="switchMd('soul.md',this)">soul.md</div>
+              <div class="md-file" onclick="switchMd('user.md',this)">user.md</div>
+              <div class="md-file" onclick="switchMd('tools.md',this)">tools.md</div>
+              <div class="md-file" onclick="switchMd('__identity__.md',this)">__identity__.md</div>
+            </div>
+            <div class="md-box">
+              <div class="md-topbar">
+                <span class="md-fname" id="md-filename">marketing/agents.md</span>
+                <span style="font-family:var(--mono);font-size:9px;color:var(--ink3)">Supabase · agent_files</span>
+              </div>
+              <textarea class="md-ta" id="md-content" placeholder="Loading from Supabase..."></textarea>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ══ HQ FLEET ══ -->
@@ -1606,9 +1547,9 @@ td strong{font-weight:500}
         </div>
 
         <div id="hq-stats">
-          <div class="hq-stat-card" style="border-color:#4ade8033">
-            <div class="hq-stat-label" style="color:#4ade80">MRR</div>
-            <div class="hq-stat-value" id="hq-stat-mrr" style="color:#4ade80;text-shadow:0 0 10px #4ade80">$0</div>
+          <div class="hq-stat-card" style="border-color:#4797ff33">
+            <div class="hq-stat-label" style="color:#4797ff">MRR</div>
+            <div class="hq-stat-value" id="hq-stat-mrr" style="color:#4797ff;text-shadow:0 0 10px #4797ff">$0</div>
           </div>
           <div class="hq-stat-card" style="border-color:#f472b833">
             <div class="hq-stat-label" style="color:#f472b8">LEADS</div>
@@ -1837,7 +1778,6 @@ td strong{font-weight:500}
     <button class="bnbtn" data-panel="finance" onclick="nav('finance',this)"><span class="bnbtn-icon">$</span><span class="bnbtn-lbl">Finance</span></button>
     <button class="bnbtn" data-panel="daily" onclick="nav('daily',this)"><span class="bnbtn-icon">≋</span><span class="bnbtn-lbl">Daily</span></button>
     <button class="bnbtn" data-panel="hq" onclick="nav('hq',this)"><span class="bnbtn-icon">🏢</span><span class="bnbtn-lbl">Fleet</span></button>
-    <button class="bnbtn" data-panel="agents" onclick="nav('agents',this)"><span class="bnbtn-icon">⬡</span><span class="bnbtn-lbl">Agents</span></button>
     <button class="bnbtn" data-panel="chat" onclick="nav('chat',this)"><span class="bnbtn-icon">◉</span><span class="bnbtn-lbl">Chat</span></button>
     <button class="bnbtn" data-panel="sales-agent" onclick="nav('sales-agent',this)"><span class="bnbtn-icon">⚑</span><span class="bnbtn-lbl">Sales AI</span></button>
     <button class="bnbtn" data-panel="files" onclick="nav('files',this)"><span class="bnbtn-icon">📄</span><span class="bnbtn-lbl">Files</span></button>
@@ -2843,7 +2783,6 @@ document.addEventListener('click', e => { if (e.target.classList.contains('overl
 
 async function loadAll() {
   await Promise.all([loadTasks(), loadEmails(), loadCRM(), loadPPL(), loadManaged(), loadFinance(), loadAgentConfig()]);
-  loadAgentFile();
   loadTaskLeadDropdowns();
   loadFileContent();
   populateMapClientDropdown();
@@ -5243,9 +5182,9 @@ let AGENT_CFG={}, DEFAULT_MD={};
 const HQ_ROOMS = [
   {
     name:'🏢 SALES',
-    bg:'#070f07', border:'#4ade80', label:'#4ade80',
+    bg:'#070f07', border:'#4797ff', label:'#4797ff',
     agents:[
-      {id:'prospector', name:'Prospector', role:'Outbound',  color:'#4ade80'},
+      {id:'prospector', name:'Prospector', role:'Outbound',  color:'#4797ff'},
       {id:'qualifier',  name:'Qualifier',  role:'Inbound',   color:'#a78bfa'},
       {id:'closer',     name:'Closer',     role:'Proposals', color:'#fb923c'},
     ]
@@ -5256,7 +5195,7 @@ const HQ_ROOMS = [
     agents:[
       {id:'builder',   name:'Builder',   role:'Onboarding',  color:'#38bdf8'},
       {id:'adbot',     name:'Adbot',     role:'Meta/Google', color:'#facc15'},
-      {id:'landingpg', name:'LandingPg', role:'Pages',       color:'#4ade80'},
+      {id:'landingpg', name:'LandingPg', role:'Pages',       color:'#4797ff'},
     ]
   },
   {
@@ -5265,15 +5204,15 @@ const HQ_ROOMS = [
     agents:[
       {id:'smsagent', name:'SMSAgent', role:'Respond',   color:'#f472b6'},
       {id:'voicebot', name:'VoiceBot', role:'Calls',     color:'#fb923c'},
-      {id:'quoter',   name:'Quoter',   role:'Quotes',    color:'#4ade80'},
+      {id:'quoter',   name:'Quoter',   role:'Quotes',    color:'#4797ff'},
       {id:'chaser',   name:'Chaser',   role:'Follow-up', color:'#a78bfa'},
     ]
   },
   {
     name:'🛡️ RETENTION',
-    bg:'#071410', border:'#34d399', label:'#34d399',
+    bg:'#071410', border:'#4797ff', label:'#4797ff',
     agents:[
-      {id:'pulsecheck', name:'PulseCheck', role:'Health',  color:'#34d399'},
+      {id:'pulsecheck', name:'PulseCheck', role:'Health',  color:'#4797ff'},
       {id:'churnbot',   name:'ChurnBot',   role:'At-risk', color:'#f87171'},
       {id:'reporter',   name:'Reporter',   role:'Reports', color:'#60a5fa'},
     ]
@@ -5292,9 +5231,9 @@ const HQ_ROOMS = [
 const HQ_WORKFLOWS = [
   {icon:'📥', name:'New Lead → SMS in 60s',   tool:'Make + Twilio',       room:'LEAD ENGINE', color:'#f472b6'},
   {icon:'🎙️', name:'Lead → Voice Call',        tool:'Make + Bland AI',     room:'LEAD ENGINE', color:'#fb923c'},
-  {icon:'📄', name:'Quote Drafter',            tool:'Make + Claude AI',    room:'LEAD ENGINE', color:'#4ade80'},
+  {icon:'📄', name:'Quote Drafter',            tool:'Make + Claude AI',    room:'LEAD ENGINE', color:'#4797ff'},
   {icon:'🔁', name:'Day 2/5/10 Follow-up',     tool:'Make + CRM',          room:'LEAD ENGINE', color:'#a78bfa'},
-  {icon:'🎯', name:'Inbound Lead → CRM',       tool:'Make + GoHighLevel',  room:'SALES',       color:'#4ade80'},
+  {icon:'🎯', name:'Inbound Lead → CRM',       tool:'Make + GoHighLevel',  room:'SALES',       color:'#4797ff'},
   {icon:'📊', name:'Daily Client Reports',     tool:'Make + Gmail',        room:'OPS',         color:'#60a5fa'},
   {icon:'⚠️', name:'Churn Risk Alert',         tool:'Make + Slack',        room:'RETENTION',   color:'#f87171'},
   {icon:'🏗️', name:'New Client Onboarding',    tool:'Make + Notion',       room:'DELIVERY',    color:'#38bdf8'},
@@ -5570,12 +5509,6 @@ async function loadAgentConfig() {
     if(data) data.forEach(r=>{DEFAULT_MD[r.filename]=r.content;});
   } catch(_){}
 }
-function selectAgent(name,el) {
-  document.querySelectorAll('.agent-card').forEach(c=>c.classList.remove('active-agent'));
-  el.classList.add('active-agent');curAgent=name;
-  const cfg=AGENT_CFG[name]||{name:name,role:''};setText('sel-agent-name',cfg.name);setText('sel-agent-role',cfg.role);
-  setText('md-filename',`${name}/${curMd}`);loadAgentFile();
-}
 function switchMd(filename,el) {
   document.querySelectorAll('.md-file').forEach(i=>i.classList.remove('active'));
   el.classList.add('active');curMd=filename;
@@ -5624,10 +5557,22 @@ async function clearChatMemory() {
 }
 function selectChat(name,el) {
   if (el) {document.querySelectorAll('.chat-item').forEach(i=>i.classList.remove('active'));el.classList.add('active');}
-  curChat=name;const p=PERSONAS[name]||{name:name,emoji:'?',intro:'Agent ready.'};
+  curChat=name;curAgent=name;const p=PERSONAS[name]||{name:name,emoji:'?',intro:'Agent ready.'};
   setText('chat-name',p.name+' Agent');
+  const cfg=AGENT_CFG[name]||{name:p.name+' Agent',role:''};
+  setText('sel-agent-name',cfg.name);setText('sel-agent-role',cfg.role);
+  setText('md-filename',`${name}/${curMd}`);
   const cm=$('chat-msgs'); cm.innerHTML=''; cm.appendChild(_buildMsg('agent',p.emoji,p.intro,null));
   chatHistory[name]=chatHistory[name]||[];loadChatMemory();
+  if ($('chat-config-panel')?.style.display==='block') loadAgentFile();
+}
+
+function toggleChatConfig() {
+  const el=$('chat-config-panel'); if (!el) return;
+  const open=el.style.display!=='block';
+  el.style.display=open?'block':'none';
+  const btn=$('chat-config-btn'); if (btn) btn.textContent=open?'⬡ Hide config':'⬡ Config files';
+  if (open) loadAgentFile();
 }
 
 // Context building moved server-side to anthropic-proxy edge function
