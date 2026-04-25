@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>QL · Mission Control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co https://*.googleapis.com https://raw.githubusercontent.com https://*.twilio.com wss://*.twilio.com https://graph.facebook.com 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://maps.googleapis.com https://sdk.twilio.com; img-src * data: blob:;">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -718,35 +718,91 @@ td strong{font-weight:500}
 }
 @media(max-width:400px){.kg.c4,.kg.c3,.kg.c2{grid-template-columns:1fr}}
 
-/* ══ HQ FLEET ══ */
-.hq-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-.hq-room{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:14px 14px 12px}
-.hq-room-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.hq-room-name{font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:-.2px}
-.hq-room-count{font-family:var(--mono);font-size:9px;color:var(--ink3)}
-.hq-agents{display:flex;flex-wrap:wrap;gap:6px}
-.hq-agent{display:flex;align-items:center;gap:7px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:7px 10px;cursor:pointer;transition:border-color .15s,background .15s;flex:1;min-width:110px}
-.hq-agent:hover{border-color:var(--bd2);background:var(--s3)}
-.hq-agent.hq-active{border-color:var(--acc);background:var(--acc-dim)}
-.hq-agent-dot{width:7px;height:7px;border-radius:50%;background:var(--bd3);flex-shrink:0;transition:background .3s}
-.hq-agent-dot.live{background:var(--grn);box-shadow:0 0 5px var(--grn)}
-.hq-agent-dot.busy{background:var(--amb);box-shadow:0 0 5px var(--amb)}
-.hq-agent-info{min-width:0}
-.hq-agent-name{font-family:var(--display);font-size:11.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hq-agent-role{font-family:var(--mono);font-size:8.5px;color:var(--ink3);margin-top:1px}
-.hq-agent-stat{font-family:var(--mono);font-size:8px;color:var(--ink3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
-.hq-workflows{margin-top:4px}
-.hq-wf-item{display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:10px 13px;margin-bottom:6px}
-.hq-wf-icon{font-size:16px;flex-shrink:0}
-.hq-wf-name{font-family:var(--display);font-size:12px;font-weight:600;color:var(--ink)}
-.hq-wf-tool{font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:2px}
-.hq-wf-tag{margin-left:auto;font-family:var(--mono);font-size:8.5px;color:var(--ink3);background:var(--s3);border:1px solid var(--bd2);border-radius:var(--r);padding:3px 7px;flex-shrink:0}
-.hq-tabs{display:flex;gap:6px;margin-bottom:12px}
-.hq-tab{font-family:var(--mono);font-size:9.5px;font-weight:500;padding:5px 12px;border:1px solid var(--bd2);border-radius:var(--r);background:var(--s1);color:var(--ink3);cursor:pointer;transition:all .15s;letter-spacing:.04em}
-.hq-tab.active{background:var(--acc);border-color:var(--acc);color:#fff}
-.hq-tab-panel{display:none}.hq-tab-panel.active{display:block}
-@media(max-width:960px){.hq-grid{grid-template-columns:1fr}}
-@media(max-width:700px){.hq-agent{min-width:calc(50% - 3px)}}
+/* ══ HQ FLEET — pixel art (baked in from bake-in.html) ══ */
+#panel-hq.panel{background:#030a03;color:#fff;font-family:'Press Start 2P',monospace;padding:16px;border-radius:var(--r2);border:1px solid #4ade8022;position:relative;overflow:hidden}
+#panel-hq *,#panel-hq *::before,#panel-hq *::after{box-sizing:border-box;font-family:'Press Start 2P',monospace}
+#panel-hq .ph{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #4ade8022;padding-bottom:14px;margin-bottom:14px}
+#panel-hq .ph-left h1{font-family:'Press Start 2P',monospace;font-size:11px;color:#4ade80;text-shadow:0 0 16px #4ade80;letter-spacing:2px;font-weight:400;line-height:1}
+#panel-hq .ph-left p{font-family:'Press Start 2P',monospace;font-size:5px;color:#4ade8055;margin-top:6px;letter-spacing:1px}
+#panel-hq .ph-right{text-align:right}
+#panel-hq #hq-clock-line{font-size:7px;color:#4ade80;text-shadow:0 0 6px #4ade80;letter-spacing:1px}
+#panel-hq #hq-active-line{font-size:5px;color:#4ade8044;margin-top:4px;letter-spacing:1px}
+#panel-hq #hq-blink{animation:hq-blink 1s infinite;display:inline-block;margin-left:4px;color:#4ade80}
+#panel-hq .btn{font-family:'Press Start 2P',monospace;font-size:6px;letter-spacing:1px;background:#070f07;color:#4ade80;border:1px solid #4ade8055;padding:6px 10px;cursor:pointer}
+#panel-hq .btn:hover{background:#4ade8011}
+
+#panel-hq #hq-crt-scan{position:absolute;top:0;left:0;right:0;height:50px;background:linear-gradient(transparent,rgba(74,222,128,0.035),transparent);animation:hq-scan 5s linear infinite;pointer-events:none;z-index:5}
+
+#panel-hq #hq-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px;position:relative;z-index:2}
+#panel-hq .hq-stat-card{background:#070f07;padding:7px 8px;text-align:center;border:1px solid transparent}
+#panel-hq .hq-stat-label{font-size:4.5px;margin-bottom:3px;letter-spacing:1px;opacity:.7}
+#panel-hq .hq-stat-value{font-size:9px}
+
+#panel-hq .hq-tabs{display:flex;gap:6px;margin-bottom:14px;position:relative;z-index:2}
+#panel-hq .hq-tab{font-family:'Press Start 2P',monospace;font-size:6px;padding:6px 10px;cursor:pointer;border:none;letter-spacing:.5px;transition:all .2s;background:#070f07;color:#4ade8088;border-bottom:2px solid #4ade8033;border-radius:0}
+#panel-hq .hq-tab.active{background:#4ade80;color:#030a03;border-bottom-color:#4ade80}
+
+#panel-hq .hq-tab-panel{display:none;position:relative;z-index:2}
+#panel-hq .hq-tab-panel.active{display:block}
+
+#panel-hq .hq-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+#panel-hq .hq-room{position:relative;padding:10px 12px;min-height:155px;overflow:hidden;border:2px solid transparent}
+#panel-hq .hq-room-grid-bg{position:absolute;inset:0;pointer-events:none;background-size:18px 18px}
+#panel-hq .hq-room-scanlines{position:absolute;inset:0;pointer-events:none;z-index:8;background-image:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.07) 2px,rgba(0,0,0,.07) 4px)}
+#panel-hq .hq-room-header{display:flex;justify-content:space-between;margin-bottom:8px;position:relative;z-index:2}
+#panel-hq .hq-room-name{font-size:6.5px;letter-spacing:.5px}
+#panel-hq .hq-room-count{font-size:5px;opacity:.7}
+#panel-hq .hq-agents{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding-top:4px;position:relative;z-index:2}
+
+#panel-hq .hq-agent-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;position:relative;transition:transform .4s ease}
+#panel-hq .hq-agent-sprite{width:26px;height:39px;position:relative}
+#panel-hq .hq-agent-sprite.busy{animation:hq-bob .7s ease-in-out infinite}
+#panel-hq .hq-agent-sprite.idle-anim{animation:hq-idle 2.5s ease-in-out infinite}
+
+#panel-hq .hq-sprite-head{position:absolute;top:0;left:50%;transform:translateX(-50%);width:15px;height:15px;background:#f5c6a0;border:2px solid #111}
+#panel-hq .hq-sprite-eye-l,#panel-hq .hq-sprite-eye-r{position:absolute;top:4px;width:2px;height:2px;background:#111}
+#panel-hq .hq-sprite-eye-l{left:3px}
+#panel-hq .hq-sprite-eye-r{right:3px}
+#panel-hq .hq-sprite-body{position:absolute;top:16px;left:50%;transform:translateX(-50%);width:18px;height:13px;border:2px solid #111}
+#panel-hq .hq-sprite-arms{position:absolute;top:16px;left:50%;transform:translateX(-50%);width:25px;height:4px;border:2px solid #111}
+#panel-hq .hq-sprite-legs{position:absolute;top:29px;left:50%;transform:translateX(-50%);display:flex;gap:2px}
+#panel-hq .hq-sprite-leg{width:6px;height:9px;background:#1e293b;border:2px solid #111;transition:transform .18s}
+#panel-hq .hq-sprite-leg.l.walking{animation:hq-leg-l .35s steps(1) infinite}
+#panel-hq .hq-sprite-leg.r.walking{animation:hq-leg-r .35s steps(1) infinite}
+
+#panel-hq .hq-sprite-status{position:absolute;top:-3px;right:-3px;width:7px;height:7px;border:1px solid #000;z-index:5}
+#panel-hq .hq-sprite-status.online{background:#22c55e;animation:hq-pulse-dot 1s infinite}
+#panel-hq .hq-sprite-status.offline{background:#ef4444}
+
+#panel-hq .hq-agent-name{font-size:5.5px;text-align:center;max-width:62px;line-height:1.3}
+#panel-hq .hq-agent-role{font-size:4px;color:#ffffff44;text-align:center}
+
+#panel-hq .hq-agent-tooltip{display:none;position:absolute;bottom:110%;left:50%;transform:translateX(-50%);background:#0a1a0a;padding:4px 6px;font-size:5px;white-space:nowrap;z-index:20;border:1px solid transparent}
+#panel-hq .hq-agent-wrap:hover .hq-agent-tooltip{display:block}
+
+#panel-hq .hq-wf-header{font-size:6px;color:#4ade8066;margin-bottom:12px;letter-spacing:1px}
+#panel-hq .hq-wf-list{display:flex;flex-direction:column;gap:8px}
+#panel-hq .hq-wf-item{background:#070f07;padding:10px 12px;display:flex;justify-content:space-between;align-items:center}
+#panel-hq .hq-wf-left{display:flex;align-items:center;gap:10px}
+#panel-hq .hq-wf-icon{font-size:14px}
+#panel-hq .hq-wf-name{font-size:6.5px;margin-bottom:3px}
+#panel-hq .hq-wf-tool{font-size:5px;color:#ffffff44}
+#panel-hq .hq-wf-tag{font-size:5px;padding:3px 6px}
+#panel-hq .hq-wf-tip{margin-top:14px;font-size:5px;color:#4ade8033;border-top:1px solid #4ade8011;padding-top:10px;line-height:2}
+
+#panel-hq .hq-footer{margin-top:14px;text-align:center;font-size:4.5px;color:#4ade8022;letter-spacing:2px}
+
+@keyframes hq-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes hq-idle{0%,100%{transform:translateY(0) rotate(0deg)}33%{transform:translateY(-1px) rotate(-2deg)}66%{transform:translateY(-1px) rotate(2deg)}}
+@keyframes hq-pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.7)}}
+@keyframes hq-scan{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
+@keyframes hq-blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes hq-leg-l{0%{transform:rotate(-10deg)}50%{transform:rotate(10deg)}}
+@keyframes hq-leg-r{0%{transform:rotate(10deg)}50%{transform:rotate(-10deg)}}
+
+@media(max-width:960px){#panel-hq .hq-grid{grid-template-columns:1fr}}
+@media(max-width:700px){#panel-hq #hq-stats{grid-template-columns:repeat(2,1fr)}}
 .chat-group-label{font-family:var(--mono);font-size:8px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.12em;padding:8px 12px 4px;opacity:.7}
 /* ══ LEAD DISTRIBUTION ══ */
 .ld-client-grid{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px}
@@ -1536,22 +1592,52 @@ td strong{font-weight:500}
 
       <!-- ══ HQ FLEET ══ -->
       <div class="panel" id="panel-hq">
+        <div id="hq-crt-scan"></div>
         <div class="ph">
-          <div class="ph-left"><h1>Agent Fleet</h1><p>Live status · click any agent to open chat</p></div>
+          <div class="ph-left">
+            <h1>◆ QUOTELEADS HQ</h1>
+            <p>AI AGENT FLEET · LIVE DASHBOARD</p>
+          </div>
           <div class="ph-right">
-            <button class="btn btn-sm" onclick="refreshHQStatus()">↻ Refresh</button>
+            <div id="hq-clock-line"><span id="hq-clock">00:00:00</span><span id="hq-blink">●</span></div>
+            <div id="hq-active-line">-- / -- ACTIVE</div>
+            <button class="btn" style="margin-top:6px" onclick="refreshHQStatus()">↻ REFRESH</button>
           </div>
         </div>
+
+        <div id="hq-stats">
+          <div class="hq-stat-card" style="border-color:#4ade8033">
+            <div class="hq-stat-label" style="color:#4ade80">MRR</div>
+            <div class="hq-stat-value" id="hq-stat-mrr" style="color:#4ade80;text-shadow:0 0 10px #4ade80">$0</div>
+          </div>
+          <div class="hq-stat-card" style="border-color:#f472b833">
+            <div class="hq-stat-label" style="color:#f472b8">LEADS</div>
+            <div class="hq-stat-value" id="hq-stat-leads" style="color:#f472b8;text-shadow:0 0 10px #f472b8">0</div>
+          </div>
+          <div class="hq-stat-card" style="border-color:#a78bfa33">
+            <div class="hq-stat-label" style="color:#a78bfa">AGENTS</div>
+            <div class="hq-stat-value" id="hq-stat-agents" style="color:#a78bfa;text-shadow:0 0 10px #a78bfa">--/--</div>
+          </div>
+          <div class="hq-stat-card" style="border-color:#38bdf833">
+            <div class="hq-stat-label" style="color:#38bdf8">CLIENTS</div>
+            <div class="hq-stat-value" id="hq-stat-clients" style="color:#38bdf8;text-shadow:0 0 10px #38bdf8">0</div>
+          </div>
+        </div>
+
         <div class="hq-tabs">
-          <button class="hq-tab active" onclick="switchHQTab('map',this)">🏢 Fleet Map</button>
-          <button class="hq-tab" onclick="switchHQTab('workflows',this)">⚡ Workflows</button>
+          <button class="hq-tab active" onclick="switchHQTab('map',this)">🏰 HQ MAP</button>
+          <button class="hq-tab" onclick="switchHQTab('workflows',this)">⚡ MAKE WORKFLOWS</button>
         </div>
         <div class="hq-tab-panel active" id="hq-map">
           <div class="hq-grid" id="hq-rooms-grid"><!-- populated by renderHQ() --></div>
         </div>
         <div class="hq-tab-panel" id="hq-workflows">
-          <div id="hq-workflows-list"><!-- populated by buildHQWorkflows() --></div>
+          <div class="hq-wf-header">CONNECT THESE IN MAKE.COM → POWER YOUR AGENTS</div>
+          <div class="hq-wf-list" id="hq-workflows-list"><!-- populated by buildHQWorkflows() --></div>
+          <div class="hq-wf-tip">TIP: START WITH LEAD ENGINE WORKFLOWS FIRST → THEN RETENTION → THEN SALES</div>
         </div>
+
+        <div class="hq-footer">QUOTELEADS · ALL SYSTEMS OPERATIONAL · AU</div>
       </div>
 
       <!-- ══ SALES AGENT ══ -->
@@ -5153,110 +5239,212 @@ function renderDailyChart(leads) {
 }
 
 let AGENT_CFG={}, DEFAULT_MD={};
-// ─── HQ FLEET ────────────────────────────────────────────────────────────────
+// ─── HQ FLEET (pixel art — baked in from bake-in.html) ──────────────────────
 const HQ_ROOMS = [
-  { name:'🏢 Sales', border:'var(--grn)', agents:[
-    {id:'prospector', name:'Prospector', role:'Outbound'},
-    {id:'qualifier',  name:'Qualifier',  role:'Inbound'},
-    {id:'closer',     name:'Closer',     role:'Proposals'},
-  ]},
-  { name:'⚙️ Delivery', border:'var(--acc)', agents:[
-    {id:'builder',   name:'Builder',   role:'Onboarding'},
-    {id:'adbot',     name:'Adbot',     role:'Meta/Google'},
-    {id:'landingpg', name:'LandingPg', role:'Pages'},
-  ]},
-  { name:'📲 Lead Engine', border:'var(--red)', agents:[
-    {id:'smsagent', name:'SMSAgent', role:'Respond'},
-    {id:'voicebot', name:'VoiceBot', role:'Calls'},
-    {id:'quoter',   name:'Quoter',   role:'Quotes'},
-    {id:'chaser',   name:'Chaser',   role:'Follow-up'},
-  ]},
-  { name:'🛡️ Retention', border:'var(--grn)', agents:[
-    {id:'pulsecheck', name:'PulseCheck', role:'Health'},
-    {id:'churnbot',   name:'ChurnBot',   role:'At-risk'},
-    {id:'reporter',   name:'Reporter',   role:'Reports'},
-  ]},
-  { name:'🧠 Ops', border:'var(--amb)', agents:[
-    {id:'inbox',      name:'Inbox',      role:'Comms'},
-    {id:'bookkeeper', name:'Bookkeeper', role:'Finance'},
-    {id:'datasyncer', name:'DataSyncer', role:'CRM'},
-  ]},
+  {
+    name:'🏢 SALES',
+    bg:'#070f07', border:'#4ade80', label:'#4ade80',
+    agents:[
+      {id:'prospector', name:'Prospector', role:'Outbound',  color:'#4ade80'},
+      {id:'qualifier',  name:'Qualifier',  role:'Inbound',   color:'#a78bfa'},
+      {id:'closer',     name:'Closer',     role:'Proposals', color:'#fb923c'},
+    ]
+  },
+  {
+    name:'⚙️ DELIVERY',
+    bg:'#070a14', border:'#38bdf8', label:'#60a5fa',
+    agents:[
+      {id:'builder',   name:'Builder',   role:'Onboarding',  color:'#38bdf8'},
+      {id:'adbot',     name:'Adbot',     role:'Meta/Google', color:'#facc15'},
+      {id:'landingpg', name:'LandingPg', role:'Pages',       color:'#4ade80'},
+    ]
+  },
+  {
+    name:'📲 LEAD ENGINE',
+    bg:'#140714', border:'#f472b6', label:'#f472b6',
+    agents:[
+      {id:'smsagent', name:'SMSAgent', role:'Respond',   color:'#f472b6'},
+      {id:'voicebot', name:'VoiceBot', role:'Calls',     color:'#fb923c'},
+      {id:'quoter',   name:'Quoter',   role:'Quotes',    color:'#4ade80'},
+      {id:'chaser',   name:'Chaser',   role:'Follow-up', color:'#a78bfa'},
+    ]
+  },
+  {
+    name:'🛡️ RETENTION',
+    bg:'#071410', border:'#34d399', label:'#34d399',
+    agents:[
+      {id:'pulsecheck', name:'PulseCheck', role:'Health',  color:'#34d399'},
+      {id:'churnbot',   name:'ChurnBot',   role:'At-risk', color:'#f87171'},
+      {id:'reporter',   name:'Reporter',   role:'Reports', color:'#60a5fa'},
+    ]
+  },
+  {
+    name:'🧠 OPS',
+    bg:'#0f0714', border:'#a78bfa', label:'#a78bfa',
+    agents:[
+      {id:'inbox',      name:'Inbox',      role:'Comms',   color:'#facc15'},
+      {id:'bookkeeper', name:'Bookkeeper', role:'Finance', color:'#a78bfa'},
+      {id:'datasyncer', name:'DataSyncer', role:'CRM',     color:'#38bdf8'},
+    ]
+  },
 ];
 
 const HQ_WORKFLOWS = [
-  {icon:'📥', name:'New Lead → SMS in 60s',   tool:'Make + Twilio',       room:'LEAD ENGINE'},
-  {icon:'🎙️', name:'Lead → Voice Call',        tool:'Make + Bland AI',     room:'LEAD ENGINE'},
-  {icon:'📄', name:'Quote Drafter',            tool:'Make + Claude AI',    room:'LEAD ENGINE'},
-  {icon:'🔁', name:'Day 2/5/10 Follow-up',     tool:'Make + CRM',          room:'LEAD ENGINE'},
-  {icon:'🎯', name:'Inbound Lead → CRM',       tool:'Make + GoHighLevel',  room:'SALES'},
-  {icon:'📊', name:'Daily Client Reports',     tool:'Make + Gmail',        room:'OPS'},
-  {icon:'⚠️', name:'Churn Risk Alert',         tool:'Make + Slack',        room:'RETENTION'},
-  {icon:'🏗️', name:'New Client Onboarding',    tool:'Make + Notion',       room:'DELIVERY'},
+  {icon:'📥', name:'New Lead → SMS in 60s',   tool:'Make + Twilio',       room:'LEAD ENGINE', color:'#f472b6'},
+  {icon:'🎙️', name:'Lead → Voice Call',        tool:'Make + Bland AI',     room:'LEAD ENGINE', color:'#fb923c'},
+  {icon:'📄', name:'Quote Drafter',            tool:'Make + Claude AI',    room:'LEAD ENGINE', color:'#4ade80'},
+  {icon:'🔁', name:'Day 2/5/10 Follow-up',     tool:'Make + CRM',          room:'LEAD ENGINE', color:'#a78bfa'},
+  {icon:'🎯', name:'Inbound Lead → CRM',       tool:'Make + GoHighLevel',  room:'SALES',       color:'#4ade80'},
+  {icon:'📊', name:'Daily Client Reports',     tool:'Make + Gmail',        room:'OPS',         color:'#60a5fa'},
+  {icon:'⚠️', name:'Churn Risk Alert',         tool:'Make + Slack',        room:'RETENTION',   color:'#f87171'},
+  {icon:'🏗️', name:'New Client Onboarding',    tool:'Make + Notion',       room:'DELIVERY',    color:'#38bdf8'},
 ];
 
-let hqStatuses = {}; // agentId → {busy, stat}
+let hqStatuses = {}; // agentId → {busy, live, stat}
+let _hqIdleJitterTimers = []; // track per-render setIntervals so we can clear on re-render
+
+function _hqRenderAgent(agent) {
+  const s = hqStatuses[agent.id] || {};
+  const busy = !!s.busy;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'hq-agent-wrap';
+  wrap.dataset.agentId = agent.id;
+  wrap.onclick = () => openAgentChat(agent.id);
+
+  if (s.stat) {
+    const tip = document.createElement('div');
+    tip.className = 'hq-agent-tooltip';
+    tip.style.borderColor = agent.color;
+    tip.style.color = agent.color;
+    tip.style.boxShadow = `0 0 10px ${agent.color}44`;
+    tip.textContent = s.stat;
+    wrap.appendChild(tip);
+  }
+
+  const sprite = document.createElement('div');
+  sprite.className = `hq-agent-sprite ${busy ? 'busy' : 'idle-anim'}`;
+
+  const dot = document.createElement('div');
+  dot.className = `hq-sprite-status ${busy ? 'online' : 'offline'}`;
+  sprite.appendChild(dot);
+
+  const head = document.createElement('div');
+  head.className = 'hq-sprite-head';
+  const eyeL = document.createElement('div'); eyeL.className = 'hq-sprite-eye-l';
+  const eyeR = document.createElement('div'); eyeR.className = 'hq-sprite-eye-r';
+  head.appendChild(eyeL); head.appendChild(eyeR);
+  sprite.appendChild(head);
+
+  const body = document.createElement('div');
+  body.className = 'hq-sprite-body';
+  body.style.background = agent.color;
+  sprite.appendChild(body);
+
+  const arms = document.createElement('div');
+  arms.className = 'hq-sprite-arms';
+  arms.style.background = agent.color;
+  sprite.appendChild(arms);
+
+  const legs = document.createElement('div');
+  legs.className = 'hq-sprite-legs';
+  ['l','r'].forEach(side => {
+    const leg = document.createElement('div');
+    leg.className = `hq-sprite-leg ${side}${busy ? ' walking' : ''}`;
+    legs.appendChild(leg);
+  });
+  sprite.appendChild(legs);
+
+  wrap.appendChild(sprite);
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'hq-agent-name';
+  nameEl.style.color = agent.color;
+  nameEl.style.textShadow = `0 0 6px ${agent.color}`;
+  nameEl.textContent = agent.name;
+  wrap.appendChild(nameEl);
+
+  const roleEl = document.createElement('div');
+  roleEl.className = 'hq-agent-role';
+  roleEl.textContent = agent.role;
+  wrap.appendChild(roleEl);
+
+  // Idle jitter for offline agents
+  if (!busy) {
+    const t = setInterval(() => {
+      if (!wrap.isConnected) { clearInterval(t); return; }
+      const x = (Math.random() - 0.5) * 5;
+      const y = (Math.random() - 0.5) * 3;
+      wrap.style.transform = `translate(${x}px,${y}px)`;
+    }, 500 + Math.random() * 300);
+    _hqIdleJitterTimers.push(t);
+  }
+
+  return wrap;
+}
+
+function _hqRenderRoom(room) {
+  const busyCount = room.agents.filter(a => hqStatuses[a.id]?.busy).length;
+
+  const el = document.createElement('div');
+  el.className = 'hq-room';
+  el.style.background = room.bg;
+  el.style.borderColor = room.border;
+  el.style.boxShadow = `0 0 20px ${room.border}22, inset 0 0 40px rgba(0,0,0,0.6)`;
+
+  const gridBg = document.createElement('div');
+  gridBg.className = 'hq-room-grid-bg';
+  gridBg.style.backgroundImage = `linear-gradient(${room.border}0d 1px,transparent 1px),linear-gradient(90deg,${room.border}0d 1px,transparent 1px)`;
+  el.appendChild(gridBg);
+
+  const sl = document.createElement('div');
+  sl.className = 'hq-room-scanlines';
+  el.appendChild(sl);
+
+  const header = document.createElement('div');
+  header.className = 'hq-room-header';
+  const rName = document.createElement('span');
+  rName.className = 'hq-room-name';
+  rName.style.color = room.label;
+  rName.style.textShadow = `0 0 8px ${room.label}`;
+  rName.textContent = room.name;
+  const rCount = document.createElement('span');
+  rCount.className = 'hq-room-count';
+  rCount.style.color = room.label;
+  rCount.textContent = `${busyCount}/${room.agents.length}`;
+  header.appendChild(rName);
+  header.appendChild(rCount);
+  el.appendChild(header);
+
+  const agentsWrap = document.createElement('div');
+  agentsWrap.className = 'hq-agents';
+  room.agents.forEach(a => agentsWrap.appendChild(_hqRenderAgent(a)));
+  el.appendChild(agentsWrap);
+
+  return el;
+}
 
 function renderHQ() {
   const grid = document.getElementById('hq-rooms-grid');
   if (!grid) return;
+  // Clear previous idle-jitter timers before re-render
+  _hqIdleJitterTimers.forEach(t => clearInterval(t));
+  _hqIdleJitterTimers = [];
   grid.innerHTML = '';
-  HQ_ROOMS.forEach(room => {
-    const roomEl = document.createElement('div');
-    roomEl.className = 'hq-room';
-    roomEl.style.borderTopColor = room.border;
-    roomEl.style.borderTopWidth = '2px';
+  HQ_ROOMS.forEach(r => grid.appendChild(_hqRenderRoom(r)));
+  _hqUpdateActive();
+}
 
-    const header = document.createElement('div');
-    header.className = 'hq-room-header';
-    const nameEl = document.createElement('span');
-    nameEl.className = 'hq-room-name';
-    nameEl.textContent = room.name;
-    const countEl = document.createElement('span');
-    countEl.className = 'hq-room-count';
-    const busyCount = room.agents.filter(a => hqStatuses[a.id]?.busy).length;
-    countEl.textContent = `${busyCount}/${room.agents.length} active`;
-    header.appendChild(nameEl);
-    header.appendChild(countEl);
-    roomEl.appendChild(header);
-
-    const agentsWrap = document.createElement('div');
-    agentsWrap.className = 'hq-agents';
-
-    room.agents.forEach(agent => {
-      const s = hqStatuses[agent.id] || {};
-      const el = document.createElement('div');
-      el.className = 'hq-agent' + (s.busy ? ' hq-active' : '');
-      el.dataset.agentId = agent.id;
-      el.onclick = () => openAgentChat(agent.id);
-
-      const dot = document.createElement('div');
-      dot.className = 'hq-agent-dot' + (s.busy ? ' busy' : '') + (s.live && !s.busy ? ' live' : '');
-
-      const info = document.createElement('div');
-      info.className = 'hq-agent-info';
-      const nameD = document.createElement('div');
-      nameD.className = 'hq-agent-name';
-      nameD.textContent = agent.name;
-      const roleD = document.createElement('div');
-      roleD.className = 'hq-agent-role';
-      roleD.textContent = agent.role;
-      info.appendChild(nameD);
-      info.appendChild(roleD);
-      if (s.stat) {
-        const statD = document.createElement('div');
-        statD.className = 'hq-agent-stat';
-        statD.textContent = s.stat;
-        info.appendChild(statD);
-      }
-
-      el.appendChild(dot);
-      el.appendChild(info);
-      agentsWrap.appendChild(el);
-    });
-
-    roomEl.appendChild(agentsWrap);
-    grid.appendChild(roomEl);
-  });
+function _hqUpdateActive() {
+  let busy = 0, total = 0;
+  HQ_ROOMS.forEach(r => r.agents.forEach(a => {
+    total++;
+    if (hqStatuses[a.id]?.busy) busy++;
+  }));
+  const ag = document.getElementById('hq-stat-agents');
+  if (ag) ag.textContent = `${busy}/${total}`;
+  const al = document.getElementById('hq-active-line');
+  if (al) al.textContent = `${busy} / ${total} ACTIVE`;
 }
 
 function buildHQWorkflows() {
@@ -5266,14 +5454,46 @@ function buildHQWorkflows() {
   HQ_WORKFLOWS.forEach(w => {
     const item = document.createElement('div');
     item.className = 'hq-wf-item';
-    item.innerHTML = `<span class="hq-wf-icon">${w.icon}</span><div><div class="hq-wf-name">${w.name}</div><div class="hq-wf-tool">${w.tool}</div></div><span class="hq-wf-tag">${w.room}</span>`;
+    item.style.borderLeft = `3px solid ${w.color}44`;
+    item.style.boxShadow = `0 0 8px ${w.color}11`;
+
+    const left = document.createElement('div');
+    left.className = 'hq-wf-left';
+
+    const icon = document.createElement('span');
+    icon.className = 'hq-wf-icon';
+    icon.textContent = w.icon;
+
+    const info = document.createElement('div');
+    const wName = document.createElement('div');
+    wName.className = 'hq-wf-name';
+    wName.style.color = w.color;
+    wName.textContent = w.name;
+    const wTool = document.createElement('div');
+    wTool.className = 'hq-wf-tool';
+    wTool.textContent = w.tool;
+    info.appendChild(wName);
+    info.appendChild(wTool);
+
+    left.appendChild(icon);
+    left.appendChild(info);
+
+    const tag = document.createElement('div');
+    tag.className = 'hq-wf-tag';
+    tag.style.color = `${w.color}cc`;
+    tag.style.background = `${w.color}11`;
+    tag.style.border = `1px solid ${w.color}33`;
+    tag.textContent = w.room;
+
+    item.appendChild(left);
+    item.appendChild(tag);
     list.appendChild(item);
   });
 }
 
 function switchHQTab(tab, el) {
-  document.querySelectorAll('.hq-tab').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.hq-tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('#panel-hq .hq-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#panel-hq .hq-tab-panel').forEach(p => p.classList.remove('active'));
   if (el) el.classList.add('active');
   const panel = document.getElementById('hq-' + tab);
   if (panel) panel.classList.add('active');
@@ -5296,13 +5516,44 @@ async function refreshHQStatus() {
       renderHQ();
     }
   } catch(e) { /* agents table may not exist yet */ }
+  _hqLoadStats();
+}
+
+async function _hqLoadStats() {
+  if (!db) return;
+  try {
+    const { data: mrrData } = await db.from('clients').select('mrr');
+    const mrr = mrrData?.reduce((sum, c) => sum + (c.mrr || 0), 0) || 0;
+    const m = document.getElementById('hq-stat-mrr');
+    if (m) m.textContent = `$${(mrr / 100).toLocaleString()}`;
+
+    const { count: leadCount } = await db.from('leads').select('*', { count: 'exact', head: true });
+    const l = document.getElementById('hq-stat-leads');
+    if (l) l.textContent = leadCount || 0;
+
+    const { count: clientCount } = await db.from('clients').select('*', { count: 'exact', head: true });
+    const c = document.getElementById('hq-stat-clients');
+    if (c) c.textContent = clientCount || 0;
+  } catch(_) { /* tables may not exist */ }
+}
+
+function _hqUpdateClock() {
+  const el = document.getElementById('hq-clock');
+  if (!el) return;
+  el.textContent = new Date().toLocaleTimeString('en-AU', { hour12: false });
 }
 
 function initHQRealtime() {
+  // Clock ticker (idempotent — only set once)
+  if (!window._hqClockTimer) {
+    _hqUpdateClock();
+    window._hqClockTimer = setInterval(_hqUpdateClock, 1000);
+  }
   if (!db) return;
   db.channel('hq-agents')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'agents' }, payload => {
       const a = payload.new;
+      if (!a || !a.id) return;
       hqStatuses[a.id] = { busy: a.busy || false, live: true, stat: a.current_stat || a.current_task || '' };
       renderHQ();
     })
