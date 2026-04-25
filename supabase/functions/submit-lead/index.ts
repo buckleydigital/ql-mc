@@ -285,7 +285,7 @@ Deno.serve(async (req: Request) => {
           },
           body: JSON.stringify(hqPayload),
         }).catch((err: Error) => {
-          console.error("quoteleadshq forward failed:", err.message);
+          console.error(`quoteleadshq forward failed for client ${matchedClient!.id} (${matchedClient!.company_name}):`, err.message);
         });
       }
     }
