@@ -1,7 +1,8 @@
 -- ════════════════════════════════════════════════════════════════════════════
 -- HQ Agent Fleet — schema + seed
--- Adds the 15 operational agents from bake-in.html so the Agent Fleet panel
--- and Agent Chat list in index.html are fully wired up.
+-- Adds the 15 operational agents from bake-in.html (plus configs for the
+-- 5 existing advisory agents) so the Agent Fleet panel and Agent Chat list
+-- in index.html are fully wired up.
 --
 -- Tables (created IF NOT EXISTS so this is safe on existing projects):
 --   agent_config  — persona/name/role/emoji/intro for each agent (used by chat)
