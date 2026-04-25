@@ -5230,7 +5230,7 @@ function renderHQ() {
       el.onclick = () => openAgentChat(agent.id);
 
       const dot = document.createElement('div');
-      dot.className = 'hq-agent-dot' + (s.busy ? ' busy' : (s.live ? ' live' : ''));
+      dot.className = 'hq-agent-dot' + (s.busy ? ' busy' : '') + (s.live && !s.busy ? ' live' : '');
 
       const info = document.createElement('div');
       info.className = 'hq-agent-info';
