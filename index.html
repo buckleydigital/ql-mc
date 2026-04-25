@@ -5361,10 +5361,20 @@ async function refreshHQStatus() {
 async function _hqLoadStats() {
   if (!db) return;
   try {
-    const { data: mrrData } = await db.from('clients').select('mrr');
-    const mrr = mrrData?.reduce((sum, c) => sum + (c.mrr || 0), 0) || 0;
+    // MRR is computed from the clients table the same way the Finance dashboard does:
+    //   - managed clients: monthly retainer (`management_fee`)
+    //   - PPL clients:     month-to-date revenue (`leads_mtd` * `lead_price`)
+    // Only active clients count toward MRR. Values are stored in dollars (not cents).
+    const { data: mrrData } = await db.from('clients')
+      .select('type,management_fee,lead_price,leads_mtd,stage')
+      .in('stage', ['active_client', 'active']);
+    const mrr = (mrrData || []).reduce((sum, c) => {
+      if (c.type === 'managed') return sum + (Number(c.management_fee) || 0);
+      if (c.type === 'ppl')     return sum + ((Number(c.leads_mtd) || 0) * (Number(c.lead_price) || 0));
+      return sum;
+    }, 0);
     const m = document.getElementById('hq-stat-mrr');
-    if (m) m.textContent = `$${(mrr / 100).toLocaleString()}`;
+    if (m) m.textContent = `$${Math.round(mrr).toLocaleString()}`;
 
     const { count: leadCount } = await db.from('leads').select('*', { count: 'exact', head: true });
     const l = document.getElementById('hq-stat-leads');
