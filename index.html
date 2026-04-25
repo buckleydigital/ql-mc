@@ -2437,6 +2437,22 @@ td strong{font-weight:500}
   </div>
 </div>
 
+<!-- Agent Run Log — opens when an agent sprite is clicked on the Fleet Map.
+     Populated by openAgentLog() from public.agent_runs (started/finished pings
+     posted by Make.com scenarios via the agent-status edge function). -->
+<div class="overlay" id="m-agent-log">
+  <div class="modal" style="max-width:560px">
+    <h2 id="al-title">Agent Log</h2>
+    <div class="msub" id="al-sub">Recent scenario runs (started / finished)</div>
+    <div id="al-list" style="max-height:60vh;overflow:auto;border:1px solid var(--bd);border-radius:var(--r2);padding:8px;background:var(--s0);font-family:var(--mono);font-size:12px;line-height:1.5">
+      Loading…
+    </div>
+    <div class="macts">
+      <button class="btn" onclick="closeAgentLog()">Close</button>
+    </div>
+  </div>
+</div>
+
 <style>
 @media(max-width:700px){
   .bnav{height:auto !important;flex-wrap:wrap;padding:4px 0 env(safe-area-inset-bottom,0) !important;}
@@ -5340,8 +5356,99 @@ function switchHQTab(tab, el) {
 }
 
 function openAgentChat(_agentId) {
-  // Single master brain — fleet click just opens the master chat panel.
-  nav('chat', document.querySelector('[data-panel="chat"]'));
+  // Fleet click → open this agent's run log (started/finished pings from
+  // Make.com), NOT the Master Brain chat. Kept under the original name so
+  // existing onclick handlers continue to work.
+  openAgentLog(_agentId);
+}
+
+// Track the realtime channel for the open agent so we can clean it up.
+let _agentLogChannel = null;
+let _agentLogAgent   = null;
+
+function _alFmtTime(iso) {
+  try { return new Date(iso).toLocaleString('en-AU', { hour12:false }); }
+  catch { return iso || ''; }
+}
+
+function _alRowHtml(r) {
+  const status = (r.status || '').toLowerCase();
+  let color = '#72728a';
+  if (status === 'started' || status === 'running' || status === 'start') color = '#facc15';
+  else if (status === 'finished' || status === 'success' || status === 'ok') color = '#34d399';
+  else if (status === 'failed' || status === 'error') color = '#f87171';
+  const scenario = r.scenario ? esc(r.scenario) : '<span style="color:#55556a">(no scenario)</span>';
+  const log = r.log ? `<div style="color:#aaaac0;margin-top:2px;white-space:pre-wrap;word-break:break-word">${esc(r.log)}</div>` : '';
+  return `<div style="padding:6px 4px;border-bottom:1px solid var(--bd)">
+    <div style="display:flex;gap:8px;align-items:baseline;justify-content:space-between">
+      <span style="color:#eeeef3"><strong style="color:${color};text-transform:uppercase;letter-spacing:.05em;font-size:10px">${esc(r.status||'?')}</strong> · ${scenario}</span>
+      <span style="color:#55556a;font-size:10px;white-space:nowrap">${esc(_alFmtTime(r.created_at))}</span>
+    </div>${log}
+  </div>`;
+}
+
+async function openAgentLog(agentId) {
+  if (!agentId) return;
+  _agentLogAgent = agentId;
+
+  // Look up display name from the loaded HQ_ROOMS so the title matches the
+  // sprite the user just clicked.
+  let displayName = agentId;
+  for (const room of (window.HQ_ROOMS || HQ_ROOMS || [])) {
+    const a = room.agents.find(x => x.id === agentId);
+    if (a) { displayName = a.name; break; }
+  }
+  setText('al-title', `${displayName} — Run Log`);
+  setText('al-sub', `Last started / finished pings from Make.com scenarios for ${agentId}`);
+  const list = $('al-list');
+  if (list) list.innerHTML = 'Loading…';
+  openModal('m-agent-log');
+
+  if (!db) {
+    if (list) list.textContent = 'Not connected.';
+    return;
+  }
+
+  try {
+    const { data, error } = await db.from('agent_runs')
+      .select('id,agent,scenario,status,log,created_at')
+      .eq('agent', agentId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      list.innerHTML = '<div style="color:#72728a;padding:8px">No runs yet. Add an HTTP POST module to your Make scenario at the top (status:"started") and at the end (status:"finished") pointing at /functions/v1/agent-status.</div>';
+    } else {
+      list.innerHTML = data.map(_alRowHtml).join('');
+    }
+  } catch (e) {
+    list.innerHTML = `<div style="color:#f87171;padding:8px">Failed to load: ${esc(e.message || String(e))}</div>`;
+  }
+
+  // Subscribe to realtime inserts for this agent so the log updates while open.
+  try {
+    if (_agentLogChannel) { db.removeChannel(_agentLogChannel); _agentLogChannel = null; }
+    _agentLogChannel = db.channel(`agent-runs-${agentId}`)
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'agent_runs', filter: `agent=eq.${agentId}` },
+        payload => {
+          if (_agentLogAgent !== agentId) return;
+          const r = payload.new;
+          if (!r) return;
+          if (list.firstChild && list.firstChild.nodeType === 3) list.innerHTML = '';
+          list.insertAdjacentHTML('afterbegin', _alRowHtml(r));
+        })
+      .subscribe();
+  } catch (_) { /* realtime is best-effort */ }
+}
+
+function closeAgentLog() {
+  closeModal('m-agent-log');
+  _agentLogAgent = null;
+  if (_agentLogChannel && db) {
+    try { db.removeChannel(_agentLogChannel); } catch(_) {}
+    _agentLogChannel = null;
+  }
 }
 
 async function refreshHQStatus() {
