@@ -497,16 +497,6 @@ body::after {
 
 /* ═══ CHAT ═══ */
 .chat-layout{display:grid;grid-template-columns:150px 1fr;gap:7px;height:calc(100vh - 140px)}
-.chat-list{display:flex;flex-direction:column;gap:3px}
-.chat-item{
-  padding:8px 10px;border-radius:var(--r);
-  border:1px solid var(--bd);background:var(--s1);
-  cursor:pointer;transition:all .12s;
-}
-.chat-item:hover{border-color:var(--bd2)}
-.chat-item.active{border-color:var(--acc);background:var(--acc-dim)}
-.chat-iname{font-size:11.5px;font-weight:500;color:var(--ink)}
-.chat-irole{font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:2px}
 .chat-win{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);display:flex;flex-direction:column;overflow:hidden}
 .chat-head{padding:9px 13px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;background:var(--s2);flex-shrink:0}
 .chat-hname{font-family:var(--display);font-size:13.5px;font-weight:600;color:var(--ink)}
@@ -678,7 +668,6 @@ td strong{font-weight:500}
   .md-layout{grid-template-columns:1fr;height:auto}
   .md-files{flex-direction:row;flex-wrap:wrap}
   .chat-layout{grid-template-columns:1fr}
-  .chat-list{flex-direction:row;flex-wrap:wrap;overflow-x:auto;gap:4px}
   .chat-win{height:calc(100vh - 360px);min-height:260px}
 }
 @media(max-width:700px){
@@ -695,7 +684,7 @@ td strong{font-weight:500}
 }
 @media(max-width:400px){.kg.c4,.kg.c3,.kg.c2{grid-template-columns:1fr}}
 
-/* ══ HQ FLEET — pixel art (baked in from bake-in.html) ══ */
+/* ══ HQ FLEET — pixel art ══ */
 #panel-hq.panel{background:#030a03;color:#fff;font-family:'Press Start 2P',monospace;padding:16px;border-radius:var(--r2);border:1px solid #4797ff22;position:relative;overflow:hidden}
 #panel-hq *,#panel-hq *::before,#panel-hq *::after{box-sizing:border-box;font-family:'Press Start 2P',monospace}
 #panel-hq .ph{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #4797ff22;padding-bottom:14px;margin-bottom:14px}
@@ -780,7 +769,6 @@ td strong{font-weight:500}
 
 @media(max-width:960px){#panel-hq .hq-grid{grid-template-columns:1fr}}
 @media(max-width:700px){#panel-hq #hq-stats{grid-template-columns:repeat(2,1fr)}}
-.chat-group-label{font-family:var(--mono);font-size:8px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.12em;padding:8px 12px 4px;opacity:.7}
 /* ══ LEAD DISTRIBUTION ══ */
 .ld-client-grid{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px}
 .ld-client-card{flex:1;min-width:130px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:12px 14px}
@@ -896,10 +884,7 @@ td strong{font-weight:500}
             <span class="ni">🏢</span>Agent Fleet
           </button>
           <button class="navbtn" data-panel="chat" onclick="nav('chat',this)">
-            <span class="ni">◉</span>Agent Chat
-          </button>
-          <button class="navbtn" data-panel="sales-agent" onclick="nav('sales-agent',this)">
-            <span class="ni">⚑</span>Sales Agent
+            <span class="ni">◉</span>Master Brain
           </button>
         </div>
 
@@ -1428,58 +1413,29 @@ td strong{font-weight:500}
         <div class="chart-card mb4" style="margin-top:20px"><div class="chart-title">Daily Lead Volume</div><canvas id="chart-daily" height="130"></canvas></div>
       </div>
 
-      <!-- ══ AGENT CHAT ══ -->
+      <!-- ══ MASTER BRAIN CHAT ══ -->
       <div class="panel" id="panel-chat">
         <div class="ph">
-          <div class="ph-left"><h1>Agent Chat</h1><p>Persistent memory · live context · config files</p></div>
+          <div class="ph-left"><h1>Master Brain</h1><p>Single agent · full data access · persistent memory</p></div>
           <div class="ph-right">
             <button class="btn btn-sm" onclick="toggleChatConfig()" id="chat-config-btn">⬡ Config files</button>
             <button class="btn btn-sm btn-red" onclick="clearChatMemory()">Clear memory</button>
           </div>
         </div>
-        <div class="chat-layout">
-          <div class="chat-list">
-            <div class="chat-group-label">Advisory</div>
-            <div class="chat-item active" onclick="selectChat('marketing',this)"><div class="chat-iname">Marketing</div><div class="chat-irole">CPL & campaigns</div></div>
-            <div class="chat-item" onclick="selectChat('finance',this)"><div class="chat-iname">Finance</div><div class="chat-irole">P&L & billing</div></div>
-            <div class="chat-item" onclick="selectChat('operations',this)"><div class="chat-iname">Operations</div><div class="chat-irole">Lead flow & QA</div></div>
-            <div class="chat-item" onclick="selectChat('strategy',this)"><div class="chat-iname">Strategy</div><div class="chat-irole">Growth direction</div></div>
-            <div class="chat-item" onclick="selectChat('sales',this)"><div class="chat-iname">Sales</div><div class="chat-irole">Pipeline & priority</div></div>
-            <div class="chat-group-label">Sales Fleet</div>
-            <div class="chat-item" onclick="selectChat('prospector',this)"><div class="chat-iname">Prospector</div><div class="chat-irole">Outbound</div></div>
-            <div class="chat-item" onclick="selectChat('qualifier',this)"><div class="chat-iname">Qualifier</div><div class="chat-irole">Inbound</div></div>
-            <div class="chat-item" onclick="selectChat('closer',this)"><div class="chat-iname">Closer</div><div class="chat-irole">Proposals</div></div>
-            <div class="chat-group-label">Lead Engine</div>
-            <div class="chat-item" onclick="selectChat('smsagent',this)"><div class="chat-iname">SMSAgent</div><div class="chat-irole">Respond</div></div>
-            <div class="chat-item" onclick="selectChat('voicebot',this)"><div class="chat-iname">VoiceBot</div><div class="chat-irole">Calls</div></div>
-            <div class="chat-item" onclick="selectChat('quoter',this)"><div class="chat-iname">Quoter</div><div class="chat-irole">Quotes</div></div>
-            <div class="chat-item" onclick="selectChat('chaser',this)"><div class="chat-iname">Chaser</div><div class="chat-irole">Follow-up</div></div>
-            <div class="chat-group-label">Delivery</div>
-            <div class="chat-item" onclick="selectChat('builder',this)"><div class="chat-iname">Builder</div><div class="chat-irole">Onboarding</div></div>
-            <div class="chat-item" onclick="selectChat('adbot',this)"><div class="chat-iname">Adbot</div><div class="chat-irole">Meta/Google</div></div>
-            <div class="chat-item" onclick="selectChat('landingpg',this)"><div class="chat-iname">LandingPg</div><div class="chat-irole">Pages</div></div>
-            <div class="chat-group-label">Retention</div>
-            <div class="chat-item" onclick="selectChat('pulsecheck',this)"><div class="chat-iname">PulseCheck</div><div class="chat-irole">Health</div></div>
-            <div class="chat-item" onclick="selectChat('churnbot',this)"><div class="chat-iname">ChurnBot</div><div class="chat-irole">At-risk</div></div>
-            <div class="chat-item" onclick="selectChat('reporter',this)"><div class="chat-iname">Reporter</div><div class="chat-irole">Reports</div></div>
-            <div class="chat-group-label">Ops</div>
-            <div class="chat-item" onclick="selectChat('inbox',this)"><div class="chat-iname">Inbox</div><div class="chat-irole">Comms</div></div>
-            <div class="chat-item" onclick="selectChat('bookkeeper',this)"><div class="chat-iname">Bookkeeper</div><div class="chat-irole">Finance</div></div>
-            <div class="chat-item" onclick="selectChat('datasyncer',this)"><div class="chat-iname">DataSyncer</div><div class="chat-irole">CRM</div></div>
-          </div>
+        <div class="chat-layout" style="grid-template-columns:1fr">
           <div class="chat-win">
             <div class="chat-head">
               <div>
-                <div class="chat-hname" id="chat-name">Marketing Agent</div>
+                <div class="chat-hname" id="chat-name">Master Brain</div>
                 <div style="font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:2px" id="chat-mem-info">Loading memory...</div>
               </div>
               <div class="chat-hstatus"><div class="ldot" style="background:var(--grn);box-shadow:0 0 6px var(--grn)"></div>Online</div>
             </div>
             <div class="chat-msgs" id="chat-msgs">
               <div class="msg">
-                <div class="msg-av">MKT</div>
+                <div class="msg-av">🧠</div>
                 <div>
-                  <div class="msg-bubble">Marketing Agent ready. What do you need?</div>
+                  <div class="msg-bubble">Master Brain ready. I have access to all your data — campaigns, leads, clients, finance and pipeline. What do you need?</div>
                   <div class="msg-time">System</div>
                 </div>
               </div>
@@ -1494,7 +1450,7 @@ td strong{font-weight:500}
               <span id="mem-status">Memory active — conversation saved to Supabase</span>
             </div>
             <div class="chat-foot">
-              <textarea class="chat-inp" id="chat-inp" placeholder="Ask about today's numbers, YTD CPL trends, financials..." rows="1"
+              <textarea class="chat-inp" id="chat-inp" placeholder="Ask anything — campaigns, CPL, pipeline, clients, finances..." rows="1"
                 onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
               <button class="btn btn-p btn-sm" onclick="sendChat()" style="height:36px;padding:0 13px">Send →</button>
             </div>
@@ -1503,8 +1459,8 @@ td strong{font-weight:500}
         <div id="chat-config-panel" style="display:none;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:14px;margin-top:10px">
           <div class="row-btw mb3">
             <div>
-              <div style="font-family:var(--display);font-size:14px;font-weight:600" id="sel-agent-name">Marketing Agent</div>
-              <div style="font-family:var(--mono);font-size:9.5px;color:var(--ink3);margin-top:3px;letter-spacing:.04em" id="sel-agent-role">Campaigns & CPL Optimisation</div>
+              <div style="font-family:var(--display);font-size:14px;font-weight:600" id="sel-agent-name">Master Brain</div>
+              <div style="font-family:var(--mono);font-size:9.5px;color:var(--ink3);margin-top:3px;letter-spacing:.04em" id="sel-agent-role">Full-data assistant</div>
             </div>
             <div class="row gap6">
               <button class="btn btn-sm" onclick="loadAgentFile()">↻ Reload</button>
@@ -1522,7 +1478,7 @@ td strong{font-weight:500}
             </div>
             <div class="md-box">
               <div class="md-topbar">
-                <span class="md-fname" id="md-filename">marketing/agents.md</span>
+                <span class="md-fname" id="md-filename">master/agents.md</span>
                 <span style="font-family:var(--mono);font-size:9px;color:var(--ink3)">Supabase · agent_files</span>
               </div>
               <textarea class="md-ta" id="md-content" placeholder="Loading from Supabase..."></textarea>
@@ -1579,58 +1535,6 @@ td strong{font-weight:500}
         </div>
 
         <div class="hq-footer">QUOTELEADS · ALL SYSTEMS OPERATIONAL · AU</div>
-      </div>
-
-      <!-- ══ SALES AGENT ══ -->
-      <div class="panel" id="panel-sales-agent">
-        <div class="ph">
-          <div class="ph-left"><h1>Sales Agent</h1><p>Pipeline analysis · lead prioritisation · persistent memory</p></div>
-          <div class="ph-right">
-            <button class="btn btn-sm" onclick="refreshSalesContext()">↻ Refresh pipeline</button>
-            <button class="btn btn-sm btn-red" onclick="clearSalesMemory()">Clear memory</button>
-          </div>
-        </div>
-        <div class="kg c4 mb4">
-          <div class="kpi"><div class="klabel">Active Leads</div><div class="kval blu" id="sa-active">—</div></div>
-          <div class="kpi"><div class="klabel">Call-Backs Due</div><div class="kval grn" id="sa-callbacks">—</div></div>
-          <div class="kpi"><div class="klabel">Proposals Out</div><div class="kval" id="sa-proposals">—</div></div>
-          <div class="kpi"><div class="klabel">Pipeline Value</div><div class="kval blu" id="sa-value">—</div></div>
-        </div>
-        <div class="sl">Priority Leads Today <div class="sl-line"></div></div>
-        <div id="sa-priority-list" class="mb4"><div class="empty">Loading pipeline...</div></div>
-        <div class="sl">Sales Agent Chat <div class="sl-line"></div></div>
-        <div class="chat-win" style="height:calc(100vh - 460px);min-height:280px">
-          <div class="chat-head">
-            <div>
-              <div class="chat-hname">Sales Agent</div>
-              <div style="font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:2px" id="sa-mem-info">Loading memory...</div>
-            </div>
-            <div class="chat-hstatus"><div class="ldot" style="background:var(--grn);box-shadow:0 0 6px var(--grn)"></div>Online</div>
-          </div>
-          <div class="chat-msgs" id="sa-msgs">
-            <div class="msg">
-              <div class="msg-av">SLS</div>
-              <div>
-                <div class="msg-bubble">Sales Agent ready. What do you need?</div>
-                <div class="msg-time">System</div>
-              </div>
-            </div>
-          </div>
-          <div id="sa-typing" style="display:none" class="typing-row">
-            <div class="msg-av" style="width:22px;height:22px;font-size:8.5px">SLS</div>
-            <div class="dots"><span></span><span></span><span></span></div>
-            <span>analysing pipeline...</span>
-          </div>
-          <div class="chat-memory-bar">
-            <div class="mem-dot"></div>
-            <span id="sa-mem-status">Memory active — conversation saved to Supabase</span>
-          </div>
-          <div class="chat-foot">
-            <textarea class="chat-inp" id="sa-inp" placeholder="Who should I call today? Analyse my pipeline. Which leads are closest to closing?..." rows="1"
-              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendSalesChat();}"></textarea>
-            <button class="btn btn-p btn-sm" onclick="sendSalesChat()" style="height:36px;padding:0 13px">Send →</button>
-          </div>
-        </div>
       </div>
 
       <!-- ══ FILES ══ -->
@@ -1778,8 +1682,7 @@ td strong{font-weight:500}
     <button class="bnbtn" data-panel="finance" onclick="nav('finance',this)"><span class="bnbtn-icon">$</span><span class="bnbtn-lbl">Finance</span></button>
     <button class="bnbtn" data-panel="daily" onclick="nav('daily',this)"><span class="bnbtn-icon">≋</span><span class="bnbtn-lbl">Daily</span></button>
     <button class="bnbtn" data-panel="hq" onclick="nav('hq',this)"><span class="bnbtn-icon">🏢</span><span class="bnbtn-lbl">Fleet</span></button>
-    <button class="bnbtn" data-panel="chat" onclick="nav('chat',this)"><span class="bnbtn-icon">◉</span><span class="bnbtn-lbl">Chat</span></button>
-    <button class="bnbtn" data-panel="sales-agent" onclick="nav('sales-agent',this)"><span class="bnbtn-icon">⚑</span><span class="bnbtn-lbl">Sales AI</span></button>
+    <button class="bnbtn" data-panel="chat" onclick="nav('chat',this)"><span class="bnbtn-icon">◉</span><span class="bnbtn-lbl">Brain</span></button>
     <button class="bnbtn" data-panel="files" onclick="nav('files',this)"><span class="bnbtn-icon">📄</span><span class="bnbtn-lbl">Files</span></button>
   </div>
 </div><!-- /app -->
@@ -2583,7 +2486,7 @@ const _ep = 'https://wmegoygrancfwxagqskh.supabase.co';
 const _ak = 'sb_publishable_UHQNxVCjHJnFjssYwTiwcQ_3FYovX8I';
 
 let db, currentUser;
-let curAgent = 'marketing', curMd = 'agents.md', curChat = 'marketing';
+let curAgent = 'master', curMd = 'agents.md', curChat = 'master';
 let chatHistory = {};
 let revChart = null, cplChart = null, dailyChart = null, goalRevChart = null, goalMarginChart = null;
 let curDailyRange = 'today';
@@ -2763,7 +2666,6 @@ function nav(panel, el) {
   document.querySelectorAll(`[data-panel="${panel}"]`).forEach(b => b.classList.add('active'));
   if (panel === 'chat') loadChatMemory();
   if (panel === 'daily') loadDailyLogs();
-  if (panel === 'sales-agent') loadSalesPanel();
   if (panel === 'files') { loadFileContent(); loadTemplateClientDropdown(); }
   if (panel === 'ppl') { populateMapClientDropdown(); }
   if (panel === 'campaigns') { loadCampaigns(); renderMetaTokenBanner(); }
@@ -5178,7 +5080,7 @@ function renderDailyChart(leads) {
 }
 
 let AGENT_CFG={}, DEFAULT_MD={};
-// ─── HQ FLEET (pixel art — baked in from bake-in.html) ──────────────────────
+// ─── HQ FLEET (pixel art) ───────────────────────────────────────────────────
 const HQ_ROOMS = [
   {
     name:'🏢 SALES',
@@ -5228,17 +5130,8 @@ const HQ_ROOMS = [
   },
 ];
 
-const HQ_WORKFLOWS = [
-  {icon:'📥', name:'New Lead → SMS in 60s',   tool:'Make + Twilio',       room:'LEAD ENGINE', color:'#f472b6'},
-  {icon:'🎙️', name:'Lead → Voice Call',        tool:'Make + Bland AI',     room:'LEAD ENGINE', color:'#fb923c'},
-  {icon:'📄', name:'Quote Drafter',            tool:'Make + Claude AI',    room:'LEAD ENGINE', color:'#4797ff'},
-  {icon:'🔁', name:'Day 2/5/10 Follow-up',     tool:'Make + CRM',          room:'LEAD ENGINE', color:'#a78bfa'},
-  {icon:'🎯', name:'Inbound Lead → CRM',       tool:'Make + GoHighLevel',  room:'SALES',       color:'#4797ff'},
-  {icon:'📊', name:'Daily Client Reports',     tool:'Make + Gmail',        room:'OPS',         color:'#60a5fa'},
-  {icon:'⚠️', name:'Churn Risk Alert',         tool:'Make + Slack',        room:'RETENTION',   color:'#f87171'},
-  {icon:'🏗️', name:'New Client Onboarding',    tool:'Make + Notion',       room:'DELIVERY',    color:'#38bdf8'},
-];
-
+// Workflow catalogue is loaded from Supabase (public.hq_workflows) so the
+// tool stack isn't exposed in the deployed HTML. See migrations/20260425_hq_workflows.sql.
 let hqStatuses = {}; // agentId → {busy, live, stat}
 let _hqIdleJitterTimers = []; // track per-render setIntervals so we can clear on re-render
 
@@ -5386,11 +5279,19 @@ function _hqUpdateActive() {
   if (al) al.textContent = `${busy} / ${total} ACTIVE`;
 }
 
-function buildHQWorkflows() {
+async function buildHQWorkflows() {
   const list = document.getElementById('hq-workflows-list');
   if (!list) return;
   list.innerHTML = '';
-  HQ_WORKFLOWS.forEach(w => {
+  let rows = [];
+  try {
+    const { data } = await db.from('hq_workflows')
+      .select('icon,name,tool,room,color,sort_order')
+      .eq('enabled', true)
+      .order('sort_order');
+    rows = data || [];
+  } catch (e) { rows = []; }
+  rows.forEach(w => {
     const item = document.createElement('div');
     item.className = 'hq-wf-item';
     item.style.borderLeft = `3px solid ${w.color}44`;
@@ -5438,10 +5339,9 @@ function switchHQTab(tab, el) {
   if (panel) panel.classList.add('active');
 }
 
-function openAgentChat(agentId) {
+function openAgentChat(_agentId) {
+  // Single master brain — fleet click just opens the master chat panel.
   nav('chat', document.querySelector('[data-panel="chat"]'));
-  const item = document.querySelector(`.chat-item[onclick*="selectChat('${agentId}'"]`);
-  selectChat(agentId, item);
 }
 
 async function refreshHQStatus() {
@@ -5528,7 +5428,7 @@ async function saveAgentFile() {
   toast('File saved ✓');
 }
 
-let PERSONAS={};
+let PERSONAS = { master: { name: 'Master Brain', emoji: '🧠', intro: 'Master Brain ready. I have access to all your data — campaigns, leads, clients, finance and pipeline. What do you need?' } };
 
 async function loadChatMemory() {
   if (!db||!currentUser) return;
@@ -5553,17 +5453,23 @@ async function clearChatMemory() {
   if (!confirm(`Clear all messages for ${(PERSONAS[curChat]||{name:curChat}).name}?`)) return;
   const {error}=await db.from('chat_memory').delete().eq('agent',curChat).eq('user_id',currentUser.id);
   if (error) { toast('Error: '+error.message,true); return; }
-  chatHistory[curChat]=[];selectChat(curChat,document.querySelector('.chat-item.active'));toast('Memory cleared');
+  chatHistory[curChat]=[];
+  const p=PERSONAS[curChat]||{name:curChat,emoji:'?',intro:'Agent ready.'};
+  const cm=$('chat-msgs'); cm.innerHTML=''; cm.appendChild(_buildMsg('agent',p.emoji,p.intro,null));
+  setText('chat-mem-info','Memory cleared');
+  setText('mem-status','Memory active — will save as you chat');
+  toast('Memory cleared');
 }
 function selectChat(name,el) {
-  if (el) {document.querySelectorAll('.chat-item').forEach(i=>i.classList.remove('active'));el.classList.add('active');}
-  curChat=name;curAgent=name;const p=PERSONAS[name]||{name:name,emoji:'?',intro:'Agent ready.'};
-  setText('chat-name',p.name+' Agent');
-  const cfg=AGENT_CFG[name]||{name:p.name+' Agent',role:''};
+  // Single master brain — kept for backwards compat with any callers.
+  curChat=name||'master';curAgent=curChat;
+  const p=PERSONAS[curChat]||{name:curChat,emoji:'?',intro:'Agent ready.'};
+  setText('chat-name',p.name);
+  const cfg=AGENT_CFG[curChat]||{name:p.name,role:'Full-data assistant'};
   setText('sel-agent-name',cfg.name);setText('sel-agent-role',cfg.role);
-  setText('md-filename',`${name}/${curMd}`);
+  setText('md-filename',`${curChat}/${curMd}`);
   const cm=$('chat-msgs'); cm.innerHTML=''; cm.appendChild(_buildMsg('agent',p.emoji,p.intro,null));
-  chatHistory[name]=chatHistory[name]||[];loadChatMemory();
+  chatHistory[curChat]=chatHistory[curChat]||[];loadChatMemory();
   if ($('chat-config-panel')?.style.display==='block') loadAgentFile();
 }
 
@@ -5611,138 +5517,6 @@ async function sendChat() {
   }
 }
 
-let salesChatHistory = [];
-const SALES_STAGE_ORDER = {call_back:1,proposal:2,qualified:3,new_lead:4,no_answer:5,paused:6};
-
-async function fetchSalesLeads() {
-  try {
-    const { data: leads, error } = await db.from('leads')
-      .select('id,name,company,stage,lead_type,value,source,notes,last_contact,created_at,updated_at')
-      .not('stage','in','("closed_won","closed_lost")').order('updated_at',{ascending:false});
-    if (error || !leads || !leads.length) return [];
-    return [...leads].sort((a,b) => {
-      const so = (SALES_STAGE_ORDER[a.stage]||9) - (SALES_STAGE_ORDER[b.stage]||9);
-      return so !== 0 ? so : (b.value||0) - (a.value||0);
-    });
-  } catch(_) { return []; }
-}
-
-async function refreshSalesContext() {
-  const leads = await fetchSalesLeads();
-  renderSalesPriorityList(leads);
-  toast('Pipeline refreshed ✓');
-}
-
-function renderSalesPriorityList(leads) {
-  const el = $('sa-priority-list');
-  const callbacks = leads.filter(l => l.stage === 'call_back').length;
-  const proposals = leads.filter(l => l.stage === 'proposal').length;
-  const pipelineVal = leads.reduce((s,l)=>s+(l.value||0),0);
-  const active = leads.filter(l => !['closed_won','closed_lost'].includes(l.stage)).length;
-  setText('sa-active', active);
-  setText('sa-callbacks', callbacks);
-  setText('sa-proposals', proposals);
-  setText('sa-value', pipelineVal ? '$'+Number(pipelineVal).toLocaleString()+'/mo' : '—');
-
-  const priority = leads.slice(0, 8);
-  if (!priority.length) { el.innerHTML = '<div class="empty">No active leads in pipeline.</div>'; return; }
-  el.innerHTML = priority.map(l => {
-    const lastContact = l.last_contact ? new Date(l.last_contact).toLocaleDateString('en-AU') : 'Never';
-    const daysSince = l.last_contact ? Math.floor((Date.now()-new Date(l.last_contact))/(1000*86400)) : null;
-    const urgencyColor = daysSince !== null && daysSince > 7 ? 'var(--amb)' : 'var(--ink3)';
-    const badge = stageBadge(l.stage);
-    return `<div class="task-item" style="margin-bottom:4px">
-      <div class="task-body">
-        <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
-          <span class="badge ${badge}">${stageLabel(l.stage)}</span>
-          <strong style="font-size:12px">${esc(l.name||'—')}</strong>
-          ${l.company?`<span style="font-size:11px;color:var(--ink3)">${esc(l.company)}</span>`:''}
-          ${l.value?`<span style="font-family:var(--mono);font-size:10px;color:var(--acc);margin-left:auto">$${Number(l.value).toLocaleString()}/mo</span>`:''}
-        </div>
-        <div class="task-meta">
-          <span class="tag tag-normal">${l.lead_type==='ppl'?'PPL':'Managed Ads'}</span>
-          <span style="font-family:var(--mono);font-size:9px;color:${urgencyColor}">Last contact: ${lastContact}${daysSince!==null&&daysSince>7?' · '+daysSince+'d ago':''}</span>
-        </div>
-        ${l.notes?`<div style="font-size:11px;color:var(--ink2);margin-top:4px;font-weight:300">${esc(l.notes.substring(0,120))}${l.notes.length>120?'…':''}</div>`:''}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-async function loadSalesPanel() {
-  const leads = await fetchSalesLeads();
-  renderSalesPriorityList(leads);
-  await loadSalesMemory();
-}
-
-async function loadSalesMemory() {
-  if (!db || !currentUser) return;
-  try {
-    const { data } = await db.from('chat_memory').select('*').eq('agent','sales').eq('user_id',currentUser.id).order('created_at',{ascending:true}).limit(80);
-    if (data && data.length > 0) {
-      salesChatHistory = data.map(m=>({role:m.role,content:m.content}));
-      const msgs = $('sa-msgs');
-      msgs.innerHTML = ''; msgs.appendChild(_buildMsg('agent','SLS',(PERSONAS.sales||{intro:'Agent ready.'}).intro,null));
-      data.forEach(m=>{ if (m.role!=='system') addSalesMsg(m.role==='user'?'user':'agent',m.role==='user'?'YOU':'SLS',m.content,new Date(m.created_at)); });
-      setText('sa-mem-info',`${data.length} messages in memory · ${new Date(data[data.length-1].created_at).toLocaleDateString('en-AU')}`);
-      setText('sa-mem-status',`Memory active — ${data.length} messages saved`);
-      scrollSalesChat();
-    } else {
-      salesChatHistory = [];
-      setText('sa-mem-info','No saved messages yet');
-      setText('sa-mem-status','Memory active — will save as you chat');
-    }
-  } catch(e) {
-    salesChatHistory = [];
-    setText('sa-mem-info','chat_memory table not found');
-  }
-}
-
-async function clearSalesMemory() {
-  if (!db || !currentUser) return;
-  if (!confirm('Clear all Sales Agent memory?')) return;
-  const { error } = await db.from('chat_memory').delete().eq('agent','sales').eq('user_id',currentUser.id);
-  if (error) { toast('Error: '+error.message, true); return; }
-  salesChatHistory = [];
-  const sm=$('sa-msgs'); sm.innerHTML=''; sm.appendChild(_buildMsg('agent','SLS',(PERSONAS.sales||{intro:'Agent ready.'}).intro,null));
-  setText('sa-mem-info','Memory cleared');
-  setText('sa-mem-status','Memory active — will save as you chat');
-  toast('Sales memory cleared');
-}
-
-async function sendSalesChat() {
-  const inp = $('sa-inp'), text = inp.value.trim();
-  if (!text) return;
-  inp.value = '';
-  addSalesMsg('user','YOU',text);
-  salesChatHistory.push({role:'user',content:text});
-  $('sa-typing').style.display = 'flex';
-  scrollSalesChat();
-  try { await db.from('chat_memory').insert([{agent:'sales',user_id:currentUser.id,role:'user',content:text,created_at:now()}]); } catch(e) {}
-
-  try {
-    const { data: { session } } = await db.auth.getSession();
-    if (!session) throw new Error('Not authenticated.');
-    const history = salesChatHistory.slice(-30);
-    const res = await fetch(`${_ep}/functions/v1/anthropic-proxy`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({agent:'sales',messages:history})});
-    const data = await res.json();
-    if (!res.ok || data.error) throw new Error(data.error?.message || `Proxy error ${res.status}`);
-    const reply = data.content?.map(c=>c.text||'').join('') || 'No response.';
-    $('sa-typing').style.display = 'none';
-    salesChatHistory.push({role:'assistant',content:reply});
-    addSalesMsg('agent','SLS',reply);
-    try {
-      await db.from('chat_memory').insert([{agent:'sales',user_id:currentUser.id,role:'assistant',content:reply,created_at:now()}]);
-      const cnt = salesChatHistory.length;
-      setText('sa-mem-status',`Memory active — ${cnt} messages saved`);
-      setText('sa-mem-info',`${cnt} messages in memory`);
-    } catch(e) {}
-  } catch(e) {
-    $('sa-typing').style.display = 'none';
-    addSalesMsg('agent','ERR',`Error: ${e.message}`);
-  }
-}
-
 function _renderMsgText(text) {
   const escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/\n/g,'<br>')
@@ -5750,7 +5524,7 @@ function _renderMsgText(text) {
     .replace(/`(.*?)`/g,'<code style="font-family:var(--mono);font-size:10.5px;background:var(--s3);padding:1px 5px;border-radius:3px">$1</code>');
   return window.DOMPurify ? DOMPurify.sanitize(escaped, {ALLOWED_TAGS:['br','strong','code'],ALLOWED_ATTR:['style']}) : escaped;
 }
-function _buildMsg(type, avatar, text, time, scrollFn) {
+function _buildMsg(type, avatar, text, time) {
   const ts = (time||new Date()).toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
   const d = document.createElement('div');
   d.className = `msg ${type==='user'?'user':''}`;
@@ -5761,14 +5535,6 @@ function _buildMsg(type, avatar, text, time, scrollFn) {
   d.appendChild(av); d.appendChild(inner);
   return d;
 }
-function addSalesMsg(type, avatar, text, time) {
-  const msgs = $('sa-msgs');
-  msgs.appendChild(_buildMsg(type, avatar, text, time));
-  scrollSalesChat();
-}
-
-function scrollSalesChat() { const m=$('sa-msgs');if(m)m.scrollTop=m.scrollHeight; }
-
 function addMsg(type,avatar,text,time) {
   $('chat-msgs').appendChild(_buildMsg(type,avatar,text,time));
   scrollChat();
