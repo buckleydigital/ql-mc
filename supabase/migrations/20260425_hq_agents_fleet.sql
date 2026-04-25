@@ -135,12 +135,10 @@ INSERT INTO public.agent_config (agent, name, role, emoji, intro) VALUES
   -- DELIVERY room
   ('builder',    'Builder Agent',    'Client onboarding',     'BLD', 'Builder ready. Who am I onboarding?'),
   ('adbot',      'Adbot',            'Meta & Google Ads',     'AD',  'Adbot ready. Which campaign do you want me to look at?'),
-  ('landingpg',  'LandingPg Agent',  'Landing page builds',   'LP',  'LandingPg ready. What page do you need?'),
 
   -- LEAD ENGINE room
   ('smsagent',   'SMS Agent',        'SMS responses',         'SMS', 'SMS Agent ready. New lead inbound?'),
   ('voicebot',   'VoiceBot',         'AI voice calls',        'VC',  'VoiceBot ready. Who am I calling?'),
-  ('quoter',     'Quoter Agent',     'Quote drafting',        'QT',  'Quoter ready. Draft a quote for which lead?'),
   ('chaser',     'Chaser Agent',     'Follow-up cadence',     'CHA', 'Chaser ready. Who needs a follow-up today?'),
 
   -- RETENTION room
@@ -166,10 +164,8 @@ INSERT INTO public.agents (id, name, room, role, busy, current_stat) VALUES
   ('closer',     'Closer',     'SALES',       'Proposals',   false, 'Idle — waiting for queue'),
   ('builder',    'Builder',    'DELIVERY',    'Onboarding',  false, 'Idle — waiting for queue'),
   ('adbot',      'Adbot',      'DELIVERY',    'Meta/Google', false, 'Idle — waiting for queue'),
-  ('landingpg',  'LandingPg',  'DELIVERY',    'Pages',       false, 'Idle — waiting for queue'),
   ('smsagent',   'SMSAgent',   'LEAD_ENGINE', 'Respond',     false, 'Idle — waiting for queue'),
   ('voicebot',   'VoiceBot',   'LEAD_ENGINE', 'Calls',       false, 'Idle — waiting for queue'),
-  ('quoter',     'Quoter',     'LEAD_ENGINE', 'Quotes',      false, 'Idle — waiting for queue'),
   ('chaser',     'Chaser',     'LEAD_ENGINE', 'Follow-up',   false, 'Idle — waiting for queue'),
   ('pulsecheck', 'PulseCheck', 'RETENTION',   'Health',      false, 'Idle — waiting for queue'),
   ('churnbot',   'ChurnBot',   'RETENTION',   'At-risk',     false, 'Idle — waiting for queue'),
@@ -200,8 +196,8 @@ CROSS JOIN (VALUES
 ) AS f(filename)
 WHERE a.agent IN (
   'prospector','qualifier','closer',
-  'builder','adbot','landingpg',
-  'smsagent','voicebot','quoter','chaser',
+  'builder','adbot',
+  'smsagent','voicebot','chaser',
   'pulsecheck','churnbot','reporter',
   'inbox','bookkeeper','datasyncer'
 )
