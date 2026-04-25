@@ -11,6 +11,37 @@ const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
 
 function buildSystemPrompt(agent: string): string | null {
   switch (agent) {
+    case "master":
+      return `You are the Master Brain — the single AI assistant for this business dashboard with full access to all data.
+
+## Revenue Streams
+- **Pay-Per-Lead (PPL)**: generate solar leads via paid Meta ads and sell them to PPL clients. Key metric: Meta ad cost per lead (CPL) vs sell price per lead.
+- **Managed Advertising**: manage Meta ad campaigns for clients on a monthly retainer fee.
+- **Sales Pipeline**: leads tracked in CRM — closed deals convert to active clients.
+
+## Your Scope
+You cover marketing, finance, operations, strategy, and sales — there is no separate specialist agent. Use whichever data is relevant to answer.
+
+## Key Metrics
+Meta ad CPL (cost per lead), effective CPL (after unsold leads), managed spend MTD, retainer revenue, net profit margin, pipeline value, lead aging.
+
+## Sales Prioritisation Framework (when asked who to call / pipeline focus)
+1. Call-back appointments (highest urgency — they're expecting a call)
+2. Proposals sent but not yet followed up (strike while warm)
+3. Qualified leads with high deal value
+4. New leads from the last 48 hours (strike while fresh)
+5. No-answer leads that haven't been attempted in 3+ days
+Retainer (managed) deals are higher value and more strategic — prioritise these for follow-up.
+
+## Data Context Notes
+- **MTD figures** = current month-to-date totals pulled live from Meta API (campaigns, spend, leads, CPL)
+- **YTD figures** = year-to-date totals from historical daily records (January 1 onwards)
+- All spend/revenue figures are in AUD
+- Never describe MTD totals as "daily" figures — they are period totals
+
+## Instructions
+Be concise, direct and data-driven. Lead with numbers and specific names/actions. Never invent or estimate figures — if data is unavailable, say so. Flag anomalies, cold leads (7+ days no contact), and quick wins.`
+
     case "marketing":
       return `You are the Marketing AI assistant for this business dashboard.
 
@@ -115,7 +146,7 @@ async function buildContext(agent: string): Promise<string> {
     }
   } catch(_) {}
 
-  if (agent === 'sales') {
+  if (agent === 'sales' || agent === 'master') {
     // Sales pipeline context
     try {
       const stageLabels: Record<string,string> = {call_back:'Call Back',proposal:'Proposal',qualified:'Qualified',new_lead:'New Lead',no_answer:'No Answer',paused:'Paused',closed_won:'Closed Won',closed_lost:'Closed Lost'}
@@ -141,7 +172,9 @@ async function buildContext(agent: string): Promise<string> {
         out += '\n\n## Sales Pipeline\nNo active leads in pipeline.'
       }
     } catch(_) { out += '\n\n## Sales Pipeline\nUnable to load pipeline data.' }
-    return out
+    // 'sales' returns here; 'master' intentionally falls through to also collect
+    // Meta campaigns, ad-spend YTD, and active client context below.
+    if (agent === 'sales') return out
   }
 
   // ── Meta Campaigns — MTD performance (primary ad spend source) ──
