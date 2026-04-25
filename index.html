@@ -859,45 +859,57 @@ td strong{font-weight:500}
           <button class="navbtn active" data-panel="tasks" onclick="nav('tasks',this)">
             <span class="ni">✦</span>Tasks
           </button>
+        </div>
+
+        <div class="sb-divider"></div>
+
+        <div class="sb-group">
+          <span class="sb-group-label">Sales &amp; Clients</span>
           <button class="navbtn" data-panel="crm" onclick="nav('crm',this)">
             <span class="ni">◎</span>Sales Pipeline<span id="crm-followup-badge" style="display:none;background:var(--amb);color:#1c1416;border-radius:10px;font-size:9px;padding:1px 6px;margin-left:5px;font-family:var(--mono);font-weight:700;line-height:1.5">0</span>
           </button>
           <button class="navbtn" data-panel="ppl" onclick="nav('ppl',this)">
             <span class="ni">◈</span>PPL Clients
           </button>
-          <button class="navbtn" data-panel="campaigns" onclick="nav('campaigns',this)">
-            <span class="ni">▶</span>Meta Campaigns
-          </button>
           <button class="navbtn" data-panel="managed" onclick="nav('managed',this)">
             <span class="ni">▣</span>Managed Ads
-          </button>
-          <button class="navbtn" data-panel="leads" onclick="nav('leads',this)">
-            <span class="ni">⚡</span>Lead Distribution
-          </button>
-          <button class="navbtn" data-panel="invoices" onclick="nav('invoices',this)">
-            <span class="ni">⊞</span>Invoices
           </button>
         </div>
 
         <div class="sb-divider"></div>
 
         <div class="sb-group">
-          <span class="sb-group-label">Analytics</span>
+          <span class="sb-group-label">Advertising</span>
+          <button class="navbtn" data-panel="campaigns" onclick="nav('campaigns',this)">
+            <span class="ni">▶</span>Meta Campaigns
+          </button>
+          <button class="navbtn" data-panel="leads" onclick="nav('leads',this)">
+            <span class="ni">⚡</span>Lead Distribution
+          </button>
+        </div>
+
+        <div class="sb-divider"></div>
+
+        <div class="sb-group">
+          <span class="sb-group-label">Finance</span>
+          <button class="navbtn" data-panel="invoices" onclick="nav('invoices',this)">
+            <span class="ni">⊞</span>Invoices
+          </button>
           <button class="navbtn" data-panel="finance" onclick="nav('finance',this)">
             <span class="ni">$</span>Financials
           </button>
           <button class="navbtn" data-panel="goals" onclick="nav('goals',this)">
             <span class="ni">◎</span>Goal Board
           </button>
-          <button class="navbtn" data-panel="daily" onclick="nav('daily',this)">
-            <span class="ni">≋</span>Daily Logs
-          </button>
         </div>
 
         <div class="sb-divider"></div>
 
         <div class="sb-group">
-          <span class="sb-group-label">Resources</span>
+          <span class="sb-group-label">Intelligence</span>
+          <button class="navbtn" data-panel="daily" onclick="nav('daily',this)">
+            <span class="ni">≋</span>Daily Logs
+          </button>
           <button class="navbtn" data-panel="files" onclick="nav('files',this)">
             <span class="ni">📄</span>Files
           </button>
@@ -1551,7 +1563,7 @@ td strong{font-weight:500}
         <div class="hq-tabs">
           <button class="hq-tab active" onclick="switchHQTab('map',this)">🏰 HQ MAP</button>
           <button class="hq-tab" onclick="switchHQTab('humans',this)">👥 HUMANS</button>
-          <button class="hq-tab" onclick="switchHQTab('workflows',this)">⚡ MAKE WORKFLOWS</button>
+          <button class="hq-tab" onclick="switchHQTab('workflows',this)">⚡ TECH STACK</button>
         </div>
         <div class="hq-tab-panel active" id="hq-map">
           <div class="hq-grid" id="hq-rooms-grid"><!-- populated by renderHQ() --></div>
@@ -1562,9 +1574,12 @@ td strong{font-weight:500}
           <div class="hq-hint">CLICK TO SELECT · DRAG TO REARRANGE · POSITIONS ARE SAVED LOCALLY</div>
         </div>
         <div class="hq-tab-panel" id="hq-workflows">
-          <div class="hq-wf-header">CONNECT THESE IN MAKE.COM → POWER YOUR AGENTS</div>
+          <div class="hq-wf-header" style="display:flex;align-items:center;justify-content:space-between">
+            <span>AGENT TECH STACK · TOOLS &amp; INTEGRATIONS</span>
+            <button class="btn btn-xs btn-p" style="font-size:5px;padding:3px 8px;letter-spacing:.05em" onclick="openTechStackModal()">+ ADD</button>
+          </div>
           <div class="hq-wf-list" id="hq-workflows-list"><!-- populated by buildHQWorkflows() --></div>
-          <div class="hq-wf-tip">TIP: START WITH LEAD ENGINE WORKFLOWS FIRST → THEN RETENTION → THEN SALES</div>
+          <div class="hq-wf-tip">TIP: KEEP EACH ENTRY TO ONE TOOL OR SERVICE — ONE LINE PER INTEGRATION</div>
         </div>
 
         <div class="hq-footer">QUOTELEADS · ALL SYSTEMS OPERATIONAL · AU</div>
@@ -1941,7 +1956,7 @@ td strong{font-weight:500}
     <div class="frow" id="ppl-dm-email-row"><label class="flabel">Delivery Email</label><input class="fi" id="ppl-delivery-email" type="email" placeholder="leads@client.com"></div>
     <div class="frow" id="ppl-dm-phone-row" style="display:none"><label class="flabel">Delivery Phone <span style="font-size:9.5px;color:var(--ink3);font-weight:300">for SMS</span></label><input class="fi" id="ppl-delivery-phone" placeholder="+61400000000"></div>
     <div id="ppl-dm-crm-row" style="display:none">
-      <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px"><label class="flabel">Custom Notes <span style="font-size:9.5px;color:var(--ink3);font-weight:300">any text — passed to Make.com as custom_fields</span></label><textarea class="fta" id="ppl-custom-fields" placeholder="e.g. webhook URL, API key, notes…"></textarea></div>
+      <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px"><label class="flabel">Custom Notes <span style="font-size:9.5px;color:var(--ink3);font-weight:300">any text — passed as custom_fields to your integration</span></label><textarea class="fta" id="ppl-custom-fields" placeholder="e.g. webhook URL, API key, notes…"></textarea></div>
     </div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Meta Ads Integration</div>
     <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px">
@@ -2099,7 +2114,7 @@ td strong{font-weight:500}
     <div class="frow" id="ep-dm-email-row"><label class="flabel">Delivery Email</label><input class="fi" id="ep-delivery-email" type="email" placeholder="leads@client.com"></div>
     <div class="frow" id="ep-dm-phone-row" style="display:none"><label class="flabel">Delivery Phone <span style="font-size:9.5px;color:var(--ink3);font-weight:300">for SMS</span></label><input class="fi" id="ep-delivery-phone" placeholder="+61400000000"></div>
     <div id="ep-dm-crm-row" style="display:none">
-      <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px"><label class="flabel">Custom Notes <span style="font-size:9.5px;color:var(--ink3);font-weight:300">any text — passed to Make.com as custom_fields</span></label><textarea class="fta" id="ep-custom-fields" placeholder="e.g. webhook URL, API key, notes…"></textarea></div>
+      <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px"><label class="flabel">Custom Notes <span style="font-size:9.5px;color:var(--ink3);font-weight:300">any text — passed as custom_fields to your integration</span></label><textarea class="fta" id="ep-custom-fields" placeholder="e.g. webhook URL, API key, notes…"></textarea></div>
     </div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Meta Ads Integration</div>
     <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px">
@@ -2117,7 +2132,7 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Platform Email</label><input class="fi" id="ep-platform-email" type="email" placeholder="client@quoteleads.com.au"></div>
     <div class="frow"><label class="flabel">Twilio Phone</label><input class="fi" id="ep-twilio-phone" placeholder="+61400000000"></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Integrations</div>
-    <div class="frow"><label class="flabel">Client Webhook URL</label><input class="fi" id="ep-client-webhook" type="url" placeholder="https://hook.make.com/…"></div>
+    <div class="frow"><label class="flabel">Client Webhook URL</label><input class="fi" id="ep-client-webhook" type="url" placeholder="https://your-webhook-url/…"></div>
     <div class="frow"><label class="flabel">Has Custom Integration</label>
       <select class="fs" id="ep-has-custom-integration">
         <option value="false">No</option>
@@ -2205,7 +2220,7 @@ td strong{font-weight:500}
     </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="em-notes"></textarea></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Integrations</div>
-    <div class="frow"><label class="flabel">Client Webhook URL</label><input class="fi" id="em-client-webhook" type="url" placeholder="https://hook.make.com/…"></div>
+    <div class="frow"><label class="flabel">Client Webhook URL</label><input class="fi" id="em-client-webhook" type="url" placeholder="https://your-webhook-url/…"></div>
     <div class="frow"><label class="flabel">Has Custom Integration</label>
       <select class="fs" id="em-has-custom-integration">
         <option value="false">No</option>
@@ -2472,7 +2487,27 @@ td strong{font-weight:500}
 
 <!-- Agent Run Log — opens when an agent sprite is clicked on the Fleet Map.
      Populated by openAgentLog() from public.agent_runs (started/finished pings
-     posted by Make.com scenarios via the agent-status edge function). -->
+     posted by automation scenarios via the agent-status edge function). -->
+<div class="overlay" id="m-tech-stack">
+  <div class="modal" style="max-width:440px">
+    <h2 id="tsm-title">Add Tech Stack Entry</h2>
+    <div class="msub">Label an agent's tool, platform, or integration</div>
+    <div style="display:grid;grid-template-columns:80px 1fr;gap:8px">
+      <div class="frow"><label class="flabel">Icon</label><input class="fi" id="tsm-icon" placeholder="⚙️" style="font-size:18px;text-align:center"></div>
+      <div class="frow"><label class="flabel">Name</label><input class="fi" id="tsm-name" placeholder="e.g. New Lead → SMS in 60s"></div>
+    </div>
+    <div class="frow"><label class="flabel">Tech Stack <span style="font-size:9.5px;color:var(--ink3);font-weight:300">tool or platform powering this</span></label><input class="fi" id="tsm-stack" placeholder="e.g. Twilio · n8n · Supabase"></div>
+    <div class="frow"><label class="flabel">Room <span style="font-size:9.5px;color:var(--ink3);font-weight:300">agent room label</span></label><input class="fi" id="tsm-room" placeholder="e.g. LEAD ENGINE"></div>
+    <div class="frow"><label class="flabel">Color</label><input class="fi" id="tsm-color" type="color" style="height:36px;padding:2px 4px;cursor:pointer"></div>
+    <div class="macts">
+      <button class="btn btn-red btn-sm" id="tsm-del" onclick="deleteTechStack()" style="display:none">Delete</button>
+      <div style="flex:1"></div>
+      <button class="btn" onclick="closeModal('m-tech-stack')">Cancel</button>
+      <button class="btn btn-p" onclick="saveTechStack()">Save</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="m-agent-log">
   <div class="modal" style="max-width:560px">
     <h2 id="al-title">Agent Log</h2>
@@ -5156,7 +5191,8 @@ async function loadHQRooms() {
 }
 
 // Workflow catalogue is loaded from Supabase (public.hq_workflows) so the
-// tool stack isn't exposed in the deployed HTML. See migrations/20260425_hq_workflows.sql.
+// tech stack details aren't hard-coded in the deployed HTML.
+// See migrations/20260425_hq_workflows_tech_stack.sql.
 let hqStatuses = {}; // agentId → {busy, live, stat}
 let _hqIdleJitterTimers = []; // track per-render setIntervals so we can clear on re-render
 let _hqSelected = null;       // currently selected sprite id (across both maps)
@@ -5546,11 +5582,15 @@ async function buildHQWorkflows() {
   let rows = [];
   try {
     const { data } = await db.from('hq_workflows')
-      .select('icon,name,tool,room,color,sort_order')
+      .select('id,icon,name,tech_stack,room,color,sort_order')
       .eq('enabled', true)
       .order('sort_order');
     rows = data || [];
   } catch (e) { rows = []; }
+  if (rows.length === 0) {
+    list.innerHTML = '<div style="color:#72728a55;font-size:6px;padding:12px 0;text-align:center">NO ENTRIES YET · CLICK + ADD TO BUILD YOUR STACK</div>';
+    return;
+  }
   rows.forEach(w => {
     const item = document.createElement('div');
     item.className = 'hq-wf-item';
@@ -5571,12 +5611,15 @@ async function buildHQWorkflows() {
     wName.textContent = w.name;
     const wTool = document.createElement('div');
     wTool.className = 'hq-wf-tool';
-    wTool.textContent = w.tool;
+    wTool.textContent = w.tech_stack || '';
     info.appendChild(wName);
     info.appendChild(wTool);
 
     left.appendChild(icon);
     left.appendChild(info);
+
+    const right = document.createElement('div');
+    right.style.cssText = 'display:flex;align-items:center;gap:6px';
 
     const tag = document.createElement('div');
     tag.className = 'hq-wf-tag';
@@ -5585,10 +5628,67 @@ async function buildHQWorkflows() {
     tag.style.border = `1px solid ${w.color}33`;
     tag.textContent = w.room;
 
+    const editBtn = document.createElement('button');
+    editBtn.textContent = '✎';
+    editBtn.title = 'Edit';
+    editBtn.style.cssText = 'background:none;border:none;color:#72728a;font-size:8px;cursor:pointer;padding:2px 4px;line-height:1';
+    editBtn.onclick = () => openTechStackModal(w);
+
+    right.appendChild(tag);
+    right.appendChild(editBtn);
+
     item.appendChild(left);
-    item.appendChild(tag);
+    item.appendChild(right);
     list.appendChild(item);
   });
+}
+
+let _tsEditId = null;
+function openTechStackModal(row) {
+  _tsEditId = row ? (row.id || null) : null;
+  document.getElementById('tsm-title').textContent = row ? 'Edit Entry' : 'Add Tech Stack Entry';
+  document.getElementById('tsm-icon').value    = row ? (row.icon || '') : '⚙️';
+  document.getElementById('tsm-name').value    = row ? (row.name || '') : '';
+  document.getElementById('tsm-stack').value   = row ? (row.tech_stack || '') : '';
+  document.getElementById('tsm-room').value    = row ? (row.room || '') : '';
+  document.getElementById('tsm-color').value   = row ? (row.color || '#4797ff') : '#4797ff';
+  document.getElementById('tsm-del').style.display = row ? '' : 'none';
+  openModal('m-tech-stack');
+}
+async function saveTechStack() {
+  const icon       = document.getElementById('tsm-icon').value.trim() || '⚙️';
+  const name       = document.getElementById('tsm-name').value.trim();
+  const tech_stack = document.getElementById('tsm-stack').value.trim();
+  const room       = document.getElementById('tsm-room').value.trim().toUpperCase();
+  const color      = document.getElementById('tsm-color').value || '#4797ff';
+  if (!name) { toast('Name is required', true); return; }
+  try {
+    if (_tsEditId) {
+      const { error } = await db.from('hq_workflows')
+        .update({ icon, name, tech_stack, room, color, updated_at: now() })
+        .eq('id', _tsEditId);
+      if (error) throw error;
+    } else {
+      const { error } = await db.from('hq_workflows')
+        .insert({ icon, name, tech_stack, room, color, enabled: true,
+                  sort_order: Date.now() % 100000 });
+      if (error) throw error;
+    }
+    closeModal('m-tech-stack');
+    await buildHQWorkflows();
+    toast(_tsEditId ? 'Entry updated ✓' : 'Entry added ✓');
+  } catch (e) { toast('Save failed: ' + (e.message || e), true); }
+}
+async function deleteTechStack() {
+  if (!_tsEditId) return;
+  if (!confirm('Delete this tech stack entry?')) return;
+  try {
+    const { error } = await db.from('hq_workflows').delete().eq('id', _tsEditId);
+    if (error) throw error;
+    closeModal('m-tech-stack');
+    await buildHQWorkflows();
+    toast('Entry deleted');
+  } catch (e) { toast('Delete failed: ' + (e.message || e), true); }
 }
 
 function switchHQTab(tab, el) {
@@ -5601,8 +5701,8 @@ function switchHQTab(tab, el) {
 
 function openAgentChat(_agentId) {
   // Fleet click → open this agent's run log (started/finished pings from
-  // Make.com), NOT the Master Brain chat. Kept under the original name so
-  // existing onclick handlers continue to work.
+  // automation scenarios), NOT the Master Brain chat. Kept under the original
+  // name so existing onclick handlers continue to work.
   openAgentLog(_agentId);
 }
 
@@ -5643,7 +5743,7 @@ async function openAgentLog(agentId) {
     if (a) { displayName = a.name; break; }
   }
   setText('al-title', `${displayName} — Run Log`);
-  setText('al-sub', `Last started / finished pings from Make.com scenarios for ${agentId}`);
+  setText('al-sub', `Last automation runs for ${agentId}`);
   const list = $('al-list');
   if (list) list.innerHTML = 'Loading…';
   openModal('m-agent-log');
@@ -5661,7 +5761,7 @@ async function openAgentLog(agentId) {
       .limit(50);
     if (error) throw error;
     if (!data || data.length === 0) {
-      list.innerHTML = '<div style="color:#72728a;padding:8px">No runs yet. Add an HTTP POST module to your Make scenario at the top (status:"started") and at the end (status:"finished") pointing at /functions/v1/agent-status.</div>';
+      list.innerHTML = '<div style="color:#72728a;padding:8px">No runs yet. POST to /functions/v1/agent-status with <code style="font-size:10px">{agent, scenario, status:"started"}</code> at the start of your automation and <code style="font-size:10px">{status:"finished", log:"…"}</code> at the end.</div>';
     } else {
       list.innerHTML = data.map(_alRowHtml).join('');
     }
