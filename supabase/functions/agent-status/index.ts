@@ -49,7 +49,7 @@ Deno.serve(async (req: Request) => {
   const agent    = typeof body.agent    === "string" ? body.agent.trim().toLowerCase() : "";
   const scenario = typeof body.scenario === "string" ? body.scenario.trim() : "";
   const status   = typeof body.status   === "string" ? body.status.trim().toLowerCase() : "";
-  const log      = typeof body.log      === "string" ? body.log.slice(0, 2000) : null;
+  const log      = typeof body.log      === "string" ? body.log.slice(0, 2000) : null; // cap to keep rows small / Make payloads sane
 
   if (!agent)  return jsonResponse({ error: "agent is required" }, 400);
   if (!status) return jsonResponse({ error: "status is required" }, 400);

@@ -5435,7 +5435,7 @@ async function openAgentLog(agentId) {
           if (_agentLogAgent !== agentId) return;
           const r = payload.new;
           if (!r) return;
-          if (list.firstChild && list.firstChild.nodeType === 3) list.innerHTML = '';
+          if (list.firstChild && list.firstChild.nodeType === Node.TEXT_NODE) list.innerHTML = ''; // clear the "Loading…" placeholder before prepending
           list.insertAdjacentHTML('afterbegin', _alRowHtml(r));
         })
       .subscribe();
