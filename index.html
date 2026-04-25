@@ -497,16 +497,6 @@ body::after {
 
 /* ═══ CHAT ═══ */
 .chat-layout{display:grid;grid-template-columns:150px 1fr;gap:7px;height:calc(100vh - 140px)}
-.chat-list{display:flex;flex-direction:column;gap:3px}
-.chat-item{
-  padding:8px 10px;border-radius:var(--r);
-  border:1px solid var(--bd);background:var(--s1);
-  cursor:pointer;transition:all .12s;
-}
-.chat-item:hover{border-color:var(--bd2)}
-.chat-item.active{border-color:var(--acc);background:var(--acc-dim)}
-.chat-iname{font-size:11.5px;font-weight:500;color:var(--ink)}
-.chat-irole{font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:2px}
 .chat-win{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);display:flex;flex-direction:column;overflow:hidden}
 .chat-head{padding:9px 13px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;background:var(--s2);flex-shrink:0}
 .chat-hname{font-family:var(--display);font-size:13.5px;font-weight:600;color:var(--ink)}
@@ -678,7 +668,6 @@ td strong{font-weight:500}
   .md-layout{grid-template-columns:1fr;height:auto}
   .md-files{flex-direction:row;flex-wrap:wrap}
   .chat-layout{grid-template-columns:1fr}
-  .chat-list{flex-direction:row;flex-wrap:wrap;overflow-x:auto;gap:4px}
   .chat-win{height:calc(100vh - 360px);min-height:260px}
 }
 @media(max-width:700px){
@@ -695,7 +684,7 @@ td strong{font-weight:500}
 }
 @media(max-width:400px){.kg.c4,.kg.c3,.kg.c2{grid-template-columns:1fr}}
 
-/* ══ HQ FLEET — pixel art (baked in from bake-in.html) ══ */
+/* ══ HQ FLEET — pixel art ══ */
 #panel-hq.panel{background:#030a03;color:#fff;font-family:'Press Start 2P',monospace;padding:16px;border-radius:var(--r2);border:1px solid #4797ff22;position:relative;overflow:hidden}
 #panel-hq *,#panel-hq *::before,#panel-hq *::after{box-sizing:border-box;font-family:'Press Start 2P',monospace}
 #panel-hq .ph{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #4797ff22;padding-bottom:14px;margin-bottom:14px}
@@ -780,7 +769,6 @@ td strong{font-weight:500}
 
 @media(max-width:960px){#panel-hq .hq-grid{grid-template-columns:1fr}}
 @media(max-width:700px){#panel-hq #hq-stats{grid-template-columns:repeat(2,1fr)}}
-.chat-group-label{font-family:var(--mono);font-size:8px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.12em;padding:8px 12px 4px;opacity:.7}
 /* ══ LEAD DISTRIBUTION ══ */
 .ld-client-grid{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px}
 .ld-client-card{flex:1;min-width:130px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:12px 14px}
@@ -5092,7 +5080,7 @@ function renderDailyChart(leads) {
 }
 
 let AGENT_CFG={}, DEFAULT_MD={};
-// ─── HQ FLEET (pixel art — baked in from bake-in.html) ──────────────────────
+// ─── HQ FLEET (pixel art) ───────────────────────────────────────────────────
 const HQ_ROOMS = [
   {
     name:'🏢 SALES',
@@ -5142,17 +5130,8 @@ const HQ_ROOMS = [
   },
 ];
 
-const HQ_WORKFLOWS = [
-  {icon:'📥', name:'New Lead → SMS in 60s',   tool:'Make + Twilio',       room:'LEAD ENGINE', color:'#f472b6'},
-  {icon:'🎙️', name:'Lead → Voice Call',        tool:'Make + Bland AI',     room:'LEAD ENGINE', color:'#fb923c'},
-  {icon:'📄', name:'Quote Drafter',            tool:'Make + Claude AI',    room:'LEAD ENGINE', color:'#4797ff'},
-  {icon:'🔁', name:'Day 2/5/10 Follow-up',     tool:'Make + CRM',          room:'LEAD ENGINE', color:'#a78bfa'},
-  {icon:'🎯', name:'Inbound Lead → CRM',       tool:'Make + GoHighLevel',  room:'SALES',       color:'#4797ff'},
-  {icon:'📊', name:'Daily Client Reports',     tool:'Make + Gmail',        room:'OPS',         color:'#60a5fa'},
-  {icon:'⚠️', name:'Churn Risk Alert',         tool:'Make + Slack',        room:'RETENTION',   color:'#f87171'},
-  {icon:'🏗️', name:'New Client Onboarding',    tool:'Make + Notion',       room:'DELIVERY',    color:'#38bdf8'},
-];
-
+// Workflow catalogue is loaded from Supabase (public.hq_workflows) so the
+// tool stack isn't exposed in the deployed HTML. See migrations/20260425_hq_workflows.sql.
 let hqStatuses = {}; // agentId → {busy, live, stat}
 let _hqIdleJitterTimers = []; // track per-render setIntervals so we can clear on re-render
 
@@ -5300,11 +5279,19 @@ function _hqUpdateActive() {
   if (al) al.textContent = `${busy} / ${total} ACTIVE`;
 }
 
-function buildHQWorkflows() {
+async function buildHQWorkflows() {
   const list = document.getElementById('hq-workflows-list');
   if (!list) return;
   list.innerHTML = '';
-  HQ_WORKFLOWS.forEach(w => {
+  let rows = [];
+  try {
+    const { data } = await db.from('hq_workflows')
+      .select('icon,name,tool,room,color,sort_order')
+      .eq('enabled', true)
+      .order('sort_order');
+    rows = data || [];
+  } catch (e) { rows = []; }
+  rows.forEach(w => {
     const item = document.createElement('div');
     item.className = 'hq-wf-item';
     item.style.borderLeft = `3px solid ${w.color}44`;

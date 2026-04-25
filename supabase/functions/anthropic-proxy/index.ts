@@ -42,87 +42,6 @@ Retainer (managed) deals are higher value and more strategic — prioritise thes
 ## Instructions
 Be concise, direct and data-driven. Lead with numbers and specific names/actions. Never invent or estimate figures — if data is unavailable, say so. Flag anomalies, cold leads (7+ days no contact), and quick wins.`
 
-    case "marketing":
-      return `You are the Marketing AI assistant for this business dashboard.
-
-## Revenue Streams
-- **Pay-Per-Lead (PPL)**: generate solar leads via paid Meta ads and sell them to PPL clients. Key metric: Meta ad cost per lead (CPL) vs sell price per lead.
-- **Managed Advertising**: manage Meta ad campaigns for clients on a monthly retainer fee.
-- **Sales Pipeline**: leads tracked in CRM — closed deals convert to active clients.
-
-## Key Metrics
-Meta ad CPL (cost per lead), effective CPL (after unsold leads), managed spend MTD, retainer revenue, net profit margin.
-
-## Data Context Notes
-- **MTD figures** = current month-to-date totals pulled live from Meta API (campaigns, spend, leads, CPL)
-- **YTD figures** = year-to-date totals from historical daily records (January 1 onwards)
-- All spend/revenue figures are in AUD
-- Never describe MTD totals as "daily" figures — they are period totals
-
-## Instructions
-Be concise and data-driven. Lead with numbers. Never invent or estimate figures — if data is unavailable, say so.`
-
-    case "finance":
-      return `You are the Finance AI assistant for this business dashboard.
-
-Focus on revenue, expenses, margins, and billing accuracy. Identify trends, flag anomalies, and surface actionable insights from the financial data.
-
-## Data Context Notes
-- **MTD figures** = current month-to-date totals (not daily)
-- **YTD figures** = year-to-date totals from January 1 onwards
-- All figures are in AUD
-
-## Instructions
-Be concise and precise. Lead with numbers. Never invent or estimate figures — if data is unavailable, say so.`
-
-    case "operations":
-      return `You are the Operations AI assistant for this business dashboard.
-
-Focus on lead flow, delivery performance, and quality metrics. Help identify bottlenecks, delivery failures, and process improvements.
-
-## Data Context Notes
-- **MTD figures** = current month-to-date totals (not daily)
-- **YTD figures** = year-to-date totals from January 1 onwards
-
-## Instructions
-Be direct and specific. Quantify issues where possible. Flag anything that needs immediate attention.`
-
-    case "strategy":
-      return `You are the Strategy AI assistant for this business dashboard.
-
-Focus on pipeline trends, growth opportunities, and competitive positioning. Help identify what's working, what isn't, and where to focus next.
-
-## Data Context Notes
-- **MTD figures** = current month-to-date totals (not daily)
-- **YTD figures** = year-to-date totals from January 1 onwards
-
-## Instructions
-Be strategic and concise. Connect data to decisions. Avoid generalities — ground recommendations in the actual numbers shown.`
-
-    case "sales":
-      return `You are the Sales Agent AI for this business dashboard.
-
-## Your Core Role
-Analyse the full sales pipeline, read all lead notes, and help the team prioritise the highest-value leads to contact each day. Be direct, specific, and action-oriented. Tell the team exactly who to call, in what order, and why.
-
-## Prioritisation Framework
-1. Call-back appointments (highest urgency — they're expecting a call)
-2. Proposals sent but not yet followed up (strike while warm)
-3. Qualified leads with high deal value
-4. New leads from the last 48 hours (strike while fresh)
-5. No-answer leads that haven't been attempted in 3+ days
-
-## Business Context
-- Pay-per-lead clients: buying inbound leads generated via paid ads
-- Retainer clients: paying a monthly fee for ad management
-- Retainer deals are higher value and more strategic — prioritise these for follow-up
-
-## Instructions
-- Lead with specific names and actions
-- Flag leads that have gone cold (7+ days without contact)
-- Identify quick wins (leads already qualified with high intent)
-- Be concise but thorough — the team is busy`
-
     default:
       return null
   }
@@ -146,36 +65,31 @@ async function buildContext(agent: string): Promise<string> {
     }
   } catch(_) {}
 
-  if (agent === 'sales' || agent === 'master') {
-    // Sales pipeline context
-    try {
-      const stageLabels: Record<string,string> = {call_back:'Call Back',proposal:'Proposal',qualified:'Qualified',new_lead:'New Lead',no_answer:'No Answer',paused:'Paused',closed_won:'Closed Won',closed_lost:'Closed Lost'}
-      const stageOrder: Record<string,number> = {call_back:1,proposal:2,qualified:3,new_lead:4,no_answer:5,paused:6}
-      const { data: leads } = await sb.from('leads').select('id,name,company,stage,lead_type,value,source,notes,last_contact,created_at,updated_at').not('stage','in','("closed_won","closed_lost")').order('updated_at',{ascending:false})
-      if (leads && leads.length) {
-        const sorted = [...leads].sort((a: any, b: any) => {
-          const so = (stageOrder[a.stage]||9) - (stageOrder[b.stage]||9)
-          return so !== 0 ? so : (b.value||0) - (a.value||0)
-        })
-        const lines = sorted.map((l: any) => {
-          const lastContact = l.last_contact ? new Date(l.last_contact).toLocaleDateString('en-AU') : 'never contacted'
-          const value = l.value ? `$${Number(l.value).toLocaleString()}/mo` : 'value TBD'
-          const daysSince = l.last_contact ? Math.floor((Date.now()-new Date(l.last_contact).getTime())/(1000*86400)) : null
-          const urgency = daysSince !== null && daysSince > 7 ? ` ⚠ ${daysSince}d since contact` : ''
-          return `  - [${stageLabels[l.stage]||l.stage}] ${l.name}${l.company?' @ '+l.company:''} · ${value} · ${l.lead_type==='ppl'?'PPL':'Managed Ads'} · Last: ${lastContact}${urgency}\n    Notes: ${l.notes||'none'}`
-        })
-        const counts = sorted.reduce((acc: Record<string,number>, l: any) => { acc[l.stage]=(acc[l.stage]||0)+1; return acc }, {})
-        out += `\n\n## Full Active Sales Pipeline (${leads.length} leads)\n${lines.join('\n')}`
-        out += `\n\n### Counts by Stage\n${Object.entries(counts).map(([s,n]) => `  - ${stageLabels[s]||s}: ${n}`).join('\n')}`
-        out += `\n\n### Total Pipeline Value\n  $${sorted.reduce((s: number, l: any) => s+(l.value||0),0).toLocaleString()}/mo across ${leads.length} leads`
-      } else {
-        out += '\n\n## Sales Pipeline\nNo active leads in pipeline.'
-      }
-    } catch(_) { out += '\n\n## Sales Pipeline\nUnable to load pipeline data.' }
-    // 'sales' returns here; 'master' intentionally falls through to also collect
-    // Meta campaigns, ad-spend YTD, and active client context below.
-    if (agent === 'sales') return out
-  }
+  // Sales pipeline context (master is the only agent reaching this far)
+  try {
+    const stageLabels: Record<string,string> = {call_back:'Call Back',proposal:'Proposal',qualified:'Qualified',new_lead:'New Lead',no_answer:'No Answer',paused:'Paused',closed_won:'Closed Won',closed_lost:'Closed Lost'}
+    const stageOrder: Record<string,number> = {call_back:1,proposal:2,qualified:3,new_lead:4,no_answer:5,paused:6}
+    const { data: leads } = await sb.from('leads').select('id,name,company,stage,lead_type,value,source,notes,last_contact,created_at,updated_at').not('stage','in','("closed_won","closed_lost")').order('updated_at',{ascending:false})
+    if (leads && leads.length) {
+      const sorted = [...leads].sort((a: any, b: any) => {
+        const so = (stageOrder[a.stage]||9) - (stageOrder[b.stage]||9)
+        return so !== 0 ? so : (b.value||0) - (a.value||0)
+      })
+      const lines = sorted.map((l: any) => {
+        const lastContact = l.last_contact ? new Date(l.last_contact).toLocaleDateString('en-AU') : 'never contacted'
+        const value = l.value ? `$${Number(l.value).toLocaleString()}/mo` : 'value TBD'
+        const daysSince = l.last_contact ? Math.floor((Date.now()-new Date(l.last_contact).getTime())/(1000*86400)) : null
+        const urgency = daysSince !== null && daysSince > 7 ? ` ⚠ ${daysSince}d since contact` : ''
+        return `  - [${stageLabels[l.stage]||l.stage}] ${l.name}${l.company?' @ '+l.company:''} · ${value} · ${l.lead_type==='ppl'?'PPL':'Managed Ads'} · Last: ${lastContact}${urgency}\n    Notes: ${l.notes||'none'}`
+      })
+      const counts = sorted.reduce((acc: Record<string,number>, l: any) => { acc[l.stage]=(acc[l.stage]||0)+1; return acc }, {})
+      out += `\n\n## Full Active Sales Pipeline (${leads.length} leads)\n${lines.join('\n')}`
+      out += `\n\n### Counts by Stage\n${Object.entries(counts).map(([s,n]) => `  - ${stageLabels[s]||s}: ${n}`).join('\n')}`
+      out += `\n\n### Total Pipeline Value\n  $${sorted.reduce((s: number, l: any) => s+(l.value||0),0).toLocaleString()}/mo across ${leads.length} leads`
+    } else {
+      out += '\n\n## Sales Pipeline\nNo active leads in pipeline.'
+    }
+  } catch(_) { out += '\n\n## Sales Pipeline\nUnable to load pipeline data.' }
 
   // ── Meta Campaigns — MTD performance (primary ad spend source) ──
   try {
