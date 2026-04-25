@@ -148,12 +148,12 @@ Deno.serve(async (req: Request) => {
     // STEP 5 — CLIENT MATCHING
     const { data: candidates } = await supabaseAdmin
       .from("clients")
-      .select("id, postcodes, weekly_cap, monthly_cap, leads_delivered, total_leads_purchased, company_name, from_name")
+      .select("id, postcodes, weekly_cap, monthly_cap, leads_delivered, total_leads_purchased, company_name, from_name, has_quoteleads_platform_account, hq_bearer_token")
       .eq("type", "ppl")
       .eq("stage", "active_client")
       .or(`niche.eq.${niche},active_niches.cs.{${niche}}`);
 
-    let matchedClient: { id: string; company_name: string } | null = null;
+    let matchedClient: { id: string; company_name: string; has_quoteleads_platform_account?: boolean; hq_bearer_token?: string | null } | null = null;
 
     if (candidates && candidates.length > 0) {
       // Filter by postcode match
@@ -218,7 +218,12 @@ Deno.serve(async (req: Request) => {
 
       if (validCandidates.length > 0) {
         const best = validCandidates[0].client;
-        matchedClient = { id: best.id as string, company_name: best.company_name as string };
+        matchedClient = {
+          id: best.id as string,
+          company_name: best.company_name as string,
+          has_quoteleads_platform_account: best.has_quoteleads_platform_account as boolean | undefined,
+          hq_bearer_token: best.hq_bearer_token as string | null | undefined,
+        };
       }
     }
 
@@ -261,6 +266,28 @@ Deno.serve(async (req: Request) => {
       }).catch((err: Error) => {
         console.error("deliver-webhook invocation failed:", err.message);
       });
+
+      // Forward to QuoteLeads HQ if the client has a platform account and bearer token
+      if (matchedClient.has_quoteleads_platform_account && matchedClient.hq_bearer_token) {
+        const hqPayload: Record<string, unknown> = {
+          name,
+          email,
+          phone: normalisedPhone,
+          postcode,
+          source,
+          custom_data,
+        };
+        fetch("https://api.quoteleadshq.com/v1/leads", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${matchedClient.hq_bearer_token}`,
+          },
+          body: JSON.stringify(hqPayload),
+        }).catch((err: Error) => {
+          console.error(`quoteleadshq forward failed for client ${matchedClient!.id} (${matchedClient!.company_name}):`, err.message);
+        });
+      }
     }
 
     // STEP 8 — RETURN
