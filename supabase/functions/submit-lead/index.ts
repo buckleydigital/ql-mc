@@ -82,15 +82,16 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    if (email && typeof email === "string" && email.trim()) {
-      email = email.trim();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        return new Response(JSON.stringify({ error: "invalid_email" }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-    } else {
-      email = null;
+    if (!email || typeof email !== "string" || !email.trim()) {
+      return new Response(JSON.stringify({ error: "missing_email" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    email = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return new Response(JSON.stringify({ error: "invalid_email" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Supabase admin client
