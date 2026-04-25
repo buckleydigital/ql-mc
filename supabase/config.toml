@@ -8,3 +8,10 @@
 # It has no Supabase JWT to present; security is enforced in-function by
 # validating that the `To` number exists in comm_solar_appointments.
 verify_jwt = false
+
+[functions.agent-status]
+# Make.com scenarios POST to this endpoint from `started` and `finished`
+# HTTP modules. Make has no way to present a Supabase JWT, so JWT checks
+# are disabled. The function only writes to agent_runs / agents and does
+# not return any sensitive data.
+verify_jwt = false
