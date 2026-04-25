@@ -840,14 +840,6 @@ td strong{font-weight:500}
           </button>
         </div>
 
-        <div class="sb-divider"></div>
-
-        <div class="sb-group" id="ps-nav-group">
-          <span class="sb-group-label">PS Services</span>
-          <button class="navbtn" data-panel="ps-appt" onclick="nav('ps-appt',this)">
-            <span class="ni">☎</span>PS Appt Setting
-          </button>
-        </div>
       </div>
 
       <div class="sb-bottom">
@@ -896,7 +888,6 @@ td strong{font-weight:500}
           <div class="ph-left"><h1>Tasks</h1><p id="task-date"></p></div>
           <div class="ph-right">
             <button class="btn btn-sm mobile-only" onclick="nav('leads',this)">⚡ Lead Distribution</button>
-            <button class="btn btn-sm mobile-only" onclick="nav('ps-appt',this)">☎ PS Appt Setting</button>
             <button class="btn btn-sm mobile-only" onclick="nav('campaigns',this)">▶ Meta Campaigns</button>
             <button class="btn btn-p btn-sm" onclick="openModal('m-task')">+ New task</button>
           </div>
@@ -1684,7 +1675,9 @@ td strong{font-weight:500}
     <button class="bnbtn" data-panel="managed" onclick="nav('managed',this)"><span class="bnbtn-icon">▣</span><span class="bnbtn-lbl">Managed</span></button>
     <button class="bnbtn" data-panel="finance" onclick="nav('finance',this)"><span class="bnbtn-icon">$</span><span class="bnbtn-lbl">Finance</span></button>
     <button class="bnbtn" data-panel="daily" onclick="nav('daily',this)"><span class="bnbtn-icon">≋</span><span class="bnbtn-lbl">Daily</span></button>
+    <button class="bnbtn" data-panel="agents" onclick="nav('agents',this)"><span class="bnbtn-icon">⬡</span><span class="bnbtn-lbl">Agents</span></button>
     <button class="bnbtn" data-panel="chat" onclick="nav('chat',this)"><span class="bnbtn-icon">◉</span><span class="bnbtn-lbl">Chat</span></button>
+    <button class="bnbtn" data-panel="sales-agent" onclick="nav('sales-agent',this)"><span class="bnbtn-icon">⚑</span><span class="bnbtn-lbl">Sales AI</span></button>
     <button class="bnbtn" data-panel="files" onclick="nav('files',this)"><span class="bnbtn-icon">📄</span><span class="bnbtn-lbl">Files</span></button>
   </div>
 </div><!-- /app -->
@@ -2442,7 +2435,7 @@ td strong{font-weight:500}
 <style>
 @media(max-width:700px){
   .bnav{height:auto !important;flex-wrap:wrap;padding:4px 0 env(safe-area-inset-bottom,0) !important;}
-  .bnbtn{flex:0 0 calc(100%/4);padding:5px 2px;}
+  .bnbtn{flex:0 0 calc(100%/5);padding:5px 2px;}
   .panel{padding:11px 11px calc(var(--bnav-h, 200px) + 40px + env(safe-area-inset-bottom,0px)) !important;}
 }
 
