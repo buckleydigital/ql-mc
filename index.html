@@ -5149,6 +5149,7 @@ async function loadHQRooms() {
     HQ_ROOMS  = rows.filter(r => r.kind === 'agent');
     HQ_HUMANS = rows.filter(r => r.kind === 'human');
   } catch (e) {
+    console.error('Failed to load HQ rooms:', e);
     HQ_ROOMS = [];
     HQ_HUMANS = [];
   }
