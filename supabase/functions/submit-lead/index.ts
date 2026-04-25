@@ -10,7 +10,6 @@ const NAMED_FIELDS = new Set([
   "name", "first_name", "last_name", "email", "phone", "postcode",
   "niche", "subtype", "lead_type", "source",
   "is_homeowner", "avg_quarterly_bill", "interested_in", "purchase_timeline",
-  "custom_fields",
 ]);
 
 function normalisePhone(raw: string): string | null {
@@ -35,7 +34,6 @@ Deno.serve(async (req: Request) => {
       name, first_name, last_name, email, phone, postcode,
       niche, subtype, lead_type, source,
       is_homeowner, avg_quarterly_bill, interested_in, purchase_timeline,
-      custom_fields,
     } = body;
 
     if (!name && (first_name || last_name)) {
@@ -240,7 +238,6 @@ Deno.serve(async (req: Request) => {
       avg_quarterly_bill: avg_quarterly_bill != null ? parseFloat(avg_quarterly_bill) || null : null,
       interested_in: interested_in || null,
       purchase_timeline: purchase_timeline || null,
-      custom_fields: (custom_fields && typeof custom_fields === "object" && !Array.isArray(custom_fields)) ? custom_fields : null,
       assigned_client_id: matchedClient ? matchedClient.id : null,
       status: matchedClient ? "assigned" : "pending",
       assigned_at: matchedClient ? new Date().toISOString() : null,
