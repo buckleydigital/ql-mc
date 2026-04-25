@@ -332,6 +332,7 @@ body::after {
 .btn-sm{padding:5px 11px;font-size:11px}
 .btn-xs{padding:3px 8px;font-size:10px}
 .camp-period-btn.active{background:var(--p);color:#fff;border-color:var(--p)}
+.crm-period-btn.active{background:var(--acc);color:#fff;border-color:var(--acc)}
 .pager{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 0;font-family:var(--mono);font-size:11px;color:var(--ink3)}
 .pager button{padding:4px 10px;font-size:10.5px;font-family:var(--mono);background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--ink2);cursor:pointer}
 .pager button:hover:not(:disabled){background:var(--acc-dim);color:var(--acc);border-color:rgba(79,143,255,.15)}
@@ -795,9 +796,6 @@ td strong{font-weight:500}
 
         <div class="sb-group">
           <span class="sb-group-label">Intelligence</span>
-          <button class="navbtn" data-panel="daily" onclick="nav('daily',this)">
-            <span class="ni">≋</span>Daily Logs
-          </button>
           <button class="navbtn" data-panel="files" onclick="nav('files',this)">
             <span class="ni">📄</span>Files
           </button>
@@ -899,6 +897,16 @@ td strong{font-weight:500}
         <div id="crm-followup-banner" style="display:none;margin-bottom:14px;padding:10px 14px;background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.28);border-radius:var(--r);font-size:11px">
           <span style="font-weight:600;color:var(--amb)">⚠ <span id="crm-followup-count">0</span> leads need follow-up</span>
           <span style="font-family:var(--mono);font-size:10px;color:var(--ink2);margin-left:8px" id="crm-followup-names"></span>
+        </div>
+        <div style="display:flex;gap:4px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:10px;color:var(--ink3);margin-right:4px">Period:</span>
+          <button class="btn btn-xs crm-period-btn" data-period="today" onclick="switchCrmFilter('today',this)">Today</button>
+          <button class="btn btn-xs crm-period-btn" data-period="yesterday" onclick="switchCrmFilter('yesterday',this)">Yesterday</button>
+          <button class="btn btn-xs crm-period-btn" data-period="7d" onclick="switchCrmFilter('7d',this)">Last 7d</button>
+          <button class="btn btn-xs crm-period-btn" data-period="30d" onclick="switchCrmFilter('30d',this)">Last 30d</button>
+          <button class="btn btn-xs crm-period-btn active" data-period="ytd" onclick="switchCrmFilter('ytd',this)">YTD 2026</button>
+          <button class="btn btn-xs crm-period-btn" data-period="custom" onclick="switchCrmFilter('custom',this)">Custom</button>
+          <input type="date" class="fi" id="crm-date" style="width:auto;font-size:11.5px;padding:5px 10px;display:none;font-family:var(--mono)" onchange="loadCRM(true)">
         </div>
         <div class="kg c4 mb4">
           <div class="kpi"><div class="klabel">Total Leads</div><div class="kval blu" id="crm-total">—</div></div>
@@ -1245,98 +1253,6 @@ td strong{font-weight:500}
         </div>
       </div>
 
-      <!-- ══ DAILY LOGS ══ -->
-      <div class="panel" id="panel-daily">
-        <div class="ph">
-          <div class="ph-left"><h1>Daily Logs</h1><p>Full daily snapshots — spend, leads, pipeline, activity & notes</p></div>
-          <div class="ph-right">
-            <input type="date" class="fi" id="daily-date" style="width:auto;font-size:11.5px;padding:5px 10px;display:none;font-family:var(--mono)" onchange="loadDailyLogs()">
-          </div>
-        </div>
-
-        <!-- Campaign Spend (always MTD from last sync) -->
-        <div class="sl">Campaign Ad Spend <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px">MTD from last sync</span><div class="sl-line"></div></div>
-        <div class="kg c4 mb4">
-          <div class="kpi"><div class="klabel">Ad Spend MTD</div><div class="kval" id="dl-spend">—</div></div>
-          <div class="kpi"><div class="klabel">Leads MTD</div><div class="kval blu" id="dl-leads">—</div></div>
-          <div class="kpi"><div class="klabel">CPL</div><div class="kval" id="dl-cpl">—</div><div class="ksub">spend ÷ leads</div></div>
-          <div class="kpi"><div class="klabel">Active Campaigns</div><div class="kval grn" id="dl-active-camps">—</div></div>
-        </div>
-        <div class="twrap">
-          <table>
-            <thead><tr><th>Campaign</th><th>Status</th><th>Spend MTD</th><th>Leads</th><th>CPL</th><th>Clicks</th><th>Last Synced</th></tr></thead>
-            <tbody id="dl-camp-tbody"><tr><td colspan="7" class="empty">Loading campaigns…</td></tr></tbody>
-          </table>
-        </div>
-
-        <!-- Date-filtered activity sections -->
-        <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--bd)">
-          <div class="sl">Daily Activity <div class="sl-line"></div></div>
-          <div class="kg c3 mb4">
-            <div class="kpi"><div class="klabel">New Leads</div><div class="kval blu" id="dl-new-leads">—</div><div class="ksub" id="dl-period-label">today</div></div>
-            <div class="kpi"><div class="klabel">Leads Delivered</div><div class="kval grn" id="dl-delivered">—</div></div>
-            <div class="kpi"><div class="klabel">Tasks Done</div><div class="kval" id="dl-tasks-done">—</div></div>
-          </div>
-          <div class="daily-tabs" id="daily-tabs">
-            <div class="daily-tab active" onclick="switchDailyTab('today',this)">Today</div>
-            <div class="daily-tab" onclick="switchDailyTab('yesterday',this)">Yesterday</div>
-            <div class="daily-tab" onclick="switchDailyTab('7d',this)">Last 7d</div>
-            <div class="daily-tab" onclick="switchDailyTab('30d',this)">Last 30d</div>
-            <div class="daily-tab" onclick="switchDailyTab('ytd',this)">YTD 2026</div>
-            <div class="daily-tab" onclick="switchDailyTab('custom',this)">Custom</div>
-          </div>
-        </div>
-
-        <!-- Leads Entered -->
-        <div class="sl" style="margin-top:20px">Leads Entered <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px" id="dl-leads-count"></span><div class="sl-line"></div></div>
-        <div class="twrap">
-          <table>
-            <thead><tr><th>Name</th><th>Company</th><th>Type</th><th>Stage</th><th>Value</th><th>Source</th><th>Created</th></tr></thead>
-            <tbody id="dl-leads-tbody"><tr><td colspan="7" class="empty">No new leads</td></tr></tbody>
-          </table>
-        </div>
-
-        <!-- Lead Deliveries -->
-        <div class="sl" style="margin-top:20px">Lead Deliveries <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px" id="dl-deliveries-count"></span><div class="sl-line"></div></div>
-        <div class="twrap">
-          <table>
-            <thead><tr><th>Client</th><th>Leads Qty</th><th>Generated</th><th>Price</th><th>Total</th><th>Status</th><th>Date</th></tr></thead>
-            <tbody id="dl-deliveries-tbody"><tr><td colspan="7" class="empty">No deliveries</td></tr></tbody>
-          </table>
-        </div>
-
-        <!-- Pipeline Activity -->
-        <div class="sl" style="margin-top:20px">Pipeline Activity <div class="sl-line"></div></div>
-        <div class="kg c4 mb4">
-          <div class="kpi"><div class="klabel">Active Leads</div><div class="kval blu" id="ds-active">—</div></div>
-          <div class="kpi"><div class="klabel">Call-Backs Due</div><div class="kval grn" id="ds-callbacks">—</div></div>
-          <div class="kpi"><div class="klabel">Proposals Out</div><div class="kval" id="ds-proposals">—</div></div>
-          <div class="kpi"><div class="klabel">Pipeline Value</div><div class="kval blu" id="ds-value">—</div></div>
-        </div>
-        <div class="twrap">
-          <table>
-            <thead><tr><th>Stage</th><th>Count</th><th>Pipeline Value</th><th>PPL Leads</th><th>Managed Leads</th></tr></thead>
-            <tbody id="daily-crm-tbody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
-          </table>
-        </div>
-
-        <!-- Tasks & Activity -->
-        <div class="sl" style="margin-top:20px">Tasks Completed <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px" id="dl-tasks-count"></span><div class="sl-line"></div></div>
-        <div class="twrap">
-          <table>
-            <thead><tr><th>Task</th><th>Assigned To</th><th>Priority</th><th>Linked To</th><th>Completed</th></tr></thead>
-            <tbody id="dl-tasks-tbody"><tr><td colspan="5" class="empty">No tasks completed</td></tr></tbody>
-          </table>
-        </div>
-
-        <!-- Daily Notes -->
-        <div class="sl" style="margin-top:20px">Daily Notes <div class="sl-line"></div><button class="btn btn-xs btn-p" style="margin-left:8px" onclick="openDailyNoteModal()">+ Add Note</button></div>
-        <div id="dl-notes-list" style="margin-top:10px"><span style="font-size:11px;color:var(--ink3)">No notes yet</span></div>
-
-        <!-- Chart -->
-        <div class="chart-card mb4" style="margin-top:20px"><div class="chart-title">Daily Lead Volume</div><canvas id="chart-daily" height="130"></canvas></div>
-      </div>
-
       <!-- ══ MASTER BRAIN CHAT ══ -->
       <div class="panel" id="panel-chat">
         <div class="ph">
@@ -1555,7 +1471,6 @@ td strong{font-weight:500}
     <button class="bnbtn" data-panel="ppl" onclick="nav('ppl',this)"><span class="bnbtn-icon">◈</span><span class="bnbtn-lbl">PPL</span></button>
     <button class="bnbtn" data-panel="managed" onclick="nav('managed',this)"><span class="bnbtn-icon">▣</span><span class="bnbtn-lbl">Managed</span></button>
     <button class="bnbtn" data-panel="finance" onclick="nav('finance',this)"><span class="bnbtn-icon">$</span><span class="bnbtn-lbl">Finance</span></button>
-    <button class="bnbtn" data-panel="daily" onclick="nav('daily',this)"><span class="bnbtn-icon">≋</span><span class="bnbtn-lbl">Daily</span></button>
     <button class="bnbtn" data-panel="chat" onclick="nav('chat',this)"><span class="bnbtn-icon">◉</span><span class="bnbtn-lbl">Brain</span></button>
     <button class="bnbtn" data-panel="files" onclick="nav('files',this)"><span class="bnbtn-icon">📄</span><span class="bnbtn-lbl">Files</span></button>
   </div>
@@ -2074,20 +1989,6 @@ td strong{font-weight:500}
   </div>
 </div>
 
-<div class="overlay" id="m-daily-note">
-  <div class="modal" style="max-width:480px">
-    <h2>Add Daily Note</h2>
-    <div class="msub">Capture what happened today — context for future you</div>
-    <div class="frow"><label class="flabel">Date</label><input class="fi" id="dn-date" type="date"></div>
-    <div class="frow"><label class="flabel">Category</label><select class="fi" id="dn-category"><option value="general">General</option><option value="campaigns">Campaigns</option><option value="leads">Leads</option><option value="clients">Clients</option><option value="pipeline">Pipeline</option><option value="finance">Finance</option><option value="decision">Decision</option></select></div>
-    <div class="frow"><label class="flabel">Note</label><textarea class="fta" id="dn-content" rows="4" placeholder="What happened? What did you decide? What needs follow-up?"></textarea></div>
-    <div class="macts">
-      <div style="flex:1"></div>
-      <button class="btn" onclick="closeModal('m-daily-note')">Cancel</button>
-      <button class="btn btn-p" onclick="saveDailyNote()">Save Note</button>
-    </div>
-  </div>
-</div>
 <div class="overlay" id="m-biz-settings">
   <div class="modal" style="max-width:480px">
     <h2>Business Settings</h2>
@@ -2363,8 +2264,8 @@ const _ak = 'sb_publishable_UHQNxVCjHJnFjssYwTiwcQ_3FYovX8I';
 let db, currentUser;
 let curAgent = 'master', curMd = 'agents.md', curChat = 'master';
 let chatHistory = {};
-let revChart = null, cplChart = null, dailyChart = null, goalRevChart = null, goalMarginChart = null;
-let curDailyRange = 'today';
+let revChart = null, cplChart = null, goalRevChart = null, goalMarginChart = null;
+let curCrmRange = 'ytd';
 
 const _taskMap = new Map();
 
@@ -2425,7 +2326,6 @@ function toggleTheme() {
   $('theme-btn').textContent = dark ? '◑' : '◐';
   localStorage.setItem('ql-theme', dark ? 'light' : 'dark');
   if (revChart || cplChart) loadFinance();
-  if (dailyChart) loadDailyLogs();
   if (goalRevChart || goalMarginChart) loadGoals();
 }
 
@@ -2453,7 +2353,7 @@ window.addEventListener('load', () => {
     opt.value = val; opt.textContent = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
     sel.appendChild(opt);
   }
-  $('daily-date').value = new Date().toISOString().split('T')[0];
+  $('crm-date').value = new Date().toISOString().split('T')[0];
   // Goal Board year selector
   const goalSel = $('goal-year');
   for (let y = curYear; y >= 2026; y--) {
@@ -2540,7 +2440,6 @@ function nav(panel, el) {
   document.querySelectorAll('.bnbtn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll(`[data-panel="${panel}"]`).forEach(b => b.classList.add('active'));
   if (panel === 'chat') loadChatMemory();
-  if (panel === 'daily') loadDailyLogs();
   if (panel === 'files') { loadFileContent(); loadTemplateClientDropdown(); }
   if (panel === 'ppl') { populateMapClientDropdown(); }
   if (panel === 'campaigns') { loadCampaigns(); renderMetaTokenBanner(); }
@@ -3010,7 +2909,13 @@ async function drop(e,prefix,newStage) {
 const CRM_STAGES=[{id:'new_lead',label:'New Lead'},{id:'no_answer',label:'No Answer'},{id:'call_back',label:'Call-Back'},{id:'proposal',label:'Proposal'},{id:'closed_won',label:'Closed Won'},{id:'closed_lost',label:'Closed Lost'}];
 async function loadCRM(resetPage) {
   if (resetPage) crmPage = 0;
-  const {data,error}=await db.from('leads').select('*').order('created_at',{ascending:false});
+  let query = db.from('leads').select('*').order('created_at',{ascending:false});
+  if (curCrmRange) {
+    const {from,to} = getDateRange(curCrmRange);
+    const toNext = new Date(to); toNext.setDate(toNext.getDate()+1);
+    query = query.gte('created_at', from+'T00:00:00').lt('created_at', toNext.toISOString().split('T')[0]+'T00:00:00');
+  }
+  const {data,error} = await query;
   if (error) { $('crm-tbody').innerHTML=`<tr><td colspan="9" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
   crmAllLeads = data || [];
   renderCRM(crmAllLeads);
@@ -4719,12 +4624,12 @@ function renderCplChart(spendLog) {
   cplChart=new Chart($('chart-cpl').getContext('2d'),{type:'bar',data:{labels,datasets:[{label:'CPL by Campaign',data:cpls,backgroundColor:'rgba(79,143,255,.18)',borderColor:'#4f8fff',borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:true,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9},callback:v=>'$'+v},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}}}}});
 }
 
-function switchDailyTab(range,el) {
-  curDailyRange=range;
-  document.querySelectorAll('.daily-tab').forEach(t=>t.classList.remove('active'));
+function switchCrmFilter(range, el) {
+  curCrmRange = range;
+  document.querySelectorAll('.crm-period-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
-  const ci=$('daily-date');ci.style.display=range==='custom'?'inline-block':'none';
-  if (range!=='custom') loadDailyLogs();
+  const ci = $('crm-date'); ci.style.display = range === 'custom' ? 'inline-block' : 'none';
+  if (range !== 'custom') loadCRM(true);
 }
 function getDateRange(range) {
   const today=new Date();const f=d=>d.toISOString().split('T')[0];
@@ -4733,221 +4638,8 @@ function getDateRange(range) {
   if (range==='7d') {const s=new Date(today);s.setDate(s.getDate()-6);return {from:f(s),to:f(today)};}
   if (range==='30d') {const s=new Date(today);s.setDate(s.getDate()-29);return {from:f(s),to:f(today)};}
   if (range==='ytd') {return {from:`${today.getFullYear()}-01-01`,to:f(today)};}
-  if (range==='custom') {const v=$('daily-date').value;return v?{from:v,to:v}:{from:f(today),to:f(today)};}
+  if (range==='custom') {const v=$('crm-date').value;return v?{from:v,to:v}:{from:f(today),to:f(today)};}
   return {from:f(today),to:f(today)};
-}
-async function loadDailyLogs() {
-  const {from,to}=getDateRange(curDailyRange);
-  const toNext=new Date(to);toNext.setDate(toNext.getDate()+1);
-  const toNextStr=toNext.toISOString().split('T')[0];
-  const periodLabels={today:'today',yesterday:'yesterday','7d':'last 7 days','30d':'last 30 days',ytd:'YTD',custom:from};
-  const [campR, leadsR, pipelineR, ordersR, tasksR, notesR]=await Promise.all([
-    db.from('meta_campaigns').select('name,meta_campaign_id,status,spend_mtd,leads_mtd,clicks_mtd,impressions_mtd,last_synced_at'),
-    db.from('leads').select('id,name,company,stage,lead_type,value,source,created_at').gte('created_at',from+'T00:00:00').lt('created_at',toNextStr+'T00:00:00').order('created_at',{ascending:false}),
-    db.from('leads').select('id,name,stage,lead_type,value,created_at').not('stage','in','("closed_won","closed_lost")'),
-    db.from('ppl_order_log').select('*,clients!inner(company_name)').gte('order_date',from).lte('order_date',to).order('order_date',{ascending:false}),
-    db.from('tasks').select('*').eq('done',true).gte('updated_at',from+'T00:00:00').lt('updated_at',toNextStr+'T00:00:00').order('updated_at',{ascending:false}),
-    db.from('daily_notes').select('*').gte('date',from).lte('date',to).order('date',{ascending:false}),
-  ]);
-  const campaigns=campR.data||[];
-  const newLeads=leadsR.data||[];
-  const pipelineLeads=pipelineR.data||[];
-  const orders=ordersR.data||[];
-  const tasks=tasksR.data||[];
-  const notes=notesR.data||[];
-
-  // Campaign KPIs — spend and leads both from Meta, CPL = spend / leads
-  const totalSpend=campaigns.reduce((s,c)=>s+(c.spend_mtd||0),0);
-  const totalLeads=campaigns.reduce((s,c)=>s+(c.leads_mtd||0),0);
-  const avgCpl=totalLeads>0?totalSpend/totalLeads:0;
-  const activeCamps=campaigns.filter(c=>c.status==='ACTIVE').length;
-  setText('dl-spend',totalSpend?fmt(totalSpend):'—');
-  setText('dl-leads',totalLeads||'—');
-  setText('dl-cpl',avgCpl>0?'$'+avgCpl.toFixed(2):'—');
-  setText('dl-active-camps',activeCamps||'—');
-
-  // Activity KPIs (date-filtered)
-  const delivered=orders.filter(o=>o.status==='delivered').reduce((s,o)=>s+(o.leads_qty||0),0);
-  setText('dl-new-leads',newLeads.length||'—');
-  setText('dl-delivered',delivered||'—');
-  setText('dl-tasks-done',tasks.length||'—');
-  setText('dl-period-label',periodLabels[curDailyRange]||'');
-
-  // Campaign table
-  renderDailyCampaigns(campaigns);
-  // New leads table
-  renderDailyNewLeads(newLeads);
-  // Deliveries table
-  renderDailyDeliveries(orders);
-  // Pipeline
-  renderDailyCrmStats(pipelineLeads);
-  // Tasks
-  renderDailyTasks(tasks);
-  // Notes
-  renderDailyNotes(notes);
-  // Chart - leads entered by day
-  renderDailyChart(newLeads);
-}
-
-function renderDailyCampaigns(campaigns) {
-  const tb=$('dl-camp-tbody');
-  if (!campaigns.length) { tb.innerHTML='<tr><td colspan="7" class="empty">No campaigns configured</td></tr>'; return; }
-  const fmt$=v=>v?'$'+Number(v).toLocaleString('en-AU',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
-  const fmtN=v=>v?Number(v).toLocaleString('en-AU'):'—';
-  tb.innerHTML=campaigns.map(c=>{
-    const statusColor=c.status==='ACTIVE'?'var(--grn)':'var(--red)';
-    const cpl=(c.leads_mtd||0)>0?fmt$((c.spend_mtd||0)/(c.leads_mtd||1)):'—';
-    const synced=c.last_synced_at?new Date(c.last_synced_at).toLocaleString('en-AU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'never';
-    return `<tr>
-      <td><strong>${esc(c.name||'')}</strong><div style="font-family:var(--mono);font-size:9px;color:var(--ink3)">${esc(c.meta_campaign_id)}</div></td>
-      <td><span style="color:${statusColor};font-family:var(--mono);font-size:10px;font-weight:600">${c.status}</span></td>
-      <td style="font-family:var(--mono)">${fmt$(c.spend_mtd)}</td>
-      <td style="font-family:var(--mono)">${fmtN(c.leads_mtd)}</td>
-      <td style="font-family:var(--mono);font-weight:500">${cpl}</td>
-      <td style="font-family:var(--mono)">${fmtN(c.clicks_mtd)}</td>
-      <td style="font-size:10px;color:var(--ink3)">${synced}</td>
-    </tr>`;
-  }).join('');
-}
-
-function renderDailyNewLeads(leads) {
-  setText('dl-leads-count',leads.length?leads.length+' in period':'');
-  const tb=$('dl-leads-tbody');
-  if (!leads.length) { tb.innerHTML='<tr><td colspan="7" class="empty">No new leads in this period</td></tr>'; return; }
-  tb.innerHTML=leads.map(l=>{
-    const badge=l.lead_type==='ppl'?'bg-sky':'bg-vio';
-    const typeLabel=l.lead_type==='ppl'?'PPL':'Managed';
-    const t=new Date(l.created_at).toLocaleString('en-AU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-    return `<tr>
-      <td><strong>${esc(l.name||'—')}</strong></td>
-      <td>${esc(l.company||'—')}</td>
-      <td><span class="badge ${badge}" style="font-size:8.5px">${typeLabel}</span></td>
-      <td><span class="badge ${stageBadge(l.stage)}">${stageLabel(l.stage)}</span></td>
-      <td>${l.value?'$'+Number(l.value).toLocaleString()+'/mo':'—'}</td>
-      <td style="font-size:10px;color:var(--ink3)">${esc(l.source||'—')}</td>
-      <td style="font-family:var(--mono);font-size:10px">${t}</td>
-    </tr>`;
-  }).join('');
-}
-
-function renderDailyDeliveries(orders) {
-  setText('dl-deliveries-count',orders.length?orders.length+' orders':'');
-  const tb=$('dl-deliveries-tbody');
-  if (!orders.length) { tb.innerHTML='<tr><td colspan="7" class="empty">No deliveries in this period</td></tr>'; return; }
-  tb.innerHTML=orders.map(o=>{
-    const clientName=o.clients?.company_name||'—';
-    const total=(o.leads_qty||0)*(o.lead_price||0);
-    const statusBadge=o.status==='delivered'?'bg-grn':o.status==='pending'?'bg-amb':'bg-gray';
-    return `<tr>
-      <td><strong>${esc(clientName)}</strong></td>
-      <td style="font-family:var(--mono)">${o.leads_qty||0}</td>
-      <td style="font-family:var(--mono)">${o.leads_generated||'—'}</td>
-      <td style="font-family:var(--mono)">$${Number(o.lead_price||0).toFixed(2)}</td>
-      <td style="font-family:var(--mono);font-weight:500">${fmt(total)}</td>
-      <td><span class="badge ${statusBadge}" style="font-size:8.5px">${o.status||'—'}</span></td>
-      <td style="font-family:var(--mono);font-size:10px">${o.order_date||'—'}</td>
-    </tr>`;
-  }).join('');
-}
-
-function renderDailyCrmStats(leads) {
-  const active=leads.filter(l=>!['closed_won','closed_lost'].includes(l.stage));
-  const callbacks=active.filter(l=>l.stage==='call_back').length;
-  const proposals=active.filter(l=>l.stage==='proposal').length;
-  const pipelineVal=active.reduce((s,l)=>s+(l.value||0),0);
-  setText('ds-active',active.length);
-  setText('ds-callbacks',callbacks);
-  setText('ds-proposals',proposals);
-  setText('ds-value',pipelineVal?'$'+Number(pipelineVal).toLocaleString()+'/mo':'—');
-  const stageGroups={};
-  active.forEach(l=>{
-    if (!stageGroups[l.stage]) stageGroups[l.stage]={count:0,value:0,ppl:0,managed:0};
-    stageGroups[l.stage].count++;
-    stageGroups[l.stage].value+=(l.value||0);
-    if (l.lead_type==='ppl') stageGroups[l.stage].ppl++; else stageGroups[l.stage].managed++;
-  });
-  const stageOrder=['new_lead','no_answer','call_back','proposal'];
-  const tb=$('daily-crm-tbody');
-  if (!active.length) { tb.innerHTML='<tr><td colspan="5" class="empty">No active leads.</td></tr>'; return; }
-  tb.innerHTML=stageOrder.filter(s=>stageGroups[s]).map(s=>{
-    const g=stageGroups[s];
-    return `<tr>
-      <td><span class="badge ${stageBadge(s)}">${stageLabel(s)}</span></td>
-      <td style="font-family:var(--mono);font-weight:500">${g.count}</td>
-      <td>${g.value?'$'+Number(g.value).toLocaleString()+'/mo':'—'}</td>
-      <td><span class="badge bg-sky" style="font-size:8.5px">${g.ppl} PPL</span></td>
-      <td><span class="badge bg-vio" style="font-size:8.5px">${g.managed} MA</span></td>
-    </tr>`;
-  }).join('');
-}
-
-function renderDailyTasks(tasks) {
-  setText('dl-tasks-count',tasks.length?tasks.length+' done':'');
-  const tb=$('dl-tasks-tbody');
-  if (!tasks.length) { tb.innerHTML='<tr><td colspan="5" class="empty">No tasks completed in this period</td></tr>'; return; }
-  tb.innerHTML=tasks.map(t=>{
-    const ts=new Date(t.updated_at).toLocaleString('en-AU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-    return `<tr>
-      <td><strong>${esc(t.title||'—')}</strong>${t.notes?'<div style="font-size:10px;color:var(--ink3)">'+esc(t.notes)+'</div>':''}</td>
-      <td style="font-size:10px">${esc(t.assigned_to||'—')}</td>
-      <td><span class="badge ${t.priority==='ai'?'bg-vio':'bg-sky'}" style="font-size:8.5px">${t.priority||'normal'}</span></td>
-      <td style="font-size:10px">${t.linked_name?esc(t.linked_name):'—'}</td>
-      <td style="font-family:var(--mono);font-size:10px">${ts}</td>
-    </tr>`;
-  }).join('');
-}
-
-function renderDailyNotes(notes) {
-  const el=$('dl-notes-list');
-  if (!notes.length) { el.innerHTML='<span style="font-size:11px;color:var(--ink3)">No notes for this period</span>'; return; }
-  const catColors={general:'bg-gray',campaigns:'bg-blu',leads:'bg-sky',clients:'bg-grn',pipeline:'bg-amb',finance:'bg-vio',decision:'bg-red'};
-  el.innerHTML=notes.map(n=>{
-    const t=new Date(n.created_at||n.date).toLocaleString('en-AU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-    return `<div style="background:var(--bg2);border:1px solid var(--br);border-radius:8px;padding:12px 14px;margin-bottom:8px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <span class="badge ${catColors[n.category]||'bg-gray'}" style="font-size:8.5px">${esc(n.category||'general')}</span>
-        <span style="font-family:var(--mono);font-size:10px;color:var(--ink3)">${n.date} · ${t}</span>
-        <span style="flex:1"></span>
-        <button class="btn btn-xs" style="color:var(--red);padding:0 4px" onclick="deleteDailyNote('${n.id}')" title="Delete">x</button>
-      </div>
-      <div style="font-size:12px;line-height:1.5;white-space:pre-wrap">${esc(n.content||'')}</div>
-    </div>`;
-  }).join('');
-}
-
-// Daily note CRUD
-function openDailyNoteModal() {
-  setVal('dn-date',new Date().toISOString().split('T')[0]);
-  setVal('dn-category','general');
-  setVal('dn-content','');
-  openModal('m-daily-note');
-}
-async function saveDailyNote() {
-  const date=$('dn-date').value;
-  const category=$('dn-category').value;
-  const content=$('dn-content').value.trim();
-  if (!content) { toast('Note content required',true); return; }
-  const {error}=await db.from('daily_notes').insert([{date,category,content,created_at:now()}]);
-  if (error) { toast('Error: '+error.message,true); return; }
-  closeModal('m-daily-note');
-  toast('Note saved');
-  loadDailyLogs();
-}
-async function deleteDailyNote(id) {
-  if (!confirm('Delete this note?')) return;
-  await db.from('daily_notes').delete().eq('id',id);
-  toast('Note deleted');
-  loadDailyLogs();
-}
-function renderDailyChart(leads) {
-  const {grid,tick}=chartDefaults();
-  if (dailyChart) dailyChart.destroy();
-  // Group leads by date
-  const byDate={};
-  leads.forEach(l=>{const d=(l.created_at||'').slice(0,10);if(d){byDate[d]=(byDate[d]||0)+1;}});
-  const days=Object.keys(byDate).sort();
-  const counts=days.map(d=>byDate[d]);
-  dailyChart=new Chart($('chart-daily').getContext('2d'),{type:'bar',data:{labels:days,datasets:[{label:'Leads Entered',data:counts,backgroundColor:'rgba(79,143,255,.14)',borderColor:'#4f8fff',borderWidth:1.5,borderRadius:4}]},options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid},beginAtZero:true}},responsive:true,maintainAspectRatio:true}});
 }
 
 let AGENT_CFG={}, DEFAULT_MD={};
