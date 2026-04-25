@@ -27,7 +27,7 @@ Deno.serve(async (req: Request) => {
     } = body;
 
     const totalAmount = Math.round((parseFloat(price_per_lead) || 0) * (parseInt(quantity) || 0) * 100);
-    const nicheLabel = niche || trade || "solar";
+    const nicheLabel = niche || trade || "";
     const qtyNum = parseInt(quantity) || 0;
 
     const session = await stripe.checkout.sessions.create({
