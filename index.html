@@ -1711,8 +1711,7 @@ td strong{font-weight:500}
         <option value="true">Yes</option>
       </select>
     </div>
-    <div class="frow"><label class="flabel">Platform Email</label><input class="fi" id="ppl-platform-email" type="email" placeholder="client@quoteleads.com.au"></div>
-    <div class="frow"><label class="flabel">Twilio Phone</label><input class="fi" id="ppl-twilio-phone" placeholder="+61400000000"></div>
+    <div class="frow"><label class="flabel">HQ Bearer Token</label><input class="fi" id="ppl-hq-bearer-token" type="text" placeholder="Bearer token for QuoteLeads HQ API"></div>
     <div class="macts">
       <button class="btn" onclick="closeModal('m-ppl')">Cancel</button>
       <button class="btn btn-p" onclick="saveClient('ppl')">Save client</button>
@@ -1870,8 +1869,7 @@ td strong{font-weight:500}
         <option value="true">Yes</option>
       </select>
     </div>
-    <div class="frow"><label class="flabel">Platform Email</label><input class="fi" id="ep-platform-email" type="email" placeholder="client@quoteleads.com.au"></div>
-    <div class="frow"><label class="flabel">Twilio Phone</label><input class="fi" id="ep-twilio-phone" placeholder="+61400000000"></div>
+    <div class="frow"><label class="flabel">HQ Bearer Token</label><input class="fi" id="ep-hq-bearer-token" type="text" placeholder="Bearer token for QuoteLeads HQ API"></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Integrations</div>
     <div class="frow"><label class="flabel">Client Webhook URL</label><input class="fi" id="ep-client-webhook" type="url" placeholder="https://your-webhook-url/…"></div>
     <div class="frow"><label class="flabel">Has Custom Integration</label>
@@ -3604,8 +3602,7 @@ async function openEditClient(type,c) {
     setVal('ep-delivery-phone',c.delivery_phone||'');
     try{if($('ep-custom-fields')){const _cf=c.custom_fields||{};$('ep-custom-fields').value=_cf._text!=null?_cf._text:(Object.keys(_cf).length?JSON.stringify(_cf,null,2):'');}}catch(e){}
     setVal('ep-has-ql-account',c.has_quoteleads_platform_account?'true':'false');
-    setVal('ep-platform-email',c.platform_email||'');
-    setVal('ep-twilio-phone',c.twilio_phone||'');
+    setVal('ep-hq-bearer-token',c.hq_bearer_token||'');
     setVal('ep-client-webhook',c.client_webhook||'');
     setVal('ep-has-custom-integration',c.has_custom_integration?'true':'false');
     toggleDeliveryFields('ep');
@@ -3673,7 +3670,7 @@ async function updateClient(type) {
     const _monthlyCap=$('ep-monthly-cap').value!==''?parseInt($('ep-monthly-cap').value):null;
     const _epMetaCampaignIds=getCheckedCampaigns('ep-campaign-picker');
     const _activeNiches=$('ep-active-niches').value.split(',').map(s=>s.trim()).filter(Boolean);
-    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,active_niches:_activeNiches,lead_price:_price,meta_cpl:_metaCpl,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,leads_scrubbed:_scrubbed,stage:$('ep-stage').value,cx_score:$('ep-cx').value!==''?parseInt($('ep-cx').value):null,notes:$('ep-notes').value.trim(),postcodes:_postcodes,weekly_cap:_weeklyCap,monthly_cap:_monthlyCap,meta_campaign_ids:_epMetaCampaignIds.length?_epMetaCampaignIds:null,delivery_method:$('ep-delivery-method').value,delivery_email:$('ep-delivery-email').value.trim()||null,delivery_phone:$('ep-delivery-phone').value.trim()||null,custom_fields:_customFields,has_quoteleads_platform_account:$('ep-has-ql-account').value==='true',platform_email:$('ep-platform-email').value.trim()||null,twilio_phone:$('ep-twilio-phone').value.trim()||null,client_webhook:$('ep-client-webhook').value.trim()||null,has_custom_integration:$('ep-has-custom-integration').value==='true',meta_cap_paused:false,meta_cap_paused_at:null,meta_cap_pause_reason:null,updated_at:now()};
+    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,active_niches:_activeNiches,lead_price:_price,meta_cpl:_metaCpl,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,leads_scrubbed:_scrubbed,stage:$('ep-stage').value,cx_score:$('ep-cx').value!==''?parseInt($('ep-cx').value):null,notes:$('ep-notes').value.trim(),postcodes:_postcodes,weekly_cap:_weeklyCap,monthly_cap:_monthlyCap,meta_campaign_ids:_epMetaCampaignIds.length?_epMetaCampaignIds:null,delivery_method:$('ep-delivery-method').value,delivery_email:$('ep-delivery-email').value.trim()||null,delivery_phone:$('ep-delivery-phone').value.trim()||null,custom_fields:_customFields,has_quoteleads_platform_account:$('ep-has-ql-account').value==='true',hq_bearer_token:$('ep-hq-bearer-token').value.trim()||null,client_webhook:$('ep-client-webhook').value.trim()||null,has_custom_integration:$('ep-has-custom-integration').value==='true',meta_cap_paused:false,meta_cap_paused_at:null,meta_cap_pause_reason:null,updated_at:now()};
     const {count:deliveredCount}=await db.from('ppl_order_log').select('id',{count:'exact',head:true}).eq('client_id',id).eq('status','delivered');
     if (!(deliveredCount>0)) d.pct_sold=parseFloat($('ep-pct').value)||null;
     if (!d.company_name) { toast('Company name required',true); return; }
@@ -3704,7 +3701,7 @@ async function saveClient(type) {
     const _pplWeeklyCap=$('ppl-weekly-cap')?.value!==''?parseInt($('ppl-weekly-cap').value)||null:null;
     const _pplMonthlyCap=$('ppl-monthly-cap')?.value!==''?parseInt($('ppl-monthly-cap').value)||null:null;
     const _pplMetaCampaignIds=getCheckedCampaigns('ppl-campaign-picker');
-    d={type:'ppl',company_name:$('ppl-co').value.trim(),contact_name:$('ppl-cn').value.trim(),email:$('ppl-em').value.trim(),niche:$('ppl-niche').value,lead_price:parseFloat($('ppl-price').value)||0,meta_cpl:parseFloat($('ppl-meta-cpl').value)||null,leads_delivered:parseInt($('ppl-ld').value)||0,total_leads_purchased:parseInt($('ppl-tlp').value)||0,leads_scrubbed:parseInt($('ppl-scrubbed').value)||0,stage:$('ppl-stage').value,cx_score:$('ppl-cx').value!==''?parseInt($('ppl-cx').value):null,postcodes:_pplPostcodes,weekly_cap:_pplWeeklyCap,monthly_cap:_pplMonthlyCap,meta_campaign_ids:_pplMetaCampaignIds.length?_pplMetaCampaignIds:null,delivery_method:$('ppl-delivery-method').value,delivery_email:$('ppl-delivery-email').value.trim()||null,delivery_phone:$('ppl-delivery-phone').value.trim()||null,custom_fields:_pplCf,has_quoteleads_platform_account:$('ppl-has-ql-account').value==='true',platform_email:$('ppl-platform-email').value.trim()||null,twilio_phone:$('ppl-twilio-phone').value.trim()||null,created_at:now()};
+    d={type:'ppl',company_name:$('ppl-co').value.trim(),contact_name:$('ppl-cn').value.trim(),email:$('ppl-em').value.trim(),niche:$('ppl-niche').value,lead_price:parseFloat($('ppl-price').value)||0,meta_cpl:parseFloat($('ppl-meta-cpl').value)||null,leads_delivered:parseInt($('ppl-ld').value)||0,total_leads_purchased:parseInt($('ppl-tlp').value)||0,leads_scrubbed:parseInt($('ppl-scrubbed').value)||0,stage:$('ppl-stage').value,cx_score:$('ppl-cx').value!==''?parseInt($('ppl-cx').value):null,postcodes:_pplPostcodes,weekly_cap:_pplWeeklyCap,monthly_cap:_pplMonthlyCap,meta_campaign_ids:_pplMetaCampaignIds.length?_pplMetaCampaignIds:null,delivery_method:$('ppl-delivery-method').value,delivery_email:$('ppl-delivery-email').value.trim()||null,delivery_phone:$('ppl-delivery-phone').value.trim()||null,custom_fields:_pplCf,has_quoteleads_platform_account:$('ppl-has-ql-account').value==='true',hq_bearer_token:$('ppl-hq-bearer-token').value.trim()||null,created_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   } else {
     d={type:'managed',company_name:$('mg-co').value.trim(),contact_name:$('mg-cn').value.trim(),email:$('mg-em').value.trim(),ad_account_id:$('mg-acc').value.trim(),monthly_budget:parseFloat($('mg-budget').value)||0,management_fee:parseFloat($('mg-fee').value)||0,stage:$('mg-stage').value,cx_score:$('mg-cx').value!==''?parseInt($('mg-cx').value):null,start_date:$('mg-start').value||null,last_payment_date:$('mg-last-pay').value||null,next_payment_date:$('mg-next-pay').value||null,created_at:now()};
@@ -3712,7 +3709,7 @@ async function saveClient(type) {
   }
   const {error}=await db.from('clients').insert([d]);
   if (error) { toast('DB error: '+error.message,true); return; }
-  if (type==='ppl') {['ppl-co','ppl-cn','ppl-em','ppl-price','ppl-meta-cpl','ppl-ld','ppl-tlp','ppl-scrubbed','ppl-postcodes','ppl-delivery-email','ppl-delivery-phone','ppl-platform-email','ppl-twilio-phone'].forEach(id=>{if($(id))$(id).value='';});setCheckedCampaigns('ppl-campaign-picker',[]);}
+  if (type==='ppl') {['ppl-co','ppl-cn','ppl-em','ppl-price','ppl-meta-cpl','ppl-ld','ppl-tlp','ppl-scrubbed','ppl-postcodes','ppl-delivery-email','ppl-delivery-phone','ppl-hq-bearer-token'].forEach(id=>{if($(id))$(id).value='';});setCheckedCampaigns('ppl-campaign-picker',[]);}
   else ['mg-co','mg-cn','mg-em','mg-acc','mg-budget','mg-fee','mg-start','mg-last-pay','mg-next-pay'].forEach(id=>{$(id).value='';});
   closeModal('m-'+type); toast('Client saved ✓');
   type==='ppl'?loadPPL():loadManaged();
