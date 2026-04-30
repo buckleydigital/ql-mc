@@ -2501,13 +2501,10 @@ async function populateTestLeadNiches() {
   const sel = $('tl-niche');
   if (!sel) return;
   try {
-    // List niches present on any lead. We can't filter by
-    // `postcode IS NOT NULL` here: the deployed `leads` table has no
-    // `postcode` column, so that filter makes the whole query fail
-    // with `column leads.postcode does not exist`. And `niche` is
-    // `NOT NULL DEFAULT 'solar'` in the schema, so `niche IS NOT NULL`
-    // is a no-op. Until a real distribution-only marker exists on the
-    // schema, list all leads.
+    // List all niches present on leads. Earlier revisions tried to
+    // restrict this to PPL distribution leads via
+    // `.not('postcode','is',null)` / `.not('niche','is',null)`, but
+    // that filtered every lead out and broke the panel. List all.
     const { data } = await db.from('leads')
       .select('niche')
       .limit(500);
@@ -2636,14 +2633,14 @@ async function loadLeads(resetPage) {
 
   // Populate niche filter dynamically.
   //
-  // NOTE: previous revisions tried to restrict to PPL distribution
-  // leads via `.not('postcode','is',null)`, but the deployed `leads`
-  // table has no `postcode` column — that filter caused every query
-  // to fail with `column leads.postcode does not exist` and the
-  // panel showed no leads at all. Adding `.not('niche','is',null)`
-  // alongside it didn't help either: `niche` is `NOT NULL DEFAULT
-  // 'solar'` in the schema, so it's always a no-op. Until a real
-  // distribution-only marker exists on the schema, list all leads.
+  // This panel used to display leads fine. Recent revisions added
+  // `.not('postcode','is',null)` (and later `.not('niche','is',null)`)
+  // to try to hide CRM "Add Lead" rows from the distribution view, and
+  // each time it broke the panel — every lead disappeared. So we list
+  // all leads here, restoring the previously-working behaviour. If
+  // CRM-vs-PPL separation is needed later, do it on a column we know
+  // is reliably populated only on the PPL path (and only after
+  // confirming existing distribution rows actually have it set).
   const nicheQ = db.from('leads').select('niche').limit(500);
   // Stats query — lightweight, all rows, just status + niche + client info
   const statsQ = db.from('leads').select('status, niche, assigned_client_id, clients(company_name)');
