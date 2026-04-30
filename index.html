@@ -2501,14 +2501,11 @@ async function populateTestLeadNiches() {
   const sel = $('tl-niche');
   if (!sel) return;
   try {
-    // Only include PPL distribution leads. `submit-lead` requires a
-    // postcode (validated server-side), so `postcode IS NOT NULL` is a
-    // definitive positive marker — the CRM `add_lead` RPC never accepts
-    // or sets a postcode. (We deliberately don't filter on `stage` here:
-    // `leads.stage` has a non-null default in the deployed DB, so
-    // distribution rows created by `submit-lead` get the default stage
-    // value and would be incorrectly excluded by `stage IS NULL`.)
-    const { data } = await db.from('leads').select('niche').not('postcode','is',null).limit(500);
+    // List niches present on any lead. (We don't filter by a
+    // distribution-only marker here because `leads.postcode` does not
+    // exist in the deployed schema — using it caused
+    // `column leads.postcode does not exist`.)
+    const { data } = await db.from('leads').select('niche').limit(500);
     const niches = [...new Set((data||[]).map(r => r.niche).filter(Boolean))].sort();
     const cur = sel.value;
     const allNiches = niches.length ? niches : [];
@@ -2633,24 +2630,17 @@ async function loadLeads(resetPage) {
   const typeFilter = $('ld-type-filter')?.value || 'all';
 
   // Populate niche filter dynamically.
-  // All `leads` queries below show **only** PPL distribution leads. The
-  // positive marker is `postcode IS NOT NULL` — `submit-lead` validates
-  // postcode as required for every distribution lead, while the CRM
-  // `add_lead` RPC never accepts or sets a postcode.
-  //
-  // Note: we deliberately do NOT filter on `stage` or `lead_type` here.
-  // `leads.stage` has a non-null default in the deployed DB, so
-  // distribution rows created by `submit-lead` get the default stage
-  // value and would be incorrectly excluded by `stage IS NULL`. A
-  // `lead_type NOT IN (...)` filter is also unsafe because rows with
-  // a NULL `lead_type` would not satisfy it (SQL `NULL NOT IN (...)`
-  // evaluates to NULL/false).
-  const nicheQ = db.from('leads').select('niche').not('postcode','is',null).limit(500);
+  // NOTE: previous revisions filtered with `.not('postcode','is',null)` to
+  // exclude CRM-internal leads, but the `leads` table in the deployed
+  // schema has no `postcode` column, which made every query fail with
+  // `column leads.postcode does not exist`. Until a real distribution-only
+  // marker exists in the schema, all `leads` rows are listed here.
+  const nicheQ = db.from('leads').select('niche').limit(500);
   // Stats query — lightweight, all rows, just status + niche + client info
-  const statsQ = db.from('leads').select('status, niche, assigned_client_id, clients(company_name)').not('postcode','is',null);
+  const statsQ = db.from('leads').select('status, niche, assigned_client_id, clients(company_name)');
   if (typeFilter !== 'all') statsQ.eq('niche', typeFilter);
   // Table query — paginated, with server-side filter
-  const tableQ = db.from('leads').select('*, clients(company_name)', {count:'exact'}).not('postcode','is',null).order('created_at', {ascending: false});
+  const tableQ = db.from('leads').select('*, clients(company_name)', {count:'exact'}).order('created_at', {ascending: false});
   if (filter !== 'all') tableQ.eq('status', filter);
   if (typeFilter !== 'all') tableQ.eq('niche', typeFilter);
   tableQ.range(leadsPage * PAGE_SIZE, (leadsPage + 1) * PAGE_SIZE - 1);
