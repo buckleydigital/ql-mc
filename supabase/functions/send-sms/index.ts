@@ -65,9 +65,9 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Validate lead_id exists
+    // Validate lead_id exists in ppl_leads
     const { data: lead } = await supabaseAdmin
-      .from("leads")
+      .from("ppl_leads")
       .select("id")
       .eq("id", lead_id)
       .single();

@@ -242,7 +242,7 @@ Deno.serve(async (req: Request) => {
 
     // STEP 1 — FETCH
     const [leadR, clientR] = await Promise.all([
-      supabaseAdmin.from("leads").select("*").eq("id", lead_id).single(),
+      supabaseAdmin.from("ppl_leads").select("*").eq("id", lead_id).single(),
       supabaseAdmin.from("clients").select("*").eq("id", client_id).single(),
     ]);
 
@@ -352,9 +352,9 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // STEP 5 — UPDATE LEADS TABLE
+    // STEP 5 — UPDATE PPL_LEADS TABLE
     if (anySuccess) {
-      await supabaseAdmin.from("leads").update({
+      await supabaseAdmin.from("ppl_leads").update({
         status: "delivered",
         delivery_attempts: (lead.delivery_attempts || 0) + 1,
         last_delivery_at: new Date().toISOString(),
@@ -369,7 +369,7 @@ Deno.serve(async (req: Request) => {
         }).eq("id", client_id);
       });
     } else {
-      await supabaseAdmin.from("leads").update({
+      await supabaseAdmin.from("ppl_leads").update({
         delivery_attempts: (lead.delivery_attempts || 0) + 1,
         last_delivery_at: new Date().toISOString(),
         delivery_error: firstError,
