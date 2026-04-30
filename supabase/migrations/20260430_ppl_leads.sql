@@ -56,9 +56,9 @@ CREATE INDEX IF NOT EXISTS ppl_leads_assigned_client_status_idx
   ON ppl_leads (assigned_client_id, status);
 
 -- Migrate existing distribution leads out of the shared `leads` table.
--- Distribution leads are those whose lead_type is NULL or 'solar' (the default
--- that submit-lead never overrode). Agency CRM leads have lead_type = 'ppl' or
--- 'managed', set explicitly by the add_lead RPC.
+-- `leads.lead_type` already tracks the type (solar, hvac, etc.) from
+-- 20260409_lead_type_column.sql. Fall back to `niche` then 'solar' for
+-- any rows that pre-date that column.
 INSERT INTO ppl_leads (
   id, name, email, phone, postcode, suburb, state,
   lead_type, source, custom_fields,
@@ -69,7 +69,7 @@ INSERT INTO ppl_leads (
 )
 SELECT
   id, name, email, phone, postcode, suburb, state,
-  COALESCE(niche, 'solar'), COALESCE(source, 'webhook'),
+  COALESCE(lead_type, niche, 'solar'), COALESCE(source, 'webhook'),
   CASE WHEN custom_data IS NOT NULL AND custom_data::text <> '{}' THEN custom_data::text ELSE NULL END,
   is_homeowner, avg_quarterly_bill, interested_in, purchase_timeline,
   assigned_client_id, assigned_at, COALESCE(status, 'pending'),
