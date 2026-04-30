@@ -9,6 +9,13 @@
 # validating that the `To` number exists in comm_solar_appointments.
 verify_jwt = false
 
+[functions.postcode-lookup]
+# Called from the public-facing survey to check suburb/state and active client
+# coverage. No Supabase JWT is available from the browser's anon key flow in
+# older Supabase SDK versions, so JWT verification is handled inside the function
+# via the anon key header check.
+verify_jwt = false
+
 [functions.agent-status]
 # Make.com scenarios POST to this endpoint from `started` and `finished`
 # HTTP modules. Make has no way to present a Supabase JWT, so JWT checks
