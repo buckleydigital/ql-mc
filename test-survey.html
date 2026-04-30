@@ -9,7 +9,7 @@
 <meta http-equiv="Content-Security-Policy" content="
   object-src 'none';
   base-uri 'self';
-  connect-src https://wmegoygrancfwxagqskh.supabase.co https://api.zippopotam.us 'self';
+  connect-src https://wmegoygrancfwxagqskh.supabase.co 'self';
   script-src 'self' 'unsafe-inline';
   img-src * data: blob:;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
@@ -246,6 +246,7 @@ body::after{
 .suburb-chip .suburb-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .suburb-chip.loading{color:var(--ink3);font-size:11.5px}
 .suburb-chip.found{border-color:rgba(46,204,138,.25);background:var(--grn-dim)}
+.suburb-chip.no-coverage{border-color:rgba(245,166,35,.25);background:rgba(245,166,35,.07);color:var(--amb)}
 .suburb-chip.not-found{border-color:var(--red-dim);color:var(--ink3);font-size:11.5px}
 
 /* Bill options */
@@ -614,6 +615,8 @@ body::after{
 const SUPABASE_URL = 'https://wmegoygrancfwxagqskh.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_UHQNxVCjHJnFjssYwTiwcQ_3FYovX8I';
 const SUBMIT_LEAD_URL = SUPABASE_URL + '/functions/v1/submit-lead';
+const POSTCODE_LOOKUP_URL = SUPABASE_URL + '/functions/v1/postcode-lookup';
+const SURVEY_NICHE = 'solar';
 
 /* ── THEME TOGGLE ── */
 (function() {
@@ -705,15 +708,28 @@ async function lookupPostcode(pc) {
   resolvedState  = '';
 
   try {
-    const res = await fetch('https://api.zippopotam.us/au/' + pc);
+    const res = await fetch(POSTCODE_LOOKUP_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ postcode: pc, niche: SURVEY_NICHE }),
+    });
     if (!res.ok) throw new Error('not_found');
     const data = await res.json();
-    const place = data.places && data.places[0];
-    if (!place) throw new Error('not_found');
-    resolvedSuburb = place['place name'] || '';
-    resolvedState  = place['state abbreviation'] || place['state'] || '';
-    suburbChip.className = 'suburb-chip found';
-    suburbText.textContent = resolvedSuburb + (resolvedState ? ', ' + resolvedState : '');
+    if (!data.suburb) throw new Error('not_found');
+    resolvedSuburb = data.suburb || '';
+    resolvedState  = data.state  || '';
+    const locationLabel = resolvedSuburb + (resolvedState ? ', ' + resolvedState : '');
+    if (data.has_active_clients) {
+      suburbChip.className = 'suburb-chip found';
+      suburbText.textContent = locationLabel;
+    } else {
+      suburbChip.className = 'suburb-chip no-coverage';
+      suburbText.textContent = locationLabel + ' – no coverage yet';
+    }
   } catch (_) {
     suburbChip.className = 'suburb-chip not-found';
     suburbText.textContent = 'Postcode not found';
