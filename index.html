@@ -2501,12 +2501,11 @@ async function populateTestLeadNiches() {
   const sel = $('tl-niche');
   if (!sel) return;
   try {
-    // Exclude Sales Pipeline (CRM) leads — they are not part of the PPL
-    // lead-distribution system. CRM leads have a non-null `stage` AND a
-    // CRM-only `lead_type` ('ppl'|'managed'); PPL leads have stage NULL
-    // and lead_type defaulting to 'solar'. Some legacy CRM rows have
-    // stage=NULL, so we also filter on lead_type for robustness.
-    const { data } = await db.from('leads').select('niche').is('stage', null).not('lead_type','in','("ppl","managed")').limit(500);
+    // Only include PPL distribution leads. `submit-lead` requires a
+    // postcode (validated server-side), so `postcode IS NOT NULL` is a
+    // definitive positive marker — the CRM `add_lead` RPC never sets it.
+    // Stage/lead_type filters are kept for defense in depth.
+    const { data } = await db.from('leads').select('niche').not('postcode','is',null).is('stage', null).not('lead_type','in','("ppl","managed")').limit(500);
     const niches = [...new Set((data||[]).map(r => r.niche).filter(Boolean))].sort();
     const cur = sel.value;
     const allNiches = niches.length ? niches : [];
@@ -2631,19 +2630,18 @@ async function loadLeads(resetPage) {
   const typeFilter = $('ld-type-filter')?.value || 'all';
 
   // Populate niche filter dynamically.
-  // All `leads` queries below exclude Sales Pipeline (CRM) leads — those
-  // belong to the agency client-acquisition pipeline, not the PPL lead-
-  // distribution system. Two markers are applied for robustness:
-  //   1. `stage IS NULL` — CRM leads carry a non-null pipeline stage.
-  //   2. `lead_type NOT IN ('ppl','managed')` — these values are only
-  //      ever set by the CRM `add_lead` RPC; PPL leads default to 'solar'.
-  //   The second filter catches legacy CRM rows whose stage is NULL.
-  const nicheQ = db.from('leads').select('niche').is('stage', null).not('lead_type','in','("ppl","managed")').limit(500);
+  // All `leads` queries below show **only** PPL distribution leads. The
+  // strongest positive marker is `postcode IS NOT NULL` — `submit-lead`
+  // validates postcode as required for every distribution lead, while
+  // the CRM `add_lead` RPC never accepts or sets a postcode. The
+  // `stage IS NULL` and `lead_type NOT IN ('ppl','managed')` filters
+  // are kept for defense in depth so any legacy/edge CRM row is excluded.
+  const nicheQ = db.from('leads').select('niche').not('postcode','is',null).is('stage', null).not('lead_type','in','("ppl","managed")').limit(500);
   // Stats query — lightweight, all rows, just status + niche + client info
-  const statsQ = db.from('leads').select('status, niche, assigned_client_id, clients(company_name)').is('stage', null).not('lead_type','in','("ppl","managed")');
+  const statsQ = db.from('leads').select('status, niche, assigned_client_id, clients(company_name)').not('postcode','is',null).is('stage', null).not('lead_type','in','("ppl","managed")');
   if (typeFilter !== 'all') statsQ.eq('niche', typeFilter);
   // Table query — paginated, with server-side filter
-  const tableQ = db.from('leads').select('*, clients(company_name)', {count:'exact'}).is('stage', null).not('lead_type','in','("ppl","managed")').order('created_at', {ascending: false});
+  const tableQ = db.from('leads').select('*, clients(company_name)', {count:'exact'}).not('postcode','is',null).is('stage', null).not('lead_type','in','("ppl","managed")').order('created_at', {ascending: false});
   if (filter !== 'all') tableQ.eq('status', filter);
   if (typeFilter !== 'all') tableQ.eq('niche', typeFilter);
   tableQ.range(leadsPage * PAGE_SIZE, (leadsPage + 1) * PAGE_SIZE - 1);
