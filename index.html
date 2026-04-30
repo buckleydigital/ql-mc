@@ -2505,13 +2505,14 @@ async function populateTestLeadNiches() {
     // (rows inserted by the `submit-lead` edge function). Agency CRM
     // rows (added via the `add_lead` RPC from the CRM "Add Lead" form)
     // must be excluded — they're potential agency clients, not the
-    // leads we sell. The structurally reliable discriminator is
-    // `postcode IS NOT NULL`: `submit-lead` validates and requires a
-    // 4-digit postcode on every insert, while `add_lead` has no
-    // postcode argument at all, so CRM rows always have postcode NULL.
+    // leads we sell. We require BOTH `postcode IS NOT NULL` AND
+    // `niche IS NOT NULL`: `submit-lead` validates and requires both
+    // on every insert, while `add_lead` has neither argument, so CRM
+    // rows always have both NULL. Two markers = bulletproof.
     const { data } = await db.from('leads')
       .select('niche')
       .not('postcode', 'is', null)
+      .not('niche', 'is', null)
       .limit(500);
     const niches = [...new Set((data||[]).map(r => r.niche).filter(Boolean))].sort();
     const cur = sel.value;
@@ -2643,19 +2644,25 @@ async function loadLeads(resetPage) {
   // inserted by the `add_lead` RPC from the CRM "Add Lead" form,
   // including potential agency clients with `lead_type='ppl'`).
   //
-  // The reliable discriminator is `postcode IS NOT NULL`, which is
-  // guaranteed by the two insert paths themselves:
-  //   • `submit-lead` validates and requires a 4-digit AU postcode on
-  //     every insert (see supabase/functions/submit-lead/index.ts) —
-  //     so every distribution lead has a postcode.
+  // We require BOTH `postcode IS NOT NULL` AND `niche IS NOT NULL`,
+  // which is guaranteed by the two insert paths themselves:
+  //   • `submit-lead` validates and requires a 4-digit AU postcode
+  //     AND a non-empty niche on every insert (see
+  //     supabase/functions/submit-lead/index.ts — requests missing
+  //     either are rejected with invalid_postcode / missing_niche).
+  //     So every distribution lead has both.
   //   • `add_lead(p_name, p_company, p_email, p_phone, p_stage,
-  //     p_lead_type, p_value, p_source, p_notes)` has no postcode
-  //     argument — so every CRM row has postcode NULL.
+  //     p_lead_type, p_value, p_source, p_notes)` has neither a
+  //     postcode nor a niche argument — so every CRM row has both
+  //     columns NULL.
   //
-  // Earlier attempts on `lead_type` and `stage` were unreliable
-  // because both columns have non-null DB defaults that make the
-  // distinction ambiguous on the row level. `postcode` does not.
-  const distributionFilter = (q) => q.not('postcode', 'is', null);
+  // Two independent markers means even if a CRM row gets a postcode
+  // or a niche manually edited in later, it still won't slip through.
+  // Earlier attempts on `lead_type` / `stage` were unreliable because
+  // both columns have non-null DB defaults.
+  const distributionFilter = (q) => q
+    .not('postcode', 'is', null)
+    .not('niche', 'is', null);
   const nicheQ = distributionFilter(db.from('leads').select('niche')).limit(500);
   // Stats query — lightweight, all rows, just status + niche + client info
   const statsQ = distributionFilter(db.from('leads').select('status, niche, assigned_client_id, clients(company_name)'));
