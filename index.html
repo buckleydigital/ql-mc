@@ -2501,16 +2501,15 @@ async function populateTestLeadNiches() {
   const sel = $('tl-niche');
   if (!sel) return;
   try {
-    // List niches present on PPL distribution leads only. Agency CRM
-    // leads (created via the `add_lead` RPC) have `lead_type` in
-    // ('ppl','managed') and must be excluded — they're internal sales
-    // pipeline records, not distribution leads. Distribution leads
-    // (created via `submit-lead`) leave `lead_type` unset, so it gets
-    // the column default 'solar' (or NULL on legacy rows). The OR with
-    // `is.null` keeps any legacy NULL rows visible.
+    // List niches present on distribution leads only. Agency
+    // sales-pipeline leads (added via the CRM "Add Lead" flow) always
+    // have a `stage` set ('new_lead', 'proposal', 'closed_won', …),
+    // whereas distribution leads inserted by the `submit-lead` edge
+    // function never set `stage`. Filtering on `stage IS NULL`
+    // excludes the agency pipeline and keeps every other lead.
     const { data } = await db.from('leads')
       .select('niche')
-      .or('lead_type.is.null,lead_type.not.in.(ppl,managed)')
+      .is('stage', null)
       .limit(500);
     const niches = [...new Set((data||[]).map(r => r.niche).filter(Boolean))].sort();
     const cur = sel.value;
@@ -2636,25 +2635,21 @@ async function loadLeads(resetPage) {
   const typeFilter = $('ld-type-filter')?.value || 'all';
 
   // Populate niche filter dynamically.
-  // All `leads` queries below show **only** PPL distribution leads.
-  // Agency CRM leads (created via the `add_lead` RPC) have `lead_type`
-  // in ('ppl','managed') and are excluded — they're the agency's
-  // internal sales pipeline, not distribution leads, so they must not
-  // appear here and must not be eligible for delivery to clients.
-  // Distribution leads (created via `submit-lead`) leave `lead_type`
-  // unset, so it takes the column default 'solar' (or NULL on legacy
-  // rows). The OR with `is.null` keeps any legacy NULL rows visible.
-  //
-  // Note: we don't filter on `stage` because `leads.stage` has a
-  // non-null default in the deployed DB, so distribution rows would be
-  // incorrectly excluded by `stage IS NULL`.
-  const distributionFilter = 'lead_type.is.null,lead_type.not.in.(ppl,managed)';
-  const nicheQ = db.from('leads').select('niche').or(distributionFilter).limit(500);
+  // The Lead Distribution panel must exclude the agency sales pipeline
+  // (CRM) and show every other lead. Agency pipeline leads are always
+  // created via the CRM "Add Lead" flow, which sets `stage` (default
+  // 'new_lead'); distribution leads inserted by the `submit-lead` edge
+  // function never set `stage`. Filtering on `stage IS NULL` therefore
+  // keeps distribution leads (any niche, any client type) and hides
+  // only the agency's internal sales-pipeline contacts.
+  // Note: `lead_type` is a client-type label (ppl/managed) and is not
+  // a reliable discriminator for this panel.
+  const nicheQ = db.from('leads').select('niche').is('stage', null).limit(500);
   // Stats query — lightweight, all rows, just status + niche + client info
-  const statsQ = db.from('leads').select('status, niche, assigned_client_id, clients(company_name)').or(distributionFilter);
+  const statsQ = db.from('leads').select('status, niche, assigned_client_id, clients(company_name)').is('stage', null);
   if (typeFilter !== 'all') statsQ.eq('niche', typeFilter);
   // Table query — paginated, with server-side filter
-  const tableQ = db.from('leads').select('*, clients(company_name)', {count:'exact'}).or(distributionFilter).order('created_at', {ascending: false});
+  const tableQ = db.from('leads').select('*, clients(company_name)', {count:'exact'}).is('stage', null).order('created_at', {ascending: false});
   if (filter !== 'all') tableQ.eq('status', filter);
   if (typeFilter !== 'all') tableQ.eq('niche', typeFilter);
   tableQ.range(leadsPage * PAGE_SIZE, (leadsPage + 1) * PAGE_SIZE - 1);
