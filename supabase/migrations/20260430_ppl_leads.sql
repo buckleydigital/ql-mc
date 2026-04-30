@@ -14,23 +14,30 @@ CREATE TABLE IF NOT EXISTS ppl_leads (
   email               text,
   phone               text,
   postcode            text,
+  address             text,
   suburb              text,
   state               text,
-  niche               text        NOT NULL DEFAULT 'solar',
-  subtype             text,
+  property_type       text,
+  roof_type           text,
+  monthly_bill        numeric,
+  system_size         numeric,
+  lead_type           text,
   source              text        NOT NULL DEFAULT 'webhook',
-  custom_data         jsonb       NOT NULL DEFAULT '{}',
+  custom_fields       text,
   is_homeowner        boolean,
   avg_quarterly_bill  numeric,
   interested_in       text,
   purchase_timeline   text,
+  phone_verified      boolean,
+  email_verified      boolean,
   assigned_client_id  uuid        REFERENCES clients(id) ON DELETE SET NULL,
   assigned_at         timestamptz,
+  delivery_method     text,
+  delivered_at        timestamptz,
+  delivery_error      text,
+  delivery_audit_log  jsonb,
   status              text        NOT NULL DEFAULT 'pending'
                                   CHECK (status IN ('pending','assigned','delivered','failed','scrubbed')),
-  delivery_attempts   integer     NOT NULL DEFAULT 0,
-  last_delivery_at    timestamptz,
-  delivery_error      text,
   created_at          timestamptz NOT NULL DEFAULT now(),
   updated_at          timestamptz
 );
@@ -43,7 +50,7 @@ CREATE POLICY "admin_all" ON ppl_leads FOR ALL TO authenticated
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS ppl_leads_status_idx           ON ppl_leads (status);
-CREATE INDEX IF NOT EXISTS ppl_leads_niche_idx            ON ppl_leads (niche);
+CREATE INDEX IF NOT EXISTS ppl_leads_lead_type_idx        ON ppl_leads (lead_type);
 CREATE INDEX IF NOT EXISTS ppl_leads_created_at_idx       ON ppl_leads (created_at DESC);
 CREATE INDEX IF NOT EXISTS ppl_leads_assigned_client_status_idx
   ON ppl_leads (assigned_client_id, status);
@@ -54,18 +61,19 @@ CREATE INDEX IF NOT EXISTS ppl_leads_assigned_client_status_idx
 -- 'managed', set explicitly by the add_lead RPC.
 INSERT INTO ppl_leads (
   id, name, email, phone, postcode, suburb, state,
-  niche, subtype, source, custom_data,
+  lead_type, source, custom_fields,
   is_homeowner, avg_quarterly_bill, interested_in, purchase_timeline,
   assigned_client_id, assigned_at, status,
-  delivery_attempts, last_delivery_at, delivery_error,
+  delivered_at, delivery_error,
   created_at, updated_at
 )
 SELECT
   id, name, email, phone, postcode, suburb, state,
-  COALESCE(niche, 'solar'), subtype, COALESCE(source, 'webhook'), COALESCE(custom_data, '{}'),
+  COALESCE(niche, 'solar'), COALESCE(source, 'webhook'),
+  CASE WHEN custom_data IS NOT NULL AND custom_data::text <> '{}' THEN custom_data::text ELSE NULL END,
   is_homeowner, avg_quarterly_bill, interested_in, purchase_timeline,
   assigned_client_id, assigned_at, COALESCE(status, 'pending'),
-  COALESCE(delivery_attempts, 0), last_delivery_at, delivery_error,
+  last_delivery_at, delivery_error,
   created_at, updated_at
 FROM leads
 WHERE lead_type IS NULL OR lead_type NOT IN ('ppl', 'managed')

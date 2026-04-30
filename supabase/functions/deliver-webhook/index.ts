@@ -36,7 +36,7 @@ function esc(s: string): string {
 function buildEmailHtml(lead: Record<string, unknown>, _client: Record<string, unknown>): string {
   const now = formatAEST(new Date());
   const location = `${lead.postcode}${lead.suburb ? " " + lead.suburb : ""}${lead.state ? " " + lead.state : ""}`;
-  const typeStr = `${lead.niche}${lead.subtype ? " · " + lead.subtype : ""}`;
+  const typeStr = lead.lead_type as string || "—";
 
   const row = (label: string, value: string) =>
     `<tr><td style="padding:6px 12px;color:#72728a;font-size:13px;white-space:nowrap;vertical-align:top">${esc(label)}</td><td style="padding:6px 12px;color:#eeeef3;font-weight:600;font-size:13px">${value}</td></tr>`;
@@ -59,15 +59,12 @@ function buildEmailHtml(lead: Record<string, unknown>, _client: Record<string, u
   if (lead.interested_in) rows += row("Interested In", esc(lead.interested_in as string));
   if (lead.purchase_timeline) rows += row("Timeline", esc(lead.purchase_timeline as string));
 
-  // Custom data section
+  // Custom fields section (plain text)
   let customSection = "";
-  const cd = (lead.custom_data || {}) as Record<string, unknown>;
-  const cdKeys = Object.keys(cd).filter((k) => cd[k] != null && cd[k] !== "");
-  if (cdKeys.length > 0) {
-    customSection = `<tr><td colspan="2" style="padding:14px 12px 6px;font-size:10px;color:#72728a;text-transform:uppercase;letter-spacing:.1em;font-variant:small-caps">Additional Details</td></tr>`;
-    for (const key of cdKeys) {
-      customSection += row(titleCase(key), esc(String(cd[key])));
-    }
+  const cf = lead.custom_fields as string | null;
+  if (cf && cf.trim()) {
+    customSection = `<tr><td colspan="2" style="padding:14px 12px 6px;font-size:10px;color:#72728a;text-transform:uppercase;letter-spacing:.1em;font-variant:small-caps">Notes</td></tr>`;
+    customSection += row("Notes", esc(cf.trim()));
   }
 
   return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#1a1a20;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
@@ -86,19 +83,15 @@ function buildSmsBody(lead: Record<string, unknown>): string {
   const phone = lead.phone as string;
   const postcode = lead.postcode as string;
   const suburb = lead.suburb as string | null;
-  const niche = lead.niche as string;
-  const subtype = lead.subtype as string | null;
+  const lead_type = lead.lead_type as string;
 
-  const full = `QL: ${name} ${phone} | ${postcode}${suburb ? " " + suburb : ""} | ${niche}${subtype ? " " + subtype : ""} | quoteleads.com.au/sign-in`;
+  const full = `QL: ${name} ${phone} | ${postcode}${suburb ? " " + suburb : ""} | ${lead_type} | quoteleads.com.au/sign-in`;
   if (full.length <= 160) return full;
 
-  const noSuburb = `QL: ${name} ${phone} | ${postcode} | ${niche}${subtype ? " " + subtype : ""} | quoteleads.com.au/sign-in`;
+  const noSuburb = `QL: ${name} ${phone} | ${postcode} | ${lead_type} | quoteleads.com.au/sign-in`;
   if (noSuburb.length <= 160) return noSuburb;
 
-  const noSubtype = `QL: ${name} ${phone} | ${postcode} | ${niche} | quoteleads.com.au/sign-in`;
-  if (noSubtype.length <= 160) return noSubtype;
-
-  return `QL: ${name} ${phone} | ${postcode} | ${niche} | quoteleads.com.au`;
+  return `QL: ${name} ${phone} | ${postcode} | ${lead_type} | quoteleads.com.au`;
 }
 
 async function deliverEmail(
@@ -261,7 +254,7 @@ Deno.serve(async (req: Request) => {
     const client = clientR.data;
 
     // STEP 2 — BUILD EMAIL
-    const subject = `New ${lead.niche} Lead — ${lead.name} · ${lead.postcode}${lead.suburb ? " " + lead.suburb : ""}`;
+    const subject = `New ${lead.lead_type || "PPL"} Lead — ${lead.name} · ${lead.postcode}${lead.suburb ? " " + lead.suburb : ""}`;
     const htmlBody = buildEmailHtml(lead, client);
 
     // STEP 3 — BUILD SMS
@@ -356,8 +349,7 @@ Deno.serve(async (req: Request) => {
     if (anySuccess) {
       await supabaseAdmin.from("ppl_leads").update({
         status: "delivered",
-        delivery_attempts: (lead.delivery_attempts || 0) + 1,
-        last_delivery_at: new Date().toISOString(),
+        delivered_at: new Date().toISOString(),
         delivery_error: null,
       }).eq("id", lead_id);
 
@@ -370,8 +362,7 @@ Deno.serve(async (req: Request) => {
       });
     } else {
       await supabaseAdmin.from("ppl_leads").update({
-        delivery_attempts: (lead.delivery_attempts || 0) + 1,
-        last_delivery_at: new Date().toISOString(),
+        delivered_at: new Date().toISOString(),
         delivery_error: firstError,
       }).eq("id", lead_id);
     }
