@@ -2501,13 +2501,32 @@ async function populateTestLeadNiches() {
   const sel = $('tl-niche');
   if (!sel) return;
   try {
-    // Restrict to PPL distribution leads only (status IS NOT NULL).
-    // Agency CRM pipeline leads (added via `add_lead` RPC) never set
-    // `status`, so they're excluded — keeping the niche dropdown
-    // limited to niches that actually appear on PPL distribution.
+    // List niches present on PPL distribution leads only. Agency CRM
+    // leads (created via the `add_lead` RPC) have `lead_type` set to
+    // 'ppl' or 'managed' (the type of agency client they target) and
+    // must be excluded — they're internal sales pipeline records, not
+    // distribution leads. Distribution leads (created via the
+    // `submit-lead` edge function) never set `lead_type`, so it stays
+    // NULL or takes the column default. The `is.null` branch keeps any
+    // legacy NULL rows visible.
+    //
+    // ⚠ DO NOT replace this filter with any of the following — every
+    // one of them has been tried and failed in production (see PR #52
+    // through #58):
+    //   • `.not('postcode', 'is', null)`  → `leads.postcode` column
+    //     does not exist in the deployed schema → query errors out and
+    //     the panel hangs on "loading".
+    //   • `.is('stage', null)`            → `leads.stage` has a
+    //     non-null default in the deployed DB → excludes every
+    //     distribution lead.
+    //   • `.not('status', 'is', null)`    → `leads.status` is
+    //     `NOT NULL DEFAULT 'pending'` → no-op, doesn't filter
+    //     anything.
+    //   • `.not('niche', 'is', null)`     → `leads.niche` has
+    //     `DEFAULT 'solar'` → no-op.
     const { data } = await db.from('leads')
       .select('niche')
-      .not('status', 'is', null)
+      .or('lead_type.is.null,lead_type.not.in.(ppl,managed)')
       .limit(500);
     const niches = [...new Set((data||[]).map(r => r.niche).filter(Boolean))].sort();
     const cur = sel.value;
@@ -2632,25 +2651,42 @@ async function loadLeads(resetPage) {
   const filter = $('ld-filter')?.value || 'all';
   const typeFilter = $('ld-type-filter')?.value || 'all';
 
-  // Restrict the Lead Distribution panel to PPL distribution leads only —
-  // never show agency CRM pipeline leads (those are added via the `add_lead`
-  // RPC / "Add Lead" modal and live on the `stage` column with no `status`).
-  // PPL leads inserted by the submit-lead edge function always have
-  // `status` set ('pending' or 'assigned' on insert, later 'delivered' /
-  // 'failed' / 'scrubbed'). CRM agency leads never set `status`. So
-  // `status IS NOT NULL` is the reliable separator — and it's the column
-  // this panel is built around (the stat tiles, the table badge, the
-  // status filter dropdown all key off `status`). This is the marker we
-  // know is populated only on the PPL path. Avoid filtering on `niche`
-  // (NOT NULL DEFAULT 'solar' — would be a no-op) or on `postcode`
-  // (history of breaking the panel).
-  const distOnly = q => q.not('status', 'is', null);
-  const nicheQ = distOnly(db.from('leads').select('niche')).limit(500);
+  // Restrict the Lead Distribution panel to PPL distribution leads
+  // only — never show agency CRM pipeline leads (those are added via
+  // the `add_lead` RPC / "Add Lead" modal and live in the same
+  // `leads` table).
+  //
+  // Reliable separator: agency CRM leads always have `lead_type` set
+  // to 'ppl' or 'managed' (the type of agency client they target),
+  // because the `add_lead` RPC requires it. Distribution leads from
+  // the `submit-lead` edge function never set `lead_type`, so it
+  // stays NULL on legacy rows or takes the `leads.lead_type` column
+  // default ('solar' on schemas where the lead_type migration has
+  // run). Either way, the value will not be 'ppl' or 'managed'. The
+  // `is.null` branch keeps any legacy NULL rows visible.
+  //
+  // ⚠ DO NOT replace this filter with any of the following — every
+  // one of them has been tried and failed in production (see
+  // PRs #52–#58):
+  //   • `.not('postcode', 'is', null)`  → `leads.postcode` column
+  //     does not exist in the deployed schema → query errors with
+  //     "column leads.postcode does not exist" and the panel hangs
+  //     on "loading".
+  //   • `.is('stage', null)`            → `leads.stage` has a
+  //     non-null default in the deployed DB → excludes every
+  //     distribution lead, panel goes empty.
+  //   • `.not('status', 'is', null)`    → `leads.status` is
+  //     `NOT NULL DEFAULT 'pending'` → no-op, every CRM lead leaks
+  //     back into the panel.
+  //   • `.not('niche', 'is', null)`     → `leads.niche` has
+  //     `DEFAULT 'solar'` → no-op.
+  const distributionFilter = 'lead_type.is.null,lead_type.not.in.(ppl,managed)';
+  const nicheQ = db.from('leads').select('niche').or(distributionFilter).limit(500);
   // Stats query — lightweight, all PPL rows, just status + niche + client info
-  const statsQ = distOnly(db.from('leads').select('status, niche, assigned_client_id, clients(company_name)'));
+  const statsQ = db.from('leads').select('status, niche, assigned_client_id, clients(company_name)').or(distributionFilter);
   if (typeFilter !== 'all') statsQ.eq('niche', typeFilter);
   // Table query — paginated, with server-side filter
-  const tableQ = distOnly(db.from('leads').select('*, clients(company_name)', {count:'exact'})).order('created_at', {ascending: false});
+  const tableQ = db.from('leads').select('*, clients(company_name)', {count:'exact'}).or(distributionFilter).order('created_at', {ascending: false});
   if (filter !== 'all') tableQ.eq('status', filter);
   if (typeFilter !== 'all') tableQ.eq('niche', typeFilter);
   tableQ.range(leadsPage * PAGE_SIZE, (leadsPage + 1) * PAGE_SIZE - 1);
