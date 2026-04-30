@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Solar Quote – Get Your Free Quote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<meta http-equiv="Content-Security-Policy" content="
+  object-src 'none';
+  base-uri 'self';
+  connect-src https://wmegoygrancfwxagqskh.supabase.co https://api.zippopotam.us 'self';
+  script-src 'self' 'unsafe-inline';
+  img-src * data: blob:;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src https://fonts.gstatic.com;
+">
+<style>
+/* ═══ TOKENS (mirrors main app) ═══ */
+:root {
+  --bg:      #070708;
+  --bg2:     #0c0c0e;
+  --s1:      #0f0f12;
+  --s2:      #141417;
+  --s3:      #19191d;
+  --s4:      #1f1f24;
+  --bd:      #1c1c22;
+  --bd2:     #262630;
+  --bd3:     #32323e;
+  --ink:     #eeeef3;
+  --ink2:    #72728a;
+  --ink3:    #3e3e50;
+  --acc:     #4f8fff;
+  --acc2:    #3070e0;
+  --acc-dim: rgba(79,143,255,.07);
+  --acc-glow:rgba(79,143,255,.18);
+  --acc-ink: #9fc3ff;
+  --red:     #ff4560;
+  --red-dim: rgba(255,69,96,.07);
+  --grn:     #2ecc8a;
+  --grn-dim: rgba(46,204,138,.07);
+  --amb:     #f5a623;
+  --font:    'DM Sans', -apple-system, sans-serif;
+  --mono:    'DM Mono', monospace;
+  --display: 'Syne', sans-serif;
+  --r:  5px;
+  --r2: 9px;
+  --r3: 13px;
+}
+
+[data-theme="light"] {
+  --bg:      #f2f2f5;
+  --bg2:     #ebebef;
+  --s1:      #ffffff;
+  --s2:      #f7f7fa;
+  --s3:      #eeeef2;
+  --s4:      #e5e5ec;
+  --bd:      #dddde8;
+  --bd2:     #cacad8;
+  --bd3:     #b8b8c8;
+  --ink:     #0a0a14;
+  --ink2:    #52526a;
+  --ink3:    #9494a8;
+  --acc-dim: rgba(79,143,255,.055);
+  --acc-glow:rgba(79,143,255,.12);
+  --acc-ink: #1a52c0;
+  --red:     #e0304a;
+  --red-dim: rgba(224,48,74,.055);
+  --grn:     #1db87a;
+  --grn-dim: rgba(29,184,122,.055);
+}
+
+/* ═══ RESET ═══ */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;font-family:var(--font);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{background:var(--bg);color:var(--ink);}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bd3);border-radius:2px}
+button{font-family:var(--font);cursor:pointer}
+input,textarea,select{font-family:var(--font)}
+a{color:inherit;text-decoration:none}
+
+/* Noise overlay */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  background-size:200px 200px;opacity:.4;
+}
+/* Grid overlay */
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:radial-gradient(circle, var(--bd) 1px, transparent 1px);
+  background-size:32px 32px;opacity:.2;
+}
+
+/* ═══ HEADER BAR ═══ */
+.topbar{
+  position:sticky;top:0;z-index:100;
+  height:46px;background:var(--s1);border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;padding:0 20px;gap:10px;
+}
+.tb-mark{
+  width:24px;height:24px;background:var(--acc);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--display);font-size:8px;font-weight:800;color:#fff;
+  box-shadow:0 0 12px rgba(79,143,255,.4);letter-spacing:.02em;flex-shrink:0;
+}
+.tb-name{font-family:var(--display);font-size:12.5px;font-weight:700;letter-spacing:-.2px;color:var(--ink)}
+.tb-sep{width:1px;height:14px;background:var(--bd2);flex-shrink:0}
+.tb-sub{font-family:var(--mono);font-size:9.5px;color:var(--ink3);letter-spacing:.06em;text-transform:uppercase}
+.tb-sp{flex:1}
+.test-badge{
+  font-family:var(--mono);font-size:9px;font-weight:500;letter-spacing:.1em;
+  text-transform:uppercase;padding:3px 8px;border-radius:3px;
+  background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);color:var(--amb);
+}
+.theme-btn{
+  width:26px;height:26px;display:flex;align-items:center;justify-content:center;
+  border-radius:var(--r);border:1px solid var(--bd2);background:var(--s2);
+  color:var(--ink3);font-size:13px;transition:all .12s;
+}
+.theme-btn:hover{background:var(--s3);color:var(--ink)}
+
+/* ═══ MAIN LAYOUT ═══ */
+.page{
+  position:relative;z-index:1;
+  min-height:calc(100vh - 46px);
+  display:flex;flex-direction:column;align-items:center;
+  padding:40px 16px 60px;
+}
+
+/* ═══ HERO ═══ */
+.hero{text-align:center;max-width:520px;margin-bottom:36px}
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:9.5px;font-weight:500;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--acc);
+  background:var(--acc-dim);border:1px solid rgba(79,143,255,.14);
+  border-radius:20px;padding:4px 12px;margin-bottom:18px;
+}
+.hero-eyebrow svg{width:10px;height:10px;fill:currentColor}
+.hero h1{
+  font-family:var(--display);font-size:clamp(24px,5vw,36px);font-weight:800;
+  letter-spacing:-.6px;line-height:1.1;color:var(--ink);margin-bottom:12px;
+}
+.hero h1 span{
+  background:linear-gradient(135deg,#4f8fff 0%,#9fc3ff 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.hero p{font-size:14px;color:var(--ink2);line-height:1.6;font-weight:300}
+
+/* ═══ TRUST PILLS ═══ */
+.trust-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:36px}
+.trust-pill{
+  display:flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:9.5px;color:var(--ink2);
+  background:var(--s2);border:1px solid var(--bd);border-radius:4px;
+  padding:5px 10px;letter-spacing:.04em;
+}
+.trust-pill svg{width:11px;height:11px;flex-shrink:0;color:var(--grn)}
+
+/* ═══ CARD ═══ */
+.card{
+  width:100%;max-width:520px;
+  background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r3);
+  padding:32px;position:relative;overflow:hidden;
+  box-shadow:0 0 0 1px var(--bd),0 40px 80px rgba(0,0,0,.6),0 0 60px rgba(79,143,255,.03);
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent 0%,var(--acc) 40%,rgba(79,143,255,.3) 70%,transparent 100%);
+}
+
+/* Progress bar */
+.progress-bar{
+  height:2px;background:var(--bd);border-radius:2px;margin-bottom:28px;overflow:hidden;
+}
+.progress-fill{
+  height:100%;background:linear-gradient(90deg,var(--acc),#9fc3ff);
+  border-radius:2px;transition:width .4s ease;width:0%;
+}
+
+/* Step indicator */
+.step-label{
+  font-family:var(--mono);font-size:9px;color:var(--ink3);letter-spacing:.1em;
+  text-transform:uppercase;margin-bottom:4px;
+}
+.card h2{
+  font-family:var(--display);font-size:17px;font-weight:700;letter-spacing:-.3px;
+  color:var(--ink);margin-bottom:22px;
+}
+
+/* ═══ FORM FIELDS ═══ */
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:400px){.field-row{grid-template-columns:1fr}}
+
+.field{margin-bottom:14px;position:relative}
+.field label{
+  display:block;font-family:var(--mono);font-size:9px;font-weight:500;
+  color:var(--ink3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:6px;
+}
+.field label .req{color:var(--acc);margin-left:2px;}
+
+.input-wrap{position:relative}
+.input-wrap svg.icon{
+  position:absolute;left:10px;top:50%;transform:translateY(-50%);
+  width:14px;height:14px;color:var(--ink3);pointer-events:none;flex-shrink:0;
+}
+.field input,.field select{
+  width:100%;background:var(--s2);border:1px solid var(--bd2);
+  border-radius:var(--r);color:var(--ink);font-size:13.5px;
+  padding:10px 12px;outline:none;transition:border-color .15s,box-shadow .15s;
+  -webkit-appearance:none;appearance:none;
+}
+.field input.has-icon,.field select.has-icon{padding-left:32px}
+.field input::placeholder{color:var(--ink3)}
+.field input:focus,.field select:focus{
+  border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-dim);background:var(--s1);
+}
+.field input.err,.field select.err{
+  border-color:var(--red);box-shadow:0 0 0 3px var(--red-dim);
+}
+.field-err{
+  font-family:var(--mono);font-size:9.5px;color:var(--red);
+  margin-top:5px;min-height:12px;letter-spacing:.02em;display:none;
+}
+.field-err.show{display:block}
+
+/* Select arrow */
+.select-wrap{position:relative}
+.select-wrap::after{
+  content:'';position:absolute;right:11px;top:50%;transform:translateY(-50%);
+  width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;
+  border-top:5px solid var(--ink3);pointer-events:none;
+}
+
+/* Postcode row */
+.postcode-row{display:grid;grid-template-columns:140px 1fr;gap:14px;align-items:end}
+@media(max-width:360px){.postcode-row{grid-template-columns:1fr}}
+.suburb-chip{
+  background:var(--s3);border:1px solid var(--bd2);border-radius:var(--r);
+  padding:10px 12px;font-size:13px;color:var(--ink);min-height:40px;
+  display:flex;align-items:center;gap:7px;
+}
+.suburb-chip .suburb-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.suburb-chip.loading{color:var(--ink3);font-size:11.5px}
+.suburb-chip.found{border-color:rgba(46,204,138,.25);background:var(--grn-dim)}
+.suburb-chip.not-found{border-color:var(--red-dim);color:var(--ink3);font-size:11.5px}
+
+/* Bill options */
+.bill-options{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media(max-width:380px){.bill-options{grid-template-columns:repeat(2,1fr)}}
+.bill-opt{
+  position:relative;
+}
+.bill-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0;}
+.bill-opt label{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;padding:10px 8px;border-radius:var(--r);cursor:pointer;
+  background:var(--s2);border:1px solid var(--bd2);transition:all .15s;
+  text-align:center;
+}
+.bill-opt label .bill-amt{font-family:var(--display);font-size:14px;font-weight:700;color:var(--ink);line-height:1}
+.bill-opt label .bill-lbl{font-family:var(--mono);font-size:9px;color:var(--ink3);letter-spacing:.05em;margin-top:3px}
+.bill-opt input:checked + label{
+  background:var(--acc-dim);border-color:rgba(79,143,255,.3);
+}
+.bill-opt input:checked + label .bill-amt{color:var(--acc-ink)}
+.bill-opt label:hover{background:var(--s3);border-color:var(--bd3)}
+
+/* Timeline options */
+.timeline-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.timeline-opt{position:relative}
+.timeline-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0;}
+.timeline-opt label{
+  display:flex;align-items:center;gap:9px;
+  padding:11px 13px;border-radius:var(--r);cursor:pointer;
+  background:var(--s2);border:1px solid var(--bd2);transition:all .15s;
+}
+.timeline-opt label .tl-icon{
+  width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+  background:var(--s3);border:1px solid var(--bd);font-size:11px;flex-shrink:0;
+}
+.timeline-opt label .tl-text{flex:1}
+.timeline-opt label .tl-title{font-size:12px;font-weight:500;color:var(--ink);line-height:1.2}
+.timeline-opt label .tl-sub{font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:2px}
+.timeline-opt input:checked + label{
+  background:var(--acc-dim);border-color:rgba(79,143,255,.3);
+}
+.timeline-opt input:checked + label .tl-icon{
+  background:rgba(79,143,255,.12);border-color:rgba(79,143,255,.2);
+}
+.timeline-opt label:hover{background:var(--s3);border-color:var(--bd3)}
+
+/* ═══ ACTIONS ═══ */
+.actions{display:flex;gap:10px;margin-top:24px;align-items:center}
+.btn-back{
+  width:38px;height:40px;display:flex;align-items:center;justify-content:center;
+  border-radius:var(--r);border:1px solid var(--bd2);background:var(--s2);
+  color:var(--ink2);font-size:16px;transition:all .12s;flex-shrink:0;
+}
+.btn-back:hover{background:var(--s3);color:var(--ink);border-color:var(--bd3)}
+.btn-back:disabled{opacity:.25;cursor:not-allowed}
+.btn-next{
+  flex:1;background:var(--acc);color:#fff;border:none;border-radius:var(--r);
+  font-family:var(--display);font-size:14px;font-weight:700;
+  padding:11px 20px;transition:all .15s;letter-spacing:.01em;
+  box-shadow:0 4px 20px rgba(79,143,255,.3);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-next:hover:not(:disabled){background:var(--acc2);box-shadow:0 6px 28px rgba(79,143,255,.5);transform:translateY(-1px)}
+.btn-next:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.btn-next svg{width:14px;height:14px}
+
+/* ═══ SUCCESS STATE ═══ */
+#success-view{display:none;text-align:center;padding:12px 0}
+#success-view .check-circle{
+  width:56px;height:56px;border-radius:50%;background:var(--grn-dim);
+  border:1px solid rgba(46,204,138,.25);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 20px;
+}
+#success-view .check-circle svg{width:24px;height:24px;color:var(--grn)}
+#success-view h3{font-family:var(--display);font-size:20px;font-weight:700;margin-bottom:8px;letter-spacing:-.3px}
+#success-view p{font-size:13px;color:var(--ink2);line-height:1.6}
+.lead-meta{
+  margin-top:20px;background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r2);
+  padding:14px 16px;text-align:left;
+}
+.lead-meta-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:4px 0;border-bottom:1px solid var(--bd);
+}
+.lead-meta-row:last-child{border-bottom:none;padding-bottom:0}
+.lead-meta-row:first-child{padding-top:0}
+.lm-label{font-family:var(--mono);font-size:9px;color:var(--ink3);letter-spacing:.08em;text-transform:uppercase}
+.lm-val{font-size:12px;color:var(--ink);font-weight:500;font-family:var(--mono)}
+.lm-val.status-assigned{color:var(--grn)}
+.lm-val.status-pending{color:var(--amb)}
+
+/* ═══ ERROR BANNER ═══ */
+#error-banner{
+  display:none;margin-bottom:16px;
+  background:var(--red-dim);border:1px solid rgba(255,69,96,.25);
+  border-radius:var(--r);padding:10px 13px;
+  font-family:var(--mono);font-size:11px;color:var(--red);letter-spacing:.02em;
+}
+#error-banner.show{display:block}
+
+/* ═══ FOOTER ═══ */
+.footer{
+  margin-top:32px;text-align:center;max-width:520px;
+}
+.footer p{font-family:var(--mono);font-size:9.5px;color:var(--ink3);letter-spacing:.05em;line-height:1.7}
+
+/* Spinner */
+.spin{
+  width:16px;height:16px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;
+  border-radius:50%;animation:spinner .6s linear infinite;flex-shrink:0;
+}
+@keyframes spinner{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <div class="tb-mark">QL</div>
+  <span class="tb-name">QuoteLeads</span>
+  <div class="tb-sep"></div>
+  <span class="tb-sub">Solar Survey</span>
+  <div class="tb-sp"></div>
+  <span class="test-badge">⚠ TEST PAGE</span>
+  <button class="theme-btn" id="theme-toggle" title="Toggle theme" aria-label="Toggle theme">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+  </button>
+</header>
+
+<!-- PAGE -->
+<main class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">
+      <svg viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
+      Solar Savings — Free Quote
+    </div>
+    <h1>How much could you save with <span>solar panels</span>?</h1>
+    <p>Answer a few quick questions and we'll connect you with an accredited local installer to calculate your exact savings.</p>
+  </div>
+
+  <!-- TRUST PILLS -->
+  <div class="trust-row">
+    <div class="trust-pill">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      No obligation
+    </div>
+    <div class="trust-pill">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      CEC accredited installers
+    </div>
+    <div class="trust-pill">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      2-min form
+    </div>
+  </div>
+
+  <!-- SURVEY CARD -->
+  <div class="card">
+
+    <!-- Progress -->
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+
+    <!-- Error banner -->
+    <div id="error-banner"></div>
+
+    <!-- ── STEP 1: Contact Details ── -->
+    <div class="step" id="step-1">
+      <div class="step-label">Step 1 of 3</div>
+      <h2>Your contact details</h2>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="f-name">Full name <span class="req">*</span></label>
+          <div class="input-wrap">
+            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <input id="f-name" type="text" class="has-icon" placeholder="Jane Smith" autocomplete="name">
+          </div>
+          <div class="field-err" id="err-name">Please enter your full name.</div>
+        </div>
+
+        <div class="field">
+          <label for="f-email">Email address <span class="req">*</span></label>
+          <div class="input-wrap">
+            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <input id="f-email" type="email" class="has-icon" placeholder="jane@example.com" autocomplete="email">
+          </div>
+          <div class="field-err" id="err-email">Please enter a valid email address.</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-phone">Mobile number <span class="req">*</span></label>
+        <div class="input-wrap">
+          <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          <input id="f-phone" type="tel" class="has-icon" placeholder="0412 345 678" autocomplete="tel">
+        </div>
+        <div class="field-err" id="err-phone">Please enter a valid Australian mobile number (e.g. 0412 345 678).</div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-back" disabled aria-label="Back">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="btn-next" id="next-1">
+          Continue
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── STEP 2: Location & Bill ── -->
+    <div class="step" id="step-2" style="display:none">
+      <div class="step-label">Step 2 of 3</div>
+      <h2>Your location & energy usage</h2>
+
+      <!-- Postcode lookup -->
+      <div class="field">
+        <label>Postcode <span class="req">*</span></label>
+        <div class="postcode-row">
+          <div class="field" style="margin-bottom:0">
+            <div class="input-wrap">
+              <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <input id="f-postcode" type="text" class="has-icon" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="2000" autocomplete="postal-code">
+            </div>
+            <div class="field-err" id="err-postcode">Please enter a valid 4-digit Australian postcode.</div>
+          </div>
+          <div class="suburb-chip" id="suburb-chip">
+            <span class="suburb-text" id="suburb-text" style="color:var(--ink3);font-size:12px">Enter postcode →</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Average quarterly bill -->
+      <div class="field">
+        <label>Average quarterly electricity bill <span class="req">*</span></label>
+        <div class="bill-options" id="bill-options" role="radiogroup" aria-label="Average quarterly electricity bill">
+          <div class="bill-opt">
+            <input type="radio" name="avg_bill" id="bill-1" value="200">
+            <label for="bill-1"><span class="bill-amt">$200</span><span class="bill-lbl">or less</span></label>
+          </div>
+          <div class="bill-opt">
+            <input type="radio" name="avg_bill" id="bill-2" value="400">
+            <label for="bill-2"><span class="bill-amt">$400</span><span class="bill-lbl">approx.</span></label>
+          </div>
+          <div class="bill-opt">
+            <input type="radio" name="avg_bill" id="bill-3" value="600">
+            <label for="bill-3"><span class="bill-amt">$600</span><span class="bill-lbl">approx.</span></label>
+          </div>
+          <div class="bill-opt">
+            <input type="radio" name="avg_bill" id="bill-4" value="800">
+            <label for="bill-4"><span class="bill-amt">$800</span><span class="bill-lbl">approx.</span></label>
+          </div>
+          <div class="bill-opt">
+            <input type="radio" name="avg_bill" id="bill-5" value="1000">
+            <label for="bill-5"><span class="bill-amt">$1000</span><span class="bill-lbl">approx.</span></label>
+          </div>
+          <div class="bill-opt">
+            <input type="radio" name="avg_bill" id="bill-6" value="1200">
+            <label for="bill-6"><span class="bill-amt">$1200+</span><span class="bill-lbl">high usage</span></label>
+          </div>
+        </div>
+        <div class="field-err" id="err-bill">Please select your average quarterly electricity bill.</div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-back" id="back-2" aria-label="Back">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="btn-next" id="next-2">
+          Continue
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── STEP 3: Purchase Timeline ── -->
+    <div class="step" id="step-3" style="display:none">
+      <div class="step-label">Step 3 of 3</div>
+      <h2>When are you looking to go solar?</h2>
+
+      <div class="field">
+        <label>Purchase timeline <span class="req">*</span></label>
+        <div class="timeline-options" role="radiogroup" aria-label="Purchase timeline">
+          <div class="timeline-opt">
+            <input type="radio" name="timeline" id="tl-1" value="0-3 months">
+            <label for="tl-1">
+              <div class="tl-icon">⚡</div>
+              <div class="tl-text">
+                <div class="tl-title">Ready now</div>
+                <div class="tl-sub">0 – 3 months</div>
+              </div>
+            </label>
+          </div>
+          <div class="timeline-opt">
+            <input type="radio" name="timeline" id="tl-2" value="3-6 months">
+            <label for="tl-2">
+              <div class="tl-icon">📅</div>
+              <div class="tl-text">
+                <div class="tl-title">Soon</div>
+                <div class="tl-sub">3 – 6 months</div>
+              </div>
+            </label>
+          </div>
+          <div class="timeline-opt">
+            <input type="radio" name="timeline" id="tl-3" value="6-12 months">
+            <label for="tl-3">
+              <div class="tl-icon">🗓</div>
+              <div class="tl-text">
+                <div class="tl-title">Planning ahead</div>
+                <div class="tl-sub">6 – 12 months</div>
+              </div>
+            </label>
+          </div>
+          <div class="timeline-opt">
+            <input type="radio" name="timeline" id="tl-4" value="12+ months">
+            <label for="tl-4">
+              <div class="tl-icon">🔍</div>
+              <div class="tl-text">
+                <div class="tl-title">Just researching</div>
+                <div class="tl-sub">12+ months</div>
+              </div>
+            </label>
+          </div>
+        </div>
+        <div class="field-err" id="err-timeline">Please select a purchase timeline.</div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-back" id="back-3" aria-label="Back">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="btn-next" id="submit-btn">
+          Submit & Get Quotes
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── SUCCESS ── -->
+    <div id="success-view">
+      <div class="check-circle">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h3>You're all set! 🎉</h3>
+      <p>Thanks for submitting your solar quote request. A local accredited installer will be in touch shortly.</p>
+      <div class="lead-meta" id="lead-meta"></div>
+    </div>
+
+  </div><!-- /card -->
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <p>This is a <strong>test survey page</strong> for end-to-end lead distribution system validation.<br>
+    Submissions are real and will be processed by the QuoteLeads pipeline.</p>
+  </div>
+
+</main>
+
+<script>
+'use strict';
+
+/* ── CONFIG ── */
+const SUPABASE_URL = 'https://wmegoygrancfwxagqskh.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_UHQNxVCjHJnFjssYwTiwcQ_3FYovX8I';
+const SUBMIT_LEAD_URL = SUPABASE_URL + '/functions/v1/submit-lead';
+
+/* ── THEME TOGGLE ── */
+(function() {
+  const saved = localStorage.getItem('ql-survey-theme');
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+})();
+document.getElementById('theme-toggle').addEventListener('click', function() {
+  const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('ql-survey-theme', next);
+});
+
+/* ── STEP STATE ── */
+let currentStep = 1;
+const TOTAL_STEPS = 3;
+
+function showStep(n) {
+  for (let i = 1; i <= TOTAL_STEPS; i++) {
+    const el = document.getElementById('step-' + i);
+    if (el) el.style.display = (i === n) ? '' : 'none';
+  }
+  currentStep = n;
+  const pct = ((n - 1) / TOTAL_STEPS) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  clearError();
+}
+
+function showSuccess(data) {
+  for (let i = 1; i <= TOTAL_STEPS; i++) {
+    const el = document.getElementById('step-' + i);
+    if (el) el.style.display = 'none';
+  }
+  document.getElementById('progress-fill').style.width = '100%';
+  const sv = document.getElementById('success-view');
+  sv.style.display = '';
+
+  const meta = document.getElementById('lead-meta');
+  const rows = [
+    { label: 'Lead ID',  val: data.lead_id || '—' },
+    { label: 'Status',   val: data.status || '—', cls: 'status-' + (data.status || '') },
+    { label: 'Suburb',   val: data.suburb || resolvedSuburb || '—' },
+    { label: 'State',    val: data.state  || resolvedState  || '—' },
+    { label: 'Matched client', val: data.matched_client ? '✓ Assigned' : 'Pending assignment' },
+  ];
+  meta.innerHTML = rows.map(r =>
+    `<div class="lead-meta-row">
+      <span class="lm-label">${r.label}</span>
+      <span class="lm-val ${r.cls || ''}">${r.val}</span>
+    </div>`
+  ).join('');
+}
+
+/* ── ERROR HELPERS ── */
+function showError(msg) {
+  const b = document.getElementById('error-banner');
+  b.textContent = msg;
+  b.classList.add('show');
+}
+function clearError() {
+  const b = document.getElementById('error-banner');
+  b.textContent = '';
+  b.classList.remove('show');
+}
+function fieldErr(id, show) {
+  const el = document.getElementById('err-' + id);
+  if (!el) return;
+  el.classList.toggle('show', show);
+}
+function markField(id, err) {
+  const input = document.getElementById('f-' + id);
+  if (!input) return;
+  input.classList.toggle('err', err);
+}
+
+/* ── POSTCODE LOOKUP ── */
+let resolvedSuburb = '';
+let resolvedState  = '';
+let postcodeTimer  = null;
+
+const fPostcode   = document.getElementById('f-postcode');
+const suburbChip  = document.getElementById('suburb-chip');
+const suburbText  = document.getElementById('suburb-text');
+
+async function lookupPostcode(pc) {
+  suburbChip.className = 'suburb-chip loading';
+  suburbText.textContent = 'Looking up…';
+  resolvedSuburb = '';
+  resolvedState  = '';
+
+  try {
+    const res = await fetch('https://api.zippopotam.us/au/' + pc);
+    if (!res.ok) throw new Error('not_found');
+    const data = await res.json();
+    const place = data.places && data.places[0];
+    if (!place) throw new Error('not_found');
+    resolvedSuburb = place['place name'] || '';
+    resolvedState  = place['state abbreviation'] || place['state'] || '';
+    suburbChip.className = 'suburb-chip found';
+    suburbText.textContent = resolvedSuburb + (resolvedState ? ', ' + resolvedState : '');
+  } catch (_) {
+    suburbChip.className = 'suburb-chip not-found';
+    suburbText.textContent = 'Postcode not found';
+  }
+}
+
+fPostcode.addEventListener('input', function() {
+  const val = this.value.replace(/\D/g, '').slice(0, 4);
+  this.value = val;
+  clearTimeout(postcodeTimer);
+  fieldErr('postcode', false);
+  markField('postcode', false);
+  if (val.length < 4) {
+    suburbChip.className = 'suburb-chip';
+    suburbText.textContent = val.length ? '…' : 'Enter postcode →';
+    resolvedSuburb = '';
+    resolvedState  = '';
+    return;
+  }
+  postcodeTimer = setTimeout(() => lookupPostcode(val), 400);
+});
+
+const SUBMIT_BTN_HTML = 'Submit &amp; Get Quotes <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="9 18 15 12 9 6"/></svg>';
+
+function resetSubmitBtn(btn) {
+  btn.disabled = false;
+  btn.innerHTML = SUBMIT_BTN_HTML;
+}
+
+function validatePhone(raw) {
+  let p = (raw || '').replace(/[\s\-().]/g, '');
+  if (p.startsWith('04')) p = '+61' + p.slice(1);
+  else if (p.startsWith('614')) p = '+' + p;
+  else if (p.startsWith('61') && !p.startsWith('+')) p = '+' + p;
+  return /^\+614[0-9]{8}$/.test(p) ? p : null;
+}
+
+function validateStep1() {
+  let ok = true;
+  const name  = document.getElementById('f-name').value.trim();
+  const email = document.getElementById('f-email').value.trim();
+  const phone = document.getElementById('f-phone').value.trim();
+
+  if (!name) { fieldErr('name', true); markField('name', true); ok = false; }
+  else { fieldErr('name', false); markField('name', false); }
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    fieldErr('email', true); markField('email', true); ok = false;
+  } else { fieldErr('email', false); markField('email', false); }
+
+  if (!validatePhone(phone)) {
+    fieldErr('phone', true); markField('phone', true); ok = false;
+  } else { fieldErr('phone', false); markField('phone', false); }
+
+  return ok;
+}
+
+function validateStep2() {
+  let ok = true;
+  const pc   = document.getElementById('f-postcode').value.trim();
+  const bill = document.querySelector('input[name="avg_bill"]:checked');
+
+  if (!/^[0-9]{4}$/.test(pc)) {
+    fieldErr('postcode', true); markField('postcode', true); ok = false;
+  } else { fieldErr('postcode', false); markField('postcode', false); }
+
+  if (!bill) { fieldErr('bill', true); ok = false; }
+  else { fieldErr('bill', false); }
+
+  return ok;
+}
+
+function validateStep3() {
+  const tl = document.querySelector('input[name="timeline"]:checked');
+  if (!tl) { fieldErr('timeline', true); return false; }
+  fieldErr('timeline', false);
+  return true;
+}
+
+/* ── NAVIGATION ── */
+document.getElementById('next-1').addEventListener('click', function() {
+  clearError();
+  if (validateStep1()) showStep(2);
+});
+
+document.getElementById('back-2').addEventListener('click', function() {
+  clearError();
+  showStep(1);
+});
+
+document.getElementById('next-2').addEventListener('click', function() {
+  clearError();
+  if (validateStep2()) showStep(3);
+});
+
+document.getElementById('back-3').addEventListener('click', function() {
+  clearError();
+  showStep(2);
+});
+
+/* ── SUBMIT ── */
+document.getElementById('submit-btn').addEventListener('click', async function() {
+  clearError();
+  if (!validateStep3()) return;
+
+  const btn = this;
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spin"></div> Submitting…';
+
+  const name     = document.getElementById('f-name').value.trim();
+  const email    = document.getElementById('f-email').value.trim();
+  const rawPhone = document.getElementById('f-phone').value.trim();
+  const postcode = document.getElementById('f-postcode').value.trim();
+  const bill     = document.querySelector('input[name="avg_bill"]:checked').value;
+  const timeline = document.querySelector('input[name="timeline"]:checked').value;
+
+  const payload = {
+    name,
+    email,
+    phone:              rawPhone,
+    postcode,
+    niche:              'solar',
+    avg_quarterly_bill: parseFloat(bill),
+    purchase_timeline:  timeline,
+    source:             'test-survey',
+  };
+
+  try {
+    const res = await fetch(SUBMIT_LEAD_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      const errMsg = data.error || 'Submission failed (' + res.status + ')';
+      throw new Error(errMsg);
+    }
+
+    if (data.status === 'duplicate') {
+      showError('⚠ This lead already exists in our system (submitted within the last 7 days). Lead ID: ' + data.lead_id);
+      resetSubmitBtn(btn);
+      return;
+    }
+
+    showSuccess(data);
+  } catch (err) {
+    showError('Error: ' + err.message);
+    resetSubmitBtn(btn);
+  }
+});
+
+/* ── INIT ── */
+showStep(1);
+</script>
+</body>
+</html>
