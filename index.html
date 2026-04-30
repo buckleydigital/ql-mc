@@ -2501,18 +2501,15 @@ async function populateTestLeadNiches() {
   const sel = $('tl-niche');
   if (!sel) return;
   try {
-    // List niches present on the real PPL leads we generate and sell
-    // (rows inserted by the `submit-lead` edge function). Agency CRM
-    // rows (added via the `add_lead` RPC from the CRM "Add Lead" form)
-    // must be excluded — they're potential agency clients, not the
-    // leads we sell. We require BOTH `postcode IS NOT NULL` AND
-    // `niche IS NOT NULL`: `submit-lead` validates and requires both
-    // on every insert, while `add_lead` has neither argument, so CRM
-    // rows always have both NULL. Two markers = bulletproof.
+    // List niches present on any lead. We can't filter by
+    // `postcode IS NOT NULL` here: the deployed `leads` table has no
+    // `postcode` column, so that filter makes the whole query fail
+    // with `column leads.postcode does not exist`. And `niche` is
+    // `NOT NULL DEFAULT 'solar'` in the schema, so `niche IS NOT NULL`
+    // is a no-op. Until a real distribution-only marker exists on the
+    // schema, list all leads.
     const { data } = await db.from('leads')
       .select('niche')
-      .not('postcode', 'is', null)
-      .not('niche', 'is', null)
       .limit(500);
     const niches = [...new Set((data||[]).map(r => r.niche).filter(Boolean))].sort();
     const cur = sel.value;
@@ -2638,37 +2635,21 @@ async function loadLeads(resetPage) {
   const typeFilter = $('ld-type-filter')?.value || 'all';
 
   // Populate niche filter dynamically.
-  // The Lead Distribution panel must show **only** the real PPL leads
-  // we generate and sell (rows inserted by the `submit-lead` edge
-  // function) and must hide the agency CRM sales pipeline (rows
-  // inserted by the `add_lead` RPC from the CRM "Add Lead" form,
-  // including potential agency clients with `lead_type='ppl'`).
   //
-  // We require BOTH `postcode IS NOT NULL` AND `niche IS NOT NULL`,
-  // which is guaranteed by the two insert paths themselves:
-  //   • `submit-lead` validates and requires a 4-digit AU postcode
-  //     AND a non-empty niche on every insert (see
-  //     supabase/functions/submit-lead/index.ts — requests missing
-  //     either are rejected with invalid_postcode / missing_niche).
-  //     So every distribution lead has both.
-  //   • `add_lead(p_name, p_company, p_email, p_phone, p_stage,
-  //     p_lead_type, p_value, p_source, p_notes)` has neither a
-  //     postcode nor a niche argument — so every CRM row has both
-  //     columns NULL.
-  //
-  // Two independent markers means even if a CRM row gets a postcode
-  // or a niche manually edited in later, it still won't slip through.
-  // Earlier attempts on `lead_type` / `stage` were unreliable because
-  // both columns have non-null DB defaults.
-  const distributionFilter = (q) => q
-    .not('postcode', 'is', null)
-    .not('niche', 'is', null);
-  const nicheQ = distributionFilter(db.from('leads').select('niche')).limit(500);
+  // NOTE: previous revisions tried to restrict to PPL distribution
+  // leads via `.not('postcode','is',null)`, but the deployed `leads`
+  // table has no `postcode` column — that filter caused every query
+  // to fail with `column leads.postcode does not exist` and the
+  // panel showed no leads at all. Adding `.not('niche','is',null)`
+  // alongside it didn't help either: `niche` is `NOT NULL DEFAULT
+  // 'solar'` in the schema, so it's always a no-op. Until a real
+  // distribution-only marker exists on the schema, list all leads.
+  const nicheQ = db.from('leads').select('niche').limit(500);
   // Stats query — lightweight, all rows, just status + niche + client info
-  const statsQ = distributionFilter(db.from('leads').select('status, niche, assigned_client_id, clients(company_name)'));
+  const statsQ = db.from('leads').select('status, niche, assigned_client_id, clients(company_name)');
   if (typeFilter !== 'all') statsQ.eq('niche', typeFilter);
   // Table query — paginated, with server-side filter
-  const tableQ = distributionFilter(db.from('leads').select('*, clients(company_name)', {count:'exact'})).order('created_at', {ascending: false});
+  const tableQ = db.from('leads').select('*, clients(company_name)', {count:'exact'}).order('created_at', {ascending: false});
   if (filter !== 'all') tableQ.eq('status', filter);
   if (typeFilter !== 'all') tableQ.eq('niche', typeFilter);
   tableQ.range(leadsPage * PAGE_SIZE, (leadsPage + 1) * PAGE_SIZE - 1);
