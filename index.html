@@ -1327,15 +1327,15 @@ td strong{font-weight:500}
           <div class="md-layout">
             <div class="md-files">
               <div style="font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px">Files</div>
-              <div class="md-file active" onclick="switchMd('agents.md',this)">agents.md</div>
-              <div class="md-file" onclick="switchMd('soul.md',this)">soul.md</div>
-              <div class="md-file" onclick="switchMd('user.md',this)">user.md</div>
-              <div class="md-file" onclick="switchMd('tools.md',this)">tools.md</div>
-              <div class="md-file" onclick="switchMd('__identity__.md',this)">__identity__.md</div>
+              <div class="md-file active" onclick="switchMd('agents.md',this)">agents</div>
+              <div class="md-file" onclick="switchMd('soul.md',this)">soul</div>
+              <div class="md-file" onclick="switchMd('user.md',this)">user</div>
+              <div class="md-file" onclick="switchMd('tools.md',this)">tools</div>
+              <div class="md-file" onclick="switchMd('__identity__.md',this)">__identity__</div>
             </div>
             <div class="md-box">
               <div class="md-topbar">
-                <span class="md-fname" id="md-filename">master/agents.md</span>
+                <span class="md-fname" id="md-filename">master/agents</span>
                 <span style="font-family:var(--mono);font-size:9px;color:var(--ink3)">Supabase · agent_files</span>
               </div>
               <textarea class="md-ta" id="md-content" placeholder="Loading from Supabase..."></textarea>
@@ -1360,41 +1360,41 @@ td strong{font-weight:500}
 
             <div class="files-cat">Sales</div>
             <div class="file-item" data-file="discovery-call-script.md" onclick="selectFile('discovery-call-script.md',this)">
-              discovery-call-script.md
+              discovery-call-script
               <div class="file-desc">Discovery call framework</div>
             </div>
 
             <div class="files-cat">Post-Call Emails</div>
             <div class="file-item active" data-file="post-call-email.md" onclick="selectFile('post-call-email.md',this)">
-              post-call-email.md
+              post-call-email
               <div class="file-desc">After-call follow-up email</div>
             </div>
             <div class="file-item" data-file="pay-per-lead-post-call-email.md" onclick="selectFile('pay-per-lead-post-call-email.md',this)">
-              ppl-post-call-email.md
+              ppl-post-call-email
               <div class="file-desc">PPL lead post-call follow-up</div>
             </div>
             <div class="file-item" data-file="both-offers-post-call-email.md" onclick="selectFile('both-offers-post-call-email.md',this)">
-              both-offers-post-call-email.md
+              both-offers-post-call-email
               <div class="file-desc">PPL + Managed post-call follow-up</div>
             </div>
 
             <div class="files-cat">Email Templates</div>
             <div class="file-item" data-file="follow-up-email.md" onclick="selectFile('follow-up-email.md',this)">
-              follow-up-email.md
+              follow-up-email
               <div class="file-desc">General follow-up email</div>
             </div>
             <div class="file-item" data-file="welcome-email.md" onclick="selectFile('welcome-email.md',this)">
-              welcome-email.md
+              welcome-email
               <div class="file-desc">New client welcome</div>
             </div>
             <div class="file-item" data-file="pay-per-lead-welcome-email.md" onclick="selectFile('pay-per-lead-welcome-email.md',this)">
-              ppl-welcome-email.md
+              ppl-welcome-email
               <div class="file-desc">PPL client onboarding</div>
             </div>
           </div>
           <div class="file-editor">
             <div class="file-editor-head">
-              <span class="file-editor-name" id="file-editor-name">post-call-email.md</span>
+              <span class="file-editor-name" id="file-editor-name">post-call-email</span>
               <span style="font-family:var(--mono);font-size:9px;color:var(--ink3)">Supabase · agent_files (docs)</span>
               <select id="tmpl-client-sel" style="margin-left:auto;font-family:var(--mono);font-size:10px;padding:3px 7px;background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);color:var(--ink);outline:none;max-width:180px" onchange="updateTemplatePreview()"><option value="">— Preview with client —</option></select>
               <button class="btn btn-xs" id="tmpl-preview-btn" onclick="toggleTemplatePreview()" style="flex-shrink:0">Preview</button>
@@ -4762,7 +4762,7 @@ async function loadAgentConfig() {
 function switchMd(filename,el) {
   document.querySelectorAll('.md-file').forEach(i=>i.classList.remove('active'));
   el.classList.add('active');curMd=filename;
-  setText('md-filename',`${curAgent}/${filename}`);loadAgentFile();
+  setText('md-filename',`${curAgent}/${filename}`.replace(/\.md$/,''));loadAgentFile();
 }
 async function loadAgentFile() {
   if (!db) return;
@@ -4817,7 +4817,7 @@ function selectChat(name,el) {
   setText('chat-name',p.name);
   const cfg=AGENT_CFG[curChat]||{name:p.name,role:'Full-data assistant'};
   setText('sel-agent-name',cfg.name);setText('sel-agent-role',cfg.role);
-  setText('md-filename',`${curChat}/${curMd}`);
+  setText('md-filename',`${curChat}/${curMd}`.replace(/\.md$/,''));
   const cm=$('chat-msgs'); cm.innerHTML=''; cm.appendChild(_buildMsg('agent',p.emoji,p.intro,null));
   chatHistory[curChat]=chatHistory[curChat]||[];loadChatMemory();
   if ($('chat-config-panel')?.style.display==='block') loadAgentFile();
@@ -4898,7 +4898,7 @@ function selectFile(filename, el) {
   document.querySelectorAll('.file-item').forEach(i=>i.classList.remove('active'));
   el.classList.add('active');
   curFile = filename;
-  setText('file-editor-name', filename);
+  setText('file-editor-name', filename.replace(/\.md$/,''));
   loadFileContent();
 }
 async function loadFileContent() {
