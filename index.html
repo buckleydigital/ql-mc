@@ -1127,7 +1127,7 @@ td strong{font-weight:500}
             <thead>
               <tr>
                 <th>Received</th>
-                <th>Niche</th>
+                <th>Type</th>
                 <th>Name</th>
                 <th>Phone</th>
                 <th>Postcode</th>
@@ -1139,12 +1139,11 @@ td strong{font-weight:500}
                 <th>Delivered At</th>
                 <th>Method</th>
                 <th>Source</th>
-                <th>Details</th>
                 <th>Notes</th>
                 <th>Actions</th>
               </tr>
             </thead>
-            <tbody id="ld-tbody"><tr><td colspan="16" class="empty">Loading…</td></tr></tbody>
+            <tbody id="ld-tbody"><tr><td colspan="15" class="empty">Loading…</td></tr></tbody>
           </table>
           <div class="pager" id="ld-pager"></div>
         </div>
@@ -2629,28 +2628,28 @@ async function loadLeads(resetPage) {
   const typeFilter = $('ld-type-filter')?.value || 'all';
 
   // ppl_leads is the dedicated distribution-leads table — no filter needed.
-  const nicheQ = db.from('ppl_leads').select('niche').limit(500);
-  // Stats query — lightweight, all PPL rows, just status + niche + client info
-  const statsQ = db.from('ppl_leads').select('status, niche, assigned_client_id, clients(company_name)');
-  if (typeFilter !== 'all') statsQ.eq('niche', typeFilter);
+  const nicheQ = db.from('ppl_leads').select('lead_type').limit(500);
+  // Stats query — lightweight, all PPL rows, just status + lead_type + client info
+  const statsQ = db.from('ppl_leads').select('status, lead_type, assigned_client_id, clients(company_name)');
+  if (typeFilter !== 'all') statsQ.eq('lead_type', typeFilter);
   // Table query — paginated, with server-side filter
   const tableQ = db.from('ppl_leads').select('*, clients(company_name)', {count:'exact'}).order('created_at', {ascending: false});
   if (filter !== 'all') tableQ.eq('status', filter);
-  if (typeFilter !== 'all') tableQ.eq('niche', typeFilter);
+  if (typeFilter !== 'all') tableQ.eq('lead_type', typeFilter);
   tableQ.range(leadsPage * PAGE_SIZE, (leadsPage + 1) * PAGE_SIZE - 1);
 
   const [nicheR, statsR, tableR] = await Promise.all([nicheQ, statsQ, tableQ]);
 
   // Rebuild niche filter options
   if (nicheR.data) {
-    const niches = [...new Set(nicheR.data.map(r => r.niche).filter(Boolean))].sort();
+    const niches = [...new Set(nicheR.data.map(r => r.lead_type).filter(Boolean))].sort();
     const sel = $('ld-type-filter');
     const curVal = sel.value;
     sel.innerHTML = '<option value="all">All Niches</option>' + niches.map(n => `<option value="${esc(n)}"${n===curVal?' selected':''}>${esc(n.charAt(0).toUpperCase()+n.slice(1))}</option>`).join('');
   }
 
   if (statsR.error || tableR.error) {
-    $('ld-tbody').innerHTML = `<tr><td colspan="16" class="empty">Error: ${esc((statsR.error||tableR.error).message)}</td></tr>`;
+    $('ld-tbody').innerHTML = `<tr><td colspan="15" class="empty">Error: ${esc((statsR.error||tableR.error).message)}</td></tr>`;
     return;
   }
   const all = statsR.data || [];
@@ -2685,7 +2684,7 @@ async function loadLeads(resetPage) {
 
   const rows = tableR.data || [];
   if (!rows.length) {
-    $('ld-tbody').innerHTML = `<tr><td colspan="16" class="empty">No leads found.</td></tr>`;
+    $('ld-tbody').innerHTML = `<tr><td colspan="15" class="empty">No leads found.</td></tr>`;
     $('ld-pager').innerHTML = '';
     return;
   }
@@ -2697,17 +2696,6 @@ async function loadLeads(resetPage) {
     if (!n) return '<span class="badge bg-gray">—</span>';
     return `<span class="badge bg-sky">${esc(n.charAt(0).toUpperCase()+n.slice(1))}</span>`;
   };
-  const fmtCustomData = cd => {
-    if (!cd || typeof cd !== 'object' || !Object.keys(cd).length) return '';
-    const parts = Object.entries(cd).filter(([,v])=>v!=null&&v!=='').map(([k,v])=>k.replace(/[_-]/g,' ')+': '+v);
-    const full = parts.join(', ');
-    const short = full.length > 80 ? full.slice(0,77)+'…' : full;
-    return short;
-  };
-  const fmtCustomDataFull = cd => {
-    if (!cd || typeof cd !== 'object' || !Object.keys(cd).length) return '';
-    return Object.entries(cd).filter(([,v])=>v!=null&&v!=='').map(([k,v])=>k.replace(/[_-]/g,' ')+': '+v).join(', ');
-  };
   const fmtDate = (d, time) => {
     if (!d) return '—';
     const opts = time ? {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'} : {day:'numeric',month:'short'};
@@ -2716,7 +2704,7 @@ async function loadLeads(resetPage) {
   $('ld-tbody').innerHTML = rows.map(l => `
     <tr>
       <td style="white-space:nowrap;font-family:var(--mono);font-size:10px;color:var(--ink3)">${fmtDate(l.created_at, true)}</td>
-      <td>${nicheBadge(l.niche)}</td>
+      <td>${nicheBadge(l.lead_type)}</td>
       <td><strong>${esc(l.name||'—')}</strong><br><span style="font-family:var(--mono);font-size:9.5px;color:var(--ink3)">${esc(l.email||'')}</span></td>
       <td style="font-family:var(--mono);font-size:11px">${esc(l.phone||'—')}</td>
       <td style="font-family:var(--mono);font-size:11px">${esc(l.postcode||'—')}</td>
@@ -2725,10 +2713,9 @@ async function loadLeads(resetPage) {
       <td style="font-size:11px;color:var(--ink2);white-space:nowrap">${esc(l.purchase_timeline||'—')}</td>
       <td>${statusBadge(l.status)}</td>
       <td>${l.clients?.company_name ? `<strong>${esc(l.clients.company_name)}</strong>` : '<span style="color:var(--ink3)">—</span>'}</td>
-      <td style="font-family:var(--mono);font-size:10px;color:var(--ink3);white-space:nowrap">${fmtDate(l.assigned_at, false)}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--ink3);white-space:nowrap">${fmtDate(l.delivered_at, false)}</td>
       <td style="font-family:var(--mono);font-size:10px;color:var(--ink3)">${esc(l.delivery_method||'—')}</td>
       <td><span class="badge bg-gray">${esc(l.source||'webhook')}</span></td>
-      <td style="font-size:10px;color:var(--ink2);max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(fmtCustomDataFull(l.custom_data))}">${esc(fmtCustomData(l.custom_data))}</td>
       <td style="font-size:11px;color:var(--ink2);max-width:180px;white-space:pre-wrap;word-break:break-word">${esc(l.custom_fields||'')}</td>
       <td style="white-space:nowrap">
         <select class="fi" style="font-size:10.5px;padding:3px 6px;width:auto;font-family:var(--mono)" onchange="updateLeadStatus('${esc(l.id)}', this.value, this)">

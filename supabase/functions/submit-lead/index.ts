@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const NAMED_FIELDS = new Set([
   "name", "first_name", "last_name", "email", "phone", "postcode",
-  "niche", "subtype", "lead_type", "source",
+  "lead_type", "niche", "source",
   "is_homeowner", "avg_quarterly_bill", "interested_in", "purchase_timeline",
 ]);
 
@@ -32,32 +32,35 @@ Deno.serve(async (req: Request) => {
     // STEP 1 — PARSE
     let {
       name, first_name, last_name, email, phone, postcode,
-      niche, subtype, lead_type, source,
+      lead_type, niche, source,
       is_homeowner, avg_quarterly_bill, interested_in, purchase_timeline,
     } = body;
 
     if (!name && (first_name || last_name)) {
       name = [first_name, last_name].filter(Boolean).join(" ");
     }
-    if (lead_type && !niche) niche = lead_type;
-    if (!niche) {
-      return new Response(JSON.stringify({ error: "missing_niche" }), {
+    // Accept either lead_type or niche from the caller
+    if (!lead_type && niche) lead_type = niche;
+    if (!lead_type) {
+      return new Response(JSON.stringify({ error: "missing_lead_type" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     if (!source) source = "webhook";
 
-    const custom_data: Record<string, unknown> = {};
+    // Collect any extra fields into custom_fields (stored as JSON text)
+    const extraFields: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(body)) {
-      if (!NAMED_FIELDS.has(k) && k !== "custom_data") {
-        custom_data[k] = v;
+      if (!NAMED_FIELDS.has(k) && k !== "custom_fields") {
+        extraFields[k] = v;
       }
     }
-    // If the caller sent custom_data as an object, merge it in
-    if (body.custom_data && typeof body.custom_data === "object" && !Array.isArray(body.custom_data)) {
-      Object.assign(custom_data, body.custom_data);
-    } else if (body.custom_data && typeof body.custom_data === "string" && body.custom_data.trim()) {
-      custom_data["_text"] = body.custom_data;
+    // If the caller sent custom_fields as a string, use it directly; otherwise stringify extras
+    let custom_fields: string | null = null;
+    if (body.custom_fields && typeof body.custom_fields === "string" && body.custom_fields.trim()) {
+      custom_fields = body.custom_fields.trim();
+    } else if (Object.keys(extraFields).length > 0) {
+      custom_fields = JSON.stringify(extraFields);
     }
 
     // STEP 2 — VALIDATE
@@ -148,10 +151,10 @@ Deno.serve(async (req: Request) => {
     // STEP 5 — CLIENT MATCHING
     const { data: candidates } = await supabaseAdmin
       .from("clients")
-      .select("id, postcodes, weekly_cap, monthly_cap, leads_delivered, total_leads_purchased, company_name, from_name, has_quoteleads_platform_account, hq_bearer_token")
+      .select("id, postcodes, weekly_cap, monthly_cap, leads_delivered, total_leads_purchased, company_name, from_name, has_quoteleads_platform_account, hq_bearer_token, delivery_method")
       .eq("type", "ppl")
       .eq("stage", "active_client")
-      .or(`niche.eq.${niche},active_niches.cs.{${niche}}`);
+      .or(`niche.eq.${lead_type},active_niches.cs.{${lead_type}}`);
 
     let matchedClient: { id: string; company_name: string; has_quoteleads_platform_account?: boolean; hq_bearer_token?: string | null } | null = null;
 
@@ -235,10 +238,9 @@ Deno.serve(async (req: Request) => {
       postcode,
       suburb,
       state,
-      niche,
-      subtype: subtype || null,
+      lead_type,
       source,
-      custom_data,
+      custom_fields,
       is_homeowner: is_homeowner != null ? is_homeowner : null,
       avg_quarterly_bill: avg_quarterly_bill != null ? parseFloat(avg_quarterly_bill) || null : null,
       interested_in: interested_in || null,
@@ -246,6 +248,7 @@ Deno.serve(async (req: Request) => {
       assigned_client_id: matchedClient ? matchedClient.id : null,
       status: matchedClient ? "assigned" : "pending",
       assigned_at: matchedClient ? new Date().toISOString() : null,
+      delivery_method: matchedClient ? (matchedClient as Record<string, unknown>).delivery_method as string || null : null,
       created_at: new Date().toISOString(),
     };
 
@@ -274,8 +277,9 @@ Deno.serve(async (req: Request) => {
           email,
           phone: normalisedPhone,
           postcode,
+          lead_type,
           source,
-          custom_data,
+          custom_fields,
         };
         fetch("https://api.quoteleadshq.com/v1/leads", {
           method: "POST",
