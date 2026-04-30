@@ -2501,18 +2501,13 @@ async function populateTestLeadNiches() {
   const sel = $('tl-niche');
   if (!sel) return;
   try {
-    // List niches present on the real PPL leads we generate and sell
-    // (rows inserted by the `submit-lead` edge function). Agency CRM
-    // rows (added via the `add_lead` RPC from the CRM "Add Lead" form)
-    // must be excluded — they're potential agency clients, not the
-    // leads we sell. We require BOTH `postcode IS NOT NULL` AND
-    // `niche IS NOT NULL`: `submit-lead` validates and requires both
-    // on every insert, while `add_lead` has neither argument, so CRM
-    // rows always have both NULL. Two markers = bulletproof.
+    // Restrict to PPL distribution leads only (status IS NOT NULL).
+    // Agency CRM pipeline leads (added via `add_lead` RPC) never set
+    // `status`, so they're excluded — keeping the niche dropdown
+    // limited to niches that actually appear on PPL distribution.
     const { data } = await db.from('leads')
       .select('niche')
-      .not('postcode', 'is', null)
-      .not('niche', 'is', null)
+      .not('status', 'is', null)
       .limit(500);
     const niches = [...new Set((data||[]).map(r => r.niche).filter(Boolean))].sort();
     const cur = sel.value;
@@ -2637,38 +2632,25 @@ async function loadLeads(resetPage) {
   const filter = $('ld-filter')?.value || 'all';
   const typeFilter = $('ld-type-filter')?.value || 'all';
 
-  // Populate niche filter dynamically.
-  // The Lead Distribution panel must show **only** the real PPL leads
-  // we generate and sell (rows inserted by the `submit-lead` edge
-  // function) and must hide the agency CRM sales pipeline (rows
-  // inserted by the `add_lead` RPC from the CRM "Add Lead" form,
-  // including potential agency clients with `lead_type='ppl'`).
-  //
-  // We require BOTH `postcode IS NOT NULL` AND `niche IS NOT NULL`,
-  // which is guaranteed by the two insert paths themselves:
-  //   • `submit-lead` validates and requires a 4-digit AU postcode
-  //     AND a non-empty niche on every insert (see
-  //     supabase/functions/submit-lead/index.ts — requests missing
-  //     either are rejected with invalid_postcode / missing_niche).
-  //     So every distribution lead has both.
-  //   • `add_lead(p_name, p_company, p_email, p_phone, p_stage,
-  //     p_lead_type, p_value, p_source, p_notes)` has neither a
-  //     postcode nor a niche argument — so every CRM row has both
-  //     columns NULL.
-  //
-  // Two independent markers means even if a CRM row gets a postcode
-  // or a niche manually edited in later, it still won't slip through.
-  // Earlier attempts on `lead_type` / `stage` were unreliable because
-  // both columns have non-null DB defaults.
-  const distributionFilter = (q) => q
-    .not('postcode', 'is', null)
-    .not('niche', 'is', null);
-  const nicheQ = distributionFilter(db.from('leads').select('niche')).limit(500);
-  // Stats query — lightweight, all rows, just status + niche + client info
-  const statsQ = distributionFilter(db.from('leads').select('status, niche, assigned_client_id, clients(company_name)'));
+  // Restrict the Lead Distribution panel to PPL distribution leads only —
+  // never show agency CRM pipeline leads (those are added via the `add_lead`
+  // RPC / "Add Lead" modal and live on the `stage` column with no `status`).
+  // PPL leads inserted by the submit-lead edge function always have
+  // `status` set ('pending' or 'assigned' on insert, later 'delivered' /
+  // 'failed' / 'scrubbed'). CRM agency leads never set `status`. So
+  // `status IS NOT NULL` is the reliable separator — and it's the column
+  // this panel is built around (the stat tiles, the table badge, the
+  // status filter dropdown all key off `status`). This is the marker we
+  // know is populated only on the PPL path. Avoid filtering on `niche`
+  // (NOT NULL DEFAULT 'solar' — would be a no-op) or on `postcode`
+  // (history of breaking the panel).
+  const distOnly = q => q.not('status', 'is', null);
+  const nicheQ = distOnly(db.from('leads').select('niche')).limit(500);
+  // Stats query — lightweight, all PPL rows, just status + niche + client info
+  const statsQ = distOnly(db.from('leads').select('status, niche, assigned_client_id, clients(company_name)'));
   if (typeFilter !== 'all') statsQ.eq('niche', typeFilter);
   // Table query — paginated, with server-side filter
-  const tableQ = distributionFilter(db.from('leads').select('*, clients(company_name)', {count:'exact'})).order('created_at', {ascending: false});
+  const tableQ = distOnly(db.from('leads').select('*, clients(company_name)', {count:'exact'})).order('created_at', {ascending: false});
   if (filter !== 'all') tableQ.eq('status', filter);
   if (typeFilter !== 'all') tableQ.eq('niche', typeFilter);
   tableQ.range(leadsPage * PAGE_SIZE, (leadsPage + 1) * PAGE_SIZE - 1);
