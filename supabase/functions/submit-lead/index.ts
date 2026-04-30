@@ -102,7 +102,7 @@ Deno.serve(async (req: Request) => {
 
     // STEP 3 — DEDUPLICATE
     let dedupQuery = supabaseAdmin
-      .from("leads")
+      .from("ppl_leads")
       .select("id")
       .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
       .limit(1);
@@ -183,7 +183,7 @@ Deno.serve(async (req: Request) => {
 
         // Count weekly delivered
         const { count: weeklyDelivered } = await supabaseAdmin
-          .from("leads")
+          .from("ppl_leads")
           .select("id", { count: "exact", head: true })
           .eq("assigned_client_id", clientId)
           .eq("status", "delivered")
@@ -194,7 +194,7 @@ Deno.serve(async (req: Request) => {
 
         // Count monthly delivered
         const { count: monthlyDelivered } = await supabaseAdmin
-          .from("leads")
+          .from("ppl_leads")
           .select("id", { count: "exact", head: true })
           .eq("assigned_client_id", clientId)
           .eq("status", "delivered")
@@ -250,7 +250,7 @@ Deno.serve(async (req: Request) => {
     };
 
     const { data: inserted, error: insertError } = await supabaseAdmin
-      .from("leads")
+      .from("ppl_leads")
       .insert([leadRecord])
       .select("id")
       .single();
