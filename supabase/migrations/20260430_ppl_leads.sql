@@ -68,7 +68,7 @@ INSERT INTO ppl_leads (
   created_at, updated_at
 )
 SELECT
-  id, name, email, phone, postcode, suburb, state,
+  id, name, email, phone, NULL::text, suburb, state,
   COALESCE(lead_type, niche, 'solar'), COALESCE(source, 'webhook'),
   CASE WHEN custom_data IS NOT NULL AND custom_data::text <> '{}' THEN custom_data::text ELSE NULL END,
   is_homeowner, avg_quarterly_bill, interested_in, purchase_timeline,
