@@ -1148,6 +1148,24 @@ td strong{font-weight:500}
           </table>
           <div class="pager" id="ld-pager"></div>
         </div>
+        <div class="sl" style="margin-top:16px">Delivery Log <div class="sl-line"></div></div>
+        <div class="twrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Lead</th>
+                <th>Client</th>
+                <th>Method</th>
+                <th>Status</th>
+                <th>Destination</th>
+                <th>Message / Preview</th>
+                <th>HTTP</th>
+              </tr>
+            </thead>
+            <tbody id="dlogs-tbody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
       </div>
 
       <!-- ══ INVOICES ══ -->
@@ -2210,6 +2228,18 @@ td strong{font-weight:500}
   </div>
 </div>
 
+<!-- Delivery log modal -->
+<div class="overlay" id="m-delivery-logs">
+  <div class="modal" style="max-width:620px">
+    <h2>Delivery Log</h2>
+    <div class="msub" id="dlogs-modal-title"></div>
+    <div id="dlogs-modal-body"><div class="empty">Loading…</div></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-delivery-logs')">Close</button>
+    </div>
+  </div>
+</div>
+
 
 <style>
 @media(max-width:700px){
@@ -2706,6 +2736,7 @@ async function loadLeads(resetPage) {
           <option value="failed" ${l.status==='failed'?'selected':''}>Failed</option>
         </select>
         ${l.phone ? `<button class="btn btn-xs sms-lead-btn" data-lead-id="${esc(l.id)}" data-phone="${esc(l.phone)}" data-name="${esc(l.name||'')}">SMS</button>` : ''}
+        <button class="btn btn-xs dlogs-btn" data-lead-id="${esc(l.id)}" data-lead-name="${esc(l.name||'')}">📋 Logs</button>
       </td>
     </tr>`).join('');
   renderPager('ld-pager', leadsPage, leadsTotal, p => { leadsPage = p; loadLeads(); });
@@ -2721,6 +2752,14 @@ async function loadLeads(resetPage) {
       openModal('m-sms-lead');
     });
   });
+  // Attach delivery log button listeners
+  document.querySelectorAll('.dlogs-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      openDeliveryLogs(btn.dataset.leadId, btn.dataset.leadName);
+    });
+  });
+  loadDeliveryLogOverview();
 }
 async function updateLeadStatus(leadId, newStatus, selectEl) {
   const prev = Array.from(selectEl.options).find(o => o.defaultSelected)?.value || selectEl.value;
@@ -2738,6 +2777,85 @@ async function updateLeadStatus(leadId, newStatus, selectEl) {
     return;
   }
   loadLeads();
+}
+
+async function openDeliveryLogs(leadId, leadName) {
+  $('dlogs-modal-title').textContent = leadName || leadId;
+  $('dlogs-modal-body').innerHTML = '<div class="empty">Loading…</div>';
+  openModal('m-delivery-logs');
+  const { data, error } = await db
+    .from('lead_delivery_log')
+    .select('*')
+    .eq('lead_id', leadId)
+    .order('delivered_at', { ascending: false, nullsFirst: false });
+  if (error) {
+    $('dlogs-modal-body').innerHTML = `<div class="empty" style="color:var(--red)">Error: ${esc(error.message)}</div>`;
+    return;
+  }
+  if (!data || !data.length) {
+    $('dlogs-modal-body').innerHTML = '<div class="empty">No delivery attempts logged yet.</div>';
+    return;
+  }
+  const methodIcon = m => ({ email: '✉️', sms: '💬', webhook: '🔗', crm: '🔗' })[m] || '📤';
+  const statusBadge = s => s === 'delivered'
+    ? '<span class="badge bg-grn">delivered</span>'
+    : `<span class="badge bg-red">${esc(s || 'failed')}</span>`;
+  const fmtTs = ts => {
+    if (!ts) return '—';
+    return new Date(ts).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+  $('dlogs-modal-body').innerHTML = data.map(entry => `
+    <div style="border:1px solid var(--bd2);border-radius:var(--r2);padding:12px 14px;margin-bottom:8px;background:var(--s2)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <span style="font-size:15px">${methodIcon(entry.method)}</span>
+        <strong style="font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em">${esc(entry.method || '—')}</strong>
+        ${statusBadge(entry.status)}
+        <span style="font-family:var(--mono);font-size:9.5px;color:var(--ink3);margin-left:auto">${fmtTs(entry.delivered_at || entry.created_at)}</span>
+      </div>
+      ${entry.destination ? `<div style="font-family:var(--mono);font-size:10.5px;color:var(--ink2);margin-bottom:6px;word-break:break-all">→ ${esc(entry.destination)}</div>` : ''}
+      ${entry.message_preview ? `<div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:8px 10px;font-family:var(--mono);font-size:10.5px;color:var(--ink);white-space:pre-wrap;word-break:break-word;margin-bottom:6px">${esc(entry.message_preview)}</div>` : ''}
+      ${entry.response_code != null ? `<div style="font-family:var(--mono);font-size:9.5px;color:${entry.status === 'delivered' ? 'var(--grn)' : 'var(--red)'}">HTTP ${entry.response_code}${entry.response_body ? ' · ' + esc(String(entry.response_body).slice(0, 300)) : ''}</div>` : ''}
+    </div>`).join('');
+}
+
+async function loadDeliveryLogOverview() {
+  const tbody = $('dlogs-tbody');
+  if (!tbody) return;
+  const { data, error } = await db
+    .from('lead_delivery_log')
+    .select('*, leads(name, phone), clients(company_name)')
+    .order('delivered_at', { ascending: false, nullsFirst: false })
+    .limit(50);
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty" style="color:var(--red)">Error: ${esc(error.message)}</td></tr>`;
+    return;
+  }
+  if (!data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">No delivery attempts yet.</td></tr>';
+    return;
+  }
+  const methodBadge = m => {
+    const cls = { email: 'bg-blu', sms: 'bg-sky', webhook: 'bg-gray', crm: 'bg-gray' };
+    return `<span class="badge ${cls[m] || 'bg-gray'}">${esc(m || '—')}</span>`;
+  };
+  const statusBadge = s => s === 'delivered'
+    ? '<span class="badge bg-grn">✓ delivered</span>'
+    : `<span class="badge bg-red">✗ ${esc(s || 'failed')}</span>`;
+  const fmtTs = ts => {
+    if (!ts) return '—';
+    return new Date(ts).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+  tbody.innerHTML = data.map(entry => `
+    <tr>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--ink3);white-space:nowrap">${fmtTs(entry.delivered_at || entry.created_at)}</td>
+      <td><strong style="font-size:11.5px">${esc(entry.leads?.name || '—')}</strong></td>
+      <td style="font-size:11px;color:var(--ink2)">${esc(entry.clients?.company_name || '—')}</td>
+      <td>${methodBadge(entry.method)}</td>
+      <td>${statusBadge(entry.status)}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--ink2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(entry.destination || '')}">${esc(entry.destination || '—')}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--ink);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(entry.message_preview || '')}">${esc(entry.message_preview ? (entry.message_preview.length > 80 ? entry.message_preview.slice(0, 77) + '…' : entry.message_preview) : '—')}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:${entry.status === 'delivered' ? 'var(--grn)' : 'var(--red)'}">${entry.response_code != null ? entry.response_code : '—'}</td>
+    </tr>`).join('');
 }
 
 async function loadTaskLeadDropdowns() {
