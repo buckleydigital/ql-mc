@@ -929,6 +929,17 @@ td strong{font-weight:500}
           <div class="kpi"><div class="klabel">Avg Meta CPL</div><div class="kval" id="ppl-meta-cpl">—</div></div>
           <div class="kpi"><div class="klabel">Avg True CPL</div><div class="kval blu" id="ppl-true-cpl">—</div><div class="ksub">after % sold</div></div>
           <div class="kpi"><div class="klabel">Due for Reorder</div><div class="kval amb" id="ppl-reorder-count">—</div><div class="ksub">≥75% delivered</div></div>
+          <div class="kpi"><div class="klabel">Total Clients</div><div class="kval" id="ppl-total">—</div><div class="ksub">all-time</div></div>
+          <div class="kpi"><div class="klabel">Churn Rate</div><div class="kval red" id="ppl-churn-rate">—</div><div class="ksub">churned ÷ total</div></div>
+          <div class="kpi"><div class="klabel">Retention Rate</div><div class="kval grn" id="ppl-retention-rate">—</div><div class="ksub">active + paused ÷ total</div></div>
+        </div>
+        <div class="sl">Churn Overview <div class="sl-line"></div></div>
+        <div style="display:flex;gap:14px;margin-bottom:16px;align-items:flex-start;flex-wrap:wrap">
+          <div class="chart-card" style="flex:0 0 200px;min-width:160px">
+            <div class="chart-title">Client Status Distribution</div>
+            <canvas id="chart-ppl-churn" height="200"></canvas>
+          </div>
+          <div id="ppl-churn-breakdown" style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:8px;justify-content:center"></div>
         </div>
         <div class="sl">Client Pipeline <div class="sl-line"></div></div>
         <div class="kanban-wrap"><div class="kanban" id="ppl-kanban"></div></div>
@@ -1061,6 +1072,17 @@ td strong{font-weight:500}
           <div class="kpi"><div class="klabel">Client Spend MTD</div><div class="kval" id="mg-spend">—</div></div>
           <div class="kpi"><div class="klabel">Mgmt Fee Revenue</div><div class="kval grn" id="mg-fees">—</div></div>
           <div class="kpi"><div class="klabel">Avg CPL (All)</div><div class="kval" id="mg-cpl">—</div></div>
+          <div class="kpi"><div class="klabel">Total Clients</div><div class="kval" id="mg-total">—</div><div class="ksub">all-time</div></div>
+          <div class="kpi"><div class="klabel">Churn Rate</div><div class="kval red" id="mg-churn-rate">—</div><div class="ksub">churned ÷ total</div></div>
+          <div class="kpi"><div class="klabel">Retention Rate</div><div class="kval grn" id="mg-retention-rate">—</div><div class="ksub">active + paused ÷ total</div></div>
+        </div>
+        <div class="sl">Churn Overview <div class="sl-line"></div></div>
+        <div style="display:flex;gap:14px;margin-bottom:16px;align-items:flex-start;flex-wrap:wrap">
+          <div class="chart-card" style="flex:0 0 200px;min-width:160px">
+            <div class="chart-title">Client Status Distribution</div>
+            <canvas id="chart-mg-churn" height="200"></canvas>
+          </div>
+          <div id="mg-churn-breakdown" style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:8px;justify-content:center"></div>
         </div>
         <div class="sl">Client Pipeline <div class="sl-line"></div></div>
         <div class="kanban-wrap"><div class="kanban" id="mg-kanban"></div></div>
@@ -2263,6 +2285,7 @@ let db, currentUser;
 let curAgent = 'master', curMd = 'agents.md', curChat = 'master';
 let chatHistory = {};
 let revChart = null, cplChart = null, goalRevChart = null, goalMarginChart = null;
+let pplChurnChart = null, mgChurnChart = null;
 let curCrmRange = 'ytd';
 
 const _taskMap = new Map();
@@ -3208,6 +3231,16 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
   setText('ppl-true-cpl',ac.length?'$'+(ac.reduce((s,c)=>s+(c.true_cpl||0),0)/ac.length).toFixed(2):'—');
   const dueClients=clients.filter(c=>c.stage==='active_client'&&c.total_leads_purchased>0&&(c.leads_delivered||0)/c.total_leads_purchased>=0.75);
   setText('ppl-reorder-count',dueClients.length||'—');
+  // Churn metrics
+  const pplActive=clients.filter(c=>c.stage==='active_client').length;
+  const pplPaused=clients.filter(c=>c.stage==='paused').length;
+  const pplChurned=clients.filter(c=>c.stage==='churned').length;
+  const pplTotal=clients.length;
+  setText('ppl-total',pplTotal||'—');
+  setText('ppl-churn-rate',pplTotal>0?(pplChurned/pplTotal*100).toFixed(1)+'%':'—');
+  setText('ppl-retention-rate',pplTotal>0?((pplActive+pplPaused)/pplTotal*100).toFixed(1)+'%':'—');
+  pplChurnChart=renderChurnChart('chart-ppl-churn',pplActive,pplPaused,pplChurned,pplChurnChart,c=>{pplChurnChart=c;});
+  renderChurnBreakdown('ppl-churn-breakdown',pplActive,pplPaused,pplChurned);
   PPL_STAGES.forEach(s=>{
     const col=$('ppl-col-'+s.id),cnt=$('pplc-'+s.id);
     const sl=clients.filter(c=>c.stage===s.id);
@@ -3606,6 +3639,16 @@ function renderManaged(clients, orderLog=[]) {
   setText('mg-fees',fmt(clients.reduce((s,c)=>s+(c.management_fee||0),0)));
   const ac=clients.filter(c=>c.cpl_7d_avg>0);
   setText('mg-cpl',ac.length?'$'+(ac.reduce((s,c)=>s+c.cpl_7d_avg,0)/ac.length).toFixed(2):'—');
+  // Churn metrics
+  const mgActive=clients.filter(c=>c.stage==='active').length;
+  const mgPaused=clients.filter(c=>c.stage==='paused').length;
+  const mgChurned=clients.filter(c=>c.stage==='churned').length;
+  const mgTotal=clients.length;
+  setText('mg-total',mgTotal||'—');
+  setText('mg-churn-rate',mgTotal>0?(mgChurned/mgTotal*100).toFixed(1)+'%':'—');
+  setText('mg-retention-rate',mgTotal>0?((mgActive+mgPaused)/mgTotal*100).toFixed(1)+'%':'—');
+  mgChurnChart=renderChurnChart('chart-mg-churn',mgActive,mgPaused,mgChurned,mgChurnChart,c=>{mgChurnChart=c;});
+  renderChurnBreakdown('mg-churn-breakdown',mgActive,mgPaused,mgChurned);
   MG_STAGES.forEach(s=>{
     const col=$('mg-col-'+s.id),cnt=$('mgc-'+s.id);
     const sl=clients.filter(c=>c.stage===s.id);
@@ -4678,6 +4721,53 @@ function renderGoalCharts(rows) {
 function chartDefaults() {
   const dark=document.documentElement.getAttribute('data-theme')==='dark';
   return {grid:dark?'#1c1c22':'#dddde8',tick:dark?'#3e3e50':'#9494a8'};
+}
+function renderChurnChart(canvasId, active, paused, churned, currentChart, setChart) {
+  const {tick} = chartDefaults();
+  const total = active + paused + churned;
+  const canvas = $(canvasId); if (!canvas) return null;
+  if (currentChart) currentChart.destroy();
+  if (!total) return null;
+  const chart = new Chart(canvas.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Active', 'Paused', 'Churned'],
+      datasets: [{ data: [active, paused, churned],
+        backgroundColor: ['rgba(46,204,138,.5)', 'rgba(245,166,35,.4)', 'rgba(255,69,96,.4)'],
+        borderColor: ['#2ecc8a', '#f5a623', '#ff4560'],
+        borderWidth: 1.5, hoverOffset: 4 }]
+    },
+    options: { responsive: true, maintainAspectRatio: true, cutout: '62%',
+      plugins: { legend: { position: 'bottom', labels: { color: tick, font: { family: 'DM Mono', size: 9 }, padding: 10 } } } }
+  });
+  setChart(chart);
+  return chart;
+}
+function renderChurnBreakdown(elId, active, paused, churned) {
+  const el = $(elId); if (!el) return;
+  const total = active + paused + churned;
+  const pct = n => total > 0 ? (n / total * 100).toFixed(1) + '%' : '0%';
+  const bar = (n, color) => `<div style="height:4px;border-radius:2px;background:${color};width:${total>0?Math.round(n/total*100):0}%;max-width:100%;min-width:${n>0?4:0}px;transition:width .3s"></div>`;
+  const rows = [
+    { label: 'Active', count: active, color: 'var(--grn)', barColor: '#2ecc8a' },
+    { label: 'Paused',  count: paused,  color: 'var(--amb)', barColor: '#f5a623' },
+    { label: 'Churned', count: churned, color: 'var(--red)', barColor: '#ff4560' },
+  ];
+  el.innerHTML = rows.map(r => `
+    <div style="background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:10px 14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--ink2)">${r.label}</span>
+        <span style="font-family:var(--mono);font-size:13px;font-weight:500;color:${r.color}">${r.count}</span>
+      </div>
+      <div style="background:var(--bd);border-radius:2px;height:4px;overflow:hidden">${bar(r.count, r.barColor)}</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:4px">${pct(r.count)} of total</div>
+    </div>`).join('') + (total ? `
+    <div style="background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:10px 14px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--ink2)">Total (all-time)</span>
+        <span style="font-family:var(--mono);font-size:13px;font-weight:500;color:var(--ink)">${total}</span>
+      </div>
+    </div>` : '');
 }
 function renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses,pplAdSpend,agAdSpend) {
   const {grid,tick}=chartDefaults();
