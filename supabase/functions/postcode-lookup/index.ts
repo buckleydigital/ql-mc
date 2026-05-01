@@ -28,25 +28,25 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Mirror the same matching logic as the assign_and_deliver_lead RPC:
-    // - type = 'ppl', stage = 'active_client'
-    // - has remaining capacity (leads_delivered < total_leads_purchased + scrubbed)
-    // - postcode matches
-    // - weekly/monthly caps not exceeded
-    // - ordered by least-recently-served (last_lead_delivered_at ASC NULLS FIRST)
-    const { data, error } = await supabase.rpc("preview_postcode_match", {
-      p_postcode: postcode,
-    });
+    const { data: clients, error } = await supabase
+      .from("clients")
+      .select("id, company_name, postcodes")
+      .eq("type", "ppl")
+      .eq("stage", "active_client");
 
     if (error) {
-      console.error("RPC error:", error);
+      console.error("Query error:", error);
       return new Response(
         JSON.stringify({ error: "Database query failed" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!data || !data.buyer_name) {
+    const match = (clients ?? []).find(
+      (c) => !c.postcodes || c.postcodes.length === 0 || c.postcodes.includes(postcode)
+    );
+
+    if (!match) {
       return new Response(
         JSON.stringify({ buyer_name: null, message: "No installer found for this postcode" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -54,10 +54,7 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({
-        buyer_name: data.buyer_name,
-        buyer_id: data.buyer_id,
-      }),
+      JSON.stringify({ buyer_name: match.company_name, buyer_id: match.id }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json", Connection: "keep-alive" },
