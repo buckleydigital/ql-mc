@@ -708,27 +708,21 @@ async function lookupPostcode(pc) {
   resolvedState  = '';
 
   try {
-    const res = await fetch(POSTCODE_LOOKUP_URL, {
-      method: 'POST',
+    const res = await fetch(POSTCODE_LOOKUP_URL + '?postcode=' + encodeURIComponent(pc), {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
         'apikey': SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ postcode: pc, niche: SURVEY_NICHE }),
     });
     if (!res.ok) throw new Error('not_found');
     const data = await res.json();
-    if (!data.suburb) throw new Error('not_found');
-    resolvedSuburb = data.suburb || '';
-    resolvedState  = data.state  || '';
-    const locationLabel = resolvedSuburb + (resolvedState ? ', ' + resolvedState : '');
-    if (data.has_active_clients) {
+    if (data.buyer_name) {
       suburbChip.className = 'suburb-chip found';
-      suburbText.textContent = locationLabel;
+      suburbText.textContent = '✓ Coverage available';
     } else {
       suburbChip.className = 'suburb-chip no-coverage';
-      suburbText.textContent = locationLabel + ' – no coverage yet';
+      suburbText.textContent = 'No coverage yet';
     }
   } catch (_) {
     suburbChip.className = 'suburb-chip not-found';
