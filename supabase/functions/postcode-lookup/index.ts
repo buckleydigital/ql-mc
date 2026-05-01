@@ -28,25 +28,38 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Mirror the same matching logic as the assign_and_deliver_lead RPC:
-    // - type = 'ppl', stage = 'active_client'
-    // - has remaining capacity (leads_delivered < total_leads_purchased + scrubbed)
-    // - postcode matches
-    // - weekly/monthly caps not exceeded
-    // - ordered by least-recently-served (last_lead_delivered_at ASC NULLS FIRST)
-    const { data, error } = await supabase.rpc("preview_postcode_match", {
-      p_postcode: postcode,
-    });
+    // Query active PPL clients that cover this postcode and have remaining capacity.
+    // Mirrors the matching logic in submit-lead:
+    //   type = 'ppl', stage = 'active_client'
+    //   postcodes array contains the given postcode (or is empty = covers all)
+    //   leads_delivered < total_leads_purchased + leads_scrubbed
+    const { data: clients, error } = await supabase
+      .from("clients")
+      .select("id, company_name, postcodes, leads_delivered, total_leads_purchased, leads_scrubbed")
+      .eq("type", "ppl")
+      .eq("stage", "active_client");
 
     if (error) {
-      console.error("RPC error:", error);
+      console.error("DB error:", error);
       return new Response(
         JSON.stringify({ error: "Database query failed" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!data || !data.buyer_name) {
+    // Find the first client that covers this postcode and has remaining capacity
+    const match = (clients ?? []).find((c) => {
+      const pcs = c.postcodes as string[] | null;
+      const coversPostcode =
+        !pcs || !Array.isArray(pcs) || pcs.length === 0 || pcs.includes(postcode);
+      if (!coversPostcode) return false;
+      const delivered = (c.leads_delivered as number) || 0;
+      const purchased = (c.total_leads_purchased as number) || 0;
+      const scrubbed = (c.leads_scrubbed as number) || 0;
+      return delivered < purchased + scrubbed;
+    });
+
+    if (!match) {
       return new Response(
         JSON.stringify({ buyer_name: null, message: "No installer found for this postcode" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -55,8 +68,8 @@ Deno.serve(async (req: Request) => {
 
     return new Response(
       JSON.stringify({
-        buyer_name: data.buyer_name,
-        buyer_id: data.buyer_id,
+        buyer_name: match.company_name,
+        buyer_id: match.id,
       }),
       {
         status: 200,
