@@ -84,6 +84,24 @@ function buildEmailHtml(lead: Record<string, unknown>, _client: Record<string, u
 </div></body></html>`;
 }
 
+function buildEmailPreview(lead: Record<string, unknown>, subject: string): string {
+  const lines: string[] = [`Subject: ${subject}`];
+  lines.push(`Name: ${lead.name ?? "—"}`);
+  lines.push(`Phone: ${lead.phone ?? "—"}`);
+  if (lead.email) lines.push(`Email: ${lead.email}`);
+  lines.push(`Postcode: ${lead.postcode ?? "—"}`);
+  if (lead.suburb) lines.push(`Suburb: ${lead.suburb}`);
+  if (lead.state) lines.push(`State: ${lead.state}`);
+  if (lead.lead_type) lines.push(`Type: ${lead.lead_type}`);
+  if (lead.source) lines.push(`Source: ${lead.source}`);
+  if (lead.is_homeowner != null) lines.push(`Homeowner: ${lead.is_homeowner ? "Yes" : "No"}`);
+  if (lead.avg_quarterly_bill != null && lead.avg_quarterly_bill !== "") lines.push(`Quarterly Bill: $${lead.avg_quarterly_bill}`);
+  if (lead.interested_in) lines.push(`Interested In: ${lead.interested_in}`);
+  if (lead.purchase_timeline) lines.push(`Timeline: ${lead.purchase_timeline}`);
+  if (lead.custom_fields && String(lead.custom_fields).trim()) lines.push(`Notes: ${String(lead.custom_fields).trim()}`);
+  return lines.join("\n");
+}
+
 function buildSmsBody(lead: Record<string, unknown>): string {
   const lines: string[] = ["QL: New Lead"];
   lines.push(`Name: ${sanitizeSmsField(lead.name)}`);
@@ -106,6 +124,7 @@ async function deliverEmail(
   client: Record<string, unknown>,
   subject: string,
   htmlBody: string,
+  emailPreview: string,
 ): Promise<{ ok: boolean; status: number; body: string }> {
   const fromName = (client.from_name as string) || "QuoteLeads";
   const fromEmail = Deno.env.get("RESEND_FROM_EMAIL")!;
@@ -138,7 +157,7 @@ async function deliverEmail(
     client_id: client.id,
     method: "email",
     destination: toEmail,
-    message_preview: subject,
+    message_preview: emailPreview,
     response_code: res.status,
     response_body: resBody,
     status: res.ok ? "delivered" : "failed",
@@ -262,6 +281,7 @@ Deno.serve(async (req: Request) => {
     // STEP 2 — BUILD EMAIL
     const subject = `New ${lead.lead_type || "PPL"} Lead — ${lead.name} · ${lead.postcode}${lead.suburb ? " " + lead.suburb : ""}`;
     const htmlBody = buildEmailHtml(lead, client);
+    const emailPreview = buildEmailPreview(lead, subject);
 
     // STEP 3 — BUILD SMS
     const smsBody = buildSmsBody(lead);
@@ -275,7 +295,7 @@ Deno.serve(async (req: Request) => {
 
     switch (deliveryMethod) {
       case "email": {
-        const r = await deliverEmail(supabaseAdmin, lead, client, subject, htmlBody);
+        const r = await deliverEmail(supabaseAdmin, lead, client, subject, htmlBody, emailPreview);
         methods.push({ method: "email", status: r.ok ? "delivered" : "failed", ...(!r.ok && { error: r.body }) });
         if (r.ok) anySuccess = true;
         else firstError = firstError || r.body;
@@ -290,7 +310,7 @@ Deno.serve(async (req: Request) => {
       }
       case "email_and_phone": {
         const [emailR, smsR] = await Promise.allSettled([
-          deliverEmail(supabaseAdmin, lead, client, subject, htmlBody),
+          deliverEmail(supabaseAdmin, lead, client, subject, htmlBody, emailPreview),
           deliverSms(supabaseAdmin, lead, client, smsBody),
         ]);
         if (emailR.status === "fulfilled") {
@@ -332,7 +352,7 @@ Deno.serve(async (req: Request) => {
       }
       default: {
         if (client.delivery_email) {
-          const r = await deliverEmail(supabaseAdmin, lead, client, subject, htmlBody);
+          const r = await deliverEmail(supabaseAdmin, lead, client, subject, htmlBody, emailPreview);
           methods.push({ method: "email", status: r.ok ? "delivered" : "failed", ...(!r.ok && { error: r.body }) });
           if (r.ok) anySuccess = true;
           else firstError = firstError || r.body;
