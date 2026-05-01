@@ -3239,7 +3239,7 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
   setText('ppl-total',pplTotal||'—');
   setText('ppl-churn-rate',pplTotal>0?(pplChurned/pplTotal*100).toFixed(1)+'%':'—');
   setText('ppl-retention-rate',pplTotal>0?((pplActive+pplPaused)/pplTotal*100).toFixed(1)+'%':'—');
-  pplChurnChart=renderChurnChart('chart-ppl-churn',pplActive,pplPaused,pplChurned,pplChurnChart,c=>{pplChurnChart=c;});
+  pplChurnChart=renderChurnChart('chart-ppl-churn',pplActive,pplPaused,pplChurned,pplChurnChart);
   renderChurnBreakdown('ppl-churn-breakdown',pplActive,pplPaused,pplChurned);
   PPL_STAGES.forEach(s=>{
     const col=$('ppl-col-'+s.id),cnt=$('pplc-'+s.id);
@@ -3647,7 +3647,7 @@ function renderManaged(clients, orderLog=[]) {
   setText('mg-total',mgTotal||'—');
   setText('mg-churn-rate',mgTotal>0?(mgChurned/mgTotal*100).toFixed(1)+'%':'—');
   setText('mg-retention-rate',mgTotal>0?((mgActive+mgPaused)/mgTotal*100).toFixed(1)+'%':'—');
-  mgChurnChart=renderChurnChart('chart-mg-churn',mgActive,mgPaused,mgChurned,mgChurnChart,c=>{mgChurnChart=c;});
+  mgChurnChart=renderChurnChart('chart-mg-churn',mgActive,mgPaused,mgChurned,mgChurnChart);
   renderChurnBreakdown('mg-churn-breakdown',mgActive,mgPaused,mgChurned);
   MG_STAGES.forEach(s=>{
     const col=$('mg-col-'+s.id),cnt=$('mgc-'+s.id);
@@ -4722,13 +4722,13 @@ function chartDefaults() {
   const dark=document.documentElement.getAttribute('data-theme')==='dark';
   return {grid:dark?'#1c1c22':'#dddde8',tick:dark?'#3e3e50':'#9494a8'};
 }
-function renderChurnChart(canvasId, active, paused, churned, currentChart, setChart) {
+function renderChurnChart(canvasId, active, paused, churned, currentChart) {
   const {tick} = chartDefaults();
   const total = active + paused + churned;
   const canvas = $(canvasId); if (!canvas) return null;
   if (currentChart) currentChart.destroy();
   if (!total) return null;
-  const chart = new Chart(canvas.getContext('2d'), {
+  return new Chart(canvas.getContext('2d'), {
     type: 'doughnut',
     data: {
       labels: ['Active', 'Paused', 'Churned'],
@@ -4740,8 +4740,6 @@ function renderChurnChart(canvasId, active, paused, churned, currentChart, setCh
     options: { responsive: true, maintainAspectRatio: true, cutout: '62%',
       plugins: { legend: { position: 'bottom', labels: { color: tick, font: { family: 'DM Mono', size: 9 }, padding: 10 } } } }
   });
-  setChart(chart);
-  return chart;
 }
 function renderChurnBreakdown(elId, active, paused, churned) {
   const el = $(elId); if (!el) return;
