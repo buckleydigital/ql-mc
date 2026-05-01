@@ -123,7 +123,6 @@ Deno.serve(async (req: Request) => {
       const tradeLabel = od.niche || od.trade || "";
       await supabaseAdmin.from("tasks").insert([{
         title: `New order — ${od.company} · ${od.quantity} x ${tradeLabel} leads`,
-        assigned_to: "human",
         priority: "urgent",
         done: false,
         notes: "Auto-created from Stripe payment. Configure postcodes and link campaigns in PPL Clients panel.",
