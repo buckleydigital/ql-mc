@@ -121,20 +121,26 @@ async function buildContext(agent: string): Promise<string> {
     }
   } catch(_) {}
 
-  // ── Historical YTD ad spend (from daily records) ──
+  // ── Historical YTD ad spend ──
+  // Campaign Ad Spend (PPL): from campaign_spend_log (matches the Financials page)
+  // Agency spend: latest row in ad_spend_daily for account_type='agency'
+  // (each ad_spend_daily row stores the CUMULATIVE YTD total at that point in time —
+  //  so the latest row's value IS the YTD total; summing all rows would inflate the figure)
   try {
-    const { data: adRows } = await sb.from('ad_spend_daily').select('date,account_type,spend,leads').gte('date', yr).order('date', {ascending:false})
-    if (adRows && adRows.length) {
-      const ppl = adRows.filter((r: any) => r.account_type === 'solar_ppl')
-      const agency = adRows.filter((r: any) => r.account_type === 'agency')
-      const pplSpend = ppl.reduce((s: number, r: any) => s + (r.spend||0), 0)
-      const pplLeads = ppl.reduce((s: number, r: any) => s + (r.leads||0), 0)
-      const agencySpend = agency.reduce((s: number, r: any) => s + (r.spend||0), 0)
-      out += `\n\n### Historical Ad Spend — YTD Total (${yr.slice(0,4)}, summed from ${adRows.length} daily records)`
-      out += `\n(These are YEAR-TO-DATE cumulative totals, not daily figures)`
-      out += `\n- Solar PPL spend YTD: ${fmtN(pplSpend)} · ${pplLeads} total leads · avg CPL ${pplLeads > 0 ? fmtC(pplSpend/pplLeads) : 'n/a'}`
-      out += `\n- Agency acquisition spend YTD: ${fmtN(agencySpend)}`
-    }
+    const curPeriod = now.toISOString().slice(0,7) // YYYY-MM
+    const yrMonth = `${yr.slice(0,4)}-01`
+    const [spendLogR, agencyR] = await Promise.all([
+      sb.from('campaign_spend_log').select('spend,leads').gte('period', yrMonth).lte('period', curPeriod),
+      sb.from('ad_spend_daily').select('spend').eq('account_type','agency').gte('date', yr).order('date', {ascending:false}).limit(1),
+    ])
+    const spendLogRows = spendLogR.data || []
+    const campSpendYTD = spendLogRows.reduce((s: number, r: any) => s + (r.spend||0), 0)
+    const campLeadsYTD = spendLogRows.reduce((s: number, r: any) => s + (r.leads||0), 0)
+    const agencySpendYTD = agencyR.data?.[0]?.spend || 0
+    out += `\n\n### Ad Spend — YTD Totals (${yr.slice(0,4)})`
+    out += `\n(These are YEAR-TO-DATE totals matching what the Financials page shows)`
+    out += `\n- Campaign Ad Spend YTD: ${fmtN(campSpendYTD)} · ${campLeadsYTD} total leads · avg CPL ${campLeadsYTD > 0 ? fmtC(campSpendYTD/campLeadsYTD) : 'n/a'}`
+    out += `\n- Agency acquisition spend YTD: ${fmtN(agencySpendYTD)}`
   } catch(_) {}
 
   // ── Active PPL clients ──
