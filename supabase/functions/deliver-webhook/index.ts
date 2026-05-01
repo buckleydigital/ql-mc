@@ -33,9 +33,18 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+function buildLocationString(lead: Record<string, unknown>): string {
+  return `${lead.postcode}${lead.suburb ? " " + lead.suburb : ""}${lead.state ? " " + lead.state : ""}`;
+}
+
+/** Strip control characters and trim whitespace to keep SMS fields safe. */
+function sanitizeSmsField(value: unknown): string {
+  return String(value ?? "").replace(/[\x00-\x1F\x7F]/g, " ").trim();
+}
+
 function buildEmailHtml(lead: Record<string, unknown>, _client: Record<string, unknown>): string {
   const now = formatAEST(new Date());
-  const location = `${lead.postcode}${lead.suburb ? " " + lead.suburb : ""}${lead.state ? " " + lead.state : ""}`;
+  const location = buildLocationString(lead);
   const typeStr = lead.lead_type as string || "—";
 
   const row = (label: string, value: string) =>
@@ -47,11 +56,10 @@ function buildEmailHtml(lead: Record<string, unknown>, _client: Record<string, u
   rows += row("Email", lead.email
     ? `<a href="mailto:${lead.email}" style="color:#4f8fff">${esc(lead.email as string)}</a>`
     : "—");
+  rows += row("Postcode", esc(lead.postcode as string || "—"));
   rows += row("Location", esc(location));
   rows += row("Type", esc(typeStr));
   rows += row("Source", esc(lead.source as string || "webhook"));
-
-  // Optional fields
   if (lead.is_homeowner === true) rows += row("Homeowner", "Yes");
   else if (lead.is_homeowner === false) rows += row("Homeowner", "No");
 
@@ -79,19 +87,20 @@ function buildEmailHtml(lead: Record<string, unknown>, _client: Record<string, u
 }
 
 function buildSmsBody(lead: Record<string, unknown>): string {
-  const name = lead.name as string;
-  const phone = lead.phone as string;
-  const postcode = lead.postcode as string;
-  const suburb = lead.suburb as string | null;
-  const lead_type = lead.lead_type as string;
+  const location = buildLocationString(lead);
 
-  const full = `QL: ${name} ${phone} | ${postcode}${suburb ? " " + suburb : ""} | ${lead_type} | quoteleads.com.au/sign-in`;
-  if (full.length <= 160) return full;
+  const lines: string[] = ["QL: New Lead"];
+  lines.push(`Name: ${sanitizeSmsField(lead.name)}`);
+  lines.push(`Phone: ${sanitizeSmsField(lead.phone)}`);
+  if (lead.email) lines.push(`Email: ${sanitizeSmsField(lead.email)}`);
+  lines.push(`Postcode: ${sanitizeSmsField(lead.postcode)}`);
+  if (location) lines.push(`Location: ${sanitizeSmsField(location)}`);
+  if (lead.lead_type) lines.push(`Type: ${sanitizeSmsField(lead.lead_type)}`);
+  if (lead.source) lines.push(`Source: ${sanitizeSmsField(lead.source)}`);
+  if (lead.avg_quarterly_bill) lines.push(`Quarterly Bill: $${sanitizeSmsField(lead.avg_quarterly_bill)}`);
+  if (lead.purchase_timeline) lines.push(`Timeline: ${sanitizeSmsField(lead.purchase_timeline)}`);
 
-  const noSuburb = `QL: ${name} ${phone} | ${postcode} | ${lead_type} | quoteleads.com.au/sign-in`;
-  if (noSuburb.length <= 160) return noSuburb;
-
-  return `QL: ${name} ${phone} | ${postcode} | ${lead_type} | quoteleads.com.au`;
+  return lines.join("\n");
 }
 
 async function deliverEmail(
@@ -353,13 +362,14 @@ Deno.serve(async (req: Request) => {
         delivery_error: null,
       }).eq("id", lead_id);
 
-      // Also increment leads_delivered on client
-      await supabaseAdmin.rpc("increment_leads_delivered", { p_client_id: client_id }).catch(() => {
-        // If RPC doesn't exist, do manual update
-        return supabaseAdmin.from("clients").update({
+      // Atomically increment leads_delivered on client
+      const { error: rpcError } = await supabaseAdmin.rpc("increment_leads_delivered", { p_client_id: client_id });
+      if (rpcError) {
+        // Fallback: manual non-atomic increment on any RPC failure
+        await supabaseAdmin.from("clients").update({
           leads_delivered: (client.leads_delivered || 0) + 1,
         }).eq("id", client_id);
-      });
+      }
     } else {
       await supabaseAdmin.from("ppl_leads").update({
         delivered_at: new Date().toISOString(),

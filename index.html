@@ -2813,7 +2813,7 @@ async function loadDeliveryLogOverview() {
   if (!tbody) return;
   const { data, error } = await db
     .from('lead_delivery_log')
-    .select('*, leads(name, phone), clients(company_name)')
+    .select('*, ppl_leads(name, phone), clients(company_name)')
     .order('delivered_at', { ascending: false, nullsFirst: false })
     .limit(50);
   if (error) {
@@ -2838,7 +2838,7 @@ async function loadDeliveryLogOverview() {
   tbody.innerHTML = data.map(entry => `
     <tr>
       <td style="font-family:var(--mono);font-size:10px;color:var(--ink3);white-space:nowrap">${fmtTs(entry.delivered_at || entry.created_at)}</td>
-      <td><strong style="font-size:11.5px">${esc(entry.leads?.name || '—')}</strong></td>
+      <td><strong style="font-size:11.5px">${esc(entry.ppl_leads?.name || '—')}</strong></td>
       <td style="font-size:11px;color:var(--ink2)">${esc(entry.clients?.company_name || '—')}</td>
       <td>${methodBadge(entry.method)}</td>
       <td>${statusBadge(entry.status)}</td>
