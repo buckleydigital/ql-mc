@@ -2541,6 +2541,8 @@ async function updateLeadStatus(leadId, newStatus, selectEl) {
   let error;
   if (newStatus === 'delivered') {
     ({error} = await db.rpc('mark_lead_delivered', {p_lead_id: leadId, p_note: 'Manually marked delivered'}));
+  } else if (newStatus === 'scrubbed') {
+    ({error} = await db.rpc('mark_lead_scrubbed', {p_lead_id: leadId}));
   } else {
     ({error} = await db.from('ppl_leads').update({status: newStatus, updated_at: new Date().toISOString()}).eq('id', leadId));
   }
