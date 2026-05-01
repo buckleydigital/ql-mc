@@ -69,9 +69,17 @@ BEGIN
     RAISE EXCEPTION 'lead not found: %', p_lead_id;
   END IF;
 
-  -- Mark the lead as delivered
+  -- Mark the lead as delivered; append p_note to delivery_audit_log when provided
   UPDATE ppl_leads
-     SET status = 'delivered', updated_at = now()
+     SET status = 'delivered',
+         updated_at = now(),
+         delivery_audit_log = CASE
+           WHEN p_note IS NOT NULL
+             THEN COALESCE(delivery_audit_log, '[]'::jsonb) || jsonb_build_array(
+                    jsonb_build_object('note', p_note, 'at', now())
+                  )
+           ELSE delivery_audit_log
+         END
    WHERE id = p_lead_id;
 
   -- Increment delivered count only if it wasn't already counted
