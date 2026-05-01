@@ -862,26 +862,14 @@ td strong{font-weight:500}
             <button class="btn btn-p btn-sm" onclick="openModal('m-task')">+ New task</button>
           </div>
         </div>
-        <div class="task-grid">
-          <div>
-            <div class="tcol-head">
-              <div class="tcol-title">Human <span class="cpill" id="human-count">0</span></div>
-            </div>
-            <div id="human-list"></div>
-            <div class="qadd">
-              <input class="qinput" id="q-human" placeholder="Quick add..." onkeydown="if(event.key==='Enter')quickAdd('human')">
-              <button class="btn btn-sm" onclick="quickAdd('human')">+</button>
-            </div>
+        <div>
+          <div class="tcol-head">
+            <div class="tcol-title">Tasks <span class="cpill" id="task-count">0</span></div>
           </div>
-          <div>
-            <div class="tcol-head">
-              <div class="tcol-title">AI Agent <span class="cpill" id="ai-count">0</span></div>
-            </div>
-            <div id="ai-list"></div>
-            <div class="qadd">
-              <input class="qinput" id="q-ai" placeholder="Quick add..." onkeydown="if(event.key==='Enter')quickAdd('ai')">
-              <button class="btn btn-sm" onclick="quickAdd('ai')">+</button>
-            </div>
+          <div id="task-list"></div>
+          <div class="qadd">
+            <input class="qinput" id="q-task" placeholder="Quick add..." onkeydown="if(event.key==='Enter')quickAdd()">
+            <button class="btn btn-sm" onclick="quickAdd()">+</button>
           </div>
         </div>
         <div class="sl" style="margin-top:18px">Flagged Emails <div class="sl-line"></div></div>
@@ -1530,16 +1518,6 @@ td strong{font-weight:500}
   <div class="modal">
     <h2>New Task</h2><div class="msub">Saved to Supabase tasks table</div>
     <div class="frow"><label class="flabel">Title</label><input class="fi" id="t-title" placeholder="e.g. Review invoice batch"></div>
-    <div class="frow"><label class="flabel">Assigned To</label>
-      <select class="fs" id="t-assignee">
-        <option value="human">Human</option>
-        <option value="marketing">Marketing Agent</option>
-        <option value="finance">Finance Agent</option>
-        <option value="operations">Operations Agent</option>
-        <option value="strategy">Strategy Agent</option>
-        <option value="sales">Sales Agent</option>
-      </select>
-    </div>
     <div class="frow"><label class="flabel">Priority</label>
       <select class="fs" id="t-priority">
         <option value="normal">Normal</option><option value="urgent">Urgent</option><option value="low">Low</option>
@@ -2078,16 +2056,6 @@ td strong{font-weight:500}
     <h2>Edit Task</h2>
     <input type="hidden" id="et-id">
     <div class="frow"><label class="flabel">Title</label><input class="fi" id="et-title"></div>
-    <div class="frow"><label class="flabel">Assigned To</label>
-      <select class="fs" id="et-assignee">
-        <option value="human">Human</option>
-        <option value="marketing">Marketing Agent</option>
-        <option value="finance">Finance Agent</option>
-        <option value="operations">Operations Agent</option>
-        <option value="strategy">Strategy Agent</option>
-        <option value="sales">Sales Agent</option>
-      </select>
-    </div>
     <div class="frow"><label class="flabel">Priority</label>
       <select class="fs" id="et-priority">
         <option value="normal">Normal</option><option value="urgent">Urgent</option><option value="low">Low</option>
@@ -2880,15 +2848,11 @@ async function loadTaskLeadDropdowns() {
 
 async function loadTasks() {
   const {data, error} = await db.from('tasks').select('*').order('created_at', {ascending:false});
-  if (error) { $('human-list').innerHTML = '<div class="empty">Error: ' + esc(error.message) + '</div>'; return; }
-  const human = (data||[]).filter(t => t.assigned_to === 'human');
-  const ai    = (data||[]).filter(t => t.assigned_to !== 'human');
-  renderTaskList('human-list', human, 'human');
-  renderTaskList('ai-list',    ai,    'ai');
-  setText('human-count', human.filter(t => !t.done).length);
-  setText('ai-count',    ai.filter(t => !t.done).length);
+  if (error) { $('task-list').innerHTML = '<div class="empty">Error: ' + esc(error.message) + '</div>'; return; }
+  renderTaskList('task-list', data||[]);
+  setText('task-count', (data||[]).filter(t => !t.done).length);
 }
-function renderTaskList(id, list, type) {
+function renderTaskList(id, list) {
   const el = $(id);
   if (!list.length) { el.innerHTML = '<div style="padding:8px 0;font-size:11px;color:var(--ink3);font-family:var(--mono)">No tasks.</div>'; return; }
   list.forEach(t => _taskMap.set(String(t.id), t));
@@ -2898,8 +2862,7 @@ function renderTaskList(id, list, type) {
       <div class="task-body" data-task-id="${t.id}" style="cursor:pointer">
         <div class="task-title">${esc(t.title)}</div>
         <div class="task-meta">
-          <span class="tag ${t.priority==='urgent'?'tag-urgent':t.priority==='low'?'tag-low':type==='ai'?'tag-ai':'tag-normal'}">${esc(t.priority || type)}</span>
-          ${t.assigned_to && t.assigned_to !== 'human' ? `<span class="tag tag-ai" style="opacity:.5">${esc(t.assigned_to)}</span>` : ''}
+          <span class="tag ${t.priority==='urgent'?'tag-urgent':t.priority==='low'?'tag-low':'tag-normal'}">${esc(t.priority || 'normal')}</span>
           ${t.linked_name ? `<span class="tag" style="background:rgba(245,166,35,.07);color:var(--amb);border:1px solid rgba(245,166,35,.2);max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${esc(t.linked_name)}">⇢ ${esc(t.linked_name.replace(/^\[.*?\]\s*/,''))}</span>` : ''}
         </div>
       </div>
@@ -2912,7 +2875,7 @@ function renderTaskList(id, list, type) {
   });
 }
 function openEditTask(t) {
-  setVal('et-id',t.id);setVal('et-title',t.title);setVal('et-assignee',t.assigned_to);
+  setVal('et-id',t.id);setVal('et-title',t.title);
   setVal('et-priority',t.priority);setVal('et-notes',t.notes);
   setVal('et-linked-lead',t.linked_ref||'');
   openModal('m-edit-task');
@@ -2921,7 +2884,7 @@ async function updateTask() {
   const id = $('et-id').value;
   const linkedRef=$('et-linked-lead').value||null;
   const linkedName=$('et-linked-lead').options[$('et-linked-lead').selectedIndex]?.text||null;
-  const d = {title:$('et-title').value.trim(),assigned_to:$('et-assignee').value,priority:$('et-priority').value,notes:$('et-notes').value,linked_ref:linkedRef,linked_name:linkedRef?linkedName:null,updated_at:now()};
+  const d = {title:$('et-title').value.trim(),priority:$('et-priority').value,notes:$('et-notes').value,linked_ref:linkedRef,linked_name:linkedRef?linkedName:null,updated_at:now()};
   if (!d.title) { toast('Title required',true); return; }
   const {error} = await db.from('tasks').update(d).eq('id',id);
   if (error) { toast('Error: '+error.message,true); return; }
@@ -2939,19 +2902,19 @@ async function toggleTask(id, currentDone) {
   if (error) { toast('Error: '+error.message,true); return; }
   loadTasks();
 }
-async function quickAdd(type) {
-  const inp = $('q-'+type), title = inp.value.trim();
+async function quickAdd() {
+  const inp = $('q-task'), title = inp.value.trim();
   if (!title) return;
-  const {error} = await db.from('tasks').insert([{title,assigned_to:type==='human'?'human':type,priority:type==='ai'?'ai':'normal',done:false,created_at:now()}]);
+  const {error} = await db.from('tasks').insert([{title,priority:'normal',done:false,created_at:now()}]);
   if (error) { toast('DB error: '+error.message,true); return; }
   inp.value=''; loadTasks();
 }
 async function addTask() {
-  const title=$('t-title').value.trim(),assignee=$('t-assignee').value,priority=$('t-priority').value,notes=$('t-notes').value;
+  const title=$('t-title').value.trim(),priority=$('t-priority').value,notes=$('t-notes').value;
   const linkedRef=$('t-linked-lead').value||null;
   const linkedName=linkedRef?$('t-linked-lead').options[$('t-linked-lead').selectedIndex]?.text:null;
   if (!title) { toast('Title required',true); return; }
-  const {error} = await db.from('tasks').insert([{title,assigned_to:assignee,priority:assignee!=='human'?'ai':priority,notes,linked_ref:linkedRef,linked_name:linkedRef?linkedName:null,done:false,created_at:now()}]);
+  const {error} = await db.from('tasks').insert([{title,priority,notes,linked_ref:linkedRef,linked_name:linkedRef?linkedName:null,done:false,created_at:now()}]);
   if (error) { toast('DB error: '+error.message,true); return; }
   $('t-title').value=''; $('t-notes').value=''; if($('t-linked-lead'))$('t-linked-lead').value='';
   closeModal('m-task'); loadTasks(); toast('Task created ✓');
