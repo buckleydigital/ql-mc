@@ -2114,6 +2114,9 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Niche</label>
       <select class="fs" id="tl-niche" onchange="toggleTestLeadFields()">
         <option value="solar">Solar</option>
+        <option value="roofing">Roofing</option>
+        <option value="hvac">HVAC</option>
+        <option value="renovations">Renovations</option>
       </select>
     </div>
     <div class="frow"><label class="flabel">Full Name</label><input class="fi" id="tl-name" value="Jane Test"></div>
@@ -2499,15 +2502,18 @@ async function loadAll() {
 async function populateTestLeadNiches() {
   const sel = $('tl-niche');
   if (!sel) return;
+  // Default niches shown when DB has no data yet
+  const defaultNiches = ['solar', 'roofing', 'hvac', 'renovations'];
   try {
     // ppl_leads is the dedicated distribution-leads table — no filter needed.
     const { data } = await db.from('ppl_leads')
-      .select('niche')
+      .select('lead_type')
+      .not('lead_type', 'is', null)
       .limit(500);
-    const niches = [...new Set((data||[]).map(r => r.niche).filter(Boolean))].sort();
+    const dbNiches = [...new Set((data||[]).map(r => r.lead_type).filter(Boolean))];
+    // Merge DB niches with defaults; DB values take precedence, defaults fill gaps
+    const allNiches = [...new Set([...dbNiches, ...defaultNiches])].sort();
     const cur = sel.value;
-    const allNiches = niches.length ? niches : [];
-    if (!allNiches.length) return;
     sel.innerHTML = allNiches.map(n => `<option value="${esc(n)}"${n===cur?' selected':''}>${esc(n.charAt(0).toUpperCase()+n.slice(1))}</option>`).join('');
   } catch(e) { /* keep existing options */ }
 }
