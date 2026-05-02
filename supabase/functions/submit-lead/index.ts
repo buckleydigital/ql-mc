@@ -272,24 +272,11 @@ Deno.serve(async (req: Request) => {
 
       // Forward to QuoteLeads HQ if the client has a platform account and bearer token
       if (matchedClient.has_quoteleads_platform_account && matchedClient.hq_bearer_token) {
-        const hqPayload: Record<string, unknown> = {
-          name,
-          email,
-          phone: normalisedPhone,
-          postcode,
-          lead_type,
-          source,
-          custom_fields,
-        };
-        fetch("https://api.quoteleadshq.com/v1/leads", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${matchedClient.hq_bearer_token}`,
-          },
-          body: JSON.stringify(hqPayload),
-        }).catch((err: Error) => {
-          console.error(`quoteleadshq forward failed for client ${matchedClient!.id} (${matchedClient!.company_name}):`, err.message);
+        forwardToQuoteLeadsHQ(
+          { id: inserted.id, name, email, phone: normalisedPhone, postcode, lead_type, source, custom_fields },
+          matchedClient,
+        ).catch((err: Error) => {
+          console.error("forwardToQuoteLeadsHQ unhandled error:", err.message);
         });
       }
     }
@@ -313,6 +300,87 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  retries = 2,
+  delayMs = 500,
+): Promise<Response> {
+  let lastRes: Response | null = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, delayMs * attempt));
+    }
+    const res = await fetch(url, options); // throws on network error
+    if (res.ok) return res;
+    lastRes = res;
+  }
+  if (!lastRes) throw new Error("fetchWithRetry: no response obtained");
+  return lastRes;
+}
+
+async function forwardToQuoteLeadsHQ(
+  lead: Record<string, unknown>,
+  client: { id: string; company_name: string; hq_bearer_token: string | null | undefined },
+): Promise<void> {
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
+  const hqPayload: Record<string, unknown> = {
+    name: lead.name,
+    email: lead.email,
+    phone: lead.phone,
+    postcode: lead.postcode,
+    lead_type: lead.lead_type,
+    source: lead.source,
+    custom_fields: lead.custom_fields,
+  };
+
+  let status: "delivered" | "failed" = "failed";
+  let responseCode: number | null = null;
+  let responseBody = "";
+
+  try {
+    const res = await fetchWithRetry(
+      "https://api.quoteleadshq.com/v1/leads",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${client.hq_bearer_token}`,
+        },
+        body: JSON.stringify(hqPayload),
+      },
+    );
+    responseCode = res.status;
+    responseBody = await res.text().catch((e: Error) => e.message);
+    responseBody = responseBody.slice(0, 500);
+    status = res.ok ? "delivered" : "failed";
+  } catch (err) {
+    responseBody = err instanceof Error ? err.message : String(err);
+  }
+
+  const { error: logError } = await supabase.from("lead_delivery_log").insert([{
+    lead_id: lead.id,
+    client_id: client.id,
+    method: "quoteleads_hq",
+    destination: "api.quoteleadshq.com",
+    status,
+    response_code: responseCode,
+    response_body: responseBody,
+    delivered_at: status === "delivered" ? new Date().toISOString() : null,
+  }]);
+  if (logError) {
+    console.error(`forwardToQuoteLeadsHQ: failed to write delivery log for lead_id=${lead.id}:`, logError.message);
+  }
+
+  if (status === "failed") {
+    console.error(`forwardToQuoteLeadsHQ failed: lead_id=${lead.id} client_id=${client.id} response_body=${responseBody}`);
+  }
+}
 
 function getWeekStart(): string {
   const now = new Date();
