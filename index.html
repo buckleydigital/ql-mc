@@ -6584,6 +6584,13 @@ async function startJarvisCall() {
     $('j-call-btn').style.cursor = 'pointer';
     return;
   }
+  if (!customLlmUrl) {
+    toast('JARVIS LLM not configured. Deploy the vapi-llm edge function and ensure SUPABASE_URL is set.', true);
+    setJarvisStatus('DEPLOY VAPI-LLM EDGE FUNCTION', 'grey');
+    setText('j-call-label', 'START SESSION');
+    $('j-call-btn').style.cursor = 'pointer';
+    return;
+  }
 
   // Destroy any existing VAPI instance before creating a new one.
   // Daily.co (VAPI's WebRTC layer) only allows one iframe at a time, so
