@@ -781,7 +781,7 @@ footer .footer-bottom{color:rgba(255,255,255,0.3)}
             <div class="disq-icon">👋</div>
             <div class="disq-msg-title">No Problem — Pass This Along</div>
             <p style="font-size:0.82rem;color:var(--muted);line-height:1.65;margin-bottom:8px">Our free commercial assessment is best completed by the person who can approve the decision. Forward this page to your owner or decision maker — it only takes 60 seconds.</p>
-            <div class="disq-box">💡 <strong style="color:var(--cyan)">Tip:</strong> Share this URL with your business owner or CFO — they can complete the assessment and our team will call them directly within 15 minutes.</div>
+            <div class="disq-box">💡 <strong style="color:var(--cyan)">Tip:</strong> Share this URL with your business owner or CFO — they can complete the assessment and our team will call them shortly during business hours.</div>
           </div>
         </div>
 
@@ -856,7 +856,7 @@ footer .footer-bottom{color:rgba(255,255,255,0.3)}
 
           <div class="match-notice">
             <span class="mn-icon">🎯</span>
-            <p id="match-notice-p">Our team will call you within <strong>15 minutes</strong> to book your free commercial solar site assessment. Zero pressure — just clear numbers for your business.</p>
+            <p id="match-notice-p">Our team will call you shortly during business hours to book your free commercial solar site assessment. Zero pressure — just clear numbers for your business.</p>
           </div>
 
           <div class="field-row">
@@ -1261,9 +1261,9 @@ function goToContactStep() {
   var noticePara = document.getElementById('match-notice-p');
   if (noticePara) {
     if (buyerName) {
-      noticePara.innerHTML = '<strong>' + buyerName + '</strong> will call you within <strong>15 minutes</strong> to book your free commercial solar site assessment. Zero pressure — just clear numbers for your business.';
+      noticePara.innerHTML = '<strong>' + buyerName + '</strong> will call you shortly during business hours to book your free commercial solar site assessment. Zero pressure — just clear numbers for your business.';
     } else {
-      noticePara.innerHTML = 'Our team will call you within <strong>15 minutes</strong> to book your free commercial solar site assessment. Zero pressure — just clear numbers for your business.';
+      noticePara.innerHTML = 'Our team will call you shortly during business hours to book your free commercial solar site assessment. Zero pressure — just clear numbers for your business.';
     }
   }
   goToStep(2, 3);
@@ -1375,7 +1375,7 @@ window.submitForm = async function() {
     successEl.innerHTML = [
       '<div style="font-size:3.2rem;margin-bottom:16px">⚡</div>',
       '<h3 style="font-family:Outfit,sans-serif;font-weight:900;font-size:1.3rem;color:var(--white);letter-spacing:-0.03em;margin-bottom:10px">Assessment booked. We\'ll call you shortly.</h3>',
-      '<p style="font-size:0.84rem;color:var(--muted);line-height:1.65;max-width:340px;margin:0 auto 22px">A commercial solar specialist will call you within <strong style="color:var(--white)">15 minutes</strong> to discuss your business and book your free site assessment.</p>',
+      '<p style="font-size:0.84rem;color:var(--muted);line-height:1.65;max-width:340px;margin:0 auto 22px">A commercial solar specialist will call you shortly during business hours to discuss your business and book your free site assessment.</p>',
       '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">',
       '<span style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);border-radius:50px;padding:6px 14px;font-size:0.73rem;font-weight:700;color:var(--cyan)">✓ CEC Accredited</span>',
       '<span style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);border-radius:50px;padding:6px 14px;font-size:0.73rem;font-weight:700;color:var(--cyan)">✓ Zero Obligation</span>',
