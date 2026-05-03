@@ -714,8 +714,17 @@ td strong{font-weight:500}
     <div class="live-pill"><div class="ldot"></div>LIVE</div>
     <span id="clock"></span>
     <span class="uname-chip" id="uname"></span>
+    <button class="ibtn" id="alert-tray-btn" onclick="toggleAlertTray()" title="Alerts" style="position:relative">🔔<span id="alert-tray-badge" style="display:none;position:absolute;top:-2px;right:-2px;background:var(--red);color:#fff;border-radius:8px;font-size:8px;padding:0 4px;font-family:var(--mono);font-weight:700;line-height:1.6">0</span></button>
     <button class="ibtn" id="theme-btn" onclick="toggleTheme()" title="Toggle theme">◐</button>
     <button class="ibtn" onclick="doLogout()" title="Sign out">⎋</button>
+  </div>
+  <!-- Alert Tray Dropdown -->
+  <div id="alert-tray" style="display:none;position:fixed;top:42px;right:10px;width:340px;max-height:420px;overflow-y:auto;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r);box-shadow:0 8px 28px rgba(0,0,0,.35);z-index:9999;padding:12px 14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:600;color:var(--ink2);text-transform:uppercase;letter-spacing:.1em">Alert Tray</div>
+      <button class="btn btn-xs" onclick="toggleAlertTray()">✕</button>
+    </div>
+    <div id="alert-tray-body"><div style="color:var(--ink3);font-size:12px">Loading alerts…</div></div>
   </div>
 
   <div class="layout">
@@ -740,6 +749,9 @@ td strong{font-weight:500}
           <span class="sb-group-label">Workspace</span>
           <button class="navbtn active" data-panel="tasks" onclick="nav('tasks',this)">
             <span class="ni">✦</span>Tasks
+          </button>
+          <button class="navbtn" data-panel="overview" onclick="nav('overview',this)">
+            <span class="ni">⊕</span>Command Center<span id="alert-nav-badge" style="display:none;background:var(--red);color:#fff;border-radius:10px;font-size:9px;padding:1px 6px;margin-left:5px;font-family:var(--mono);font-weight:700;line-height:1.5">0</span>
           </button>
         </div>
 
@@ -814,6 +826,42 @@ td strong{font-weight:500}
 
     <!-- CONTENT -->
     <div class="content">
+
+      <!-- ══ COMMAND CENTER OVERVIEW ══ -->
+      <div class="panel" id="panel-overview">
+        <div class="ph">
+          <div class="ph-left"><h1>Command Center</h1><p>Cross-panel critical numbers at a glance</p></div>
+          <div class="ph-right"><button class="btn btn-sm" onclick="loadOverview()">↻ Refresh</button></div>
+        </div>
+        <!-- Alert Tray -->
+        <div id="overview-alerts" style="margin-bottom:16px"></div>
+        <div class="sl">Revenue &amp; Run Rate <div class="sl-line"></div></div>
+        <div class="kg c3 mb4">
+          <div class="kpi"><div class="klabel">MRR</div><div class="kval blu" id="ov-mrr">—</div><div class="ksub">managed retainers + PPL run-rate</div></div>
+          <div class="kpi"><div class="klabel">ARR</div><div class="kval blu" id="ov-arr">—</div><div class="ksub">MRR × 12</div></div>
+          <div class="kpi"><div class="klabel">MTD Revenue</div><div class="kval grn" id="ov-mtd-rev">—</div><div class="ksub" id="ov-mtd-sub"></div></div>
+        </div>
+        <div class="sl">Clients <div class="sl-line"></div></div>
+        <div class="kg c4 mb4">
+          <div class="kpi"><div class="klabel">PPL Active</div><div class="kval blu" id="ov-ppl-active">—</div><div class="ksub">PPL clients</div></div>
+          <div class="kpi"><div class="klabel">Managed Active</div><div class="kval grn" id="ov-mg-active">—</div><div class="ksub">managed clients</div></div>
+          <div class="kpi"><div class="klabel">Overdue Payments</div><div class="kval red" id="ov-overdue-payments">—</div><div class="ksub">managed retainer</div></div>
+          <div class="kpi"><div class="klabel">PPL Reorder Due</div><div class="kval amb" id="ov-reorder-due">—</div><div class="ksub">≥75% delivered</div></div>
+        </div>
+        <div class="sl">Lead SLA <div class="sl-line"></div></div>
+        <div class="kg c3 mb4">
+          <div class="kpi"><div class="klabel">Overdue SLA Orders</div><div class="kval red" id="ov-sla-overdue">—</div><div class="ksub">in-progress past due date</div></div>
+          <div class="kpi"><div class="klabel">Active Orders</div><div class="kval" id="ov-orders-active">—</div><div class="ksub">in progress</div></div>
+          <div class="kpi"><div class="klabel">Due This Week</div><div class="kval amb" id="ov-sla-week">—</div><div class="ksub">SLA due in 7 days</div></div>
+        </div>
+        <div class="sl">Goals &amp; Pipeline <div class="sl-line"></div></div>
+        <div class="kg c3 mb4">
+          <div class="kpi"><div class="klabel">YTD Goal Progress</div><div class="kval" id="ov-ytd-goal-pct">—</div><div class="ksub" id="ov-ytd-goal-sub"></div></div>
+          <div class="kpi"><div class="klabel">CRM Follow-ups</div><div class="kval amb" id="ov-followups">—</div><div class="ksub">leads needing action</div></div>
+          <div class="kpi"><div class="klabel">Pending Leads</div><div class="kval" id="ov-pending-leads">—</div><div class="ksub">lead distribution queue</div></div>
+        </div>
+        <div id="ov-overdue-sla-list" style="margin-top:8px"></div>
+      </div>
 
       <!-- ══ TASKS ══ -->
       <div class="panel active" id="panel-tasks">
@@ -1172,11 +1220,17 @@ td strong{font-weight:500}
           </div>
         </div>
         <div class="kg c4 mb4">
-          <div class="kpi"><div class="klabel">Total Revenue</div><div class="kval blu" id="fin-rev">—</div></div>
-          <div class="kpi"><div class="klabel">Total Expenses</div><div class="kval red" id="fin-exp">—</div></div>
+          <div class="kpi"><div class="klabel">Total Revenue</div><div class="kval blu" id="fin-rev">—</div><div class="ksub" id="fin-rev-trend"></div></div>
+          <div class="kpi"><div class="klabel">Total Expenses</div><div class="kval red" id="fin-exp">—</div><div class="ksub" id="fin-exp-trend"></div></div>
           <div class="kpi"><div class="klabel">Net Profit</div><div class="kval" id="fin-profit">—</div><div class="ksub" id="fin-margin"></div></div>
           <div class="kpi"><div class="klabel">After GST (10%)</div><div class="kval" id="fin-profit-gst">—</div><div class="ksub" id="fin-gst-detail"></div></div>
           <div class="kpi"><div class="klabel">Monthly Subscriptions</div><div class="kval" id="fin-subs">—</div><div class="ksub">from DB only</div></div>
+        </div>
+        <div class="sl">Run Rate &amp; Recurring Revenue <div class="sl-line"></div></div>
+        <div class="kg c3 mb4">
+          <div class="kpi"><div class="klabel">MRR</div><div class="kval blu" id="fin-mrr">—</div><div class="ksub">managed retainers + PPL run-rate</div></div>
+          <div class="kpi"><div class="klabel">ARR</div><div class="kval blu" id="fin-arr">—</div><div class="ksub">MRR × 12</div></div>
+          <div class="kpi"><div class="klabel">Monthly Run Rate</div><div class="kval" id="fin-run-rate">—</div><div class="ksub" id="fin-run-rate-sub"></div></div>
         </div>
         <div class="sl">Ad Spend <div class="sl-line"></div></div>
         <div class="kg c3 mb4">
@@ -1229,11 +1283,12 @@ td strong{font-weight:500}
           <div class="kpi"><div class="klabel">YTD Revenue</div><div class="kval blu" id="goal-ytd-rev">—</div><div class="ksub" id="goal-ytd-rev-sub"></div></div>
           <div class="kpi"><div class="klabel">YTD Avg Margin</div><div class="kval" id="goal-ytd-margin">—</div><div class="ksub" id="goal-ytd-margin-sub"></div></div>
           <div class="kpi"><div class="klabel">YTD Net Profit</div><div class="kval grn" id="goal-ytd-profit">—</div><div class="ksub" id="goal-ytd-profit-sub"></div></div>
+          <div class="kpi"><div class="klabel">YoY Revenue Growth</div><div class="kval" id="goal-yoy-rev">—</div><div class="ksub" id="goal-yoy-rev-sub"></div></div>
         </div>
         <div class="sl">Monthly Goals vs Actuals <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Month</th><th>Rev Goal</th><th>Rev Actual</th><th>Rev %</th><th>Margin Goal %</th><th>Margin Actual %</th><th>Net Profit</th><th>Notes</th><th></th></tr></thead>
+            <thead><tr><th>Month</th><th>Rev Goal</th><th>Rev Actual</th><th>Rev %</th><th>YoY Rev</th><th>Margin Goal %</th><th>Margin Actual %</th><th>Net Profit</th><th>Notes</th><th></th></tr></thead>
             <tbody id="goal-tbody"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
@@ -1385,6 +1440,7 @@ td strong{font-weight:500}
 
   <div class="bnav" style="flex-wrap:wrap;height:auto;padding:4px 2px;">
     <button class="bnbtn active" data-panel="tasks" onclick="nav('tasks',this)"><span class="bnbtn-icon">✦</span><span class="bnbtn-lbl">Tasks</span></button>
+    <button class="bnbtn" data-panel="overview" onclick="nav('overview',this)"><span class="bnbtn-icon">⊕</span><span class="bnbtn-lbl">Overview</span></button>
     <button class="bnbtn" data-panel="crm" onclick="nav('crm',this)"><span class="bnbtn-icon">◎</span><span class="bnbtn-lbl">Sales</span></button>
     <button class="bnbtn" data-panel="ppl" onclick="nav('ppl',this)"><span class="bnbtn-icon">◈</span><span class="bnbtn-lbl">PPL</span></button>
     <button class="bnbtn" data-panel="managed" onclick="nav('managed',this)"><span class="bnbtn-icon">▣</span><span class="bnbtn-lbl">Managed</span></button>
@@ -1783,6 +1839,8 @@ td strong{font-weight:500}
         <input class="fi" type="number" id="ep-ord-price" placeholder="$/lead" style="flex:1;min-width:80px">
         <input class="fi" type="number" id="ep-ord-meta-cpl" placeholder="Meta CPL ($)" style="flex:1;min-width:90px">
         <input class="fi" type="date" id="ep-ord-date" style="flex:1;min-width:120px">
+        <input class="fi" type="date" id="ep-ord-purchase-date" title="Purchase Date" style="flex:1;min-width:120px" placeholder="Purchase date">
+        <input class="fi" type="date" id="ep-ord-sla-due" title="SLA Due Date" style="flex:1;min-width:120px" placeholder="SLA due date">
         <select class="fi" id="ep-ord-status" style="flex:1;min-width:120px">
           <option value="in_progress">In Progress</option>
           <option value="delivered">Delivered</option>
@@ -1817,6 +1875,8 @@ td strong{font-weight:500}
         <option value="delivered">Delivered</option>
       </select>
     </div>
+    <div class="frow"><label class="flabel">Purchase Date</label><input class="fi" id="epo-purchase-date" type="date"></div>
+    <div class="frow"><label class="flabel">SLA Due Date <span style="font-size:9.5px;color:var(--ink3);font-weight:300">deadline to deliver all leads</span></label><input class="fi" id="epo-sla-due" type="date"></div>
     <div class="frow"><label class="flabel">Notes</label><input class="fi" id="epo-notes" type="text" placeholder="Optional"></div>
     <div class="macts">
       <button class="btn" onclick="closeModal('m-edit-ppl-order')">Cancel</button>
@@ -2260,6 +2320,7 @@ function nav(panel, el) {
   if (panel === 'leads') loadLeads();
   if (panel === 'invoices') loadInvoices();
   if (panel === 'goals') loadGoals();
+  if (panel === 'overview') loadOverview();
 }
 
 function updateClock() {
@@ -2275,6 +2336,7 @@ async function loadAll() {
   loadTaskLeadDropdowns();
   loadFileContent();
   populateMapClientDropdown();
+  loadAlerts();
 }
 
 async function populateTestLeadNiches() {
@@ -3253,6 +3315,7 @@ async function logRetainerPayment(clientId) {
 
 function renderOrderLogTable(data, clientId) {
   if (!data.length) return '<div style="color:var(--ink3);padding:4px 0">No orders logged yet.</div>';
+  const today = new Date().toISOString().split('T')[0];
   return `<table style="width:100%;border-collapse:collapse">
     <thead><tr style="font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em">
       <th style="text-align:left;padding:3px 6px;font-weight:500">Date</th>
@@ -3261,6 +3324,7 @@ function renderOrderLogTable(data, clientId) {
       <th style="text-align:left;padding:3px 6px;font-weight:500">% Sold</th>
       <th style="text-align:left;padding:3px 6px;font-weight:500">$/Lead</th>
       <th style="text-align:left;padding:3px 6px;font-weight:500">Meta CPL</th>
+      <th style="text-align:left;padding:3px 6px;font-weight:500">SLA Due</th>
       <th style="text-align:left;padding:3px 6px;font-weight:500">Status</th>
       <th style="text-align:left;padding:3px 6px;font-weight:500">Notes</th>
       <th></th>
@@ -3272,13 +3336,19 @@ function renderOrderLogTable(data, clientId) {
         ? `<span style="font-family:var(--mono);font-size:9px;color:var(--grn);background:rgba(46,204,138,.1);padding:1px 6px;border-radius:3px">Delivered</span>`
         : `<span style="font-family:var(--mono);font-size:9px;color:var(--amb);background:rgba(245,166,35,.1);padding:1px 6px;border-radius:3px">In Progress</span>`;
       const action = delivered ? '' : `<button class="btn btn-xs" onclick="markOrderDelivered('${esc(o.id)}','${esc(clientId||o.client_id)}')">Mark Delivered</button>`;
-      return `<tr style="border-top:1px solid var(--bd)">
+      const slaOverdue = !delivered && o.sla_due_date && o.sla_due_date < today;
+      const slaBadge = !o.sla_due_date ? '—'
+        : delivered ? `<span style="font-family:var(--mono);font-size:9px;color:var(--ink3)">${o.sla_due_date}</span>`
+        : slaOverdue ? `<span style="font-family:var(--mono);font-size:9px;color:var(--red);font-weight:600">⚠ ${o.sla_due_date}</span>`
+        : `<span style="font-family:var(--mono);font-size:9px;color:var(--grn)">${o.sla_due_date}</span>`;
+      return `<tr style="border-top:1px solid var(--bd)${slaOverdue?' background:rgba(255,69,96,.04)':''}">
         <td style="padding:4px 6px;color:var(--ink2)">${o.order_date||'—'}</td>
         <td style="padding:4px 6px;font-weight:600;color:var(--ink)">${o.leads_qty}</td>
         <td style="padding:4px 6px;color:var(--ink2)">${o.leads_generated||'—'}</td>
         <td style="padding:4px 6px;color:${delivered?'var(--acc)':'var(--ink3)'}">${pct}</td>
         <td style="padding:4px 6px;color:var(--grn)">${o.lead_price?'$'+Number(o.lead_price).toFixed(0):'—'}</td>
         <td style="padding:4px 6px;color:var(--ink3);font-family:var(--mono)">${o.meta_cpl?'$'+Number(o.meta_cpl).toFixed(2):'—'}</td>
+        <td style="padding:4px 6px">${slaBadge}</td>
         <td style="padding:4px 6px">${statusBadge}</td>
         <td style="padding:4px 6px;color:var(--ink3)">${esc(o.notes||'—')}</td>
         <td style="padding:4px 6px;display:flex;gap:4px">${action}<button class="btn btn-xs" onclick="editPplOrder('${esc(o.id)}','${esc(clientId||o.client_id)}')">Edit</button><button class="btn btn-xs btn-red" onclick="deletePplOrder('${esc(o.id)}','${esc(clientId||o.client_id)}')">✕</button></td>
@@ -3312,6 +3382,8 @@ async function editPplOrder(orderId, clientId) {
   setVal('epo-meta-cpl',data.meta_cpl||'');
   setVal('epo-status',data.status||'in_progress');
   setVal('epo-notes',data.notes||'');
+  setVal('epo-purchase-date',data.purchase_date||'');
+  setVal('epo-sla-due',data.sla_due_date||'');
   openModal('m-edit-ppl-order');
 }
 async function updatePplOrder() {
@@ -3328,6 +3400,10 @@ async function updatePplOrder() {
   const upd={leads_qty:qty,lead_price:price,status,notes,order_date:date};
   if (gen!==null) upd.leads_generated=gen; else upd.leads_generated=null;
   if (metaCpl!==null) upd.meta_cpl=metaCpl; else upd.meta_cpl=null;
+  const purchaseDate=$('epo-purchase-date').value||null;
+  const slaDue=$('epo-sla-due').value||null;
+  upd.purchase_date=purchaseDate;
+  upd.sla_due_date=slaDue;
   const {error}=await db.from('ppl_order_log').update(upd).eq('id',orderId);
   if (error) { toast('Error: '+error.message,true); return; }
   await recalcPplClient(clientId);
@@ -3394,12 +3470,16 @@ async function logPplOrder() {
   const price=parseFloat($('ep-ord-price').value)||0;
   const metaCpl=parseFloat($('ep-ord-meta-cpl').value)||null;
   const date=$('ep-ord-date').value||new Date().toISOString().split('T')[0];
+  const purchaseDate=$('ep-ord-purchase-date').value||null;
+  const slaDue=$('ep-ord-sla-due').value||null;
   const status=$('ep-ord-status').value||'in_progress';
   const notes=$('ep-ord-notes').value.trim();
   if (!qty) { toast('Enter lead quantity',true); return; }
   const row={client_id:clientId,leads_qty:qty,lead_price:price,notes,order_date:date,status,created_at:now()};
   if (gen) row.leads_generated=gen;
   if (metaCpl) row.meta_cpl=metaCpl;
+  if (purchaseDate) row.purchase_date=purchaseDate;
+  if (slaDue) row.sla_due_date=slaDue;
   const {error:insErr}=await db.from('ppl_order_log').insert([row]);
   if (insErr) { toast('Error: '+insErr.message,true); return; }
   const {count}=await db.from('ppl_order_log').select('id',{count:'exact',head:true}).eq('client_id',clientId);
@@ -3408,7 +3488,7 @@ async function logPplOrder() {
   await db.from('clients').update({total_leads_purchased:newTotal,has_reordered:(count||0)>=2,updated_at:now()}).eq('id',clientId);
   if (status==='delivered'&&gen) await recalcPplClient(clientId);
   toast('Order logged ✓');
-  $('ep-ord-qty').value='';$('ep-ord-gen').value='';$('ep-ord-meta-cpl').value='';$('ep-ord-notes').value='';$('ep-ord-status').value='in_progress';
+  $('ep-ord-qty').value='';$('ep-ord-gen').value='';$('ep-ord-meta-cpl').value='';$('ep-ord-notes').value='';$('ep-ord-status').value='in_progress';$('ep-ord-purchase-date').value='';$('ep-ord-sla-due').value='';
   loadPplOrderLog(clientId);
   loadPPL();
 }
@@ -4094,6 +4174,17 @@ async function loadFinance() {
   const ytdYear = isYtd ? val.split('-')[1] : null;
   const from = isYtd ? `${ytdYear}-01-01` : `${val}-01`;
   const next = isYtd ? today : nextMonthStart(val);
+  // Prior period for trend arrows
+  let priorFrom, priorNext;
+  if (isYtd) {
+    priorFrom = `${+ytdYear-1}-01-01`;
+    priorNext = `${+ytdYear}-01-01`;
+  } else {
+    const [py,pm]=val.split('-').map(Number);
+    const pd = new Date(py,pm-2,1); // one month back
+    priorFrom = `${pd.getFullYear()}-${String(pd.getMonth()+1).padStart(2,'0')}-01`;
+    priorNext = from;
+  }
   // Build campaign_spend_log period filter: single month or full YTD range (capped at current month)
   const curPeriod = new Date().toISOString().slice(0,7); // YYYY-MM
   let spendLogQ = db.from('campaign_spend_log').select('id,campaign_name,period,spend,leads,source,notes');
@@ -4102,6 +4193,14 @@ async function loadFinance() {
   } else {
     spendLogQ = spendLogQ.eq('period', val);
   }
+  // Prior period spend log
+  let priorSpendLogQ = db.from('campaign_spend_log').select('spend');
+  if (isYtd) {
+    priorSpendLogQ = priorSpendLogQ.gte('period',`${+ytdYear-1}-01`).lte('period',`${+ytdYear-1}-12`);
+  } else {
+    const priorPeriod = `${priorFrom.slice(0,7)}`;
+    priorSpendLogQ = priorSpendLogQ.eq('period', priorPeriod);
+  }
   // For monthly view: also fetch the latest agency row before the period starts so we can
   // compute a delta. Each row in ad_spend_daily stores the exact cumulative YTD spend at
   // that point in time, so the actual spend for a month = (latest row in period) − (latest
@@ -4109,7 +4208,7 @@ async function loadFinance() {
   const priorAgQ = isYtd
     ? Promise.resolve({data:[]})
     : db.from('ad_spend_daily').select('spend').eq('account_type','agency').lt('date',from).order('date',{ascending:false}).limit(1);
-  const [expR,spR,subR,pplR,mgR,mgOrdR,pplOrdR,spendLogR,priorAgR]=await Promise.all([
+  const [expR,spR,subR,pplR,mgR,mgOrdR,pplOrdR,spendLogR,priorAgR,priorExpR,priorMgOrdR,priorPplOrdR,priorSpendR]=await Promise.all([
     db.from('expenses').select('*').gte('date',from).lte('date',next),
     db.from('ad_spend_daily').select('date,account_type,spend,leads').gte('date',from).lt('date',next).order('date',{ascending:false}),
     db.from('subscriptions').select('*').order('created_at'),
@@ -4119,13 +4218,32 @@ async function loadFinance() {
     db.from('ppl_order_log').select('leads_qty,lead_price,order_date').gte('order_date',from).lte('order_date',next),
     spendLogQ,
     priorAgQ,
+    db.from('expenses').select('amount').gte('date',priorFrom).lte('date',priorNext),
+    db.from('managed_order_log').select('amount').gte('order_date',priorFrom).lte('order_date',priorNext),
+    db.from('ppl_order_log').select('leads_qty,lead_price').gte('order_date',priorFrom).lte('order_date',priorNext),
+    priorSpendLogQ,
   ]);
   const latestAgSpend = (spR.data||[]).find(a=>a.account_type==='agency')?.spend || 0;
   const priorAgSpend  = priorAgR.data?.[0]?.spend || 0;
   const agSp = isYtd ? latestAgSpend : Math.max(0, latestAgSpend - priorAgSpend);
-  renderFinance(expR.data||[],spR.data||[],subR.data||[],pplR.data||[],mgR.data||[],mgOrdR.data||[],pplOrdR.data||[],from,next,spendLogR.data||[],agSp);
+  // Compute prior period totals for trend arrows
+  const priorPplRev = (priorPplOrdR.data||[]).reduce((s,o)=>s+((o.leads_qty||0)*(o.lead_price||0)),0);
+  const priorMgCustom = (priorMgOrdR.data||[]).reduce((s,o)=>s+(o.amount||0),0);
+  const priorMgRetainer = mgR.data ? (() => {
+    const pFrom=priorFrom, pNext=priorNext;
+    return (mgR.data||[]).reduce((s,c)=>{
+      let months=[];try{months=JSON.parse(c.active_months||'[]');}catch(e){}
+      const inRange=months.filter(m=>m+'-01'>=pFrom&&m+'-01'<pNext);
+      const cnt=c.active_months!=null?inRange.length:0;
+      return s+(cnt*(c.management_fee||0));
+    },0);
+  })() : 0;
+  const priorTotalRev = priorPplRev + priorMgRetainer + priorMgCustom;
+  const priorTotalExp = (priorExpR.data||[]).reduce((s,e)=>s+(e.amount||0),0)
+    + (priorSpendR.data||[]).reduce((s,e)=>s+(e.spend||0),0);
+  renderFinance(expR.data||[],spR.data||[],subR.data||[],pplR.data||[],mgR.data||[],mgOrdR.data||[],pplOrdR.data||[],from,next,spendLogR.data||[],agSp,{priorTotalRev,priorTotalExp});
 }
-function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOrders,from,next,spendLog=[],agSp=0) {
+function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOrders,from,next,spendLog=[],agSp=0,prior={}) {
   const te=expenses.reduce((s,e)=>s+(e.amount||0),0);
   const activeSubs=subs.filter(s=>s.active);
   const ts=activeSubs.length>0?activeSubs.reduce((s,sub)=>s+(sub.monthly_cost||0),0):null;
@@ -4171,6 +4289,40 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   if ($('fin-mg-rev')) setText('fin-mg-rev',mgTotalRev>0?fmt(mgTotalRev):'—');
   if ($('fin-mg-retainer')) setText('fin-mg-retainer',mgRetainerRev>0?fmt(mgRetainerRev):'—');
   if ($('fin-mg-custom')) setText('fin-mg-custom',mgCustomRev>0?fmt(mgCustomRev):'—');
+  // Trend arrows vs prior period
+  function trendArrow(cur,prev,higherIsBetter=true) {
+    if (!prev) return '';
+    const pct=((cur-prev)/Math.abs(prev)*100);
+    const up=pct>=0;
+    const good=(higherIsBetter&&up)||(!higherIsBetter&&!up);
+    const color=good?'var(--grn)':'var(--red)';
+    const arrow=up?'↑':'↓';
+    return `<span style="color:${color};font-weight:600">${arrow} ${Math.abs(pct).toFixed(1)}% vs prior</span>`;
+  }
+  if($('fin-rev-trend')) $('fin-rev-trend').innerHTML = trendArrow(tr,prior.priorTotalRev,true);
+  if($('fin-exp-trend')) $('fin-exp-trend').innerHTML = trendArrow(totalExp,prior.priorTotalExp,false);
+  // MRR / ARR / Run Rate
+  // MRR = active managed retainers + PPL avg weekly leads × avg lead price × 4.33
+  const activeMgRetainer = mgClients.filter(c=>c.stage==='active')
+    .reduce((s,c)=>s+(c.management_fee||0),0);
+  const activePplClients = pplClients.filter(c=>c.stage==='active_client');
+  const pplWeeklyLeads = activePplClients.reduce((s,c)=>{
+    const weeklyVal = (c.leads_mtd||0)/4.33;
+    return s + weeklyVal;
+  },0);
+  const avgPplPrice = activePplClients.length
+    ? activePplClients.reduce((s,c)=>s+(c.lead_price||0),0)/activePplClients.length
+    : 0;
+  const pplMrrContrib = pplWeeklyLeads * avgPplPrice * 4.33;
+  const mrr = activeMgRetainer + pplMrrContrib;
+  const arr = mrr * 12;
+  // Monthly run rate: annualise current period revenue
+  const periodDays = (new Date(next)-new Date(from))/(1000*60*60*24);
+  const runRate = periodDays > 0 ? (tr/periodDays)*30 : 0;
+  if($('fin-mrr')) setText('fin-mrr', mrr>0?fmt(mrr):'—');
+  if($('fin-arr')) setText('fin-arr', arr>0?fmt(arr):'—');
+  if($('fin-run-rate')) setText('fin-run-rate', runRate>0?fmt(runRate):'—');
+  if($('fin-run-rate-sub')) setText('fin-run-rate-sub', periodDays>0?`annualised from ${Math.round(periodDays)}d period`:'');
   const tb=$('exp-tbody');
   if (!expenses.length) { tb.innerHTML='<tr><td colspan="6" class="empty">No expenses for this period.</td></tr>'; }
   else { tb.innerHTML=expenses.map(e=>`<tr><td>${esc(e.category||'—')}</td><td>${esc(e.description||'—')}</td><td>${fmt(e.amount)}</td><td><span class="badge ${e.type==='fixed'?'bg-blu':'bg-amb'}">${e.type||'variable'}</span></td><td style="font-family:var(--mono);font-size:10px">${e.date||'—'}</td><td><button class="btn btn-xs" style="color:var(--red)" onclick="deleteExpense('${esc(String(e.id))}')">Delete</button></td></tr>`).join(''); }
@@ -4345,18 +4497,23 @@ async function deleteSpendLogEntry(id) {
 /* ═══ GOAL BOARD ═══ */
 async function loadGoals() {
   const year = $('goal-year')?.value || new Date().getFullYear();
+  const priorYear = +year - 1;
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const today = new Date();
   const curMonth = today.getFullYear() === +year ? today.getMonth() : 11;
 
-  // Load goals + actuals in parallel
-  const [goalsR, pplOrdR, mgR, mgOrdR, expR, spendLogR] = await Promise.all([
+  // Load goals + actuals in parallel (including prior year for YoY)
+  const [goalsR, pplOrdR, mgR, mgOrdR, expR, spendLogR, priorPplOrdR, priorMgOrdR, priorExpR, priorSpendLogR] = await Promise.all([
     db.from('monthly_goals').select('*').gte('month', `${year}-01`).lte('month', `${year}-12`).order('month'),
     db.from('ppl_order_log').select('leads_qty,lead_price,order_date').gte('order_date', `${year}-01-01`).lte('order_date', `${year}-12-31`),
     db.from('clients').select('id,company_name,management_fee,payments_made,stage,active_months').eq('type','managed'),
     db.from('managed_order_log').select('client_id,amount,order_date').gte('order_date', `${year}-01-01`).lte('order_date', `${year}-12-31`),
     db.from('expenses').select('amount,date').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),
     db.from('campaign_spend_log').select('period,spend').gte('period',`${year}-01`).lte('period',`${year}-12`),
+    db.from('ppl_order_log').select('leads_qty,lead_price,order_date').gte('order_date', `${priorYear}-01-01`).lte('order_date', `${priorYear}-12-31`),
+    db.from('managed_order_log').select('client_id,amount,order_date').gte('order_date', `${priorYear}-01-01`).lte('order_date', `${priorYear}-12-31`),
+    db.from('expenses').select('amount,date').gte('date', `${priorYear}-01-01`).lte('date', `${priorYear}-12-31`),
+    db.from('campaign_spend_log').select('period,spend').gte('period',`${priorYear}-01`).lte('period',`${priorYear}-12`),
   ]);
 
   const goals = goalsR.data || [];
@@ -4372,9 +4529,29 @@ async function loadGoals() {
   const spendByMonth = {};
   spendLog.forEach(e => { spendByMonth[e.period] = (spendByMonth[e.period] || 0) + (e.spend || 0); });
 
+  // Build prior-year per-month revenue map for YoY
+  const priorPplOrders = priorPplOrdR.data || [];
+  const priorMgOrders = priorMgOrdR.data || [];
+  const priorSpendLog = priorSpendLogR.data || [];
+  const priorSpendByMonth = {};
+  priorSpendLog.forEach(e => { priorSpendByMonth[e.period] = (priorSpendByMonth[e.period] || 0) + (e.spend || 0); });
+
+  function priorMonthRev(m) {
+    const key = `${priorYear}-${String(m+1).padStart(2,'0')}`;
+    const from = `${key}-01`;
+    const next = m === 11 ? `${+priorYear+1}-01-01` : `${priorYear}-${String(m+2).padStart(2,'0')}-01`;
+    const ppl = priorPplOrders.filter(o=>o.order_date>=from&&o.order_date<next).reduce((s,o)=>s+((o.leads_qty||0)*(o.lead_price||0)),0);
+    const mgRet = mgClients.reduce((s,c)=>{
+      let months=[];try{months=JSON.parse(c.active_months||'[]');}catch(e){}
+      return s+(months.filter(mo=>mo===key).length*(c.management_fee||0));
+    },0);
+    const mgCust = priorMgOrders.filter(o=>o.order_date>=from&&o.order_date<next).reduce((s,o)=>s+(o.amount||0),0);
+    return ppl + mgRet + mgCust;
+  }
+
   // Build monthly actuals
   const rows = [];
-  let ytdRev = 0, ytdExp = 0, ytdGoalRev = 0;
+  let ytdRev = 0, ytdExp = 0, ytdGoalRev = 0, ytdPriorRev = 0;
   const monthsWithGoals = [];
 
   for (let m = 0; m <= curMonth; m++) {
@@ -4412,15 +4589,17 @@ async function loadGoals() {
     const totalExp = monthExp + adSpend;
     const profit = rev - totalExp;
     const margin = rev > 0 ? (profit / rev) * 100 : 0;
+    const priorRev = priorMonthRev(m);
 
     const goal = goalMap[key] || { revenue_goal: 0, margin_goal: 0, notes: '' };
 
     ytdRev += rev;
     ytdExp += totalExp;
+    ytdPriorRev += priorRev;
     if (goal.revenue_goal > 0) ytdGoalRev += goal.revenue_goal;
     if (goal.margin_goal > 0) monthsWithGoals.push(goal.margin_goal);
 
-    rows.push({ month: key, label: monthNames[m], rev, totalExp, profit, margin, goal });
+    rows.push({ month: key, label: monthNames[m], rev, totalExp, profit, margin, goal, priorRev });
   }
 
   // YTD KPIs
@@ -4435,6 +4614,21 @@ async function loadGoals() {
   setText('goal-ytd-profit', fmt(ytdProfit));
   $('goal-ytd-profit').className = `kval ${ytdProfit >= 0 ? 'grn' : 'red'}`;
   $('goal-ytd-profit-sub').textContent = `${ytdRev > 0 ? ytdMargin.toFixed(1) : '0'}% margin`;
+  // YoY KPI
+  if ($('goal-yoy-rev')) {
+    const yoyPct = ytdPriorRev > 0 ? ((ytdRev - ytdPriorRev) / ytdPriorRev * 100) : null;
+    const yoyEl = $('goal-yoy-rev');
+    const yoySub = $('goal-yoy-rev-sub');
+    if (yoyPct !== null) {
+      yoyEl.textContent = (yoyPct >= 0 ? '↑ +' : '↓ ') + yoyPct.toFixed(1) + '%';
+      yoyEl.className = `kval ${yoyPct >= 0 ? 'grn' : 'red'}`;
+      yoySub.textContent = `vs ${priorYear} (${fmt(ytdPriorRev)})`;
+    } else {
+      yoyEl.textContent = '—';
+      yoyEl.className = 'kval';
+      yoySub.textContent = `no ${priorYear} data`;
+    }
+  }
 
   // Render table
   const tb = $('goal-tbody');
@@ -4443,11 +4637,16 @@ async function loadGoals() {
     const revPct = revPctNum !== null ? revPctNum.toFixed(0) : '—';
     const revPctColor = revPctNum === null ? 'var(--ink3)' : revPctNum >= 100 ? 'var(--grn)' : revPctNum >= 75 ? 'var(--amb)' : 'var(--red)';
     const marginColor = r.goal.margin_goal > 0 ? (r.margin >= r.goal.margin_goal ? 'var(--grn)' : r.margin >= r.goal.margin_goal * 0.75 ? 'var(--amb)' : 'var(--red)') : 'var(--ink3)';
+    const yoyNum = r.priorRev > 0 ? ((r.rev - r.priorRev) / r.priorRev * 100) : null;
+    const yoyCell = yoyNum !== null
+      ? `<span style="font-family:var(--mono);font-size:11px;font-weight:500;color:${yoyNum>=0?'var(--grn)':'var(--red)'}">${yoyNum>=0?'↑ +':'↓ '}${yoyNum.toFixed(1)}%</span>`
+      : '<span style="color:var(--ink3)">—</span>';
     return `<tr>
       <td style="font-family:var(--mono);font-size:11px;font-weight:500">${r.label}</td>
       <td><input class="fi goal-input" data-month="${r.month}" data-field="revenue_goal" type="number" value="${r.goal.revenue_goal||''}" placeholder="—" style="width:90px;font-size:11px;padding:3px 6px;text-align:right"></td>
       <td style="font-family:var(--mono);font-size:11px;font-weight:500">${fmt(r.rev)}</td>
       <td style="font-family:var(--mono);font-size:11px;font-weight:500;color:${revPctColor}">${revPct === '—' ? '—' : revPct + '%'}</td>
+      <td>${yoyCell}</td>
       <td><input class="fi goal-input" data-month="${r.month}" data-field="margin_goal" type="number" value="${r.goal.margin_goal||''}" placeholder="—" style="width:70px;font-size:11px;padding:3px 6px;text-align:right" step="1" min="0" max="100">%</td>
       <td style="font-family:var(--mono);font-size:11px;font-weight:500;color:${marginColor}">${r.margin.toFixed(1)}%</td>
       <td style="font-family:var(--mono);font-size:11px;font-weight:500;color:${r.profit>=0?'var(--grn)':'var(--red)'}">${fmt(r.profit)}</td>
@@ -5814,6 +6013,178 @@ async function downloadInvoicePDF(inv) {
 
   doc.save((inv.invoice_number || 'invoice') + '.pdf');
   } catch(e) { console.error('PDF generation error:', e); alert('PDF generation failed: ' + (e instanceof Error ? e.message : String(e))); }
+}
+
+/* ═══ COMMAND CENTER OVERVIEW ═══ */
+async function loadOverview() {
+  const today = new Date().toISOString().split('T')[0];
+  const weekAhead = new Date(Date.now()+7*24*60*60*1000).toISOString().split('T')[0];
+  const curYear = new Date().getFullYear();
+  const monthStart = today.slice(0,7)+'-01';
+  const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth()+1, 1).toISOString().split('T')[0];
+
+  const [pplR, mgR, ordR, slaR, pplLeadsR, crmR, goalsR, pplOrdMtdR, mgOrdMtdR] = await Promise.all([
+    db.from('clients').select('id,stage,lead_price,leads_mtd,true_cpl,total_leads_purchased,leads_delivered').eq('type','ppl'),
+    db.from('clients').select('id,stage,management_fee,next_payment_date,payments_made').eq('type','managed'),
+    db.from('ppl_order_log').select('id,client_id,leads_qty,status,sla_due_date,order_date').eq('status','in_progress'),
+    db.from('ppl_order_log').select('id,client_id,leads_qty,sla_due_date,order_date').eq('status','in_progress').lte('sla_due_date',today).not('sla_due_date','is',null),
+    db.from('ppl_leads').select('id,status').in('status',['pending','assigned']),
+    db.from('leads').select('id,stage,next_followup').in('stage',['new_lead','qualified','call_back','no_answer','onboarding','proposal','proposal_sent']),
+    db.from('monthly_goals').select('revenue_goal,month').gte('month',`${curYear}-01`).lte('month',`${curYear}-12`),
+    db.from('ppl_order_log').select('leads_qty,lead_price').gte('order_date',monthStart).lte('order_date',monthEnd),
+    db.from('managed_order_log').select('amount').gte('order_date',monthStart).lte('order_date',monthEnd),
+  ]);
+
+  const pplClients = pplR.data||[];
+  const mgClients = mgR.data||[];
+  const activeOrders = ordR.data||[];
+  const overdueOrders = slaR.data||[];
+  const pendingLeads = (pplLeadsR.data||[]).filter(l=>l.status==='pending').length;
+  const crmFollowups = (crmR.data||[]).filter(l=>{
+    if (!l.next_followup) return false;
+    return l.next_followup <= today;
+  }).length;
+  const goals = goalsR.data||[];
+
+  // MRR
+  const activeMgRetainer = mgClients.filter(c=>c.stage==='active').reduce((s,c)=>s+(c.management_fee||0),0);
+  const activePpl = pplClients.filter(c=>c.stage==='active_client');
+  const pplMonthlyRun = activePpl.reduce((s,c)=>s+((c.leads_mtd||0)*(c.lead_price||0)),0);
+  const mrr = activeMgRetainer + pplMonthlyRun;
+  const arr = mrr * 12;
+
+  // MTD revenue
+  const mtdPplRev = (pplOrdMtdR.data||[]).reduce((s,o)=>s+((o.leads_qty||0)*(o.lead_price||0)),0);
+  const mtdMgRev = (mgOrdMtdR.data||[]).reduce((s,o)=>s+(o.amount||0),0);
+  const mtdRev = mtdPplRev + mtdMgRev + activeMgRetainer;
+
+  // Overdue payments
+  const overduePayments = mgClients.filter(c=>c.stage==='active'&&c.next_payment_date&&c.next_payment_date<today).length;
+
+  // Reorder due
+  const reorderDue = pplClients.filter(c=>c.stage==='active_client'&&c.total_leads_purchased>0&&c.leads_delivered>0&&(c.leads_delivered/c.total_leads_purchased)>=0.75).length;
+
+  // Due this week (not yet overdue)
+  const dueSoon = activeOrders.filter(o=>o.sla_due_date&&o.sla_due_date>today&&o.sla_due_date<=weekAhead).length;
+
+  // YTD goal progress
+  const ytdMonth = today.slice(0,7);
+  const ytdGoalRev = goals.filter(g=>g.month<=ytdMonth).reduce((s,g)=>s+(g.revenue_goal||0),0);
+
+  // Set KPIs
+  if($('ov-mrr')) setText('ov-mrr', mrr>0?fmt(mrr):'—');
+  if($('ov-arr')) setText('ov-arr', arr>0?fmt(arr):'—');
+  if($('ov-mtd-rev')) setText('ov-mtd-rev', mtdRev>0?fmt(mtdRev):'—');
+  if($('ov-mtd-sub')) setText('ov-mtd-sub', today.slice(0,7)+' so far');
+  if($('ov-ppl-active')) setText('ov-ppl-active', activePpl.length);
+  if($('ov-mg-active')) setText('ov-mg-active', mgClients.filter(c=>c.stage==='active').length);
+  if($('ov-overdue-payments')) {
+    setText('ov-overdue-payments', overduePayments||'—');
+    $('ov-overdue-payments').className=`kval ${overduePayments>0?'red':'grn'}`;
+  }
+  if($('ov-reorder-due')) setText('ov-reorder-due', reorderDue||'—');
+  if($('ov-sla-overdue')) {
+    setText('ov-sla-overdue', overdueOrders.length||'—');
+    $('ov-sla-overdue').className=`kval ${overdueOrders.length>0?'red':'grn'}`;
+  }
+  if($('ov-orders-active')) setText('ov-orders-active', activeOrders.length||'—');
+  if($('ov-sla-week')) setText('ov-sla-week', dueSoon||'—');
+  if($('ov-followups')) {
+    setText('ov-followups', crmFollowups||'—');
+    $('ov-followups').className=`kval ${crmFollowups>0?'amb':''}`;
+  }
+  if($('ov-pending-leads')) setText('ov-pending-leads', pendingLeads||'—');
+  if($('ov-ytd-goal-pct')) {
+    if (ytdGoalRev > 0) {
+      const pct = ((mtdRev / ytdGoalRev)*100).toFixed(0);
+      setText('ov-ytd-goal-pct', pct+'%');
+      $('ov-ytd-goal-pct').className=`kval ${+pct>=100?'grn':+pct>=75?'':'red'}`;
+      if($('ov-ytd-goal-sub')) setText('ov-ytd-goal-sub', `MTD ${fmt(mtdRev)} of ${fmt(ytdGoalRev)} goal`);
+    } else {
+      setText('ov-ytd-goal-pct','—');
+      if($('ov-ytd-goal-sub')) setText('ov-ytd-goal-sub','no goals set');
+    }
+  }
+
+  // Overdue SLA detail list
+  const listEl = $('ov-overdue-sla-list');
+  if (listEl) {
+    if (overdueOrders.length) {
+      listEl.innerHTML = `<div class="sl" style="margin-bottom:8px">Overdue SLA Orders <div class="sl-line"></div></div>` +
+        `<div class="twrap"><table><thead><tr><th>Order Date</th><th>Qty</th><th>SLA Due</th><th>Days Overdue</th></tr></thead><tbody>` +
+        overdueOrders.map(o=>{
+          const days=Math.ceil((new Date(today)-new Date(o.sla_due_date))/(1000*60*60*24));
+          return `<tr><td style="font-family:var(--mono);font-size:11px">${o.order_date||'—'}</td><td style="font-family:var(--mono)">${o.leads_qty}</td><td style="font-family:var(--mono);color:var(--red);font-weight:600">${o.sla_due_date}</td><td style="font-family:var(--mono);color:var(--red)">${days}d</td></tr>`;
+        }).join('') + `</tbody></table></div>`;
+    } else {
+      listEl.innerHTML = '';
+    }
+  }
+
+  // Build alerts for the inline alert banner
+  buildOverviewAlerts(overdueOrders, overduePayments, crmFollowups, dueSoon);
+  // Also refresh tray badge
+  _lastAlerts = buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoon);
+  updateAlertBadge(_lastAlerts.length);
+}
+
+let _lastAlerts = [];
+
+function buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoon) {
+  const items = [];
+  if (overdueOrders.length > 0) items.push({type:'error', msg: `${overdueOrders.length} PPL order${overdueOrders.length>1?'s':''} past SLA due date`, panel:'ppl'});
+  if (overduePayments > 0) items.push({type:'error', msg: `${overduePayments} managed client${overduePayments>1?'s':''} with overdue payment`, panel:'managed'});
+  if (dueSoon > 0) items.push({type:'warn', msg: `${dueSoon} PPL order${dueSoon>1?'s':''} SLA due within 7 days`, panel:'ppl'});
+  if (crmFollowups > 0) items.push({type:'warn', msg: `${crmFollowups} CRM lead${crmFollowups>1?'s':''} need follow-up`, panel:'crm'});
+  return items;
+}
+
+function updateAlertBadge(count) {
+  const badge = $('alert-tray-badge');
+  const navBadge = $('alert-nav-badge');
+  if (badge) { badge.textContent=count; badge.style.display=count>0?'':'none'; }
+  if (navBadge) { navBadge.textContent=count; navBadge.style.display=count>0?'':'none'; }
+}
+
+function buildOverviewAlerts(overdueOrders, overduePayments, crmFollowups, dueSoon) {
+  const el = $('overview-alerts'); if (!el) return;
+  const items = buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoon);
+  if (!items.length) { el.innerHTML='<div style="padding:10px 14px;background:rgba(46,204,138,.07);border:1px solid rgba(46,204,138,.22);border-radius:var(--r);font-size:11px;color:var(--grn)">✓ All clear — no active alerts.</div>'; return; }
+  el.innerHTML = items.map(a=>`<div style="margin-bottom:6px;padding:9px 13px;background:${a.type==='error'?'rgba(255,69,96,.08)':'rgba(245,166,35,.07)'};border:1px solid ${a.type==='error'?'rgba(255,69,96,.28)':'rgba(245,166,35,.28)'};border-radius:var(--r);font-size:11.5px;display:flex;align-items:center;gap:10px"><span style="color:${a.type==='error'?'var(--red)':'var(--amb)'}">⚠</span><span style="flex:1;color:var(--ink)">${esc(a.msg)}</span><button class="btn btn-xs" onclick="nav('${a.panel}',document.querySelector('[data-panel=\\'${a.panel}\\']'))" style="font-size:10px">Go →</button></div>`).join('');
+}
+
+function toggleAlertTray() {
+  const tray = $('alert-tray');
+  if (!tray) return;
+  const open = tray.style.display !== 'none';
+  tray.style.display = open ? 'none' : 'block';
+  if (!open) renderAlertTray();
+}
+
+function renderAlertTray() {
+  const body = $('alert-tray-body'); if (!body) return;
+  if (!_lastAlerts.length) {
+    body.innerHTML='<div style="color:var(--grn);font-size:12px">✓ All clear — no active alerts.</div>';
+    return;
+  }
+  body.innerHTML = _lastAlerts.map(a=>`<div style="margin-bottom:8px;padding:8px 10px;background:${a.type==='error'?'rgba(255,69,96,.08)':'rgba(245,166,35,.07)'};border:1px solid ${a.type==='error'?'rgba(255,69,96,.25)':'rgba(245,166,35,.25)'};border-radius:var(--r);font-size:11px;display:flex;align-items:center;gap:8px"><span style="color:${a.type==='error'?'var(--red)':'var(--amb)'}">⚠</span><span style="flex:1">${esc(a.msg)}</span><button class="btn btn-xs" onclick="nav('${a.panel}',document.querySelector('[data-panel=\\'${a.panel}\\']'));toggleAlertTray()" style="font-size:10px">→</button></div>`).join('');
+}
+
+async function loadAlerts() {
+  const today = new Date().toISOString().split('T')[0];
+  const weekAhead = new Date(Date.now()+7*24*60*60*1000).toISOString().split('T')[0];
+  const [slaR, mgR, crmR, dueSoonR] = await Promise.all([
+    db.from('ppl_order_log').select('id').eq('status','in_progress').lte('sla_due_date',today).not('sla_due_date','is',null),
+    db.from('clients').select('id,stage,next_payment_date').eq('type','managed'),
+    db.from('leads').select('id,stage,next_followup').in('stage',['new_lead','qualified','call_back','no_answer','onboarding','proposal','proposal_sent']),
+    db.from('ppl_order_log').select('id').eq('status','in_progress').gt('sla_due_date',today).lte('sla_due_date',weekAhead).not('sla_due_date','is',null),
+  ]);
+  const overdueOrders = slaR.data||[];
+  const overduePayments = (mgR.data||[]).filter(c=>c.stage==='active'&&c.next_payment_date&&c.next_payment_date<today).length;
+  const dueSoon = (dueSoonR.data||[]).length;
+  const crmFollowups = (crmR.data||[]).filter(l=>l.next_followup&&l.next_followup<=today).length;
+  _lastAlerts = buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoon);
+  updateAlertBadge(_lastAlerts.length);
 }
 </script>
 
