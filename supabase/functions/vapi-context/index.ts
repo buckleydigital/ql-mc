@@ -183,15 +183,14 @@ serve(async (req) => {
     const context = await buildContext()
     const systemPrompt = SYSTEM_PROMPT + context
     // Return VAPI credentials from server-side secrets so the frontend never needs
-    // to store them in browser storage. Both values will be null if the secrets
-    // have not been set in the Supabase Edge Function environment — the frontend
-    // falls back to any manual sessionStorage override in that case.
+    // to store them in browser storage. vapiPublicKey will be null if the secret
+    // has not been set — the frontend falls back to any manual sessionStorage override.
     const vapiPublicKey = Deno.env.get("VAPI_PUBLIC_KEY") || null
-    const vapiAssistantId = Deno.env.get("VAPI_ASSISTANT_ID") || null
-    // ElevenLabs voice ID — used by VAPI to override the assistant's TTS voice.
+    // ElevenLabs voice ID — passed as an inline voice override in the VAPI call.
+    // No pre-created VAPI assistant is needed; the assistant is configured inline.
     // Set ELEVENLABS_VOICE_ID as a Supabase edge function secret.
     const elevenLabsVoiceId = Deno.env.get("ELEVENLABS_VOICE_ID") || null
-    return new Response(JSON.stringify({ systemPrompt, vapiPublicKey, vapiAssistantId, elevenLabsVoiceId }), {
+    return new Response(JSON.stringify({ systemPrompt, vapiPublicKey, elevenLabsVoiceId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     })
   } catch (err) {
