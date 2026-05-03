@@ -139,17 +139,44 @@ async function buildContext(): Promise<string> {
     out += `\n- Agency acquisition: ${fmtN(agencySpendYTD)}`
   } catch(_) {}
 
-  // Sales pipeline
+  // Sales pipeline — fetch ALL leads with no stage filter so AI sees the complete picture
   try {
-    const stageLabels: Record<string,string> = {call_back:'Call Back',proposal:'Proposal',qualified:'Qualified',new_lead:'New Lead',no_answer:'No Answer',paused:'Paused'}
-    const { data: leads } = await sb.from('leads').select('name,company,stage,lead_type,value,last_contact').or('stage.is.null,stage.not.in.(closed_won,closed_lost)').order('updated_at',{ascending:false})
+    const stageLabels: Record<string,string> = {call_back:'Call Back',proposal:'Proposal',proposal_sent:'Proposal Sent',qualified:'Qualified',new_lead:'New Lead',no_answer:'No Answer',paused:'Paused',onboarding:'Onboarding',closed_won:'Closed Won',closed_lost:'Closed Lost'}
+    const CLOSED = new Set(['closed_won','closed_lost'])
+    const { data: leads } = await sb.from('leads')
+      .select('name,company,email,phone,stage,lead_type,value,source,notes,last_contact,next_followup,updated_at')
+      .order('updated_at',{ascending:false})
+      .limit(500)
     if (leads && leads.length) {
-      const counts = leads.reduce((acc: Record<string,number>, l: any) => { const key = l.stage||'unknown'; acc[key]=(acc[key]||0)+1; return acc }, {})
-      const totalValue = leads.reduce((s: number, l: any) => s+(l.value||0),0)
-      const followupNeeded = leads.filter((l: any) => l.last_contact && (Date.now()-new Date(l.last_contact).getTime())/(1000*86400) > 7).length
-      out += `\n\n## Sales Pipeline\n- ${leads.length} active leads · ${fmtN(totalValue)}/mo pipeline value`
+      const active = leads.filter((l: any) => !CLOSED.has(l.stage||''))
+      const closed = leads.filter((l: any) => CLOSED.has(l.stage||''))
+      const totalValue = active.reduce((s: number, l: any) => s+(l.value||0),0)
+      const todayMs = Date.now()
+      const followupNeeded = active.filter((l: any) => l.last_contact && (todayMs-new Date(l.last_contact).getTime())/86400000 > 7).length
+      out += `\n\n## Sales Pipeline\n- Total leads in database: ${leads.length} (${active.length} active, ${closed.length} closed)`
+      out += `\n- Active pipeline value: ${fmtN(totalValue)}/mo`
+      const counts = active.reduce((acc: Record<string,number>, l: any) => { const k=l.stage||'new_lead'; acc[k]=(acc[k]||0)+1; return acc }, {})
       out += `\n- By stage: ${Object.entries(counts).map(([s,n]) => `${stageLabels[s]||s}: ${n}`).join(', ')}`
       if (followupNeeded > 0) out += `\n- ⚠ ${followupNeeded} leads with no contact in 7+ days`
+      // Full per-lead detail for every lead — active first, then closed
+      out += `\n\n### Active Leads (${active.length})`
+      active.forEach((l: any) => {
+        const stage = stageLabels[l.stage||''] || l.stage || 'New Lead'
+        const dsc = l.last_contact ? Math.floor((todayMs-new Date(l.last_contact).getTime())/86400000) : null
+        const contactAge = dsc != null ? `last contact ${dsc}d ago` : 'never contacted'
+        const followup = l.next_followup ? ` · followup ${l.next_followup}` : ''
+        const phone = l.phone ? ` · ph: ${l.phone}` : ''
+        const email = l.email ? ` · em: ${l.email}` : ''
+        const notes = l.notes ? ` · notes: ${l.notes}` : ''
+        out += `\n- ${l.name||'Unknown'}${l.company?` (${l.company})`:''}${phone}${email} | ${stage} | ${contactAge}${followup}${l.value?` | ${fmtN(l.value)}/mo`:''}${notes}`
+      })
+      if (closed.length) {
+        out += `\n\n### Closed Leads (${closed.length})`
+        closed.forEach((l: any) => {
+          const stage = stageLabels[l.stage||''] || l.stage
+          out += `\n- ${l.name||'Unknown'}${l.company?` (${l.company})`:''}${l.phone?` · ph: ${l.phone}`:''}${l.email?` · em: ${l.email}`:''} | ${stage}${l.value?` | ${fmtN(l.value)}/mo`:''}`
+        })
+      }
     }
   } catch(_) {}
 
