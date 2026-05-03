@@ -69,10 +69,10 @@ async function buildContext(agent: string): Promise<string> {
   try {
     const stageLabels: Record<string,string> = {call_back:'Call Back',proposal:'Proposal',qualified:'Qualified',new_lead:'New Lead',no_answer:'No Answer',paused:'Paused',closed_won:'Closed Won',closed_lost:'Closed Lost'}
     const stageOrder: Record<string,number> = {call_back:1,proposal:2,qualified:3,new_lead:4,no_answer:5,paused:6}
-    const { data: leads } = await sb.from('leads').select('id,name,company,stage,lead_type,value,source,notes,last_contact,created_at,updated_at').not('stage','in','("closed_won","closed_lost")').order('updated_at',{ascending:false})
+    const { data: leads } = await sb.from('leads').select('id,name,company,stage,lead_type,value,source,notes,last_contact,created_at,updated_at').or('stage.is.null,stage.not.in.(closed_won,closed_lost)').order('updated_at',{ascending:false})
     if (leads && leads.length) {
       const sorted = [...leads].sort((a: any, b: any) => {
-        const so = (stageOrder[a.stage]||9) - (stageOrder[b.stage]||9)
+        const so = (stageOrder[a.stage||'unknown']||9) - (stageOrder[b.stage||'unknown']||9)
         return so !== 0 ? so : (b.value||0) - (a.value||0)
       })
       const lines = sorted.map((l: any) => {
@@ -80,9 +80,9 @@ async function buildContext(agent: string): Promise<string> {
         const value = l.value ? `$${Number(l.value).toLocaleString()}/mo` : 'value TBD'
         const daysSince = l.last_contact ? Math.floor((Date.now()-new Date(l.last_contact).getTime())/(1000*86400)) : null
         const urgency = daysSince !== null && daysSince > 7 ? ` ⚠ ${daysSince}d since contact` : ''
-        return `  - [${stageLabels[l.stage]||l.stage}] ${l.name}${l.company?' @ '+l.company:''} · ${value} · ${l.lead_type==='ppl'?'PPL':'Managed Ads'} · Last: ${lastContact}${urgency}\n    Notes: ${l.notes||'none'}`
+        return `  - [${stageLabels[l.stage||'unknown']||'Unknown Stage'}] ${l.name}${l.company?' @ '+l.company:''} · ${value} · ${l.lead_type==='ppl'?'PPL':'Managed Ads'} · Last: ${lastContact}${urgency}\n    Notes: ${l.notes||'none'}`
       })
-      const counts = sorted.reduce((acc: Record<string,number>, l: any) => { acc[l.stage]=(acc[l.stage]||0)+1; return acc }, {})
+      const counts = sorted.reduce((acc: Record<string,number>, l: any) => { const key = l.stage||'unknown'; acc[key]=(acc[key]||0)+1; return acc }, {})
       out += `\n\n## Full Active Sales Pipeline (${leads.length} leads)\n${lines.join('\n')}`
       out += `\n\n### Counts by Stage\n${Object.entries(counts).map(([s,n]) => `  - ${stageLabels[s]||s}: ${n}`).join('\n')}`
       out += `\n\n### Total Pipeline Value\n  $${sorted.reduce((s: number, l: any) => s+(l.value||0),0).toLocaleString()}/mo across ${leads.length} leads`
