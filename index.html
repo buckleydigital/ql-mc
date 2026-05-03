@@ -6655,7 +6655,9 @@ async function startJarvisCall() {
         model: 'gpt-4o',
         ...(systemPrompt ? { messages: [{ role: 'system', content: systemPrompt }] } : {}),
       },
-      ...(voiceId ? { voice: { provider: '11labs', voiceId } } : {}),
+      voice: voiceId
+        ? { provider: '11labs', voiceId }
+        : { provider: 'vapi', voiceId: 'Elliot' },
     };
     await _vapiInstance.start(assistantConfig);
   } catch(e) {
