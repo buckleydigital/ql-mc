@@ -6558,7 +6558,6 @@ async function startJarvisCall() {
   let systemPrompt = null;
   let key = sessionStorage.getItem('jarvis-vapi-key') || '';
   let voiceId = sessionStorage.getItem('jarvis-voice-id') || '';
-  let openAIApiKey = null;
   try {
     const { data: { session } } = await db.auth.getSession();
     if (!session) throw new Error('Not authenticated');
@@ -6571,7 +6570,6 @@ async function startJarvisCall() {
       // Use server secrets unless a local override is already set
       if (!key) key = d.vapiPublicKey || '';
       if (!voiceId) voiceId = d.elevenLabsVoiceId || '';
-      openAIApiKey = d.openAIApiKey || null;
     }
   } catch(e) {
     console.warn('JARVIS: could not fetch vapi-context', e);
@@ -6706,7 +6704,6 @@ async function startJarvisCall() {
       model: {
         provider: 'openai',
         model: 'gpt-4o',
-        ...(openAIApiKey ? { openAIApiKey } : {}),
         ...(systemPrompt ? { messages: [{ role: 'system', content: systemPrompt }] } : {}),
       },
       voice: voiceId
