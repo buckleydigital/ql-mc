@@ -887,7 +887,7 @@ td strong{font-weight:500}
         <div id="overview-alerts" style="margin-bottom:16px"></div>
         <div class="sl">Revenue &amp; Run Rate <div class="sl-line"></div></div>
         <div class="kg c3 mb4">
-          <div class="kpi"><div class="klabel">MRR</div><div class="kval blu" id="ov-mrr">—</div><div class="ksub">managed retainers + PPL run-rate</div></div>
+          <div class="kpi"><div class="klabel">MRR</div><div class="kval blu" id="ov-mrr">—</div><div class="ksub">management fee revenue</div></div>
           <div class="kpi"><div class="klabel">ARR</div><div class="kval blu" id="ov-arr">—</div><div class="ksub">MRR × 12</div></div>
           <div class="kpi"><div class="klabel">MTD Revenue</div><div class="kval grn" id="ov-mtd-rev">—</div><div class="ksub" id="ov-mtd-sub"></div></div>
         </div>
@@ -1278,7 +1278,7 @@ td strong{font-weight:500}
         </div>
         <div class="sl">Run Rate &amp; Recurring Revenue <div class="sl-line"></div></div>
         <div class="kg c3 mb4">
-          <div class="kpi"><div class="klabel">MRR</div><div class="kval blu" id="fin-mrr">—</div><div class="ksub">managed retainers + PPL run-rate</div></div>
+          <div class="kpi"><div class="klabel">MRR</div><div class="kval blu" id="fin-mrr">—</div><div class="ksub">management fee revenue</div></div>
           <div class="kpi"><div class="klabel">ARR</div><div class="kval blu" id="fin-arr">—</div><div class="ksub">MRR × 12</div></div>
           <div class="kpi"><div class="klabel">Monthly Run Rate</div><div class="kval" id="fin-run-rate">—</div><div class="ksub" id="fin-run-rate-sub"></div></div>
         </div>
@@ -4442,19 +4442,10 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   if($('fin-rev-trend')) $('fin-rev-trend').innerHTML = trendArrow(tr,prior.priorTotalRev,true);
   if($('fin-exp-trend')) $('fin-exp-trend').innerHTML = trendArrow(totalExp,prior.priorTotalExp,false);
   // MRR / ARR / Run Rate
-  // MRR = active managed retainers + PPL avg weekly leads × avg lead price × AVG_WEEKS_PER_MONTH
+  // MRR = active managed retainers (management fee revenue only)
   const activeMgRetainer = mgClients.filter(c=>c.stage==='active')
     .reduce((s,c)=>s+(c.management_fee||0),0);
-  const activePplClients = pplClients.filter(c=>c.stage==='active_client');
-  const pplWeeklyLeads = activePplClients.reduce((s,c)=>{
-    const weeklyVal = (c.leads_mtd||0)/AVG_WEEKS_PER_MONTH;
-    return s + weeklyVal;
-  },0);
-  const avgPplPrice = activePplClients.length
-    ? activePplClients.reduce((s,c)=>s+(c.lead_price||0),0)/activePplClients.length
-    : 0;
-  const pplMrrContrib = pplWeeklyLeads * avgPplPrice * AVG_WEEKS_PER_MONTH;
-  const mrr = activeMgRetainer + pplMrrContrib;
+  const mrr = activeMgRetainer;
   const arr = mrr * 12;
   // Monthly run rate: annualise current period revenue
   const periodDays = (new Date(next)-new Date(from))/(1000*60*60*24);
@@ -6186,11 +6177,10 @@ async function loadOverview() {
   }).length;
   const goals = goalsR.data||[];
 
-  // MRR
+  // MRR = management fee revenue from active managed clients only
   const activeMgRetainer = mgClients.filter(c=>c.stage==='active').reduce((s,c)=>s+(c.management_fee||0),0);
   const activePpl = pplClients.filter(c=>c.stage==='active_client');
-  const pplMonthlyRun = activePpl.reduce((s,c)=>s+((c.leads_mtd||0)*(c.lead_price||0)),0);
-  const mrr = activeMgRetainer + pplMonthlyRun;
+  const mrr = activeMgRetainer;
   const arr = mrr * 12;
 
   // MTD revenue
@@ -6558,7 +6548,7 @@ async function startJarvisCall() {
   let systemPrompt = null;
   let key = sessionStorage.getItem('jarvis-vapi-key') || '';
   let voiceId = sessionStorage.getItem('jarvis-voice-id') || '';
-  let openAIApiKey = null;
+  let customLlmUrl = '';
   try {
     const { data: { session } } = await db.auth.getSession();
     if (!session) throw new Error('Not authenticated');
@@ -6571,7 +6561,7 @@ async function startJarvisCall() {
       // Use server secrets unless a local override is already set
       if (!key) key = d.vapiPublicKey || '';
       if (!voiceId) voiceId = d.elevenLabsVoiceId || '';
-      openAIApiKey = d.openAIApiKey || null;
+      if (d.customLlmUrl) customLlmUrl = d.customLlmUrl;
     }
   } catch(e) {
     console.warn('JARVIS: could not fetch vapi-context', e);
@@ -6580,6 +6570,13 @@ async function startJarvisCall() {
   if (!key) {
     toast('VAPI not configured. Set VAPI_PUBLIC_KEY as a Supabase edge function secret.', true);
     setJarvisStatus('SET VAPI_PUBLIC_KEY SECRET IN SUPABASE DASHBOARD', 'grey');
+    setText('j-call-label', 'START SESSION');
+    $('j-call-btn').style.cursor = 'pointer';
+    return;
+  }
+  if (!customLlmUrl) {
+    toast('JARVIS LLM not configured. Deploy the vapi-llm edge function and ensure SUPABASE_URL is set.', true);
+    setJarvisStatus('DEPLOY VAPI-LLM EDGE FUNCTION', 'grey');
     setText('j-call-label', 'START SESSION');
     $('j-call-btn').style.cursor = 'pointer';
     return;
@@ -6704,9 +6701,8 @@ async function startJarvisCall() {
         language: 'en-AU',
       },
       model: {
-        provider: 'openai',
-        model: 'gpt-4o',
-        ...(openAIApiKey ? { openAIApiKey } : {}),
+        provider: 'custom-llm',
+        url: customLlmUrl,
         ...(systemPrompt ? { messages: [{ role: 'system', content: systemPrompt }] } : {}),
       },
       voice: voiceId
