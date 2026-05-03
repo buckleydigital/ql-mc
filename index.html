@@ -6,7 +6,7 @@
 <title>Mission Control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
-<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co https://*.googleapis.com https://*.twilio.com wss://*.twilio.com https://graph.facebook.com https://api.vapi.ai wss://*.daily.co https://*.daily.co wss://*.vapi.ai https://*.vapi.ai 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://maps.googleapis.com https://sdk.twilio.com; img-src * data: blob:; media-src * blob:;">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co https://*.googleapis.com https://*.twilio.com wss://*.twilio.com https://graph.facebook.com https://api.vapi.ai wss://*.daily.co https://*.daily.co wss://*.vapi.ai https://*.vapi.ai 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://maps.googleapis.com https://sdk.twilio.com https://esm.sh; img-src * data: blob:; media-src * blob:;">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
@@ -6542,7 +6542,7 @@ async function startJarvisCall() {
   // Load VAPI SDK lazily
   let VapiClass;
   try {
-    const mod = await import('https://cdn.jsdelivr.net/npm/@vapi-ai/web/dist/vapi.mjs');
+    const mod = await import('https://esm.sh/@vapi-ai/web@2.5.2');
     VapiClass = mod.default;
   } catch(e) {
     toast('Failed to load VAPI SDK: ' + e.message, true);
