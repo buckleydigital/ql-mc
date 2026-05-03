@@ -190,7 +190,11 @@ serve(async (req) => {
     // No pre-created VAPI assistant is needed; the assistant is configured inline.
     // Set ELEVENLABS_VOICE_ID as a Supabase edge function secret.
     const elevenLabsVoiceId = Deno.env.get("ELEVENLABS_VOICE_ID") || null
-    return new Response(JSON.stringify({ systemPrompt, vapiPublicKey, elevenLabsVoiceId }), {
+    // OpenAI API key — passed to VAPI so your own key is used for the LLM call
+    // instead of VAPI's shared OpenAI credentials. Set OPENAI_API_KEY as a
+    // Supabase edge function secret.
+    const openAIApiKey = Deno.env.get("OPENAI_API_KEY") || null
+    return new Response(JSON.stringify({ systemPrompt, vapiPublicKey, elevenLabsVoiceId, openAIApiKey }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     })
   } catch (err) {
