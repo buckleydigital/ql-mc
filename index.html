@@ -6341,6 +6341,7 @@ async function loadAlerts() {
 
 let _vapiInstance = null;      // Vapi SDK instance
 let _jarvisCallActive = false;
+let _jarvisCallStarted = false; // true only after call-start fires (not just vapi.start())
 let _jarvisAnimFrame = null;
 let _jarvisWavePhase = 0;
 let _jarvisSessionMessages = []; // current call transcript
@@ -6584,11 +6585,13 @@ async function startJarvisCall() {
 
   // Start VAPI call with system prompt override
   _vapiInstance = new VapiClass(key);
+  _jarvisCallStarted = false;
   _jarvisSessionMessages = [];
   clearJarvisTranscript(false);
 
   _vapiInstance.on('call-start', () => {
     _jarvisCallActive = true;
+    _jarvisCallStarted = true;
     setJarvisStatus('● ACTIVE SESSION', 'green');
     setText('j-call-label', 'END SESSION');
     setText('j-call-icon', '⬛');
@@ -6623,6 +6626,7 @@ async function startJarvisCall() {
 
   _vapiInstance.on('call-end', async () => {
     _jarvisCallActive = false;
+    _jarvisCallStarted = false;
     setJarvisStatus('JARVIS ONLINE', 'green');
     setText('j-call-label', 'START SESSION');
     setText('j-call-icon', '🎙');
@@ -6635,6 +6639,31 @@ async function startJarvisCall() {
   });
 
   _vapiInstance.on('error', (err) => {
+    // "ejected" / "Meeting has ended" fires from Daily.co (VAPI's WebRTC layer)
+    // in two situations:
+    //   1. After a normal call ends (call-start already fired) → benign, suppress.
+    //   2. Before call-start fires → real failure (e.g. missing transcriber, bad key).
+    const errType = err?.error?.error?.type || err?.error?.type;
+    const errMsg  = err?.error?.errorMsg   || err?.error?.message?.msg || '';
+    if (errType === 'ejected' || errMsg === 'Meeting has ended') {
+      if (_jarvisCallStarted) {
+        // Call started successfully and then ended — this is just teardown noise.
+        console.warn('VAPI session ended (ejected after call-start):', err);
+        return;
+      }
+      // Call was never established — show a clear actionable message.
+      console.error('VAPI call failed to start (ejected before call-start):', err);
+      toast('VAPI call failed to start. Check your VAPI_PUBLIC_KEY and assistant config.', true);
+      setJarvisStatus('CALL FAILED — CHECK CONFIG', 'red');
+      setText('j-call-label', 'START SESSION');
+      setText('j-call-icon', '🎙');
+      $('j-call-btn').classList.remove('active');
+      $('j-call-btn').style.cursor = 'pointer';
+      _jarvisCallActive = false;
+      _jarvisCallStarted = false;
+      setJarvisRing('');
+      return;
+    }
     console.error('VAPI error:', err);
     toast('VAPI error: ' + (err?.message || JSON.stringify(err)), true);
     setJarvisStatus('ERROR — CHECK CONFIG', 'red');
@@ -6643,13 +6672,21 @@ async function startJarvisCall() {
     $('j-call-btn').classList.remove('active');
     $('j-call-btn').style.cursor = 'pointer';
     _jarvisCallActive = false;
+    _jarvisCallStarted = false;
     setJarvisRing('');
   });
 
   try {
     // Inline assistant config — no pre-created VAPI assistant needed.
     // The model, system prompt, and ElevenLabs voice are all defined here.
+    // NOTE: transcriber is required for inline config in VAPI 2.x; without it
+    // the Daily.co room is created but immediately tears down with "ejected".
     const assistantConfig = {
+      transcriber: {
+        provider: 'deepgram',
+        model: 'nova-2',
+        language: 'en-AU',
+      },
       model: {
         provider: 'openai',
         model: 'gpt-4o',
@@ -6667,6 +6704,7 @@ async function startJarvisCall() {
     setText('j-call-icon', '🎙');
     $('j-call-btn').style.cursor = 'pointer';
     _jarvisCallActive = false;
+    _jarvisCallStarted = false;
   }
 }
 
