@@ -949,11 +949,12 @@ td strong{font-weight:500}
         </div>
         <div style="display:flex;gap:4px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
           <span style="font-size:10px;color:var(--ink3);margin-right:4px">Period:</span>
+          <button class="btn btn-xs crm-period-btn active" data-period="" onclick="switchCrmFilter('',this)">All Time</button>
           <button class="btn btn-xs crm-period-btn" data-period="today" onclick="switchCrmFilter('today',this)">Today</button>
           <button class="btn btn-xs crm-period-btn" data-period="yesterday" onclick="switchCrmFilter('yesterday',this)">Yesterday</button>
           <button class="btn btn-xs crm-period-btn" data-period="7d" onclick="switchCrmFilter('7d',this)">Last 7d</button>
           <button class="btn btn-xs crm-period-btn" data-period="30d" onclick="switchCrmFilter('30d',this)">Last 30d</button>
-          <button class="btn btn-xs crm-period-btn active" data-period="ytd" onclick="switchCrmFilter('ytd',this)">YTD 2026</button>
+          <button class="btn btn-xs crm-period-btn" data-period="ytd" onclick="switchCrmFilter('ytd',this)">YTD 2026</button>
           <button class="btn btn-xs crm-period-btn" data-period="custom" onclick="switchCrmFilter('custom',this)">Custom</button>
           <input type="date" class="fi" id="crm-date" style="width:auto;font-size:11.5px;padding:5px 10px;display:none;font-family:var(--mono)" onchange="loadCRM(true)">
         </div>
@@ -2300,7 +2301,7 @@ let curAgent = 'master', curMd = 'agents.md', curChat = 'master';
 let chatHistory = {};
 let revChart = null, cplChart = null, goalRevChart = null, goalMarginChart = null;
 let pplChurnChart = null, mgChurnChart = null;
-let curCrmRange = 'ytd';
+let curCrmRange = '';   // '' = no date filter → full pipeline visible by default
 
 const _taskMap = new Map();
 
@@ -2309,7 +2310,8 @@ const CLIENT_CACHE = {};
 let leadsPage = 0;
 let leadsTotal = 0;
 let crmPage = 0;
-let crmAllLeads = [];
+let crmAllLeads = [];       // date-filtered leads (table/KPIs)
+let crmPipelineLeads = [];  // all active leads regardless of date (kanban)
 const PAGE_SIZE = 50;
 function renderPager(elId, page, total, onPage) {
   const pages = Math.ceil(total / PAGE_SIZE);
@@ -2998,25 +3000,40 @@ async function drop(e,prefix,newStage) {
 const CRM_STAGES=[{id:'new_lead',label:'New Lead'},{id:'no_answer',label:'No Answer'},{id:'call_back',label:'Call-Back'},{id:'proposal',label:'Proposal'},{id:'closed_won',label:'Closed Won'},{id:'closed_lost',label:'Closed Lost'}];
 async function loadCRM(resetPage) {
   if (resetPage) crmPage = 0;
-  let query = db.from('leads').select('*').order('created_at',{ascending:false});
+
+  // Always fetch the full active pipeline for the kanban — no date filter.
+  // Date-filtered leads go to the table/KPIs so users can report on a period
+  // without losing visibility of deals created before that window.
+  const CLOSED = ['closed_won','closed_lost'];
+  const pipelineQ = db.from('leads').select('*')
+    .not('stage', 'in', `(${CLOSED.map(s=>`"${s}"`).join(',')})`)
+    .order('created_at', {ascending: false});
+
+  let tableQ = db.from('leads').select('*').order('created_at', {ascending: false});
   if (curCrmRange) {
     const {from,to} = getDateRange(curCrmRange);
     const toNext = new Date(to); toNext.setDate(toNext.getDate()+1);
-    query = query.gte('created_at', from+'T00:00:00').lt('created_at', toNext.toISOString().split('T')[0]+'T00:00:00');
+    tableQ = tableQ.gte('created_at', from+'T00:00:00').lt('created_at', toNext.toISOString().split('T')[0]+'T00:00:00');
   }
-  const {data,error} = await query;
-  if (error) { $('crm-tbody').innerHTML=`<tr><td colspan="9" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
-  crmAllLeads = data || [];
-  renderCRM(crmAllLeads);
+
+  const [pipelineR, tableR] = await Promise.all([pipelineQ, tableQ]);
+  if (pipelineR.error) { $('crm-tbody').innerHTML=`<tr><td colspan="9" class="empty">Error: ${esc(pipelineR.error.message)}</td></tr>`; return; }
+  if (tableR.error)    { $('crm-tbody').innerHTML=`<tr><td colspan="9" class="empty">Error: ${esc(tableR.error.message)}</td></tr>`; return; }
+
+  crmPipelineLeads = pipelineR.data || [];
+  // When no date filter is active the table shows the same full set as the kanban
+  crmAllLeads = curCrmRange ? (tableR.data || []) : crmPipelineLeads;
+  renderCRM();
 }
-function renderCRM(leads) {
-  const won=leads.filter(l=>l.stage==='closed_won').length;
-  const closed=leads.filter(l=>['closed_won','closed_lost'].includes(l.stage)).length;
-  setText('crm-total',leads.length);
-  setText('crm-active',leads.filter(l=>!['closed_won','closed_lost'].includes(l.stage)).length);
+function renderCRM() {
+  const allLeads = crmAllLeads;           // table + KPIs (date-filtered)
+  const pipeline = crmPipelineLeads;     // kanban + follow-up banner (always all active)
+  const won=allLeads.filter(l=>l.stage==='closed_won').length;
+  setText('crm-total',allLeads.length);
+  setText('crm-active',allLeads.filter(l=>!['closed_won','closed_lost'].includes(l.stage)).length);
   setText('crm-won',won);
-  setText('crm-rate',leads.length>0?((won/leads.length)*100).toFixed(0)+'%':'—');
-  const staleLeads=leads.filter(l=>{
+  setText('crm-rate',allLeads.length>0?((won/allLeads.length)*100).toFixed(0)+'%':'—');
+  const staleLeads=pipeline.filter(l=>{
     if (['closed_won','closed_lost'].includes(l.stage)) return false;
     if (l.contactable===false) return false;
     if (!l.last_contact) return l.contactable!==true; // "not yet contacted" only when not explicitly contactable
