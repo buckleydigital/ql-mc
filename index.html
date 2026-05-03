@@ -6,7 +6,7 @@
 <title>Mission Control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
-<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co https://*.googleapis.com https://*.twilio.com wss://*.twilio.com https://graph.facebook.com 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://maps.googleapis.com https://sdk.twilio.com; img-src * data: blob:;">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co https://*.googleapis.com https://*.twilio.com wss://*.twilio.com https://graph.facebook.com https://api.vapi.ai wss://*.daily.co https://*.daily.co wss://*.vapi.ai https://*.vapi.ai 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://maps.googleapis.com https://sdk.twilio.com; img-src * data: blob:; media-src * blob:; microphone 'self';">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
@@ -686,6 +686,53 @@ td strong{font-weight:500}
 .ld-client-sub{font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:4px}
 .mobile-only{display:none}
 @media(max-width:700px){.mobile-only{display:inline-flex}}
+
+/* ══ JARVIS VOICE AI ══ */
+.j-body{background:radial-gradient(ellipse at 50% 20%,#0a1628 0%,#050810 100%);border:1px solid #0e2040;border-radius:var(--r2);padding:24px;display:flex;flex-direction:column;align-items:center;gap:20px}
+.j-status-bar{width:100%;max-width:400px;background:rgba(0,20,50,.7);border:1px solid #0a3060;border-radius:20px;padding:8px 16px;display:flex;align-items:center;gap:8px;justify-content:center}
+.j-status-dot{width:8px;height:8px;border-radius:50%;background:#00ff88;box-shadow:0 0 8px #00ff88;flex-shrink:0}
+.j-status-dot.yellow{background:#ffd700;box-shadow:0 0 8px #ffd700}
+.j-status-dot.red{background:#ff4560;box-shadow:0 0 8px #ff4560}
+.j-status-dot.pulse{animation:j-pulse-dot 1.2s ease-in-out infinite}
+.j-status-label{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.18em;color:#00d4ff;text-transform:uppercase}
+.j-avatar-wrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px}
+.j-avatar-ring{width:120px;height:120px;border-radius:50%;border:2px solid #00d4ff;box-shadow:0 0 20px rgba(0,212,255,.4),inset 0 0 20px rgba(0,212,255,.05);display:flex;align-items:center;justify-content:center;position:relative;transition:box-shadow .3s}
+.j-avatar-ring.active{box-shadow:0 0 40px rgba(0,212,255,.8),0 0 80px rgba(0,212,255,.3),inset 0 0 30px rgba(0,212,255,.1);animation:j-ring-pulse 1.6s ease-in-out infinite}
+.j-avatar-ring.speaking{box-shadow:0 0 40px rgba(0,255,136,.8),0 0 80px rgba(0,255,136,.3);border-color:#00ff88;animation:j-ring-speak 0.6s ease-in-out infinite}
+.j-avatar-emoji{font-size:52px;user-select:none}
+.j-scan-line{position:absolute;top:0;left:0;right:0;bottom:0;border-radius:50%;overflow:hidden;pointer-events:none}
+.j-scan-line::after{content:'';position:absolute;top:-100%;left:0;right:0;height:40%;background:linear-gradient(to bottom,transparent,rgba(0,212,255,.15),transparent);animation:j-scan 3s linear infinite}
+.j-name{font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:.35em;color:#00d4ff;text-shadow:0 0 20px rgba(0,212,255,.6)}
+.j-role{font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:#005577;display:flex;align-items:center;gap:6px}
+.j-wave-wrap{width:100%;max-width:420px;height:60px;position:relative}
+.j-wave-label{font-family:var(--mono);font-size:8px;color:#004466;text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px;display:flex;justify-content:space-between}
+#j-waveform{width:100%;height:48px;display:block}
+.j-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:420px}
+.j-stat{background:rgba(0,20,50,.6);border:1px solid #0a2540;border-radius:8px;padding:12px 10px;text-align:center}
+.j-stat-val{font-family:var(--mono);font-size:20px;font-weight:700;color:#00d4ff;line-height:1}
+.j-stat-lbl{font-family:var(--mono);font-size:8px;color:#00446a;text-transform:uppercase;letter-spacing:.1em;margin-top:5px}
+.j-stat.warn .j-stat-val{color:#ffd700}
+.j-stat.alert .j-stat-val{color:#ff4560}
+.j-call-btn{width:160px;height:160px;border-radius:50%;border:2px solid #00d4ff;background:radial-gradient(circle,#0a2040,#040b18);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;transition:all .3s;box-shadow:0 0 30px rgba(0,212,255,.2);position:relative}
+.j-call-btn:hover{box-shadow:0 0 50px rgba(0,212,255,.5);border-color:#00eeff;transform:scale(1.02)}
+.j-call-btn.active{border-color:#ff4560;box-shadow:0 0 50px rgba(255,69,96,.5);animation:j-ring-pulse 1.2s ease-in-out infinite}
+.j-call-btn.active:hover{box-shadow:0 0 70px rgba(255,69,96,.7)}
+.j-call-btn-icon{font-size:36px}
+.j-call-btn-label{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.2em;color:#00d4ff;text-transform:uppercase}
+.j-call-btn.active .j-call-btn-label{color:#ff4560}
+.j-transcript{width:100%;max-width:560px;background:rgba(0,10,30,.6);border:1px solid #0a2540;border-radius:8px;padding:14px;max-height:200px;overflow-y:auto}
+.j-transcript-msg{font-family:var(--mono);font-size:11px;line-height:1.55;padding:5px 0;border-bottom:1px solid #091a30}
+.j-transcript-msg:last-child{border-bottom:none}
+.j-t-user{color:#4f8fff}
+.j-t-ai{color:#00d4ff}
+.j-t-label{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;opacity:.5;margin-right:6px}
+.j-config{width:100%;max-width:560px;background:rgba(0,10,30,.6);border:1px solid #0a2540;border-radius:8px;padding:14px}
+.j-config-title{font-family:var(--mono);font-size:8.5px;color:#004466;text-transform:uppercase;letter-spacing:.15em;margin-bottom:10px}
+.j-hist{width:100%;max-width:560px}
+@keyframes j-pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes j-ring-pulse{0%,100%{box-shadow:0 0 30px rgba(0,212,255,.4),0 0 60px rgba(0,212,255,.15)}50%{box-shadow:0 0 60px rgba(0,212,255,.9),0 0 120px rgba(0,212,255,.4)}}
+@keyframes j-ring-speak{0%,100%{box-shadow:0 0 30px rgba(0,255,136,.5)}50%{box-shadow:0 0 80px rgba(0,255,136,1),0 0 120px rgba(0,255,136,.4)}}
+@keyframes j-scan{0%{transform:translateY(0)}100%{transform:translateY(250%)}}
 </style>
 </head>
 <body>
@@ -812,6 +859,9 @@ td strong{font-weight:500}
           <span class="sb-group-label">AI</span>
           <button class="navbtn" data-panel="chat" onclick="nav('chat',this)">
             <span class="ni">◉</span>Master Brain
+          </button>
+          <button class="navbtn" data-panel="jarvis" onclick="nav('jarvis',this)">
+            <span class="ni">⬡</span>JARVIS Voice
           </button>
         </div>
 
@@ -1298,6 +1348,90 @@ td strong{font-weight:500}
         </div>
       </div>
 
+      <!-- ══ JARVIS VOICE AI ══ -->
+      <div class="panel" id="panel-jarvis">
+        <div class="ph">
+          <div class="ph-left"><h1>JARVIS</h1><p>Voice AI · powered by VAPI · same context as Master Brain</p></div>
+          <div class="ph-right">
+            <button class="btn btn-sm" onclick="toggleJarvisConfig()">⚙ Config</button>
+          </div>
+        </div>
+
+        <!-- Config panel (hidden by default) -->
+        <div id="j-config-panel" style="display:none;margin-bottom:16px">
+          <div class="j-config">
+            <div class="j-config-title">VAPI Configuration</div>
+            <div class="frow"><label class="flabel" style="color:#00446a">VAPI Public Key</label><input class="fi" id="j-vapi-key" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="background:#040b18;border-color:#0a2540;color:#00d4ff;font-family:var(--mono)"></div>
+            <div class="frow"><label class="flabel" style="color:#00446a">VAPI Assistant ID</label><input class="fi" id="j-assistant-id" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="background:#040b18;border-color:#0a2540;color:#00d4ff;font-family:var(--mono)"></div>
+            <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+              <button class="btn btn-p btn-sm" onclick="saveJarvisConfig()">Save Config</button>
+              <span style="font-family:var(--mono);font-size:10px;color:#004466">Keys stored locally in your browser. <a href="https://vapi.ai" target="_blank" rel="noopener" style="color:#00d4ff">Get a VAPI account →</a></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main JARVIS body -->
+        <div class="j-body">
+          <!-- Online status bar -->
+          <div class="j-status-bar">
+            <div class="j-status-dot" id="j-dot"></div>
+            <span class="j-status-label" id="j-status-label">JARVIS OFFLINE</span>
+          </div>
+
+          <!-- Avatar -->
+          <div class="j-avatar-wrap">
+            <div class="j-avatar-ring" id="j-ring">
+              <div class="j-scan-line"></div>
+              <span class="j-avatar-emoji">🤖</span>
+            </div>
+            <div class="j-name">JARVIS</div>
+            <div class="j-role">
+              <div class="j-status-dot" id="j-role-dot" style="width:6px;height:6px"></div>
+              <span id="j-role-label">MASTER BRAIN · VOICE AGENT</span>
+            </div>
+          </div>
+
+          <!-- Waveform -->
+          <div class="j-wave-wrap">
+            <div class="j-wave-label">
+              <span>HEARTBEAT</span>
+              <span id="j-wave-info">IDLE</span>
+            </div>
+            <canvas id="j-waveform"></canvas>
+          </div>
+
+          <!-- Quick stats -->
+          <div class="j-stats" id="j-stats">
+            <div class="j-stat"><div class="j-stat-val" id="j-stat-clients">—</div><div class="j-stat-lbl">Active Clients</div></div>
+            <div class="j-stat" id="j-stat-alerts-card"><div class="j-stat-val" id="j-stat-alerts">—</div><div class="j-stat-lbl">Active Alerts</div></div>
+            <div class="j-stat"><div class="j-stat-val" id="j-stat-tasks">—</div><div class="j-stat-lbl">Open Tasks</div></div>
+          </div>
+
+          <!-- Call button -->
+          <button class="j-call-btn" id="j-call-btn" onclick="toggleJarvisCall()">
+            <span class="j-call-btn-icon" id="j-call-icon">🎙</span>
+            <span class="j-call-btn-label" id="j-call-label">START SESSION</span>
+          </button>
+
+          <!-- Transcript -->
+          <div class="j-hist">
+            <div style="font-family:var(--mono);font-size:8.5px;color:#004466;text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+              <span>Session Transcript</span>
+              <button class="btn btn-xs" onclick="clearJarvisTranscript()" style="font-size:9px;color:#004466;border-color:#0a2540">Clear</button>
+            </div>
+            <div class="j-transcript" id="j-transcript">
+              <div class="j-transcript-msg" style="color:#004466;font-size:10px">Transcript will appear here during the call…</div>
+            </div>
+          </div>
+
+          <!-- Recent VAPI call history from chat_memory -->
+          <div class="j-hist" style="margin-top:4px">
+            <div style="font-family:var(--mono);font-size:8.5px;color:#004466;text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px">Previous Sessions</div>
+            <div id="j-history" style="color:#004466;font-family:var(--mono);font-size:10px">Loading…</div>
+          </div>
+        </div>
+      </div>
+
       <!-- ══ MASTER BRAIN CHAT ══ -->
       <div class="panel" id="panel-chat">
         <div class="ph">
@@ -1446,6 +1580,7 @@ td strong{font-weight:500}
     <button class="bnbtn" data-panel="managed" onclick="nav('managed',this)"><span class="bnbtn-icon">▣</span><span class="bnbtn-lbl">Managed</span></button>
     <button class="bnbtn" data-panel="finance" onclick="nav('finance',this)"><span class="bnbtn-icon">$</span><span class="bnbtn-lbl">Finance</span></button>
     <button class="bnbtn" data-panel="chat" onclick="nav('chat',this)"><span class="bnbtn-icon">◉</span><span class="bnbtn-lbl">Brain</span></button>
+    <button class="bnbtn" data-panel="jarvis" onclick="nav('jarvis',this)"><span class="bnbtn-icon">⬡</span><span class="bnbtn-lbl">JARVIS</span></button>
     <button class="bnbtn" data-panel="files" onclick="nav('files',this)"><span class="bnbtn-icon">📄</span><span class="bnbtn-lbl">Files</span></button>
   </div>
 </div><!-- /app -->
@@ -2155,6 +2290,8 @@ document.addEventListener('DOMContentLoaded',()=>{ setTimeout(updateBnavPadding,
 'use strict';
 const _ep = 'https://wmegoygrancfwxagqskh.supabase.co';
 const _ak = 'sb_publishable_UHQNxVCjHJnFjssYwTiwcQ_3FYovX8I';
+const AVG_WEEKS_PER_MONTH = 4.33; // average weeks in a month (365/12/7)
+const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 
 let db, currentUser;
 let curAgent = 'master', curMd = 'agents.md', curChat = 'master';
@@ -2321,6 +2458,7 @@ function nav(panel, el) {
   if (panel === 'invoices') loadInvoices();
   if (panel === 'goals') loadGoals();
   if (panel === 'overview') loadOverview();
+  if (panel === 'jarvis') loadJarvis();
 }
 
 function updateClock() {
@@ -4302,18 +4440,18 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   if($('fin-rev-trend')) $('fin-rev-trend').innerHTML = trendArrow(tr,prior.priorTotalRev,true);
   if($('fin-exp-trend')) $('fin-exp-trend').innerHTML = trendArrow(totalExp,prior.priorTotalExp,false);
   // MRR / ARR / Run Rate
-  // MRR = active managed retainers + PPL avg weekly leads × avg lead price × 4.33
+  // MRR = active managed retainers + PPL avg weekly leads × avg lead price × AVG_WEEKS_PER_MONTH
   const activeMgRetainer = mgClients.filter(c=>c.stage==='active')
     .reduce((s,c)=>s+(c.management_fee||0),0);
   const activePplClients = pplClients.filter(c=>c.stage==='active_client');
   const pplWeeklyLeads = activePplClients.reduce((s,c)=>{
-    const weeklyVal = (c.leads_mtd||0)/4.33;
+    const weeklyVal = (c.leads_mtd||0)/AVG_WEEKS_PER_MONTH;
     return s + weeklyVal;
   },0);
   const avgPplPrice = activePplClients.length
     ? activePplClients.reduce((s,c)=>s+(c.lead_price||0),0)/activePplClients.length
     : 0;
-  const pplMrrContrib = pplWeeklyLeads * avgPplPrice * 4.33;
+  const pplMrrContrib = pplWeeklyLeads * avgPplPrice * AVG_WEEKS_PER_MONTH;
   const mrr = activeMgRetainer + pplMrrContrib;
   const arr = mrr * 12;
   // Monthly run rate: annualise current period revenue
@@ -6018,7 +6156,7 @@ async function downloadInvoicePDF(inv) {
 /* ═══ COMMAND CENTER OVERVIEW ═══ */
 async function loadOverview() {
   const today = new Date().toISOString().split('T')[0];
-  const weekAhead = new Date(Date.now()+7*24*60*60*1000).toISOString().split('T')[0];
+  const weekAhead = new Date(Date.now() + MS_PER_WEEK).toISOString().split('T')[0];
   const curYear = new Date().getFullYear();
   const monthStart = today.slice(0,7)+'-01';
   const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth()+1, 1).toISOString().split('T')[0];
@@ -6172,7 +6310,8 @@ function renderAlertTray() {
 
 async function loadAlerts() {
   const today = new Date().toISOString().split('T')[0];
-  const weekAhead = new Date(Date.now()+7*24*60*60*1000).toISOString().split('T')[0];
+  const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+  const weekAhead = new Date(Date.now() + MS_PER_WEEK).toISOString().split('T')[0];
   const [slaR, mgR, crmR, dueSoonR] = await Promise.all([
     db.from('ppl_order_log').select('id').eq('status','in_progress').lte('sla_due_date',today).not('sla_due_date','is',null),
     db.from('clients').select('id,stage,next_payment_date').eq('type','managed'),
@@ -6185,6 +6324,346 @@ async function loadAlerts() {
   const crmFollowups = (crmR.data||[]).filter(l=>l.next_followup&&l.next_followup<=today).length;
   _lastAlerts = buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoon);
   updateAlertBadge(_lastAlerts.length);
+  // Update JARVIS stats if panel loaded
+  if ($('j-stat-alerts')) {
+    const count = _lastAlerts.length;
+    setText('j-stat-alerts', count || '0');
+    const card = $('j-stat-alerts-card');
+    if (card) { card.className = count > 0 ? 'j-stat alert' : 'j-stat'; }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   JARVIS — VOICE AI
+═══════════════════════════════════════════════════════════ */
+
+let _vapiInstance = null;      // Vapi SDK instance
+let _javisCallActive = false;
+let _jarvisAnimFrame = null;
+let _jarvisWavePhase = 0;
+let _jarvisSessionMessages = []; // current call transcript
+
+// ── Config ──────────────────────────────────────────────
+function loadJarvisConfig() {
+  const key = localStorage.getItem('jarvis-vapi-key') || '';
+  const aid = localStorage.getItem('jarvis-assistant-id') || '';
+  if ($('j-vapi-key')) $('j-vapi-key').value = key;
+  if ($('j-assistant-id')) $('j-assistant-id').value = aid;
+  return { key, aid };
+}
+function saveJarvisConfig() {
+  const key = ($('j-vapi-key')?.value || '').trim();
+  const aid = ($('j-assistant-id')?.value || '').trim();
+  localStorage.setItem('jarvis-vapi-key', key);
+  localStorage.setItem('jarvis-assistant-id', aid);
+  toast('JARVIS config saved ✓');
+  updateJarvisReadyState();
+}
+function toggleJarvisConfig() {
+  const p = $('j-config-panel');
+  if (!p) return;
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+// ── Status UI ────────────────────────────────────────────
+function setJarvisStatus(label, color) {
+  const dot = $('j-dot');
+  const lbl = $('j-status-label');
+  const roleDot = $('j-role-dot');
+  const colorMap = { green:'#00ff88', cyan:'#00d4ff', yellow:'#ffd700', red:'#ff4560', grey:'#334' };
+  const hex = colorMap[color] || colorMap.cyan;
+  if (dot) { dot.style.background = hex; dot.style.boxShadow = `0 0 8px ${hex}`; dot.className = `j-status-dot${color==='yellow'?' pulse':''}`; }
+  if (roleDot) { roleDot.style.background = hex; roleDot.style.boxShadow = `0 0 6px ${hex}`; }
+  if (lbl) setText('j-status-label', label);
+}
+function setJarvisRing(mode) {
+  const ring = $('j-ring'); if (!ring) return;
+  ring.className = `j-avatar-ring${mode==='active'?' active':mode==='speaking'?' speaking':''}`;
+}
+function updateJarvisReadyState() {
+  const { key, aid } = loadJarvisConfig();
+  if (key && aid) {
+    setJarvisStatus('JARVIS ONLINE', 'green');
+    const btn = $('j-call-btn'); if (btn) btn.style.opacity = '1';
+  } else {
+    setJarvisStatus('CONFIGURE VAPI TO ACTIVATE', 'grey');
+    const btn = $('j-call-btn'); if (btn) btn.style.opacity = '0.4';
+  }
+}
+
+// ── Load panel ────────────────────────────────────────────
+async function loadJarvis() {
+  loadJarvisConfig();
+  updateJarvisReadyState();
+  startJarvisIdleWave();
+  await loadJarvisStats();
+  await loadJarvisHistory();
+}
+
+async function loadJarvisStats() {
+  try {
+    const [pplR, mgR, tasksR] = await Promise.all([
+      db.from('clients').select('id,stage').eq('type','ppl'),
+      db.from('clients').select('id,stage').eq('type','managed'),
+      db.from('tasks').select('id,status').in('status',['todo','in_progress']),
+    ]);
+    const pplActive = (pplR.data||[]).filter(c=>c.stage==='active_client').length;
+    const mgActive  = (mgR.data||[]).filter(c=>c.stage==='active').length;
+    const openTasks = (tasksR.data||[]).length;
+    if ($('j-stat-clients')) setText('j-stat-clients', pplActive + mgActive);
+    if ($('j-stat-tasks'))   setText('j-stat-tasks', openTasks);
+    // Alerts reuse the tray count
+    const count = _lastAlerts.length;
+    if ($('j-stat-alerts')) setText('j-stat-alerts', count);
+    const card = $('j-stat-alerts-card');
+    if (card) card.className = count > 0 ? 'j-stat alert' : 'j-stat';
+  } catch(e) {}
+}
+
+async function loadJarvisHistory() {
+  const el = $('j-history'); if (!el || !db || !currentUser) return;
+  try {
+    const { data } = await db.from('chat_memory')
+      .select('role,content,created_at')
+      .eq('agent','jarvis')
+      .eq('user_id', currentUser.id)
+      .order('created_at', {ascending:false})
+      .limit(30);
+    if (!data || !data.length) { el.innerHTML = '<span style="color:#004466">No previous sessions.</span>'; return; }
+    // Group into sessions by gaps > 10 min
+    const sessions = [];
+    let cur = [];
+    for (const m of [...data].reverse()) {
+      if (cur.length && (new Date(m.created_at) - new Date(cur[cur.length-1].created_at)) > 600000) {
+        sessions.push(cur); cur = [];
+      }
+      cur.push(m);
+    }
+    if (cur.length) sessions.push(cur);
+    el.innerHTML = sessions.reverse().slice(0,3).map(sess => {
+      const date = new Date(sess[0].created_at).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+      const preview = sess.find(m=>m.role==='assistant')?.content?.slice(0,120) || '…';
+      return `<div style="background:rgba(0,10,30,.5);border:1px solid #091a30;border-radius:6px;padding:10px 12px;margin-bottom:8px">
+        <div style="color:#00446a;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px">${date} · ${sess.length} messages</div>
+        <div style="color:#006688;font-size:11px;line-height:1.45">${esc(preview)}…</div>
+      </div>`;
+    }).join('');
+  } catch(e) { el.innerHTML = '<span style="color:#004466">Unable to load history.</span>'; }
+}
+
+// ── Waveform ─────────────────────────────────────────────
+function startJarvisIdleWave() {
+  const canvas = $('j-waveform'); if (!canvas) return;
+  if (_jarvisAnimFrame) cancelAnimationFrame(_jarvisAnimFrame);
+  canvas.width = canvas.offsetWidth || 420;
+  canvas.height = 48;
+  function draw() {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0,0,w,h);
+    ctx.strokeStyle = _javisCallActive ? '#00d4ff' : '#0a2540';
+    ctx.lineWidth = 1.5;
+    ctx.shadowBlur = _javisCallActive ? 8 : 0;
+    ctx.shadowColor = '#00d4ff';
+    ctx.beginPath();
+    const pts = _javisCallActive ? 60 : 80;
+    for (let i = 0; i <= pts; i++) {
+      const x = (i / pts) * w;
+      const t = _jarvisWavePhase + i * 0.18;
+      const amp = _javisCallActive ? (8 + 6 * Math.sin(t * 0.7)) : 3;
+      const y = h / 2 + amp * Math.sin(t);
+      i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    if (_javisCallActive) {
+      ctx.strokeStyle = 'rgba(0,212,255,.25)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i <= pts; i++) {
+        const x = (i / pts) * w;
+        const t = _jarvisWavePhase + i * 0.18 + Math.PI;
+        const amp = 5 + 4 * Math.sin(t * 0.5);
+        const y = h / 2 + amp * Math.sin(t * 1.4);
+        i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+    }
+    _jarvisWavePhase += _javisCallActive ? 0.12 : 0.025;
+    _jarvisAnimFrame = requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// ── Call Toggle ──────────────────────────────────────────
+async function toggleJarvisCall() {
+  if (_javisCallActive) { await endJarvisCall(); } else { await startJarvisCall(); }
+}
+
+async function startJarvisCall() {
+  const { key, aid } = loadJarvisConfig();
+  if (!key || !aid) {
+    toast('Configure VAPI Public Key and Assistant ID first', true);
+    const p = $('j-config-panel'); if (p) p.style.display = 'block';
+    return;
+  }
+
+  setJarvisStatus('INITIALISING…', 'yellow');
+  setText('j-call-label', 'CONNECTING…');
+  $('j-call-btn').style.cursor = 'wait';
+
+  // Load VAPI SDK lazily
+  let VapiClass;
+  try {
+    const mod = await import('https://cdn.jsdelivr.net/npm/@vapi-ai/web/dist/vapi.mjs');
+    VapiClass = mod.default;
+  } catch(e) {
+    toast('Failed to load VAPI SDK: ' + e.message, true);
+    setJarvisStatus('SDK LOAD FAILED', 'red');
+    setText('j-call-label', 'START SESSION');
+    $('j-call-btn').style.cursor = 'pointer';
+    return;
+  }
+
+  // Fetch live context from our backend
+  let systemPrompt = null;
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) throw new Error('Not authenticated');
+    const resp = await fetch(`${_ep}/functions/v1/vapi-context`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${session.access_token}` }
+    });
+    if (resp.ok) {
+      const d = await resp.json();
+      systemPrompt = d.systemPrompt || null;
+    }
+  } catch(e) {
+    console.warn('JARVIS: could not fetch context, proceeding without live data', e);
+  }
+
+  // Start VAPI call with system prompt override
+  _vapiInstance = new VapiClass(key);
+  _jarvisSessionMessages = [];
+  clearJarvisTranscript(false);
+
+  _vapiInstance.on('call-start', () => {
+    _javisCallActive = true;
+    setJarvisStatus('● ACTIVE SESSION', 'green');
+    setText('j-call-label', 'END SESSION');
+    setText('j-call-icon', '⬛');
+    setText('j-wave-info', 'LIVE');
+    $('j-call-btn').classList.add('active');
+    $('j-call-btn').style.cursor = 'pointer';
+    setJarvisRing('active');
+    addJarvisTranscript('system', 'Session started — I\'m listening…');
+  });
+
+  _vapiInstance.on('speech-start', () => {
+    setJarvisStatus('● SPEAKING', 'cyan');
+    setJarvisRing('speaking');
+    setText('j-wave-info', 'SPEAKING');
+  });
+
+  _vapiInstance.on('speech-end', () => {
+    setJarvisStatus('● LISTENING', 'green');
+    setJarvisRing('active');
+    setText('j-wave-info', 'LISTENING');
+  });
+
+  _vapiInstance.on('message', (msg) => {
+    if (msg.type === 'transcript') {
+      const role = msg.role === 'user' ? 'user' : 'ai';
+      if (msg.transcriptType === 'final') {
+        addJarvisTranscript(role, msg.transcript);
+        _jarvisSessionMessages.push({ role: msg.role === 'user' ? 'user' : 'assistant', content: msg.transcript, created_at: new Date().toISOString() });
+      }
+    }
+  });
+
+  _vapiInstance.on('call-end', async () => {
+    _javisCallActive = false;
+    setJarvisStatus('JARVIS ONLINE', 'green');
+    setText('j-call-label', 'START SESSION');
+    setText('j-call-icon', '🎙');
+    $('j-call-btn').classList.remove('active');
+    setJarvisRing('');
+    setText('j-wave-info', 'IDLE');
+    addJarvisTranscript('system', 'Session ended.');
+    await saveJarvisTranscript();
+    await loadJarvisHistory();
+  });
+
+  _vapiInstance.on('error', (err) => {
+    console.error('VAPI error:', err);
+    toast('VAPI error: ' + (err?.message || JSON.stringify(err)), true);
+    setJarvisStatus('ERROR — CHECK CONFIG', 'red');
+    setText('j-call-label', 'START SESSION');
+    setText('j-call-icon', '🎙');
+    $('j-call-btn').classList.remove('active');
+    $('j-call-btn').style.cursor = 'pointer';
+    _javisCallActive = false;
+    setJarvisRing('');
+  });
+
+  try {
+    const startOpts = systemPrompt
+      ? { model: { provider: 'openai', model: 'gpt-4o', messages: [{ role: 'system', content: systemPrompt }] } }
+      : {};
+    await _vapiInstance.start(aid, startOpts);
+  } catch(e) {
+    toast('Failed to start VAPI call: ' + e.message, true);
+    setJarvisStatus('CALL FAILED', 'red');
+    setText('j-call-label', 'START SESSION');
+    setText('j-call-icon', '🎙');
+    $('j-call-btn').style.cursor = 'pointer';
+    _javisCallActive = false;
+  }
+}
+
+async function endJarvisCall() {
+  if (_vapiInstance) {
+    try { _vapiInstance.stop(); } catch(e) {}
+  }
+  _javisCallActive = false;
+}
+
+// ── Transcript ────────────────────────────────────────────
+function addJarvisTranscript(role, text) {
+  const el = $('j-transcript'); if (!el) return;
+  const placeholder = el.querySelector('[style*="font-size:10px"]');
+  if (placeholder) placeholder.remove();
+  const div = document.createElement('div');
+  div.className = 'j-transcript-msg';
+  const labelClass = role === 'user' ? 'j-t-user' : role === 'ai' ? 'j-t-ai' : '';
+  const labelText = role === 'user' ? 'YOU' : role === 'ai' ? 'JARVIS' : 'SYSTEM';
+  div.innerHTML = `<span class="j-t-label ${labelClass}">${labelText}</span><span class="${labelClass}">${esc(text)}</span>`;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearJarvisTranscript(notify = true) {
+  const el = $('j-transcript'); if (!el) return;
+  el.innerHTML = '<div class="j-transcript-msg" style="color:#004466;font-size:10px">Transcript will appear here during the call…</div>';
+  _jarvisSessionMessages = [];
+  if (notify) toast('Transcript cleared');
+}
+
+async function saveJarvisTranscript() {
+  if (!_jarvisSessionMessages.length || !db || !currentUser) return;
+  try {
+    const rows = _jarvisSessionMessages.map(m => ({
+      agent: 'jarvis',
+      user_id: currentUser.id,
+      role: m.role,
+      content: m.content,
+      created_at: m.created_at,
+    }));
+    await db.from('chat_memory').insert(rows);
+    const cnt = rows.length;
+    toast(`Session saved — ${cnt} messages ✓`);
+  } catch(e) {
+    console.error('Failed to save JARVIS transcript:', e);
+  }
 }
 </script>
 
