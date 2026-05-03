@@ -217,7 +217,10 @@ serve(async (req) => {
     // No pre-created VAPI assistant is needed; the assistant is configured inline.
     // Set ELEVENLABS_VOICE_ID as a Supabase edge function secret.
     const elevenLabsVoiceId = Deno.env.get("ELEVENLABS_VOICE_ID") || null
-    return new Response(JSON.stringify({ systemPrompt, vapiPublicKey, elevenLabsVoiceId }), {
+    // Custom LLM URL: points to the vapi-llm edge function which proxies to Anthropic.
+    // This means no OpenAI (or any external) API key needs to be set in the VAPI dashboard.
+    const customLlmUrl = supabaseUrl ? `${supabaseUrl}/functions/v1/vapi-llm` : null
+    return new Response(JSON.stringify({ systemPrompt, vapiPublicKey, elevenLabsVoiceId, customLlmUrl }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     })
   } catch (err) {

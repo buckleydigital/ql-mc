@@ -67,9 +67,14 @@ async function buildContext(agent: string): Promise<string> {
 
   // Sales pipeline context (master is the only agent reaching this far)
   try {
-    const stageLabels: Record<string,string> = {call_back:'Call Back',proposal:'Proposal',qualified:'Qualified',new_lead:'New Lead',no_answer:'No Answer',paused:'Paused',closed_won:'Closed Won',closed_lost:'Closed Lost'}
-    const stageOrder: Record<string,number> = {call_back:1,proposal:2,qualified:3,new_lead:4,no_answer:5,paused:6}
-    const { data: leads } = await sb.from('leads').select('id,name,company,stage,lead_type,value,source,notes,last_contact,created_at,updated_at').or('stage.is.null,stage.not.in.(closed_won,closed_lost)').order('updated_at',{ascending:false})
+    const stageLabels: Record<string,string> = {call_back:'Call Back',proposal:'Proposal',qualified:'Qualified',new_lead:'New Lead',no_answer:'No Answer',paused:'Paused',onboarding:'Onboarding',proposal_sent:'Proposal Sent',closed_won:'Closed Won',closed_lost:'Closed Lost'}
+    const stageOrder: Record<string,number> = {call_back:1,proposal:2,proposal_sent:2,qualified:3,new_lead:4,no_answer:5,paused:6}
+    const ACTIVE_STAGES = ['new_lead','no_answer','call_back','proposal','qualified','onboarding','proposal_sent','paused']
+    const [activeR, nullR] = await Promise.all([
+      sb.from('leads').select('id,name,company,stage,lead_type,value,source,notes,last_contact,created_at,updated_at').in('stage', ACTIVE_STAGES).order('updated_at',{ascending:false}),
+      sb.from('leads').select('id,name,company,stage,lead_type,value,source,notes,last_contact,created_at,updated_at').is('stage', null).order('updated_at',{ascending:false}),
+    ])
+    const leads = [...(activeR.data||[]), ...(nullR.data||[])]
     if (leads && leads.length) {
       const sorted = [...leads].sort((a: any, b: any) => {
         const so = (stageOrder[a.stage||'unknown']||9) - (stageOrder[b.stage||'unknown']||9)
