@@ -1,889 +1,1409 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Solar Quote – Get Your Free Quote</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClearWatt Solar – Free Commercial Solar Assessment | Sydney Businesses</title>
+<meta name="description" content="Sydney businesses: cut your power bill by up to 80%. Free, obligation-free commercial solar assessment matched with a CEC-accredited installer. Lock in your 2026 rebate rate." />
+<link rel="canonical" href="https://clearwattsolar.com.au/sydney-business-solar" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="ClearWatt Solar – Commercial Solar for Sydney Businesses" />
+<meta property="og:description" content="Cut your business power bill by up to 80%. Free commercial solar assessment. Lock in the 2026 rebate rate." />
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<meta http-equiv="Content-Security-Policy" content="
-  object-src 'none';
-  base-uri 'self';
-  connect-src https://wmegoygrancfwxagqskh.supabase.co 'self';
-  script-src 'self' 'unsafe-inline';
-  img-src * data: blob:;
-  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-  font-src https://fonts.gstatic.com;
-">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Lora:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+
+<!-- Google Tag -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date()); gtag('config', 'G-XXXXXXXX');
+</script>
+
+<!-- Meta Pixel -->
+<script>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('init','1692791048547338'); fbq('track','PageView');
+</script>
+
+<script type="application/ld+json">
+{
+  "@context":"https://schema.org","@type":"Service",
+  "name":"Free Commercial Solar Assessment Sydney",
+  "provider":{"@type":"Organization","name":"ClearWatt Solar","url":"https://clearwattsolar.com.au","areaServed":{"@type":"City","name":"Sydney"}},
+  "serviceType":"Commercial Solar Installation Assessment",
+  "offers":{"@type":"Offer","price":"0","priceCurrency":"AUD","description":"Free, obligation-free commercial solar assessment for Sydney businesses."}
+}
+</script>
+
 <style>
-/* ═══ TOKENS (mirrors main app) ═══ */
-:root {
-  --bg:      #070708;
-  --bg2:     #0c0c0e;
-  --s1:      #0f0f12;
-  --s2:      #141417;
-  --s3:      #19191d;
-  --s4:      #1f1f24;
-  --bd:      #1c1c22;
-  --bd2:     #262630;
-  --bd3:     #32323e;
-  --ink:     #eeeef3;
-  --ink2:    #72728a;
-  --ink3:    #3e3e50;
-  --acc:     #4f8fff;
-  --acc2:    #3070e0;
-  --acc-dim: rgba(79,143,255,.07);
-  --acc-glow:rgba(79,143,255,.18);
-  --acc-ink: #9fc3ff;
-  --red:     #ff4560;
-  --red-dim: rgba(255,69,96,.07);
-  --grn:     #2ecc8a;
-  --grn-dim: rgba(46,204,138,.07);
-  --amb:     #f5a623;
-  --font:    'DM Sans', -apple-system, sans-serif;
-  --mono:    'DM Mono', monospace;
-  --display: 'Syne', sans-serif;
-  --r:  5px;
-  --r2: 9px;
-  --r3: 13px;
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:        #FFF7ED;
+  --surface:   #FFFFFF;
+  --surface2:  #FFFBEB;
+  --border:    rgba(249,115,22,0.15);
+  --border2:   rgba(249,115,22,0.28);
+  --cyan:      #F97316;
+  --cyan-dark: #EA580C;
+  --cyan-glow: rgba(249,115,22,0.18);
+  --cyan-pale: rgba(249,115,22,0.08);
+  --gold:      #FCD34D;
+  --gold-dark: #F59E0B;
+  --white:     #1C0A00;
+  --muted:     #92400E;
+  --muted2:    #C2724F;
+  --green:     #22d47a;
+  --red:       #ff4757;
+  --orange:    #F97316;
+  --radius:    20px;
 }
 
-[data-theme="light"] {
-  --bg:      #f2f2f5;
-  --bg2:     #ebebef;
-  --s1:      #ffffff;
-  --s2:      #f7f7fa;
-  --s3:      #eeeef2;
-  --s4:      #e5e5ec;
-  --bd:      #dddde8;
-  --bd2:     #cacad8;
-  --bd3:     #b8b8c8;
-  --ink:     #0a0a14;
-  --ink2:    #52526a;
-  --ink3:    #9494a8;
-  --acc-dim: rgba(79,143,255,.055);
-  --acc-glow:rgba(79,143,255,.12);
-  --acc-ink: #1a52c0;
-  --red:     #e0304a;
-  --red-dim: rgba(224,48,74,.055);
-  --grn:     #1db87a;
-  --grn-dim: rgba(29,184,122,.055);
+html{scroll-behavior:smooth}
+body{
+  font-family:'Outfit',sans-serif;
+  color:var(--white);
+  background:var(--bg);
+  overflow-x:hidden;
 }
 
-/* ═══ RESET ═══ */
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{min-height:100%;font-family:var(--font);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-body{background:var(--bg);color:var(--ink);}
-::-webkit-scrollbar{width:3px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--bd3);border-radius:2px}
-button{font-family:var(--font);cursor:pointer}
-input,textarea,select{font-family:var(--font)}
-a{color:inherit;text-decoration:none}
-
-/* Noise overlay */
 body::before{
-  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-  background-size:200px 200px;opacity:.4;
+  content:'';position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 90% 60% at 75% -5%, rgba(249,115,22,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at -10% 85%, rgba(234,88,12,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 35% at 50% 115%, rgba(252,211,77,0.05) 0%, transparent 60%);
+  pointer-events:none;z-index:0;
 }
-/* Grid overlay */
-body::after{
-  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background-image:radial-gradient(circle, var(--bd) 1px, transparent 1px);
-  background-size:32px 32px;opacity:.2;
-}
+body::after{content:'';display:none}
 
-/* ═══ HEADER BAR ═══ */
-.topbar{
-  position:sticky;top:0;z-index:100;
-  height:46px;background:var(--s1);border-bottom:1px solid var(--bd);
-  display:flex;align-items:center;padding:0 20px;gap:10px;
+/* ═══ NAV ═══ */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 6vw;
+  background:rgba(6,12,24,0.88);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
 }
-.tb-mark{
-  width:24px;height:24px;background:var(--acc);border-radius:6px;
-  display:flex;align-items:center;justify-content:center;
-  font-family:var(--display);font-size:8px;font-weight:800;color:#fff;
-  box-shadow:0 0 12px rgba(79,143,255,.4);letter-spacing:.02em;flex-shrink:0;
-}
-.tb-name{font-family:var(--display);font-size:12.5px;font-weight:700;letter-spacing:-.2px;color:var(--ink)}
-.tb-sep{width:1px;height:14px;background:var(--bd2);flex-shrink:0}
-.tb-sub{font-family:var(--mono);font-size:9.5px;color:var(--ink3);letter-spacing:.06em;text-transform:uppercase}
-.tb-sp{flex:1}
-.test-badge{
-  font-family:var(--mono);font-size:9px;font-weight:500;letter-spacing:.1em;
-  text-transform:uppercase;padding:3px 8px;border-radius:3px;
-  background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);color:var(--amb);
-}
-.theme-btn{
-  width:26px;height:26px;display:flex;align-items:center;justify-content:center;
-  border-radius:var(--r);border:1px solid var(--bd2);background:var(--s2);
-  color:var(--ink3);font-size:13px;transition:all .12s;
-}
-.theme-btn:hover{background:var(--s3);color:var(--ink)}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo-sun{width:38px;height:38px;background:linear-gradient(135deg,#FCD34D,#F97316);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 5px rgba(252,211,77,0.25),0 0 0 10px rgba(249,115,22,0.08);animation:pulse-sun 3s ease-in-out infinite;flex-shrink:0}
+.logo-sun svg{width:20px;height:20px}@keyframes pulse-sun{0%,100%{box-shadow:0 0 0 5px rgba(252,211,77,0.25),0 0 0 10px rgba(249,115,22,0.08)}50%{box-shadow:0 0 0 8px rgba(252,211,77,0.3),0 0 0 16px rgba(249,115,22,0.05)}}
+.logo-text{font-family:'Outfit',sans-serif;font-weight:800;font-size:1.2rem;color:var(--white);letter-spacing:-0.02em}
+.logo-text span{color:var(--cyan)}
+.nav-right{display:flex;align-items:center;gap:14px}
 
-/* ═══ MAIN LAYOUT ═══ */
-.page{
-  position:relative;z-index:1;
-  min-height:calc(100vh - 46px);
-  display:flex;flex-direction:column;align-items:center;
-  padding:40px 16px 60px;
+/* Commercial badge — gold instead of green */
+.nav-badge{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(252,211,77,0.1);border:1px solid rgba(252,211,77,0.28);
+  border-radius:50px;padding:5px 13px;font-size:0.72rem;font-weight:700;
+  color:var(--gold);letter-spacing:0.04em;
 }
+.nav-badge::before{content:'';width:6px;height:6px;background:var(--gold);border-radius:50%;animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+.nav-cta{
+  background:linear-gradient(135deg, var(--cyan), var(--cyan-dark));
+  color:var(--bg);font-weight:700;font-size:0.82rem;
+  padding:9px 20px;border-radius:50px;text-decoration:none;
+  box-shadow:0 4px 20px rgba(249,115,22,0.25);
+  transition:transform 0.2s,box-shadow 0.2s;
+}
+.nav-cta:hover{transform:translateY(-1px);box-shadow:0 6px 28px rgba(249,115,22,0.38)}
 
 /* ═══ HERO ═══ */
-.hero{text-align:center;max-width:520px;margin-bottom:36px}
-.hero-eyebrow{
-  display:inline-flex;align-items:center;gap:6px;
-  font-family:var(--mono);font-size:9.5px;font-weight:500;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--acc);
-  background:var(--acc-dim);border:1px solid rgba(79,143,255,.14);
-  border-radius:20px;padding:4px 12px;margin-bottom:18px;
+.hero{
+  min-height:100vh;padding:120px 6vw 80px;
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
 }
-.hero-eyebrow svg{width:10px;height:10px;fill:currentColor}
-.hero h1{
-  font-family:var(--display);font-size:clamp(24px,5vw,36px);font-weight:800;
-  letter-spacing:-.6px;line-height:1.1;color:var(--ink);margin-bottom:12px;
+.hero-lines{
+  position:absolute;inset:0;pointer-events:none;overflow:hidden;
+  background-image:
+    linear-gradient(rgba(249,115,22,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(249,115,22,0.035) 1px, transparent 1px);
+  background-size:64px 64px;
+  -webkit-mask-image:radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 80%);
+  mask-image:radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 80%);
 }
-.hero h1 span{
-  background:linear-gradient(135deg,#4f8fff 0%,#9fc3ff 100%);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-}
-.hero p{font-size:14px;color:var(--ink2);line-height:1.6;font-weight:300}
 
-/* ═══ TRUST PILLS ═══ */
-.trust-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:36px}
+/* COMMERCIAL ALERT STRIP */
+.alert-strip{
+  display:inline-flex;align-items:center;gap:10px;
+  background:linear-gradient(135deg, rgba(252,211,77,0.1), rgba(252,211,77,0.05));
+  border:1px solid rgba(252,211,77,0.3);
+  border-radius:50px;padding:8px 20px;margin-bottom:24px;
+  font-size:0.75rem;font-weight:700;color:var(--gold);
+  letter-spacing:0.06em;text-transform:uppercase;
+  animation:fadeSlideUp 0.6s ease forwards;
+}
+.alert-strip .as-icon{font-size:1rem}
+.alert-strip .as-div{width:1px;height:13px;background:rgba(252,211,77,0.3)}
+
+.hero-h1{
+  font-family:'Outfit',sans-serif;font-weight:900;
+  font-size:clamp(2.2rem, 5.2vw, 4rem);
+  line-height:1.05;letter-spacing:-0.04em;
+  text-align:center;max-width:860px;
+  margin-bottom:20px;
+  animation:fadeSlideUp 0.7s ease 0.1s both;
+}
+.hero-h1 .line1{display:block;color:var(--white)}
+.hero-h1 .line2{
+  display:block;
+  background:linear-gradient(90deg, var(--cyan), var(--gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  font-style:italic;
+}
+
+.hero-sub{
+  text-align:center;font-size:clamp(0.95rem, 2vw, 1.1rem);
+  color:var(--muted);line-height:1.75;max-width:580px;
+  margin-bottom:32px;
+  animation:fadeSlideUp 0.7s ease 0.2s both;
+}
+.hero-sub strong{color:var(--white);font-weight:600}
+
+/* TRUST PILLS */
+.trust-row{
+  display:flex;justify-content:center;gap:10px;flex-wrap:wrap;
+  margin-bottom:44px;
+  animation:fadeSlideUp 0.7s ease 0.3s both;
+}
 .trust-pill{
   display:flex;align-items:center;gap:6px;
-  font-family:var(--mono);font-size:9.5px;color:var(--ink2);
-  background:var(--s2);border:1px solid var(--bd);border-radius:4px;
-  padding:5px 10px;letter-spacing:.04em;
+  background:rgba(249,115,22,0.05);border:1px solid rgba(0,0,0,0.07);
+  border-radius:50px;padding:6px 14px;font-size:0.73rem;font-weight:600;color:var(--muted);
 }
-.trust-pill svg{width:11px;height:11px;flex-shrink:0;color:var(--grn)}
+.trust-pill svg{width:13px;height:13px;color:var(--green);flex-shrink:0}
 
-/* ═══ CARD ═══ */
-.card{
-  width:100%;max-width:520px;
-  background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r3);
-  padding:32px;position:relative;overflow:hidden;
-  box-shadow:0 0 0 1px var(--bd),0 40px 80px rgba(0,0,0,.6),0 0 60px rgba(79,143,255,.03);
+/* STAT ROW */
+.stat-row{
+  display:flex;justify-content:center;gap:44px;flex-wrap:wrap;
+  animation:fadeSlideUp 0.7s ease 0.35s both;margin-bottom:52px;
 }
-.card::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent 0%,var(--acc) 40%,rgba(79,143,255,.3) 70%,transparent 100%);
+.stat-item{text-align:center}
+.stat-num{
+  display:block;font-family:'Outfit',sans-serif;font-weight:900;
+  font-size:2rem;letter-spacing:-0.04em;color:var(--cyan);line-height:1;
 }
+.stat-num.gold{color:var(--gold)}
+.stat-sep{color:rgba(249,115,22,0.3);font-size:1.8rem;display:flex;align-items:center}
+.stat-label{font-size:0.68rem;color:var(--muted2);text-transform:uppercase;letter-spacing:0.09em;margin-top:3px}
 
-/* Progress bar */
-.progress-bar{
-  height:2px;background:var(--bd);border-radius:2px;margin-bottom:28px;overflow:hidden;
-}
-.progress-fill{
-  height:100%;background:linear-gradient(90deg,var(--acc),#9fc3ff);
-  border-radius:2px;transition:width .4s ease;width:0%;
+@keyframes fadeSlideUp{
+  from{opacity:0;transform:translateY(20px)}
+  to{opacity:1;transform:translateY(0)}
 }
 
-/* Step indicator */
+/* ═══ SURVEY CARD ═══ */
+.survey-wrap{
+  width:100%;max-width:600px;
+  animation:fadeSlideUp 0.8s ease 0.45s both;
+  position:relative;z-index:5;
+}
+.survey-card{
+  background:var(--surface);
+  border:1px solid var(--border2);
+  border-radius:22px;
+  box-shadow:
+    0 0 0 1px rgba(249,115,22,0.05),
+    0 28px 70px rgba(0,0,0,0.55),
+    0 0 100px rgba(249,115,22,0.04);
+  overflow:hidden;
+}
+
+.card-topbar{
+  display:flex;align-items:center;gap:8px;
+  padding:14px 20px;
+  background:rgba(249,115,22,0.04);
+  border-bottom:1px solid var(--border);
+}
+.tb-dot{width:10px;height:10px;border-radius:50%}
+.tb-dot.r{background:#ff5f57}.tb-dot.y{background:#febc2e}.tb-dot.g{background:#28c840}
+.tb-label{
+  margin-left:8px;font-family:'Outfit',sans-serif;font-weight:700;
+  font-size:0.78rem;color:var(--muted);letter-spacing:0.05em;text-transform:uppercase;
+}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:0.7rem;color:var(--muted2);font-weight:600}
+.tb-right svg{width:12px;height:12px;color:var(--green)}
+
+/* PROGRESS */
+.prog-outer{height:3px;background:rgba(249,115,22,0.06)}
+.prog-inner{
+  height:100%;width:0%;
+  background:linear-gradient(90deg,var(--cyan),var(--gold));
+  transition:width 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* STEP DOTS */
+.dot-row{display:flex;justify-content:center;align-items:center;gap:8px;padding:14px 0 0}
+.sdot{
+  width:7px;height:7px;border-radius:50%;
+  background:rgba(0,0,0,0.07);transition:all 0.3s ease;
+}
+.sdot.active{background:var(--cyan);transform:scale(1.35);box-shadow:0 0 8px rgba(249,115,22,0.5)}
+.sdot.done{background:var(--green)}
+
+/* CARD BODY */
+.card-body{padding:28px 32px 30px}
+@media(max-width:480px){.card-body{padding:22px 18px 24px}}
+
+/* STEPS */
+.step{display:none}
+.step.active{display:block;animation:stepIn 0.35s ease}
+@keyframes stepIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
+
 .step-label{
-  font-family:var(--mono);font-size:9px;color:var(--ink3);letter-spacing:.1em;
-  text-transform:uppercase;margin-bottom:4px;
+  font-size:0.65rem;font-weight:700;color:var(--cyan);
+  text-transform:uppercase;letter-spacing:0.14em;margin-bottom:7px;
 }
-.card h2{
-  font-family:var(--display);font-size:17px;font-weight:700;letter-spacing:-.3px;
-  color:var(--ink);margin-bottom:22px;
-}
-
-/* ═══ FORM FIELDS ═══ */
-.field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media(max-width:400px){.field-row{grid-template-columns:1fr}}
-
-.field{margin-bottom:14px;position:relative}
-.field label{
-  display:block;font-family:var(--mono);font-size:9px;font-weight:500;
-  color:var(--ink3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:6px;
-}
-.field label .req{color:var(--acc);margin-left:2px;}
-
-.input-wrap{position:relative}
-.input-wrap svg.icon{
-  position:absolute;left:10px;top:50%;transform:translateY(-50%);
-  width:14px;height:14px;color:var(--ink3);pointer-events:none;flex-shrink:0;
-}
-.field input,.field select{
-  width:100%;background:var(--s2);border:1px solid var(--bd2);
-  border-radius:var(--r);color:var(--ink);font-size:13.5px;
-  padding:10px 12px;outline:none;transition:border-color .15s,box-shadow .15s;
-  -webkit-appearance:none;appearance:none;
-}
-.field input.has-icon,.field select.has-icon{padding-left:32px}
-.field input::placeholder{color:var(--ink3)}
-.field input:focus,.field select:focus{
-  border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-dim);background:var(--s1);
-}
-.field input.err,.field select.err{
-  border-color:var(--red);box-shadow:0 0 0 3px var(--red-dim);
-}
-.field-err{
-  font-family:var(--mono);font-size:9.5px;color:var(--red);
-  margin-top:5px;min-height:12px;letter-spacing:.02em;display:none;
-}
-.field-err.show{display:block}
-
-/* Select arrow */
-.select-wrap{position:relative}
-.select-wrap::after{
-  content:'';position:absolute;right:11px;top:50%;transform:translateY(-50%);
-  width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;
-  border-top:5px solid var(--ink3);pointer-events:none;
+.step h3{
+  font-family:'Outfit',sans-serif;font-weight:800;
+  font-size:1.22rem;color:var(--white);
+  letter-spacing:-0.02em;margin-bottom:22px;line-height:1.25;
 }
 
-/* Postcode row */
-.postcode-row{display:grid;grid-template-columns:140px 1fr;gap:14px;align-items:end}
-@media(max-width:360px){.postcode-row{grid-template-columns:1fr}}
-.suburb-chip{
-  background:var(--s3);border:1px solid var(--bd2);border-radius:var(--r);
-  padding:10px 12px;font-size:13px;color:var(--ink);min-height:40px;
-  display:flex;align-items:center;gap:7px;
-}
-.suburb-chip .suburb-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.suburb-chip.loading{color:var(--ink3);font-size:11.5px}
-.suburb-chip.found{border-color:rgba(46,204,138,.25);background:var(--grn-dim)}
-.suburb-chip.no-coverage{border-color:rgba(245,166,35,.25);background:rgba(245,166,35,.07);color:var(--amb)}
-.suburb-chip.not-found{border-color:var(--red-dim);color:var(--ink3);font-size:11.5px}
+/* CHOICE CARDS */
+.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+@media(max-width:440px){.choice-grid{grid-template-columns:1fr}}
 
-/* Bill options */
-.bill-options{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-@media(max-width:380px){.bill-options{grid-template-columns:repeat(2,1fr)}}
-.bill-opt{
-  position:relative;
+.choice-card{
+  border:1.5px solid rgba(0,0,0,0.07);
+  border-radius:14px;padding:20px 16px;
+  cursor:pointer;transition:all 0.2s ease;
+  background:rgba(249,115,22,0.04);
+  position:relative;overflow:hidden;user-select:none;
 }
-.bill-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0;}
-.bill-opt label{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:2px;padding:10px 8px;border-radius:var(--r);cursor:pointer;
-  background:var(--s2);border:1px solid var(--bd2);transition:all .15s;
-  text-align:center;
+.choice-card::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg, rgba(249,115,22,0.06), rgba(249,115,22,0.02));
+  opacity:0;transition:opacity 0.2s;
 }
-.bill-opt label .bill-amt{font-family:var(--display);font-size:14px;font-weight:700;color:var(--ink);line-height:1}
-.bill-opt label .bill-lbl{font-family:var(--mono);font-size:9px;color:var(--ink3);letter-spacing:.05em;margin-top:3px}
-.bill-opt input:checked + label{
-  background:var(--acc-dim);border-color:rgba(79,143,255,.3);
+.choice-card:hover{border-color:rgba(249,115,22,0.4);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.3)}
+.choice-card:hover::before{opacity:1}
+.choice-card.selected{
+  border-color:var(--cyan);background:rgba(249,115,22,0.08);
+  box-shadow:0 0 0 1px rgba(249,115,22,0.2), 0 8px 28px rgba(0,0,0,0.3);
 }
-.bill-opt input:checked + label .bill-amt{color:var(--acc-ink)}
-.bill-opt label:hover{background:var(--s3);border-color:var(--bd3)}
+.choice-card.selected::before{opacity:1}
+.choice-card.selected::after{
+  content:'✓';position:absolute;top:9px;right:11px;
+  width:20px;height:20px;background:var(--cyan);color:var(--bg);
+  border-radius:50%;font-size:0.65rem;font-weight:900;
+  display:flex;align-items:center;justify-content:center;line-height:20px;
+}
+.choice-card.disq-card:hover{border-color:rgba(255,71,87,0.4)}
+.choice-card.disq-card.selected{border-color:var(--red);background:rgba(255,71,87,0.07)}
+.choice-card.disq-card.selected::after{background:var(--red)}
 
-/* Timeline options */
-.timeline-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.timeline-opt{position:relative}
-.timeline-opt input[type="radio"]{position:absolute;opacity:0;width:0;height:0;}
-.timeline-opt label{
-  display:flex;align-items:center;gap:9px;
-  padding:11px 13px;border-radius:var(--r);cursor:pointer;
-  background:var(--s2);border:1px solid var(--bd2);transition:all .15s;
-}
-.timeline-opt label .tl-icon{
-  width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;
-  background:var(--s3);border:1px solid var(--bd);font-size:11px;flex-shrink:0;
-}
-.timeline-opt label .tl-text{flex:1}
-.timeline-opt label .tl-title{font-size:12px;font-weight:500;color:var(--ink);line-height:1.2}
-.timeline-opt label .tl-sub{font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:2px}
-.timeline-opt input:checked + label{
-  background:var(--acc-dim);border-color:rgba(79,143,255,.3);
-}
-.timeline-opt input:checked + label .tl-icon{
-  background:rgba(79,143,255,.12);border-color:rgba(79,143,255,.2);
-}
-.timeline-opt label:hover{background:var(--s3);border-color:var(--bd3)}
+.cc-icon{font-size:2rem;margin-bottom:10px;display:block}
+.cc-title{font-weight:700;font-size:0.95rem;color:var(--white);margin-bottom:3px}
+.cc-sub{font-size:0.73rem;color:var(--muted)}
 
-/* ═══ ACTIONS ═══ */
-.actions{display:flex;gap:10px;margin-top:24px;align-items:center}
-.btn-back{
-  width:38px;height:40px;display:flex;align-items:center;justify-content:center;
-  border-radius:var(--r);border:1px solid var(--bd2);background:var(--s2);
-  color:var(--ink2);font-size:16px;transition:all .12s;flex-shrink:0;
+/* HORIZONTAL BILL CHOICES */
+.choice-h{
+  display:flex;align-items:center;gap:14px;
+  border:1.5px solid rgba(0,0,0,0.07);
+  border-radius:14px;padding:15px 18px;
+  cursor:pointer;transition:all 0.2s ease;
+  background:rgba(249,115,22,0.04);
+  position:relative;overflow:hidden;user-select:none;
 }
-.btn-back:hover{background:var(--s3);color:var(--ink);border-color:var(--bd3)}
-.btn-back:disabled{opacity:.25;cursor:not-allowed}
+.choice-h:hover{border-color:rgba(249,115,22,0.4);transform:translateY(-2px)}
+.choice-h.selected{
+  border-color:var(--cyan);background:rgba(249,115,22,0.08);
+  box-shadow:0 0 0 1px rgba(249,115,22,0.2);
+}
+.choice-h.selected::after{
+  content:'✓';position:absolute;top:50%;right:14px;transform:translateY(-50%);
+  width:20px;height:20px;background:var(--cyan);color:var(--bg);
+  border-radius:50%;font-size:0.65rem;font-weight:900;
+  display:flex;align-items:center;justify-content:center;line-height:20px;
+}
+.ch-icon{font-size:1.4rem;flex-shrink:0}
+.ch-body{flex:1}
+.ch-title{font-weight:700;font-size:0.92rem;color:var(--white)}
+.ch-sub{font-size:0.72rem;color:var(--muted);margin-top:2px}
+.ch-badge{
+  background:rgba(252,211,77,0.12);border:1px solid rgba(252,211,77,0.25);
+  border-radius:50px;padding:3px 10px;font-size:0.63rem;font-weight:700;
+  color:var(--gold);white-space:nowrap;flex-shrink:0;margin-right:28px;
+}
+
+/* INSIGHT BOX */
+.insight{
+  display:flex;gap:11px;align-items:flex-start;
+  background:rgba(249,115,22,0.05);border:1px solid rgba(249,115,22,0.12);
+  border-radius:12px;padding:13px 15px;margin-bottom:20px;
+}
+.insight-icon{font-size:1.2rem;flex-shrink:0;line-height:1.2}
+.insight p{font-size:0.78rem;color:var(--muted);line-height:1.55}
+.insight strong{color:var(--cyan);font-weight:700}
+
+/* DISQUALIFY MSG */
+#disq-msg{display:none;text-align:center;padding:16px 0 8px}
+.disq-icon{font-size:3rem;margin-bottom:14px}
+.disq-msg-title{font-family:'Outfit',sans-serif;font-weight:800;font-size:1.1rem;color:var(--white);margin-bottom:10px;letter-spacing:-0.02em}
+.disq-box{background:rgba(249,115,22,0.05);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:16px;font-size:0.78rem;color:var(--muted);line-height:1.6}
+
+/* MATCH NOTICE */
+.match-notice{
+  display:flex;gap:12px;align-items:flex-start;
+  background:rgba(34,212,122,0.06);border:1px solid rgba(34,212,122,0.15);
+  border-radius:12px;padding:14px 16px;margin-bottom:20px;
+}
+.match-notice .mn-icon{font-size:1.5rem;flex-shrink:0}
+.match-notice p{font-size:0.78rem;color:var(--muted);line-height:1.55}
+.match-notice strong{color:var(--green);font-weight:700}
+
+/* FORM FIELDS */
+.field-wrap{margin-bottom:14px}
+.field-wrap label{display:block;font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px}
+.field-wrap input{
+  width:100%;background:rgba(249,115,22,0.05);
+  border:1.5px solid rgba(0,0,0,0.07);
+  border-radius:10px;padding:12px 14px;
+  font-family:'Outfit',sans-serif;font-size:0.92rem;color:var(--white);
+  outline:none;transition:border-color 0.2s,box-shadow 0.2s;
+}
+.field-wrap input::placeholder{color:var(--muted2)}
+.field-wrap input:focus{border-color:rgba(249,115,22,0.5);box-shadow:0 0 0 3px rgba(249,115,22,0.08)}
+.field-wrap input.err-field{border-color:rgba(255,71,87,0.6)}
+.err-msg{color:var(--red);font-size:0.7rem;margin-top:4px;display:none}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:460px){.field-row{grid-template-columns:1fr}}
+
+/* BUTTONS */
 .btn-next{
-  flex:1;background:var(--acc);color:#fff;border:none;border-radius:var(--r);
-  font-family:var(--display);font-size:14px;font-weight:700;
-  padding:11px 20px;transition:all .15s;letter-spacing:.01em;
-  box-shadow:0 4px 20px rgba(79,143,255,.3);
-  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;border:none;border-radius:50px;
+  padding:16px 28px;font-family:'Outfit',sans-serif;
+  font-size:1rem;font-weight:800;cursor:pointer;
+  background:linear-gradient(135deg, var(--cyan), var(--cyan-dark));
+  color:var(--bg);letter-spacing:-0.01em;
+  box-shadow:0 6px 28px rgba(249,115,22,0.3);
+  transition:all 0.25s ease;position:relative;overflow:hidden;
 }
-.btn-next:hover:not(:disabled){background:var(--acc2);box-shadow:0 6px 28px rgba(79,143,255,.5);transform:translateY(-1px)}
-.btn-next:disabled{opacity:.35;cursor:not-allowed;transform:none}
-.btn-next svg{width:14px;height:14px}
+.btn-next::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+  opacity:0;transition:opacity 0.2s;
+}
+.btn-next:hover{transform:translateY(-2px);box-shadow:0 10px 36px rgba(249,115,22,0.42)}
+.btn-next:hover::before{opacity:1}
+.btn-next:disabled{opacity:0.4;cursor:not-allowed;transform:none;box-shadow:0 4px 18px rgba(249,115,22,0.15)}
 
-/* ═══ SUCCESS STATE ═══ */
-#success-view{display:none;text-align:center;padding:12px 0}
-#success-view .check-circle{
-  width:56px;height:56px;border-radius:50%;background:var(--grn-dim);
-  border:1px solid rgba(46,204,138,.25);
-  display:flex;align-items:center;justify-content:center;margin:0 auto 20px;
+.btn-back{
+  display:flex;align-items:center;gap:5px;margin-top:11px;
+  background:none;border:none;color:var(--muted2);font-family:'Outfit',sans-serif;
+  font-size:0.78rem;font-weight:600;cursor:pointer;padding:0;
+  transition:color 0.2s;
 }
-#success-view .check-circle svg{width:24px;height:24px;color:var(--grn)}
-#success-view h3{font-family:var(--display);font-size:20px;font-weight:700;margin-bottom:8px;letter-spacing:-.3px}
-#success-view p{font-size:13px;color:var(--ink2);line-height:1.6}
-.lead-meta{
-  margin-top:20px;background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r2);
-  padding:14px 16px;text-align:left;
-}
-.lead-meta-row{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:4px 0;border-bottom:1px solid var(--bd);
-}
-.lead-meta-row:last-child{border-bottom:none;padding-bottom:0}
-.lead-meta-row:first-child{padding-top:0}
-.lm-label{font-family:var(--mono);font-size:9px;color:var(--ink3);letter-spacing:.08em;text-transform:uppercase}
-.lm-val{font-size:12px;color:var(--ink);font-weight:500;font-family:var(--mono)}
-.lm-val.status-assigned{color:var(--grn)}
-.lm-val.status-pending{color:var(--amb)}
+.btn-back:hover{color:var(--muted)}
+.btn-back svg{width:13px;height:13px}
 
-/* ═══ ERROR BANNER ═══ */
+.priv-note{text-align:center;font-size:0.68rem;color:var(--muted2);margin-top:12px;display:flex;align-items:center;justify-content:center;gap:5px;line-height:1.5}
+.priv-note svg{width:11px;height:11px;color:var(--green);flex-shrink:0}
+
+/* ═══ HOW IT WORKS ═══ */
+.hiw-section{padding:80px 6vw;position:relative;z-index:1}
+.section-head{text-align:center;max-width:600px;margin:0 auto 48px}
+.section-eyebrow{
+  display:inline-block;font-size:0.68rem;font-weight:700;
+  color:var(--cyan);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:12px;
+}
+.section-h2{
+  font-family:'Outfit',sans-serif;font-weight:900;
+  font-size:clamp(1.6rem,3vw,2.2rem);color:var(--white);
+  letter-spacing:-0.04em;line-height:1.1;margin-bottom:10px;
+}
+.section-sub{font-size:0.95rem;color:var(--muted);line-height:1.7}
+
+.hiw-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:20px;max-width:900px;margin:0 auto;
+}
+.hiw-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:28px 22px;
+  position:relative;overflow:hidden;transition:transform 0.25s,border-color 0.25s;
+}
+.hiw-card:hover{transform:translateY(-4px);border-color:var(--border2)}
+.hiw-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--cyan),var(--gold));
+  transform:scaleX(0);transform-origin:left;transition:transform 0.35s;
+}
+.hiw-card:hover::before{transform:scaleX(1)}
+.hiw-num{
+  font-family:'Outfit',sans-serif;font-size:3rem;font-weight:900;
+  color:rgba(249,115,22,0.08);line-height:1;margin-bottom:14px;letter-spacing:-0.06em;
+}
+.hiw-card h4{font-family:'Outfit',sans-serif;font-weight:800;font-size:0.97rem;color:var(--white);margin-bottom:8px}
+.hiw-card p{font-size:0.8rem;color:var(--muted);line-height:1.6}
+
+/* FACTS */
+.facts-section{
+  background:linear-gradient(180deg, rgba(249,115,22,0.03) 0%, transparent 100%);
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  padding:80px 6vw;position:relative;z-index:1;
+}
+.facts-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:18px;max-width:960px;margin:0 auto;
+}
+.fact-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:24px 20px;
+}
+.fact-icon{font-size:1.7rem;margin-bottom:12px;display:block}
+.fact-card h4{font-family:'Outfit',sans-serif;font-weight:700;font-size:0.92rem;color:var(--cyan);margin-bottom:7px}
+.fact-card p{font-size:0.78rem;color:var(--muted);line-height:1.6}
+.fact-asterisk{font-size:0.65rem;color:var(--muted2);margin-top:7px;display:block}
+
+/* REVIEWS */
+.reviews-section{padding:80px 6vw;position:relative;z-index:1}
+.reviews-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:18px;max-width:1000px;margin:0 auto;
+}
+.review-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:24px;transition:transform 0.25s,border-color 0.25s;
+}
+.review-card:hover{transform:translateY(-3px);border-color:var(--border2)}
+.review-stars{color:var(--gold);font-size:0.9rem;letter-spacing:2px;margin-bottom:12px}
+.review-text{font-size:0.86rem;color:var(--muted);line-height:1.7;margin-bottom:16px;font-style:italic}
+.reviewer{display:flex;align-items:center;gap:10px}
+.reviewer-av{
+  width:38px;height:38px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,var(--cyan),var(--cyan-dark));
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Outfit',sans-serif;font-weight:800;font-size:0.78rem;color:var(--bg);
+}
+.reviewer-av.gold-av{background:linear-gradient(135deg,var(--gold),var(--gold-dark))}
+.reviewer-name{font-weight:700;font-size:0.82rem;color:var(--white)}
+.reviewer-loc{font-size:0.7rem;color:var(--muted2)}
+.review-biz{
+  display:inline-block;margin-top:5px;
+  background:rgba(249,115,22,0.07);border:1px solid rgba(249,115,22,0.15);
+  border-radius:50px;padding:2px 9px;font-size:0.66rem;font-weight:700;color:var(--cyan);
+}
+
+/* CTA STRIP */
+.cta-strip{
+  background:linear-gradient(135deg, rgba(249,115,22,0.08), rgba(234,88,12,0.05));
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  padding:56px 20px;text-align:center;position:relative;z-index:1;overflow:hidden;
+}
+.cta-strip::before{
+  content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:600px;height:200px;
+  background:radial-gradient(ellipse, rgba(249,115,22,0.07) 0%, transparent 70%);
+  pointer-events:none;
+}
+.cta-strip h3{
+  font-family:'Outfit',sans-serif;font-weight:900;
+  font-size:clamp(1.3rem,3vw,1.9rem);color:var(--white);
+  letter-spacing:-0.04em;margin-bottom:18px;position:relative;z-index:1;
+}
+.cta-btn{
+  display:inline-block;position:relative;z-index:1;
+  background:linear-gradient(135deg,var(--cyan),var(--cyan-dark));
+  color:var(--bg);font-family:'Outfit',sans-serif;font-weight:800;
+  font-size:0.95rem;padding:15px 38px;border-radius:50px;text-decoration:none;
+  box-shadow:0 6px 28px rgba(249,115,22,0.3);transition:all 0.2s;letter-spacing:-0.01em;
+}
+.cta-btn:hover{transform:translateY(-2px);box-shadow:0 10px 38px rgba(249,115,22,0.42)}
+
+/* FAQ */
+.faq-section{padding:60px 20px 80px;max-width:700px;margin:0 auto;position:relative;z-index:1}
+.faq-item{border-bottom:1px solid var(--border);padding:20px 0}
+.faq-q{
+  font-family:'Outfit',sans-serif;font-size:0.97rem;font-weight:700;
+  color:var(--white);cursor:pointer;
+  display:flex;justify-content:space-between;align-items:center;gap:14px;
+  letter-spacing:-0.01em;
+}
+.faq-q svg{flex-shrink:0;width:18px;height:18px;color:var(--cyan);transition:transform 0.3s}
+.faq-a{font-size:0.86rem;color:var(--muted);line-height:1.7;max-height:0;overflow:hidden;transition:max-height 0.35s ease,padding 0.2s}
+.faq-item.open .faq-a{max-height:260px;padding-top:10px}
+.faq-item.open .faq-q svg{transform:rotate(45deg)}
+
+/* FOOTER */
+footer{
+  background:#1C0A00;border-top:none;
+  padding:40px 6vw 28px;position:relative;z-index:1;
+}
+.footer-inner{
+  max-width:1000px;margin:0 auto;
+  display:flex;justify-content:space-between;align-items:flex-start;
+  flex-wrap:wrap;gap:32px;padding-bottom:28px;border-bottom:1px solid var(--border);
+}
+.footer-brand p{font-size:0.82rem;color:var(--muted2);margin-top:10px;max-width:220px;line-height:1.6}
+.footer-col h5{font-size:0.65rem;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:12px}
+.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:9px}
+.footer-col a{text-decoration:none;font-size:0.82rem;color:var(--muted);transition:color 0.2s;font-weight:500}
+.footer-col a:hover{color:var(--cyan)}
+.footer-bottom{max-width:1000px;margin:20px auto 0;font-size:0.68rem;color:var(--muted2);text-align:center;line-height:1.8}
+
+/* ERROR BANNER */
 #error-banner{
   display:none;margin-bottom:16px;
-  background:var(--red-dim);border:1px solid rgba(255,69,96,.25);
-  border-radius:var(--r);padding:10px 13px;
-  font-family:var(--mono);font-size:11px;color:var(--red);letter-spacing:.02em;
+  background:rgba(255,71,87,0.07);border:1px solid rgba(255,71,87,0.25);
+  border-radius:10px;padding:10px 14px;
+  font-size:0.78rem;color:var(--red);line-height:1.5;
 }
 #error-banner.show{display:block}
 
-/* ═══ FOOTER ═══ */
-.footer{
-  margin-top:32px;text-align:center;max-width:520px;
+/* LOADING OVERLAY */
+.overlay{
+  display:none;position:fixed;inset:0;z-index:999;
+  background:rgba(28,10,0,0.92);
+  align-items:center;justify-content:center;flex-direction:column;gap:16px;
+  backdrop-filter:blur(8px);
 }
-.footer p{font-family:var(--mono);font-size:9.5px;color:var(--ink3);letter-spacing:.05em;line-height:1.7}
+.overlay.show{display:flex}
+.spinner{
+  width:44px;height:44px;
+  border:3px solid rgba(249,115,22,0.15);
+  border-top-color:var(--cyan);
+  border-radius:50%;animation:spin 0.75s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.overlay p{font-family:'Outfit',sans-serif;font-weight:700;color:#FFF7ED;font-size:0.95rem;letter-spacing:-0.01em}
 
-/* Spinner */
-.spin{
-  width:16px;height:16px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;
-  border-radius:50%;animation:spinner .6s linear infinite;flex-shrink:0;
+/* POSTCODE COVERAGE CHIP */
+.suburb-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  margin-top:7px;font-size:0.74rem;font-weight:700;
+  padding:5px 12px;border-radius:50px;transition:all 0.2s;
 }
-@keyframes spinner{to{transform:rotate(360deg)}}
+.suburb-chip.loading{background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.1);color:var(--muted2)}
+.suburb-chip.found{background:rgba(34,212,122,0.08);border:1px solid rgba(34,212,122,0.22);color:var(--green)}
+.suburb-chip.no-coverage{background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);color:var(--cyan)}
+.suburb-chip.not-found{background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.1);color:var(--muted2)}
+
+/* HAMBURGER */
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;border:none;background:none;padding:6px}
+.hamburger span{display:block;width:22px;height:2px;background:var(--muted);border-radius:2px;transition:transform 0.3s,opacity 0.3s}
+.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.hamburger.open span:nth-child(2){opacity:0}
+.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.mob-nav{display:none;position:fixed;inset:0;background:var(--bg);z-index:90;padding:80px 6vw 40px;flex-direction:column}
+.mob-nav.open{display:flex}
+.mob-nav ul{list-style:none;display:flex;flex-direction:column;border-top:1px solid var(--border)}
+.mob-nav ul li a{display:block;font-family:'Outfit',sans-serif;font-size:1.1rem;font-weight:700;color:var(--white);text-decoration:none;padding:16px 0;border-bottom:1px solid var(--border);transition:color 0.2s}
+.mob-nav ul li a:hover{color:var(--cyan)}
+.mob-cta{margin-top:28px}
+.mob-cta a{display:block;text-align:center;background:linear-gradient(135deg,var(--cyan),var(--cyan-dark));color:var(--bg);font-family:'Outfit',sans-serif;font-weight:800;font-size:1rem;padding:16px;border-radius:50px;text-decoration:none}
+
+@media(max-width:640px){
+  .nav-right .nav-cta{display:none}
+  .hamburger{display:flex}
+  nav{padding:14px 5vw}
+  .hero{padding:100px 5vw 60px}
+  .stat-sep{display:none}
+}
+
+/* Footer dark background overrides */
+footer .footer-col a{color:rgba(255,255,255,0.55)}
+footer .footer-col a:hover{color:var(--cyan)}
+footer .footer-brand p{color:rgba(255,255,255,0.38)}
+footer .footer-col h5{color:rgba(255,255,255,0.35)}
+footer .footer-bottom{color:rgba(255,255,255,0.3)}
+.footer-inner{border-bottom-color:rgba(255,255,255,0.1)}
 </style>
 </head>
 <body>
 
-<!-- TOP BAR -->
-<header class="topbar">
-  <div class="tb-mark">QL</div>
-  <span class="tb-name">QuoteLeads</span>
-  <div class="tb-sep"></div>
-  <span class="tb-sub">Solar Survey</span>
-  <div class="tb-sp"></div>
-  <span class="test-badge">⚠ TEST PAGE</span>
-  <button class="theme-btn" id="theme-toggle" title="Toggle theme" aria-label="Toggle theme">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-  </button>
-</header>
+<!-- LOADING OVERLAY -->
+<div class="overlay" id="overlay">
+  <div class="spinner"></div>
+  <p>Connecting you with a commercial specialist…</p>
+</div>
 
-<!-- PAGE -->
-<main class="page">
-
-  <!-- HERO -->
-  <div class="hero">
-    <div class="hero-eyebrow">
-      <svg viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
-      Solar Savings — Free Quote
+<!-- ═══ NAV ═══ -->
+<nav>
+  <a href="/" class="logo">
+    <div class="logo-sun">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+        <circle cx="12" cy="12" r="4.5"/>
+        <line x1="12" y1="1.5" x2="12" y2="3.5"/><line x1="12" y1="20.5" x2="12" y2="22.5"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1.5" y1="12" x2="3.5" y2="12"/><line x1="20.5" y1="12" x2="22.5" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
     </div>
-    <h1>How much could you save with <span>solar panels</span>?</h1>
-    <p>Answer a few quick questions and we'll connect you with an accredited local installer to calculate your exact savings.</p>
+    <span class="logo-text">Clear<span>Watt</span> Solar</span>
+  </a>
+  <div class="nav-right">
+    <div class="nav-badge">Commercial Solar Specialists</div>
+    <a href="#quote" class="nav-cta">Free Assessment →</a>
+    <button class="hamburger" id="hamburger" aria-label="Menu" onclick="toggleMob()">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<div class="mob-nav" id="mobNav">
+  <ul>
+    <li><a href="#quote" onclick="closeMob()">Free Assessment</a></li>
+    <li><a href="#how" onclick="closeMob()">How It Works</a></li>
+    <li><a href="#reviews" onclick="closeMob()">Business Reviews</a></li>
+    <li><a href="#faq" onclick="closeMob()">FAQ</a></li>
+    <li><a href="/privacy-policy" onclick="closeMob()">Privacy Policy</a></li>
+  </ul>
+  <div class="mob-cta"><a href="#quote" onclick="closeMob()">Book My Free Assessment →</a></div>
+</div>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero" id="quote">
+  <div class="hero-lines" aria-hidden="true"></div>
+
+  <div class="alert-strip">
+    <span class="as-icon">⚡</span>
+    <span>Sydney Businesses</span>
+    <div class="as-div"></div>
+    <span>2026 Rebate Rate — Lock It In Now</span>
+    <div class="as-div"></div>
+    <span>CEC Accredited Only</span>
   </div>
 
-  <!-- TRUST PILLS -->
+  <h1 class="hero-h1">
+    <span class="line1">Sydney Businesses:</span>
+    <span class="line2">Cut Power Bills by Up to 80%.</span>
+  </h1>
+
+  <p class="hero-sub">
+    We match Sydney businesses with their <strong>#1 pre-vetted commercial solar installer</strong> for a free, obligation-free site assessment. One installer. No cowboys. No call centres. The 2026 rebate rate decreases every year — locking in now costs less.
+  </p>
+
   <div class="trust-row">
     <div class="trust-pill">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-      No obligation
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      100% Free Assessment
     </div>
     <div class="trust-pill">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-      CEC accredited installers
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      CEC Accredited Installers
     </div>
     <div class="trust-pill">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-      2-min form
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      One Installer, Not Five
+    </div>
+    <div class="trust-pill">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      Instant Asset Write-Off Eligible
     </div>
   </div>
 
-  <!-- SURVEY CARD -->
-  <div class="card">
-
-    <!-- Progress -->
-    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-
-    <!-- Error banner -->
-    <div id="error-banner"></div>
-
-    <!-- ── STEP 1: Contact Details ── -->
-    <div class="step" id="step-1">
-      <div class="step-label">Step 1 of 3</div>
-      <h2>Your contact details</h2>
-
-      <div class="field-row">
-        <div class="field">
-          <label for="f-name">Full name <span class="req">*</span></label>
-          <div class="input-wrap">
-            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            <input id="f-name" type="text" class="has-icon" placeholder="Jane Smith" autocomplete="name">
-          </div>
-          <div class="field-err" id="err-name">Please enter your full name.</div>
-        </div>
-
-        <div class="field">
-          <label for="f-email">Email address <span class="req">*</span></label>
-          <div class="input-wrap">
-            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            <input id="f-email" type="email" class="has-icon" placeholder="jane@example.com" autocomplete="email">
-          </div>
-          <div class="field-err" id="err-email">Please enter a valid email address.</div>
-        </div>
-      </div>
-
-      <div class="field">
-        <label for="f-phone">Mobile number <span class="req">*</span></label>
-        <div class="input-wrap">
-          <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-          <input id="f-phone" type="tel" class="has-icon" placeholder="0412 345 678" autocomplete="tel">
-        </div>
-        <div class="field-err" id="err-phone">Please enter a valid Australian mobile number (e.g. 0412 345 678).</div>
-      </div>
-
-      <div class="actions">
-        <button class="btn-back" disabled aria-label="Back">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
-        <button class="btn-next" id="next-1">
-          Continue
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
-      </div>
+  <div class="stat-row">
+    <div class="stat-item">
+      <span class="stat-num">80%</span>
+      <span class="stat-label">Max Bill Reduction</span>
     </div>
+    <div class="stat-sep">·</div>
+    <div class="stat-item">
+      <span class="stat-num gold">3–5yr</span>
+      <span class="stat-label">Typical ROI Payback</span>
+    </div>
+    <div class="stat-sep">·</div>
+    <div class="stat-item">
+      <span class="stat-num">500+</span>
+      <span class="stat-label">Sydney Businesses Matched</span>
+    </div>
+  </div>
 
-    <!-- ── STEP 2: Location & Bill ── -->
-    <div class="step" id="step-2" style="display:none">
-      <div class="step-label">Step 2 of 3</div>
-      <h2>Your location & energy usage</h2>
+  <!-- ═══ SURVEY CARD ═══ -->
+  <div class="survey-wrap">
+    <div class="survey-card">
 
-      <!-- Postcode lookup -->
-      <div class="field">
-        <label>Postcode <span class="req">*</span></label>
-        <div class="postcode-row">
-          <div class="field" style="margin-bottom:0">
-            <div class="input-wrap">
-              <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              <input id="f-postcode" type="text" class="has-icon" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="2000" autocomplete="postal-code">
+      <div class="card-topbar">
+        <div class="tb-dot r"></div>
+        <div class="tb-dot y"></div>
+        <div class="tb-dot g"></div>
+        <span class="tb-label">Commercial Solar — Sydney, NSW</span>
+        <div class="tb-right">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          Secure &amp; Private
+        </div>
+      </div>
+
+      <div class="prog-outer"><div class="prog-inner" id="progFill"></div></div>
+
+      <div style="padding:12px 24px 0;display:flex;justify-content:center">
+        <div class="dot-row">
+          <div class="sdot active" id="dot1"></div>
+          <div class="sdot" id="dot2"></div>
+          <div class="sdot" id="dot3"></div>
+        </div>
+      </div>
+
+      <div class="card-body">
+
+        <!-- Error banner -->
+        <div id="error-banner"></div>
+
+        <!-- STEP 1: DECISION MAKER -->
+        <div class="step active" id="step1">
+          <div id="step1-inner">
+            <div class="step-label">Step 1 of 3</div>
+            <h3>Are You the Business Owner or Decision Maker?</h3>
+            <div class="choice-grid">
+              <div class="choice-card" onclick="pickDecision(true, this)">
+                <span class="cc-icon">🏢</span>
+                <div class="cc-title">Yes, I'm the Owner</div>
+                <div class="cc-sub">Director, Owner, Sole Trader</div>
+              </div>
+              <div class="choice-card" onclick="pickDecision(true, this)">
+                <span class="cc-icon">📋</span>
+                <div class="cc-title">Yes, I'm the Decision Maker</div>
+                <div class="cc-sub">CFO, Operations, Facilities Manager</div>
+              </div>
             </div>
-            <div class="field-err" id="err-postcode">Please enter a valid 4-digit Australian postcode.</div>
+            <div class="choice-grid" style="grid-template-columns:1fr">
+              <div class="choice-card disq-card" onclick="pickDecision(false, this)">
+                <span class="cc-icon">👤</span>
+                <div class="cc-title">No, I'm Not the Decision Maker</div>
+                <div class="cc-sub">Someone else approves spending decisions</div>
+              </div>
+            </div>
           </div>
-          <div class="suburb-chip" id="suburb-chip">
-            <span class="suburb-text" id="suburb-text" style="color:var(--ink3);font-size:12px">Enter postcode →</span>
+          <div id="disq-msg">
+            <div class="disq-icon">👋</div>
+            <div class="disq-msg-title">No Problem — Pass This Along</div>
+            <p style="font-size:0.82rem;color:var(--muted);line-height:1.65;margin-bottom:8px">Our free commercial assessment is best completed by the person who can approve the decision. Forward this page to your owner or decision maker — it only takes 60 seconds.</p>
+            <div class="disq-box">💡 <strong style="color:var(--cyan)">Tip:</strong> Share this URL with your business owner or CFO — they can complete the assessment and our team will call them directly within 15 minutes.</div>
           </div>
         </div>
-      </div>
 
-      <!-- Average quarterly bill -->
-      <div class="field">
-        <label>Average quarterly electricity bill <span class="req">*</span></label>
-        <div class="bill-options" id="bill-options" role="radiogroup" aria-label="Average quarterly electricity bill">
-          <div class="bill-opt">
-            <input type="radio" name="avg_bill" id="bill-1" value="200">
-            <label for="bill-1"><span class="bill-amt">$200</span><span class="bill-lbl">or less</span></label>
+        <!-- STEP 2: QUARTERLY BILL -->
+        <div class="step" id="step2">
+          <div class="step-label">Step 2 of 3</div>
+          <h3>What Is Your Business's Approximate Monthly Electricity Bill?</h3>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+            <div class="choice-h" onclick="pickBill(this,'$1,000–$3,000/month')">
+              <span class="ch-icon">⚡</span>
+              <div class="ch-body">
+                <div class="ch-title">$1,000 – $3,000 / month</div>
+                <div class="ch-sub">Small commercial premises</div>
+              </div>
+            </div>
+            <div class="choice-h" onclick="pickBill(this,'$3,000–$5,000/month')">
+              <span class="ch-icon">📈</span>
+              <div class="ch-body">
+                <div class="ch-title">$3,000 – $5,000 / month</div>
+                <div class="ch-sub">Medium business, warehouse or retail</div>
+              </div>
+              <span class="ch-badge">High ROI</span>
+            </div>
+            <div class="choice-h" onclick="pickBill(this,'$5,000–$9,000/month')">
+              <span class="ch-icon">🏭</span>
+              <div class="ch-body">
+                <div class="ch-title">$5,000 – $9,000 / month</div>
+                <div class="ch-sub">Factory, large warehouse or multi-site</div>
+              </div>
+              <span class="ch-badge">Best ROI</span>
+            </div>
+            <div class="choice-h" onclick="pickBill(this,'$9,000+/month')">
+              <span class="ch-icon">🔋</span>
+              <div class="ch-body">
+                <div class="ch-title">$9,000+ / month</div>
+                <div class="ch-sub">Large commercial or industrial</div>
+              </div>
+              <span class="ch-badge">Best ROI</span>
+            </div>
           </div>
-          <div class="bill-opt">
-            <input type="radio" name="avg_bill" id="bill-2" value="400">
-            <label for="bill-2"><span class="bill-amt">$400</span><span class="bill-lbl">approx.</span></label>
+          <div class="insight">
+            <span class="insight-icon">💡</span>
+            <p>Businesses spending $3,000+/month typically see <strong>full payback within 3–5 years</strong> and can access the instant asset write-off on the full system cost.</p>
           </div>
-          <div class="bill-opt">
-            <input type="radio" name="avg_bill" id="bill-3" value="600">
-            <label for="bill-3"><span class="bill-amt">$600</span><span class="bill-lbl">approx.</span></label>
-          </div>
-          <div class="bill-opt">
-            <input type="radio" name="avg_bill" id="bill-4" value="800">
-            <label for="bill-4"><span class="bill-amt">$800</span><span class="bill-lbl">approx.</span></label>
-          </div>
-          <div class="bill-opt">
-            <input type="radio" name="avg_bill" id="bill-5" value="1000">
-            <label for="bill-5"><span class="bill-amt">$1000</span><span class="bill-lbl">approx.</span></label>
-          </div>
-          <div class="bill-opt">
-            <input type="radio" name="avg_bill" id="bill-6" value="1200">
-            <label for="bill-6"><span class="bill-amt">$1200+</span><span class="bill-lbl">high usage</span></label>
-          </div>
+          <button class="btn-back" onclick="goToStep(2,1)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Back
+          </button>
         </div>
-        <div class="field-err" id="err-bill">Please select your average quarterly electricity bill.</div>
-      </div>
 
-      <div class="actions">
-        <button class="btn-back" id="back-2" aria-label="Back">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
-        <button class="btn-next" id="next-2">
-          Continue
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
-      </div>
-    </div>
+        <!-- STEP 3: CONTACT -->
+        <div class="step" id="step3">
+          <div class="step-label">Step 3 of 3 — Almost There!</div>
+          <h3>Where Should We Send Your Free Assessment?</h3>
 
-    <!-- ── STEP 3: Purchase Timeline ── -->
-    <div class="step" id="step-3" style="display:none">
-      <div class="step-label">Step 3 of 3</div>
-      <h2>When are you looking to go solar?</h2>
+          <div class="match-notice">
+            <span class="mn-icon">🎯</span>
+            <p>Our team will call you within <strong>15 minutes</strong> to book your free commercial solar site assessment. Zero pressure — just clear numbers for your business.</p>
+          </div>
 
-      <div class="field">
-        <label>Purchase timeline <span class="req">*</span></label>
-        <div class="timeline-options" role="radiogroup" aria-label="Purchase timeline">
-          <div class="timeline-opt">
-            <input type="radio" name="timeline" id="tl-1" value="0-3 months">
-            <label for="tl-1">
-              <div class="tl-icon">⚡</div>
-              <div class="tl-text">
-                <div class="tl-title">Ready now</div>
-                <div class="tl-sub">0 – 3 months</div>
-              </div>
-            </label>
+          <div class="field-row">
+            <div class="field-wrap">
+              <label>First Name</label>
+              <input type="text" id="firstName" placeholder="e.g. David" autocomplete="given-name" oninput="validateContact()">
+              <div class="err-msg" id="err-firstName">Required</div>
+            </div>
+            <div class="field-wrap">
+              <label>Last Name</label>
+              <input type="text" id="lastName" placeholder="e.g. Chen" autocomplete="family-name" oninput="validateContact()">
+              <div class="err-msg" id="err-lastName">Required</div>
+            </div>
           </div>
-          <div class="timeline-opt">
-            <input type="radio" name="timeline" id="tl-2" value="3-6 months">
-            <label for="tl-2">
-              <div class="tl-icon">📅</div>
-              <div class="tl-text">
-                <div class="tl-title">Soon</div>
-                <div class="tl-sub">3 – 6 months</div>
-              </div>
-            </label>
+
+          <div class="field-wrap">
+            <label>Business Mobile</label>
+            <input type="tel" id="phone" placeholder="04XX XXX XXX" inputmode="numeric" autocomplete="tel" oninput="validateContact()">
+            <div class="err-msg" id="err-phone">Enter a valid Australian mobile</div>
           </div>
-          <div class="timeline-opt">
-            <input type="radio" name="timeline" id="tl-3" value="6-12 months">
-            <label for="tl-3">
-              <div class="tl-icon">🗓</div>
-              <div class="tl-text">
-                <div class="tl-title">Planning ahead</div>
-                <div class="tl-sub">6 – 12 months</div>
-              </div>
-            </label>
+
+          <div class="field-wrap">
+            <label>Business Email</label>
+            <input type="email" id="email" placeholder="you@yourbusiness.com.au" autocomplete="email" oninput="validateContact()">
+            <div class="err-msg" id="err-email">Enter a valid email</div>
           </div>
-          <div class="timeline-opt">
-            <input type="radio" name="timeline" id="tl-4" value="12+ months">
-            <label for="tl-4">
-              <div class="tl-icon">🔍</div>
-              <div class="tl-text">
-                <div class="tl-title">Just researching</div>
-                <div class="tl-sub">12+ months</div>
-              </div>
-            </label>
+
+          <div class="field-wrap">
+            <label>Business Postcode</label>
+            <input type="text" id="postcode" placeholder="e.g. 2150" maxlength="4" inputmode="numeric"
+              oninput="this.value=this.value.replace(/\D/g,'').slice(0,4);onPostcodeInput()">
+            <div class="suburb-chip loading" id="suburb-chip" style="display:none">
+              <span id="suburb-text">Checking coverage…</span>
+            </div>
+            <div class="err-msg" id="err-postcode">Enter a valid 4-digit postcode</div>
           </div>
+
+          <button class="btn-next" id="submitBtn" disabled onclick="submitForm()">
+            ⚡ Book My Free Commercial Assessment →
+          </button>
+
+          <div class="priv-note">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1l3.09 6.26L22 8.27l-5 4.87 1.18 6.88L12 16.77l-6.18 3.25L7 13.14 2 8.27l6.91-1.01L12 1z"/></svg>
+            By submitting, you consent to a pre-vetted CEC-accredited commercial installer contacting you regarding your site assessment. 100% secure — your details are never shared beyond your matched installer.
+          </div>
+
+          <button class="btn-back" style="margin-top:14px" onclick="goToStep(3,2)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Back
+          </button>
         </div>
-        <div class="field-err" id="err-timeline">Please select a purchase timeline.</div>
-      </div>
 
-      <div class="actions">
-        <button class="btn-back" id="back-3" aria-label="Back">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
-        <button class="btn-next" id="submit-btn">
-          Submit & Get Quotes
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
-      </div>
-    </div>
+      </div><!-- /card-body -->
+    </div><!-- /survey-card -->
+  </div><!-- /survey-wrap -->
+</section>
 
-    <!-- ── SUCCESS ── -->
-    <div id="success-view">
-      <div class="check-circle">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-      </div>
-      <h3>You're all set! 🎉</h3>
-      <p>Thanks for submitting your solar quote request. A local accredited installer will be in touch shortly.</p>
-      <div class="lead-meta" id="lead-meta"></div>
-    </div>
-
-  </div><!-- /card -->
-
-  <!-- FOOTER -->
-  <div class="footer">
-    <p>This is a <strong>test survey page</strong> for end-to-end lead distribution system validation.<br>
-    Submissions are real and will be processed by the QuoteLeads pipeline.</p>
+<!-- ═══ HOW IT WORKS ═══ -->
+<section class="hiw-section" id="how">
+  <div class="section-head">
+    <div class="section-eyebrow">How It Works</div>
+    <h2 class="section-h2">From inquiry to ROI in 4 simple steps</h2>
+    <p class="section-sub">No fluff. No cowboys. No pressure. A clear path to lower power bills for your Sydney business.</p>
   </div>
+  <div class="hiw-grid">
+    <div class="hiw-card">
+      <div class="hiw-num">01</div>
+      <h4>Answer 3 Quick Questions</h4>
+      <p>Under 60 seconds. We qualify your business to ensure the numbers make sense before a specialist calls.</p>
+    </div>
+    <div class="hiw-card">
+      <div class="hiw-num">02</div>
+      <h4>We Call Within 15 Minutes</h4>
+      <p>A commercial solar specialist calls to understand your business, your roof, your usage — and book a free site visit.</p>
+    </div>
+    <div class="hiw-card">
+      <div class="hiw-num">03</div>
+      <h4>Free Site Assessment & ROI Report</h4>
+      <p>Your matched CEC-accredited installer visits your premises and delivers a full ROI projection — payback period, annual savings, rebate value. No obligation.</p>
+    </div>
+    <div class="hiw-card">
+      <div class="hiw-num">04</div>
+      <h4>Say Yes — Or Don't</h4>
+      <p>Zero pressure, ever. If you proceed, your system is installed with minimal business disruption and savings start from day one.</p>
+    </div>
+  </div>
+</section>
 
-</main>
+<!-- ═══ FACTS ═══ -->
+<section class="facts-section">
+  <div class="section-head">
+    <div class="section-eyebrow">Why Commercial Solar in 2026</div>
+    <h2 class="section-h2">The numbers are hard to argue with</h2>
+  </div>
+  <div class="facts-grid">
+    <div class="fact-card">
+      <span class="fact-icon">📉</span>
+      <h4>Rebates Decrease Every Year</h4>
+      <p>The federal STC scheme reduces the rebate value annually until 2030. Locking in the 2026 rate now means more off your upfront cost than waiting until next year.</p>
+      <span class="fact-asterisk">*Subject to eligibility at time of installation.</span>
+    </div>
+    <div class="fact-card">
+      <span class="fact-icon">🧾</span>
+      <h4>Instant Asset Write-Off</h4>
+      <p>Eligible businesses can deduct the full cost of a commercial solar system from taxable income in the year of installation — a significant tax advantage, especially before June 30.</p>
+      <span class="fact-asterisk">*Consult your accountant. Subject to ATO eligibility.</span>
+    </div>
+    <div class="fact-card">
+      <span class="fact-icon">⚡</span>
+      <h4>Peak Tariff Protection</h4>
+      <p>Commercial electricity rates in Sydney are among the highest in the country. Solar generates during your peak trading hours, directly offsetting your most expensive power.</p>
+    </div>
+    <div class="fact-card">
+      <span class="fact-icon">🏭</span>
+      <h4>Built for Commercial Roofs</h4>
+      <p>Flat roofs, large sheds, warehouses, and factories are ideal solar installations. More roof space means bigger systems and bigger savings.</p>
+    </div>
+    <div class="fact-card">
+      <span class="fact-icon">📊</span>
+      <h4>3–5 Year ROI Payback</h4>
+      <p>Most Sydney SMEs recoup the full investment in 3–5 years. After payback, the savings are pure bottom-line benefit for the remaining 20+ year panel lifespan.</p>
+    </div>
+    <div class="fact-card">
+      <span class="fact-icon">🔒</span>
+      <h4>One Installer. No Cowboys.</h4>
+      <p>We match you with a single pre-vetted, CEC-accredited commercial specialist — not five companies cold-calling you. You get one expert, one quote, one honest assessment.</p>
+    </div>
+  </div>
+</section>
 
+<!-- ═══ REVIEWS ═══ -->
+<section class="reviews-section" id="reviews">
+  <div class="section-head">
+    <div class="section-eyebrow">Real Sydney Businesses, Real Results</div>
+    <h2 class="section-h2">What Sydney business owners are saying</h2>
+    <p class="section-sub">Matched through ClearWatt Solar — commercial assessments across Greater Sydney.</p>
+  </div>
+  <div class="reviews-grid">
+    <div class="review-card">
+      <div class="review-stars">★★★★★</div>
+      <p class="review-text">"Was spending $6,200 a month on power. Filled this in on a Thursday, had a specialist call me back within 10 minutes. Site visit Friday. System installed 5 weeks later. Bill is now under $800."</p>
+      <div class="reviewer">
+        <div class="reviewer-av gold-av">MK</div>
+        <div>
+          <div class="reviewer-name">Marcus K. — Director</div>
+          <div class="reviewer-loc">Wetherill Park, NSW</div>
+          <span class="review-biz">Metal Fabrication</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="review-card">
+      <div class="review-stars">★★★★★</div>
+      <p class="review-text">"Running a cold storage facility means enormous power bills. The 100kW system ClearWatt's installer designed has slashed our electricity cost by 71%. The ROI modelling was spot on."</p>
+      <div class="reviewer">
+        <div class="reviewer-av">AP</div>
+        <div>
+          <div class="reviewer-name">Andrew P. — Managing Director</div>
+          <div class="reviewer-loc">Eastern Creek, NSW</div>
+          <span class="review-biz">Cold Storage & Distribution</span>
+        </div>
+      </div>
+    </div>
+    <div class="review-card">
+      <div class="review-stars">★★★★★</div>
+      <p class="review-text">"The rebate timing advice alone saved us $8,000 on the install. They explained that the STC value drops each year and we acted immediately. That's the kind of advice you don't get from a normal solar company."</p>
+      <div class="reviewer">
+        <div class="reviewer-av gold-av">SC</div>
+        <div>
+          <div class="reviewer-name">Sandra C. — Operations Manager</div>
+          <div class="reviewer-loc">Campbelltown, NSW</div>
+          <span class="review-biz">Manufacturing</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ CTA STRIP ═══ -->
+<section class="cta-strip">
+  <h3>Every month you wait is another full power bill.</h3>
+  <a href="#quote" class="cta-btn" onclick="document.querySelector('.survey-card').scrollIntoView({behavior:'smooth'});return false;">
+    Book My Free Commercial Assessment →
+  </a>
+</section>
+
+<!-- ═══ FAQ ═══ -->
+<div class="section-head" style="padding-top:72px;position:relative;z-index:1">
+  <div class="section-eyebrow">FAQ</div>
+  <h2 class="section-h2">Common questions from Sydney business owners</h2>
+</div>
+<div class="faq-section" id="faq">
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">How much does commercial solar cost in Sydney in 2026?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+    <div class="faq-a">A commercial system for a typical Sydney SME (30kW–100kW) typically costs $25,000–$90,000 before rebates and tax incentives. After applying the federal STC rebate and the instant asset write-off, the effective net cost is substantially lower. Your matched installer will provide a detailed ROI projection including all applicable incentives specific to your business.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">What is the 2026 rebate and why does it decrease?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+    <div class="faq-a">The federal government's Small-scale Technology Certificate (STC) scheme provides an upfront discount on commercial solar systems under 100kW. The rebate value reduces each year as the scheme's deeming period shortens, and it phases out completely by 2030. Installing in 2026 means a larger rebate than 2027 — every year you wait costs your business more upfront.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">Can my business claim the instant asset write-off on solar?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+    <div class="faq-a">Eligible businesses with a turnover under $50 million may be able to deduct the full cost of a commercial solar system from taxable income in the year of installation under the instant asset write-off provisions. This can represent a 25–30% effective tax saving on the system cost. We strongly recommend confirming with your accountant before proceeding — it's one of the most compelling commercial solar incentives available.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">Does my business need to own the building to go solar?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+    <div class="faq-a">Ideally yes — building ownership makes the process straightforward. If you lease your premises, it's still possible but requires landlord approval and a lease term that supports a reasonable payback period. Our commercial specialists can advise on lease situations. If you're unsure, it's worth completing the assessment — it costs nothing and the answer is often more positive than business owners expect.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">How long does a commercial solar installation take?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+    <div class="faq-a">Most SME commercial systems (up to 100kW) are installed within 4–8 weeks of approval, with typical installation taking 1–3 days with minimal disruption to your operations. Larger systems (100kW+) may require additional engineering sign-off and grid connection applications, extending the timeline to 8–16 weeks. Your specialist will give you a clear timeline upfront.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">Is this service really free? What's the catch?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+    <div class="faq-a">Genuinely free. We may earn a referral fee from the installer only if you choose to proceed — and it never affects your quoted price. The matching service and assessment are completely free with zero obligation, ever. If you don't proceed, that's fine — no follow-ups, no pressure.</div>
+  </div>
+</div>
+
+<!-- ═══ FOOTER ═══ -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <a href="/" class="logo">
+        <div class="logo-sun">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+        <circle cx="12" cy="12" r="4.5"/>
+        <line x1="12" y1="1.5" x2="12" y2="3.5"/><line x1="12" y1="20.5" x2="12" y2="22.5"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1.5" y1="12" x2="3.5" y2="12"/><line x1="20.5" y1="12" x2="22.5" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+    </div>
+        <span class="logo-text">Clear<span>Watt</span> Solar</span>
+      </a>
+      <p>Australia's trusted commercial solar matching service — connecting Sydney businesses with the best CEC-accredited installers.</p>
+    </div>
+    <div class="footer-col">
+      <h5>Company</h5>
+      <ul>
+        <li><a href="/about">About Us</a></li>
+        <li><a href="/how-it-works">How It Works</a></li>
+        <li><a href="/contact">Contact</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h5>Resources</h5>
+      <ul>
+        <li><a href="/commercial-solar-rebates">Rebate Guide</a></li>
+        <li><a href="/commercial-roi-calculator">ROI Calculator</a></li>
+        <li><a href="/faq">Full FAQ</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h5>Legal</h5>
+      <ul>
+        <li><a href="/privacy-policy">Privacy Policy</a></li>
+        <li><a href="/terms-of-use">Terms of Use</a></li>
+        <li><a href="/disclaimer">Disclaimer</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    © 2026 ClearWatt Solar · clearwattsolar.com.au · Australian-owned &amp; operated<br>
+    *Rebate availability and tax incentives subject to federal government eligibility criteria and scheme availability at time of installation. Instant asset write-off subject to ATO eligibility — consult your accountant. ClearWatt Solar is a referral matching service and does not provide installation services directly. All installers are independently licensed, insured and CEC-accredited. Not all businesses will qualify for all incentives.
+  </div>
+</footer>
+
+<!-- ═══ JAVASCRIPT ═══ -->
 <script>
 'use strict';
 
-/* ── CONFIG ── */
-const SUPABASE_URL = 'https://wmegoygrancfwxagqskh.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_UHQNxVCjHJnFjssYwTiwcQ_3FYovX8I';
-const SUBMIT_LEAD_URL = SUPABASE_URL + '/functions/v1/submit-lead';
-const POSTCODE_LOOKUP_URL = SUPABASE_URL + '/functions/v1/postcode-lookup';
-const SURVEY_NICHE = 'solar';
+/* ══════════════════════════════════════════════════════════════
+   NICHE CONFIG — the only block you need to edit per survey file
+   ══════════════════════════════════════════════════════════════ */
+var SUPABASE_URL        = 'https://wmegoygrancfwxagqskh.supabase.co';
+var SUPABASE_ANON_KEY   = 'sb_publishable_UHQNxVCjHJnFjssYwTiwcQ_3FYovX8I';
+var SURVEY_NICHE        = 'solar';          // ← niche key sent to submit-lead
+var SURVEY_SOURCE       = 'solar-survey';   // ← source tag on the lead record
+var SUBMIT_LEAD_URL     = SUPABASE_URL + '/functions/v1/submit-lead';
+var POSTCODE_LOOKUP_URL = SUPABASE_URL + '/functions/v1/postcode-lookup';
+/* ══════════════════════════════════════════════════════════════ */
 
-/* ── THEME TOGGLE ── */
-(function() {
-  const saved = localStorage.getItem('ql-survey-theme');
-  if (saved) document.documentElement.setAttribute('data-theme', saved);
-})();
-document.getElementById('theme-toggle').addEventListener('click', function() {
-  const cur = document.documentElement.getAttribute('data-theme') || 'dark';
-  const next = cur === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('ql-survey-theme', next);
-});
+var TOTAL_STEPS = 3;
+var formData    = {};
 
-/* ── STEP STATE ── */
-let currentStep = 1;
-const TOTAL_STEPS = 3;
-
-function showStep(n) {
-  for (let i = 1; i <= TOTAL_STEPS; i++) {
-    const el = document.getElementById('step-' + i);
-    if (el) el.style.display = (i === n) ? '' : 'none';
+/* ── PROGRESS ── */
+function updateProgress(step) {
+  var pct = ((step - 1) / TOTAL_STEPS) * 100;
+  document.getElementById('progFill').style.width = pct + '%';
+  for (var i = 1; i <= TOTAL_STEPS; i++) {
+    var d = document.getElementById('dot' + i);
+    if (!d) continue;
+    d.className = 'sdot';
+    if (i < step)        d.classList.add('done');
+    else if (i === step) d.classList.add('active');
   }
-  currentStep = n;
-  const pct = ((n - 1) / TOTAL_STEPS) * 100;
-  document.getElementById('progress-fill').style.width = pct + '%';
-  clearError();
 }
 
-function showSuccess(data) {
-  for (let i = 1; i <= TOTAL_STEPS; i++) {
-    const el = document.getElementById('step-' + i);
-    if (el) el.style.display = 'none';
+/* ── STEP NAVIGATION ── */
+function goToStep(from, to) {
+  document.getElementById('step' + from).classList.remove('active');
+  document.getElementById('step' + to).classList.add('active');
+  updateProgress(to);
+  var card = document.querySelector('.survey-card');
+  if (card.getBoundingClientRect().top < 60) {
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
-  document.getElementById('progress-fill').style.width = '100%';
-  const sv = document.getElementById('success-view');
-  sv.style.display = '';
-
-  const meta = document.getElementById('lead-meta');
-  const rows = [
-    { label: 'Lead ID',  val: data.lead_id || '—' },
-    { label: 'Status',   val: data.status || '—', cls: 'status-' + (data.status || '') },
-    { label: 'Suburb',   val: data.suburb || resolvedSuburb || '—' },
-    { label: 'State',    val: data.state  || resolvedState  || '—' },
-    { label: 'Matched client', val: data.matched_client ? '✓ Assigned' : 'Pending assignment' },
-  ];
-  meta.innerHTML = rows.map(r =>
-    `<div class="lead-meta-row">
-      <span class="lm-label">${r.label}</span>
-      <span class="lm-val ${r.cls || ''}">${r.val}</span>
-    </div>`
-  ).join('');
 }
 
-/* ── ERROR HELPERS ── */
-function showError(msg) {
-  const b = document.getElementById('error-banner');
-  b.textContent = msg;
-  b.classList.add('show');
-}
-function clearError() {
-  const b = document.getElementById('error-banner');
-  b.textContent = '';
-  b.classList.remove('show');
-}
-function fieldErr(id, show) {
-  const el = document.getElementById('err-' + id);
-  if (!el) return;
-  el.classList.toggle('show', show);
-}
-function markField(id, err) {
-  const input = document.getElementById('f-' + id);
-  if (!input) return;
-  input.classList.toggle('err', err);
+/* ── STEP 1: DECISION MAKER ── */
+window.pickDecision = function(isDecision, el) {
+  document.querySelectorAll('#step1-inner .choice-card').forEach(function(c){ c.classList.remove('selected'); });
+  el.classList.add('selected');
+  formData.is_decision_maker = isDecision;
+
+  if (!isDecision) {
+    setTimeout(function() {
+      document.getElementById('step1-inner').style.display = 'none';
+      document.getElementById('disq-msg').style.display = 'block';
+    }, 300);
+    return;
+  }
+  setTimeout(function() { goToStep(1, 2); }, 300);
+};
+
+/* ── STEP 2: BILL ── */
+window.pickBill = function(el, val) {
+  document.querySelectorAll('#step2 .choice-h').forEach(function(b){ b.classList.remove('selected'); });
+  el.classList.add('selected');
+  formData.monthly_electricity_bill = val;
+  setTimeout(function() { goToStep(2, 3); }, 280);
+};
+
+/* ── AU mobile normalizer: accepts 04XXXXXXXX, +61XXXXXXXXX, 61XXXXXXXXX → returns E.164 +61XXXXXXXXX, or null ── */
+function normalizeAuMobile(raw) {
+  var s = (raw || '').replace(/[\s\-().]/g, '');
+  if (s.startsWith('+')) s = s.substring(1); // strip leading +
+  if (!/^\d+$/.test(s)) return null;
+  if (/^04\d{8}$/.test(s))  return '+61' + s.substring(1);
+  if (/^614\d{8}$/.test(s)) return '+' + s;
+  return null;
 }
 
 /* ── POSTCODE LOOKUP ── */
-let resolvedSuburb = '';
-let resolvedState  = '';
-let postcodeTimer  = null;
+var postcodeTimer = null;
 
-const fPostcode   = document.getElementById('f-postcode');
-const suburbChip  = document.getElementById('suburb-chip');
-const suburbText  = document.getElementById('suburb-text');
-
-async function lookupPostcode(pc) {
-  suburbChip.className = 'suburb-chip loading';
-  suburbText.textContent = 'Looking up…';
-  resolvedSuburb = '';
-  resolvedState  = '';
-
-  try {
-    const res = await fetch(POSTCODE_LOOKUP_URL + '?postcode=' + encodeURIComponent(pc), {
-      method: 'GET',
-      headers: {
-        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-        'apikey': SUPABASE_ANON_KEY,
-      },
-    });
-    if (!res.ok) throw new Error('not_found');
-    const data = await res.json();
-    if (data.buyer_name) {
-      suburbChip.className = 'suburb-chip found';
-      suburbText.textContent = '✓ Coverage available';
-    } else {
-      suburbChip.className = 'suburb-chip no-coverage';
-      suburbText.textContent = 'No coverage yet';
-    }
-  } catch (_) {
-    suburbChip.className = 'suburb-chip not-found';
-    suburbText.textContent = 'Postcode not found';
-  }
-}
-
-fPostcode.addEventListener('input', function() {
-  const val = this.value.replace(/\D/g, '').slice(0, 4);
-  this.value = val;
+window.onPostcodeInput = function() {
+  validateContact();
+  var pc   = document.getElementById('postcode').value;
+  var chip = document.getElementById('suburb-chip');
   clearTimeout(postcodeTimer);
-  fieldErr('postcode', false);
-  markField('postcode', false);
-  if (val.length < 4) {
-    suburbChip.className = 'suburb-chip';
-    suburbText.textContent = val.length ? '…' : 'Enter postcode →';
-    resolvedSuburb = '';
-    resolvedState  = '';
-    return;
-  }
-  postcodeTimer = setTimeout(() => lookupPostcode(val), 400);
-});
+  if (pc.length < 4) { chip.style.display = 'none'; return; }
+  chip.className         = 'suburb-chip loading';
+  chip.style.display     = 'inline-flex';
+  document.getElementById('suburb-text').textContent = 'Checking coverage…';
+  postcodeTimer = setTimeout(function() { lookupPostcode(pc); }, 400);
+};
 
-const SUBMIT_BTN_HTML = 'Submit &amp; Get Quotes <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="9 18 15 12 9 6"/></svg>';
-
-function resetSubmitBtn(btn) {
-  btn.disabled = false;
-  btn.innerHTML = SUBMIT_BTN_HTML;
+function lookupPostcode(pc) {
+  fetch(POSTCODE_LOOKUP_URL + '?postcode=' + encodeURIComponent(pc) + '&niche=' + encodeURIComponent(SURVEY_NICHE), {
+    headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'apikey': SUPABASE_ANON_KEY }
+  })
+  .then(function(r) { return r.ok ? r.json() : Promise.reject(); })
+  .then(function(data) {
+    var chip = document.getElementById('suburb-chip');
+    if (data.buyer_name) {
+      chip.className = 'suburb-chip found';
+      document.getElementById('suburb-text').textContent = '✓ Coverage available';
+    } else {
+      chip.className = 'suburb-chip no-coverage';
+      document.getElementById('suburb-text').textContent = "No coverage yet — we'll still log your inquiry";
+    }
+  })
+  .catch(function() {
+    var chip = document.getElementById('suburb-chip');
+    chip.className = 'suburb-chip not-found';
+    document.getElementById('suburb-text').textContent = 'Postcode not found';
+  });
 }
 
-function validatePhone(raw) {
-  let p = (raw || '').replace(/[\s\-().]/g, '');
-  if (p.startsWith('04')) p = '+61' + p.slice(1);
-  else if (p.startsWith('614')) p = '+' + p;
-  else if (p.startsWith('61') && !p.startsWith('+')) p = '+' + p;
-  return /^\+614[0-9]{8}$/.test(p) ? p : null;
+/* ── STEP 3: CONTACT VALIDATION ── */
+function validateContact() {
+  var fn  = document.getElementById('firstName').value.trim();
+  var ln  = document.getElementById('lastName').value.trim();
+  var em  = document.getElementById('email').value.trim();
+  var ph  = document.getElementById('phone').value.trim();
+  var pc  = document.getElementById('postcode').value.trim();
+  var emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em);
+  var phoneOk = normalizeAuMobile(ph) !== null;
+  var postOk  = /^\d{4}$/.test(pc);
+  document.getElementById('submitBtn').disabled = !(fn && ln && emailOk && phoneOk && postOk);
 }
 
-function validateStep1() {
-  let ok = true;
-  const name  = document.getElementById('f-name').value.trim();
-  const email = document.getElementById('f-email').value.trim();
-  const phone = document.getElementById('f-phone').value.trim();
-
-  if (!name) { fieldErr('name', true); markField('name', true); ok = false; }
-  else { fieldErr('name', false); markField('name', false); }
-
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    fieldErr('email', true); markField('email', true); ok = false;
-  } else { fieldErr('email', false); markField('email', false); }
-
-  if (!validatePhone(phone)) {
-    fieldErr('phone', true); markField('phone', true); ok = false;
-  } else { fieldErr('phone', false); markField('phone', false); }
-
+function fv(id, test) {
+  var el  = document.getElementById(id);
+  var err = document.getElementById('err-' + id);
+  var ok  = test(el.value.trim());
+  el.classList.toggle('err-field', !ok);
+  if (err) err.style.display = ok ? 'none' : 'block';
   return ok;
 }
-
-function validateStep2() {
-  let ok = true;
-  const pc   = document.getElementById('f-postcode').value.trim();
-  const bill = document.querySelector('input[name="avg_bill"]:checked');
-
-  if (!/^[0-9]{4}$/.test(pc)) {
-    fieldErr('postcode', true); markField('postcode', true); ok = false;
-  } else { fieldErr('postcode', false); markField('postcode', false); }
-
-  if (!bill) { fieldErr('bill', true); ok = false; }
-  else { fieldErr('bill', false); }
-
-  return ok;
-}
-
-function validateStep3() {
-  const tl = document.querySelector('input[name="timeline"]:checked');
-  if (!tl) { fieldErr('timeline', true); return false; }
-  fieldErr('timeline', false);
-  return true;
-}
-
-/* ── NAVIGATION ── */
-document.getElementById('next-1').addEventListener('click', function() {
-  clearError();
-  if (validateStep1()) showStep(2);
-});
-
-document.getElementById('back-2').addEventListener('click', function() {
-  clearError();
-  showStep(1);
-});
-
-document.getElementById('next-2').addEventListener('click', function() {
-  clearError();
-  if (validateStep2()) showStep(3);
-});
-
-document.getElementById('back-3').addEventListener('click', function() {
-  clearError();
-  showStep(2);
-});
 
 /* ── SUBMIT ── */
-document.getElementById('submit-btn').addEventListener('click', async function() {
-  clearError();
-  if (!validateStep3()) return;
+window.submitForm = async function() {
+  var ok = true;
+  ok = fv('firstName', function(v){ return v.length > 1; }) && ok;
+  ok = fv('lastName',  function(v){ return v.length > 1; }) && ok;
+  ok = fv('phone',     function(v){ return normalizeAuMobile(v) !== null; }) && ok;
+  ok = fv('email',     function(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }) && ok;
+  ok = fv('postcode',  function(v){ return /^\d{4}$/.test(v); }) && ok;
+  if (!ok) return;
 
-  const btn = this;
-  btn.disabled = true;
-  btn.innerHTML = '<div class="spin"></div> Submitting…';
+  var fn = document.getElementById('firstName').value.trim();
+  var ln = document.getElementById('lastName').value.trim();
 
-  const name     = document.getElementById('f-name').value.trim();
-  const email    = document.getElementById('f-email').value.trim();
-  const rawPhone = document.getElementById('f-phone').value.trim();
-  const postcode = document.getElementById('f-postcode').value.trim();
-  const bill     = document.querySelector('input[name="avg_bill"]:checked').value;
-  const timeline = document.querySelector('input[name="timeline"]:checked').value;
+  formData.name     = fn + ' ' + ln;
+  formData.email    = document.getElementById('email').value.trim();
+  formData.phone    = normalizeAuMobile(document.getElementById('phone').value);
+  formData.postcode = document.getElementById('postcode').value.trim();
 
-  const payload = {
-    name,
-    email,
-    phone:              rawPhone,
-    postcode,
-    niche:              'solar',
-    avg_quarterly_bill: parseFloat(bill),
-    purchase_timeline:  timeline,
-    source:             'test-survey',
+  var btn = document.getElementById('submitBtn');
+  btn.textContent = 'Submitting…';
+  btn.disabled    = true;
+  document.getElementById('overlay').classList.add('show');
+
+  /* Tracking */
+  if (typeof fbq !== 'undefined') {
+    fbq('track', 'Lead', {
+      content_name: 'Commercial Solar Assessment Sydney',
+      content_category: 'CommercialSolar',
+      value: 0,
+      currency: 'AUD'
+    });
+  }
+  if (typeof gtag !== 'undefined') {
+    gtag('event', 'generate_lead', {
+      event_category: 'commercial_quote_form',
+      event_label: 'sydney_business_submitted'
+    });
+  }
+
+  /* Submit to Supabase submit-lead edge function */
+  var payload = {
+    name:                     formData.name,
+    email:                    formData.email,
+    phone:                    formData.phone,
+    postcode:                 formData.postcode,
+    niche:                    SURVEY_NICHE,
+    source:                   SURVEY_SOURCE,
+    /* niche-specific fields from earlier steps (stored as custom_fields JSON) */
+    is_decision_maker:        formData.is_decision_maker,
+    monthly_electricity_bill: formData.monthly_electricity_bill,
   };
 
   try {
-    const res = await fetch(SUBMIT_LEAD_URL, {
-      method: 'POST',
+    var res  = await fetch(SUBMIT_LEAD_URL, {
+      method:  'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type':  'application/json',
         'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-        'apikey': SUPABASE_ANON_KEY,
+        'apikey':        SUPABASE_ANON_KEY,
       },
       body: JSON.stringify(payload),
     });
 
-    const data = await res.json();
+    var data = await res.json();
+    document.getElementById('overlay').classList.remove('show');
 
-    if (!res.ok) {
-      const errMsg = data.error || 'Submission failed (' + res.status + ')';
-      throw new Error(errMsg);
-    }
+    if (!res.ok) throw new Error(data.error || 'Submission failed (' + res.status + ')');
 
     if (data.status === 'duplicate') {
-      showError('⚠ This lead already exists in our system (submitted within the last 7 days). Lead ID: ' + data.lead_id);
-      resetSubmitBtn(btn);
+      var errBanner = document.getElementById('error-banner');
+      errBanner.textContent = '⚠ This lead already exists in our system (submitted within the last 7 days). Lead ID: ' + data.lead_id;
+      errBanner.classList.add('show');
+      btn.textContent = '⚡ Book My Free Commercial Assessment →';
+      btn.disabled    = false;
       return;
     }
 
-    showSuccess(data);
-  } catch (err) {
-    showError('Error: ' + err.message);
-    resetSubmitBtn(btn);
-  }
-});
+    /* Inline success */
+    document.getElementById('step3').classList.remove('active');
+    document.querySelector('.prog-outer').style.display = 'none';
+    document.querySelector('.dot-row').parentElement.style.display = 'none';
 
-/* ── INIT ── */
-showStep(1);
+    var successEl = document.createElement('div');
+    successEl.style.cssText = 'text-align:center;padding:28px 0 20px;animation:stepIn 0.4s ease';
+    successEl.innerHTML = [
+      '<div style="font-size:3.2rem;margin-bottom:16px">⚡</div>',
+      '<h3 style="font-family:Outfit,sans-serif;font-weight:900;font-size:1.3rem;color:var(--white);letter-spacing:-0.03em;margin-bottom:10px">Assessment booked. We\'ll call you shortly.</h3>',
+      '<p style="font-size:0.84rem;color:var(--muted);line-height:1.65;max-width:340px;margin:0 auto 22px">A commercial solar specialist will call you within <strong style="color:var(--white)">15 minutes</strong> to discuss your business and book your free site assessment.</p>',
+      '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">',
+      '<span style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);border-radius:50px;padding:6px 14px;font-size:0.73rem;font-weight:700;color:var(--cyan)">✓ CEC Accredited</span>',
+      '<span style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);border-radius:50px;padding:6px 14px;font-size:0.73rem;font-weight:700;color:var(--cyan)">✓ Zero Obligation</span>',
+      '<span style="background:rgba(34,212,122,0.08);border:1px solid rgba(34,212,122,0.2);border-radius:50px;padding:6px 14px;font-size:0.73rem;font-weight:700;color:var(--green)">✓ 100% Free</span>',
+      '</div>',
+    ].join('');
+    document.querySelector('.card-body').appendChild(successEl);
+
+  } catch (err) {
+    document.getElementById('overlay').classList.remove('show');
+    var errBanner2 = document.getElementById('error-banner');
+    errBanner2.textContent = 'Error: ' + err.message;
+    errBanner2.classList.add('show');
+    btn.textContent = '⚡ Book My Free Commercial Assessment →';
+    btn.disabled    = false;
+  }
+};
+
+/* ── FAQ ── */
+function toggleFaq(el) {
+  var item   = el.parentElement;
+  var isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item').forEach(function(i){ i.classList.remove('open'); });
+  if (!isOpen) item.classList.add('open');
+}
+
+/* ── HAMBURGER ── */
+function toggleMob() {
+  var h = document.getElementById('hamburger');
+  var m = document.getElementById('mobNav');
+  h.classList.toggle('open');
+  m.classList.toggle('open');
+  document.body.style.overflow = m.classList.contains('open') ? 'hidden' : '';
+}
+function closeMob() {
+  document.getElementById('hamburger').classList.remove('open');
+  document.getElementById('mobNav').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+/* ── SCROLL REVEAL ── */
+document.addEventListener('DOMContentLoaded', function() {
+  var ph = document.getElementById('phone');
+  if (ph) ph.addEventListener('input', function(){
+    var v = this.value.replace(/[^\d+\s]/g,'');
+    v = (v.charAt(0) === '+' ? '+' : '') + v.replace(/\+/g,'');
+    this.value = v;
+  });
+
+  var io = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) {
+        e.target.style.opacity   = '1';
+        e.target.style.transform = 'translateY(0)';
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.07 });
+
+  document.querySelectorAll('.hiw-card, .fact-card, .review-card').forEach(function(el, i) {
+    el.style.opacity    = '0';
+    el.style.transform  = 'translateY(22px)';
+    el.style.transition = 'opacity 0.55s ease ' + (i * 0.06) + 's, transform 0.55s ease ' + (i * 0.06) + 's';
+    io.observe(el);
+  });
+
+  /* UTM params */
+  var params = new URLSearchParams(window.location.search);
+  ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'].forEach(function(k) {
+    if (params.get(k)) formData[k] = params.get(k);
+  });
+  if (params.get('utm_campaign')) formData.campaign = params.get('utm_campaign');
+});
 </script>
 </body>
 </html>
