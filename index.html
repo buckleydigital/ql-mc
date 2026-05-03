@@ -4431,7 +4431,7 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   if ($('fin-mg-custom')) setText('fin-mg-custom',mgCustomRev>0?fmt(mgCustomRev):'—');
   // Trend arrows vs prior period
   function trendArrow(cur,prev,higherIsBetter=true) {
-    if (!prev) return '';
+    if (prev === 0 || prev == null) return '';
     const pct=((cur-prev)/Math.abs(prev)*100);
     const up=pct>=0;
     const good=(higherIsBetter&&up)||(!higherIsBetter&&!up);
