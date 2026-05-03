@@ -1353,19 +1353,21 @@ td strong{font-weight:500}
         <div class="ph">
           <div class="ph-left"><h1>JARVIS</h1><p>Voice AI · powered by VAPI · same context as Master Brain</p></div>
           <div class="ph-right">
-            <button class="btn btn-sm" onclick="toggleJarvisConfig()">⚙ Config</button>
+            <button class="btn btn-sm" onclick="toggleJarvisConfig()" id="j-config-btn">⚙ Local Override</button>
           </div>
         </div>
 
-        <!-- Config panel (hidden by default) -->
+        <!-- Config panel: local overrides for dev/testing (hidden by default) -->
+        <!-- In production, set VAPI_PUBLIC_KEY + VAPI_ASSISTANT_ID as Supabase edge function secrets -->
         <div id="j-config-panel" style="display:none;margin-bottom:16px">
           <div class="j-config">
-            <div class="j-config-title">VAPI Configuration</div>
-            <div class="frow"><label class="flabel" style="color:#00446a">VAPI Public Key</label><input class="fi" id="j-vapi-key" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="background:#040b18;border-color:#0a2540;color:#00d4ff;font-family:var(--mono)"></div>
-            <div class="frow"><label class="flabel" style="color:#00446a">VAPI Assistant ID</label><input class="fi" id="j-assistant-id" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="background:#040b18;border-color:#0a2540;color:#00d4ff;font-family:var(--mono)"></div>
+            <div class="j-config-title">Local Override — set <code style="font-size:9px;background:rgba(0,212,255,.08);padding:1px 5px;border-radius:3px">VAPI_PUBLIC_KEY</code> + <code style="font-size:9px;background:rgba(0,212,255,.08);padding:1px 5px;border-radius:3px">VAPI_ASSISTANT_ID</code> as Supabase edge function secrets for production</div>
+            <div class="frow"><label class="flabel" style="color:#00446a">VAPI Public Key <span style="color:#003352;font-weight:300">(overrides server secret)</span></label><input class="fi" id="j-vapi-key" type="text" placeholder="leave blank to use server secret" style="background:#040b18;border-color:#0a2540;color:#00d4ff;font-family:var(--mono)"></div>
+            <div class="frow"><label class="flabel" style="color:#00446a">VAPI Assistant ID <span style="color:#003352;font-weight:300">(overrides server secret)</span></label><input class="fi" id="j-assistant-id" type="text" placeholder="leave blank to use server secret" style="background:#040b18;border-color:#0a2540;color:#00d4ff;font-family:var(--mono)"></div>
             <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
-              <button class="btn btn-p btn-sm" onclick="saveJarvisConfig()">Save Config</button>
-              <span style="font-family:var(--mono);font-size:10px;color:#004466">Stored in session only (cleared on tab close). <a href="https://vapi.ai" target="_blank" rel="noopener" style="color:#00d4ff">Get a VAPI account →</a></span>
+              <button class="btn btn-p btn-sm" onclick="saveJarvisConfig()">Save Override</button>
+              <button class="btn btn-sm" onclick="clearJarvisConfig()">Clear Override</button>
+              <span style="font-family:var(--mono);font-size:10px;color:#004466">Stored in session only. <a href="https://vapi.ai" target="_blank" rel="noopener" style="color:#00d4ff">vapi.ai →</a></span>
             </div>
           </div>
         </div>
@@ -6344,8 +6346,11 @@ let _jarvisWavePhase = 0;
 let _jarvisSessionMessages = []; // current call transcript
 
 // Config ──────────────────────────────────────────────
-// VAPI public keys are client-side credentials designed to be used in browser code.
-// We use sessionStorage so they are cleared when the tab is closed.
+// Primary: VAPI_PUBLIC_KEY + VAPI_ASSISTANT_ID are read from Supabase edge function
+// secrets and returned by vapi-context alongside the system prompt. No browser
+// storage is needed in production.
+// Override: Entering values in the "Local Override" config UI writes to sessionStorage
+// (cleared on tab close) and takes precedence — useful for local dev / testing.
 function loadJarvisConfig() {
   const key = sessionStorage.getItem('jarvis-vapi-key') || '';
   const aid = sessionStorage.getItem('jarvis-assistant-id') || '';
@@ -6358,13 +6363,21 @@ function saveJarvisConfig() {
   const aid = ($('j-assistant-id')?.value || '').trim();
   sessionStorage.setItem('jarvis-vapi-key', key);
   sessionStorage.setItem('jarvis-assistant-id', aid);
-  toast('JARVIS config saved ✓');
-  updateJarvisReadyState();
+  toast('Local override saved ✓');
+}
+function clearJarvisConfig() {
+  sessionStorage.removeItem('jarvis-vapi-key');
+  sessionStorage.removeItem('jarvis-assistant-id');
+  if ($('j-vapi-key')) $('j-vapi-key').value = '';
+  if ($('j-assistant-id')) $('j-assistant-id').value = '';
+  toast('Local override cleared — using server secrets');
 }
 function toggleJarvisConfig() {
   const p = $('j-config-panel');
   if (!p) return;
-  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  const open = p.style.display !== 'none';
+  p.style.display = open ? 'none' : 'block';
+  const btn = $('j-config-btn'); if (btn) btn.textContent = open ? '⚙ Local Override' : '⚙ Hide Override';
 }
 
 // ── Status UI ────────────────────────────────────────────
@@ -6382,13 +6395,13 @@ function setJarvisRing(mode) {
   const ring = $('j-ring'); if (!ring) return;
   ring.className = `j-avatar-ring${mode==='active'?' active':mode==='speaking'?' speaking':''}`;
 }
-function updateJarvisReadyState() {
-  const { key, aid } = loadJarvisConfig();
-  if (key && aid) {
+// Called after fetching context — we know at that point whether secrets are configured
+function setJarvisOnlineState(hasCredentials) {
+  if (hasCredentials) {
     setJarvisStatus('JARVIS ONLINE', 'green');
     const btn = $('j-call-btn'); if (btn) btn.style.opacity = '1';
   } else {
-    setJarvisStatus('CONFIGURE VAPI TO ACTIVATE', 'grey');
+    setJarvisStatus('SET VAPI SECRETS IN SUPABASE DASHBOARD', 'grey');
     const btn = $('j-call-btn'); if (btn) btn.style.opacity = '0.4';
   }
 }
@@ -6396,10 +6409,32 @@ function updateJarvisReadyState() {
 // ── Load panel ────────────────────────────────────────────
 async function loadJarvis() {
   loadJarvisConfig();
-  updateJarvisReadyState();
+  // Tentatively show as loading until we probe the edge function
+  setJarvisStatus('CHECKING CREDENTIALS…', 'yellow');
+  const btn = $('j-call-btn'); if (btn) btn.style.opacity = '0.5';
   startJarvisIdleWave();
-  await loadJarvisStats();
-  await loadJarvisHistory();
+  await Promise.all([loadJarvisStats(), loadJarvisHistory()]);
+  // Quick probe: fetch context to discover whether server secrets are configured
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (session) {
+      const r = await fetch(`${_ep}/functions/v1/vapi-context`, {
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
+      if (r.ok) {
+        const d = await r.json();
+        // Server has credentials, or local override present
+        const localKey = sessionStorage.getItem('jarvis-vapi-key') || '';
+        const localAid = sessionStorage.getItem('jarvis-assistant-id') || '';
+        const hasCredentials = !!(localKey || d.vapiPublicKey) && !!(localAid || d.vapiAssistantId);
+        setJarvisOnlineState(hasCredentials);
+        return;
+      }
+    }
+  } catch(e) {}
+  // Fallback: check local override only
+  const { key, aid } = loadJarvisConfig();
+  setJarvisOnlineState(!!(key && aid));
 }
 
 async function loadJarvisStats() {
@@ -6502,13 +6537,6 @@ async function toggleJarvisCall() {
 }
 
 async function startJarvisCall() {
-  const { key, aid } = loadJarvisConfig();
-  if (!key || !aid) {
-    toast('Configure VAPI Public Key and Assistant ID first', true);
-    const p = $('j-config-panel'); if (p) p.style.display = 'block';
-    return;
-  }
-
   setJarvisStatus('INITIALISING…', 'yellow');
   setText('j-call-label', 'CONNECTING…');
   $('j-call-btn').style.cursor = 'wait';
@@ -6526,21 +6554,34 @@ async function startJarvisCall() {
     return;
   }
 
-  // Fetch live context from our backend
+  // Fetch live context + server-side credentials in one call.
+  // Local sessionStorage overrides take precedence (for dev/testing).
   let systemPrompt = null;
+  let key = sessionStorage.getItem('jarvis-vapi-key') || '';
+  let aid = sessionStorage.getItem('jarvis-assistant-id') || '';
   try {
     const { data: { session } } = await db.auth.getSession();
     if (!session) throw new Error('Not authenticated');
     const resp = await fetch(`${_ep}/functions/v1/vapi-context`, {
-      method: 'GET',
-      headers: { 'Authorization': `Bearer ${session.access_token}` }
+      headers: { Authorization: `Bearer ${session.access_token}` }
     });
     if (resp.ok) {
       const d = await resp.json();
       systemPrompt = d.systemPrompt || null;
+      // Use server secrets unless a local override is already set
+      if (!key) key = d.vapiPublicKey || '';
+      if (!aid) aid = d.vapiAssistantId || '';
     }
   } catch(e) {
-    console.warn('JARVIS: could not fetch context, proceeding without live data', e);
+    console.warn('JARVIS: could not fetch vapi-context', e);
+  }
+
+  if (!key || !aid) {
+    toast('VAPI credentials not configured. Set VAPI_PUBLIC_KEY + VAPI_ASSISTANT_ID as Supabase edge function secrets.', true);
+    setJarvisStatus('SET VAPI SECRETS IN SUPABASE DASHBOARD', 'grey');
+    setText('j-call-label', 'START SESSION');
+    $('j-call-btn').style.cursor = 'pointer';
+    return;
   }
 
   // Start VAPI call with system prompt override

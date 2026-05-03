@@ -182,7 +182,13 @@ serve(async (req) => {
   try {
     const context = await buildContext()
     const systemPrompt = SYSTEM_PROMPT + context
-    return new Response(JSON.stringify({ systemPrompt }), {
+    // Return VAPI credentials from server-side secrets so the frontend never needs
+    // to store them in browser storage. Both values will be null if the secrets
+    // have not been set in the Supabase Edge Function environment — the frontend
+    // falls back to any manual sessionStorage override in that case.
+    const vapiPublicKey = Deno.env.get("VAPI_PUBLIC_KEY") || null
+    const vapiAssistantId = Deno.env.get("VAPI_ASSISTANT_ID") || null
+    return new Response(JSON.stringify({ systemPrompt, vapiPublicKey, vapiAssistantId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     })
   } catch (err) {
