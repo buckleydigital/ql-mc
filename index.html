@@ -6583,6 +6583,17 @@ async function startJarvisCall() {
     return;
   }
 
+  // Destroy any existing VAPI instance before creating a new one.
+  // Daily.co (VAPI's WebRTC layer) only allows one iframe at a time, so
+  // failing to clean up the old instance causes "Duplicate DailyIframe
+  // instances are not allowed" on the very next call.
+  if (_vapiInstance) {
+    try { _vapiInstance.stop(); } catch(e) {}
+    _vapiInstance = null;
+    // Give Daily.co a moment to tear down its iframe before we create a new one.
+    await new Promise(r => setTimeout(r, 300));
+  }
+
   // Start VAPI call with system prompt override
   _vapiInstance = new VapiClass(key);
   _jarvisCallStarted = false;
@@ -6627,6 +6638,7 @@ async function startJarvisCall() {
   _vapiInstance.on('call-end', async () => {
     _jarvisCallActive = false;
     _jarvisCallStarted = false;
+    _vapiInstance = null;
     setJarvisStatus('JARVIS ONLINE', 'green');
     setText('j-call-label', 'START SESSION');
     setText('j-call-icon', '🎙');
@@ -6661,6 +6673,7 @@ async function startJarvisCall() {
       $('j-call-btn').style.cursor = 'pointer';
       _jarvisCallActive = false;
       _jarvisCallStarted = false;
+      _vapiInstance = null;
       setJarvisRing('');
       return;
     }
@@ -6673,6 +6686,7 @@ async function startJarvisCall() {
     $('j-call-btn').style.cursor = 'pointer';
     _jarvisCallActive = false;
     _jarvisCallStarted = false;
+    _vapiInstance = null;
     setJarvisRing('');
   });
 
@@ -6705,12 +6719,14 @@ async function startJarvisCall() {
     $('j-call-btn').style.cursor = 'pointer';
     _jarvisCallActive = false;
     _jarvisCallStarted = false;
+    _vapiInstance = null;
   }
 }
 
 async function endJarvisCall() {
   if (_vapiInstance) {
     try { _vapiInstance.stop(); } catch(e) {}
+    _vapiInstance = null;
   }
   _jarvisCallActive = false;
 }
