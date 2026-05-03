@@ -616,7 +616,7 @@ const SUPABASE_URL = 'https://wmegoygrancfwxagqskh.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_UHQNxVCjHJnFjssYwTiwcQ_3FYovX8I';
 const SUBMIT_LEAD_URL = SUPABASE_URL + '/functions/v1/submit-lead';
 const POSTCODE_LOOKUP_URL = SUPABASE_URL + '/functions/v1/postcode-lookup';
-const SURVEY_NICHE = new URLSearchParams(window.location.search).get('niche') || 'solar';
+const SURVEY_NICHE = 'solar'; // ← change this per survey file
 
 /* ── THEME TOGGLE ── */
 (function() {
