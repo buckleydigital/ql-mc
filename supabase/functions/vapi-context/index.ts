@@ -188,7 +188,10 @@ serve(async (req) => {
     // falls back to any manual sessionStorage override in that case.
     const vapiPublicKey = Deno.env.get("VAPI_PUBLIC_KEY") || null
     const vapiAssistantId = Deno.env.get("VAPI_ASSISTANT_ID") || null
-    return new Response(JSON.stringify({ systemPrompt, vapiPublicKey, vapiAssistantId }), {
+    // ElevenLabs voice ID — used by VAPI to override the assistant's TTS voice.
+    // Set ELEVENLABS_VOICE_ID as a Supabase edge function secret.
+    const elevenLabsVoiceId = Deno.env.get("ELEVENLABS_VOICE_ID") || null
+    return new Response(JSON.stringify({ systemPrompt, vapiPublicKey, vapiAssistantId, elevenLabsVoiceId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     })
   } catch (err) {

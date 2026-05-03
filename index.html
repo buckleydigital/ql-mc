@@ -1364,6 +1364,7 @@ td strong{font-weight:500}
             <div class="j-config-title">Local Override — set <code style="font-size:9px;background:rgba(0,212,255,.08);padding:1px 5px;border-radius:3px">VAPI_PUBLIC_KEY</code> + <code style="font-size:9px;background:rgba(0,212,255,.08);padding:1px 5px;border-radius:3px">VAPI_ASSISTANT_ID</code> as Supabase edge function secrets for production</div>
             <div class="frow"><label class="flabel" style="color:#00446a">VAPI Public Key <span style="color:#003352;font-weight:300">(overrides server secret)</span></label><input class="fi" id="j-vapi-key" type="text" placeholder="leave blank to use server secret" style="background:#040b18;border-color:#0a2540;color:#00d4ff;font-family:var(--mono)"></div>
             <div class="frow"><label class="flabel" style="color:#00446a">VAPI Assistant ID <span style="color:#003352;font-weight:300">(overrides server secret)</span></label><input class="fi" id="j-assistant-id" type="text" placeholder="leave blank to use server secret" style="background:#040b18;border-color:#0a2540;color:#00d4ff;font-family:var(--mono)"></div>
+            <div class="frow"><label class="flabel" style="color:#00446a">ElevenLabs Voice ID <span style="color:#003352;font-weight:300">(overrides <code style="font-size:9px;background:rgba(0,212,255,.08);padding:1px 4px;border-radius:3px">ELEVENLABS_VOICE_ID</code> secret)</span></label><input class="fi" id="j-voice-id" type="text" placeholder="leave blank to use server secret" style="background:#040b18;border-color:#0a2540;color:#00d4ff;font-family:var(--mono)"></div>
             <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
               <button class="btn btn-p btn-sm" onclick="saveJarvisConfig()">Save Override</button>
               <button class="btn btn-sm" onclick="clearJarvisConfig()">Clear Override</button>
@@ -6354,22 +6355,28 @@ let _jarvisSessionMessages = []; // current call transcript
 function loadJarvisConfig() {
   const key = sessionStorage.getItem('jarvis-vapi-key') || '';
   const aid = sessionStorage.getItem('jarvis-assistant-id') || '';
+  const vid = sessionStorage.getItem('jarvis-voice-id') || '';
   if ($('j-vapi-key')) $('j-vapi-key').value = key;
   if ($('j-assistant-id')) $('j-assistant-id').value = aid;
-  return { key, aid };
+  if ($('j-voice-id')) $('j-voice-id').value = vid;
+  return { key, aid, vid };
 }
 function saveJarvisConfig() {
   const key = ($('j-vapi-key')?.value || '').trim();
   const aid = ($('j-assistant-id')?.value || '').trim();
+  const vid = ($('j-voice-id')?.value || '').trim();
   sessionStorage.setItem('jarvis-vapi-key', key);
   sessionStorage.setItem('jarvis-assistant-id', aid);
+  sessionStorage.setItem('jarvis-voice-id', vid);
   toast('Local override saved ✓');
 }
 function clearJarvisConfig() {
   sessionStorage.removeItem('jarvis-vapi-key');
   sessionStorage.removeItem('jarvis-assistant-id');
+  sessionStorage.removeItem('jarvis-voice-id');
   if ($('j-vapi-key')) $('j-vapi-key').value = '';
   if ($('j-assistant-id')) $('j-assistant-id').value = '';
+  if ($('j-voice-id')) $('j-voice-id').value = '';
   toast('Local override cleared — using server secrets');
 }
 function toggleJarvisConfig() {
@@ -6559,6 +6566,7 @@ async function startJarvisCall() {
   let systemPrompt = null;
   let key = sessionStorage.getItem('jarvis-vapi-key') || '';
   let aid = sessionStorage.getItem('jarvis-assistant-id') || '';
+  let voiceId = sessionStorage.getItem('jarvis-voice-id') || '';
   try {
     const { data: { session } } = await db.auth.getSession();
     if (!session) throw new Error('Not authenticated');
@@ -6571,6 +6579,7 @@ async function startJarvisCall() {
       // Use server secrets unless a local override is already set
       if (!key) key = d.vapiPublicKey || '';
       if (!aid) aid = d.vapiAssistantId || '';
+      if (!voiceId) voiceId = d.elevenLabsVoiceId || '';
     }
   } catch(e) {
     console.warn('JARVIS: could not fetch vapi-context', e);
@@ -6649,9 +6658,15 @@ async function startJarvisCall() {
   });
 
   try {
-    const startOpts = systemPrompt
-      ? { model: { provider: 'openai', model: 'gpt-4o', messages: [{ role: 'system', content: systemPrompt }] } }
-      : {};
+    // Build assistant overrides. System prompt and ElevenLabs voice ID are both
+    // optional — omitting them falls back to the assistant's configured defaults.
+    const startOpts = {};
+    if (systemPrompt) {
+      startOpts.model = { provider: 'openai', model: 'gpt-4o', messages: [{ role: 'system', content: systemPrompt }] };
+    }
+    if (voiceId) {
+      startOpts.voice = { provider: '11labs', voiceId };
+    }
     await _vapiInstance.start(aid, startOpts);
   } catch(e) {
     toast('Failed to start VAPI call: ' + e.message, true);
