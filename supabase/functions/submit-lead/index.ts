@@ -162,7 +162,7 @@ Deno.serve(async (req: Request) => {
       // Filter by postcode match
       const postcodeFiltered = candidates.filter((c: Record<string, unknown>) => {
         const pcs = c.postcodes as string[] | null;
-        if (!pcs || !Array.isArray(pcs) || pcs.length === 0) return true;
+        if (!pcs || !Array.isArray(pcs) || pcs.length === 0) return false;
         return pcs.includes(postcode);
       });
 
