@@ -2838,7 +2838,7 @@ async function loadDeliveryLogOverview() {
 
 async function loadTaskLeadDropdowns() {
   const [leadsR, clientsR] = await Promise.all([
-    db.from('leads').select('id,name,company,stage').not('stage','in','("closed_won","closed_lost")').order('name'),
+    db.from('leads').select('id,name,company,stage').or('stage.is.null,stage.not.in.(closed_won,closed_lost)').order('name'),
     db.from('clients').select('id,company_name,type,stage').in('stage',['active_client','active']).order('company_name')
   ]);
   const opts = ['<option value="">— No link —</option>'];

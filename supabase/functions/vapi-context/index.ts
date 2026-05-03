@@ -142,9 +142,9 @@ async function buildContext(): Promise<string> {
   // Sales pipeline
   try {
     const stageLabels: Record<string,string> = {call_back:'Call Back',proposal:'Proposal',qualified:'Qualified',new_lead:'New Lead',no_answer:'No Answer',paused:'Paused'}
-    const { data: leads } = await sb.from('leads').select('name,company,stage,lead_type,value,last_contact').not('stage','in','("closed_won","closed_lost")').order('updated_at',{ascending:false})
+    const { data: leads } = await sb.from('leads').select('name,company,stage,lead_type,value,last_contact').or('stage.is.null,stage.not.in.(closed_won,closed_lost)').order('updated_at',{ascending:false})
     if (leads && leads.length) {
-      const counts = leads.reduce((acc: Record<string,number>, l: any) => { acc[l.stage]=(acc[l.stage]||0)+1; return acc }, {})
+      const counts = leads.reduce((acc: Record<string,number>, l: any) => { const key = l.stage||'unknown'; acc[key]=(acc[key]||0)+1; return acc }, {})
       const totalValue = leads.reduce((s: number, l: any) => s+(l.value||0),0)
       const followupNeeded = leads.filter((l: any) => l.last_contact && (Date.now()-new Date(l.last_contact).getTime())/(1000*86400) > 7).length
       out += `\n\n## Sales Pipeline\n- ${leads.length} active leads · ${fmtN(totalValue)}/mo pipeline value`
@@ -185,7 +185,7 @@ serve(async (req) => {
     // Return VAPI credentials from server-side secrets so the frontend never needs
     // to store them in browser storage. vapiPublicKey will be null if the secret
     // has not been set — the frontend falls back to any manual sessionStorage override.
-    const vapiPublicKey = Deno.env.get("VAPI_PUBLIC_KEY") || null
+    const vapiPublicKey = Deno.env.get("VAPI_PUBLIC_KEY") || Deno.env.get("VAPI_API_KEY") || null
     // ElevenLabs voice ID — passed as an inline voice override in the VAPI call.
     // No pre-created VAPI assistant is needed; the assistant is configured inline.
     // Set ELEVENLABS_VOICE_ID as a Supabase edge function secret.
