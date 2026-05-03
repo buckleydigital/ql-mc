@@ -6635,6 +6635,15 @@ async function startJarvisCall() {
   });
 
   _vapiInstance.on('error', (err) => {
+    // "ejected" / "Meeting has ended" is a normal Daily.co event when a call ends
+    // naturally (timeout, server-side close, etc.). Ignore it to avoid a false
+    // red error toast on every completed session.
+    const errType = err?.error?.error?.type || err?.error?.type;
+    const errMsg  = err?.error?.errorMsg   || err?.error?.message?.msg || '';
+    if (errType === 'ejected' || errMsg === 'Meeting has ended') {
+      console.warn('VAPI session ended (ejected):', err);
+      return;
+    }
     console.error('VAPI error:', err);
     toast('VAPI error: ' + (err?.message || JSON.stringify(err)), true);
     setJarvisStatus('ERROR — CHECK CONFIG', 'red');
