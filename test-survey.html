@@ -781,7 +781,7 @@ footer .footer-bottom{color:rgba(255,255,255,0.3)}
             <div class="disq-icon">👋</div>
             <div class="disq-msg-title">No Problem — Pass This Along</div>
             <p style="font-size:0.82rem;color:var(--muted);line-height:1.65;margin-bottom:8px">Our free commercial assessment is best completed by the person who can approve the decision. Forward this page to your owner or decision maker — it only takes 60 seconds.</p>
-            <div class="disq-box">💡 <strong style="color:var(--cyan)">Tip:</strong> Share this URL with your business owner or CFO — they can complete the assessment and our team will call them directly within 15 minutes.</div>
+            <div class="disq-box">💡 <strong style="color:var(--cyan)">Tip:</strong> Share this URL with your business owner or CFO — they can complete the assessment and our team will call them shortly during business hours.</div>
           </div>
         </div>
 
@@ -826,6 +826,23 @@ footer .footer-bottom{color:rgba(255,255,255,0.3)}
             <span class="insight-icon">💡</span>
             <p>Businesses spending $3,000+/month typically see <strong>full payback within 3–5 years</strong> and can access the instant asset write-off on the full system cost.</p>
           </div>
+
+          <!-- POSTCODE — shown after bill is picked -->
+          <div id="step2-postcode" style="display:none;margin-top:18px">
+            <div class="field-wrap">
+              <label>Business Postcode</label>
+              <input type="text" id="postcode" placeholder="e.g. 2150" maxlength="4" inputmode="numeric"
+                oninput="this.value=this.value.replace(/\D/g,'').slice(0,4);onPostcodeInput()">
+              <div class="suburb-chip loading" id="suburb-chip" style="display:none">
+                <span id="suburb-text">Checking coverage…</span>
+              </div>
+              <div class="err-msg" id="err-postcode">Enter a valid 4-digit postcode</div>
+            </div>
+            <button class="btn-next" id="step2NextBtn" disabled onclick="goToContactStep()" style="margin-top:4px">
+              See My Matched Installer →
+            </button>
+          </div>
+
           <button class="btn-back" onclick="goToStep(2,1)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
             Back
@@ -839,7 +856,7 @@ footer .footer-bottom{color:rgba(255,255,255,0.3)}
 
           <div class="match-notice">
             <span class="mn-icon">🎯</span>
-            <p>Our team will call you within <strong>15 minutes</strong> to book your free commercial solar site assessment. Zero pressure — just clear numbers for your business.</p>
+            <p id="match-notice-p">Our team will call you shortly during business hours to book your free commercial solar site assessment. Zero pressure — just clear numbers for your business.</p>
           </div>
 
           <div class="field-row">
@@ -867,23 +884,13 @@ footer .footer-bottom{color:rgba(255,255,255,0.3)}
             <div class="err-msg" id="err-email">Enter a valid email</div>
           </div>
 
-          <div class="field-wrap">
-            <label>Business Postcode</label>
-            <input type="text" id="postcode" placeholder="e.g. 2150" maxlength="4" inputmode="numeric"
-              oninput="this.value=this.value.replace(/\D/g,'').slice(0,4);onPostcodeInput()">
-            <div class="suburb-chip loading" id="suburb-chip" style="display:none">
-              <span id="suburb-text">Checking coverage…</span>
-            </div>
-            <div class="err-msg" id="err-postcode">Enter a valid 4-digit postcode</div>
-          </div>
-
           <button class="btn-next" id="submitBtn" disabled onclick="submitForm()">
             ⚡ Book My Free Commercial Assessment →
           </button>
 
           <div class="priv-note">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1l3.09 6.26L22 8.27l-5 4.87 1.18 6.88L12 16.77l-6.18 3.25L7 13.14 2 8.27l6.91-1.01L12 1z"/></svg>
-            By submitting, you consent to a pre-vetted CEC-accredited commercial installer contacting you regarding your site assessment. 100% secure — your details are never shared beyond your matched installer.
+            <span id="consent-text">By submitting, you consent to a pre-vetted CEC-accredited commercial installer contacting you regarding your site assessment. 100% secure — your details are never shared beyond your matched installer.</span>
           </div>
 
           <button class="btn-back" style="margin-top:14px" onclick="goToStep(3,2)">
@@ -1171,7 +1178,11 @@ window.pickBill = function(el, val) {
   document.querySelectorAll('#step2 .choice-h').forEach(function(b){ b.classList.remove('selected'); });
   el.classList.add('selected');
   formData.monthly_electricity_bill = val;
-  setTimeout(function() { goToStep(2, 3); }, 280);
+  setTimeout(function() {
+    var section = document.getElementById('step2-postcode');
+    section.style.display = 'block';
+    document.getElementById('postcode').focus();
+  }, 280);
 };
 
 /* ── AU mobile normalizer: accepts 04XXXXXXXX, +61XXXXXXXXX, 61XXXXXXXXX → returns E.164 +61XXXXXXXXX, or null ── */
@@ -1186,13 +1197,25 @@ function normalizeAuMobile(raw) {
 
 /* ── POSTCODE LOOKUP ── */
 var postcodeTimer = null;
+var GENERIC_CONSENT = 'By submitting, you consent to a pre-vetted CEC-accredited commercial installer contacting you regarding your site assessment. 100% secure — your details are never shared beyond your matched installer.';
+
+function setConsentText(buyerName) {
+  var el = document.getElementById('consent-text');
+  if (!el) return;
+  if (buyerName) {
+    el.innerHTML = 'By submitting, you consent to <strong>' + buyerName + '</strong>, a CEC-accredited commercial installer, contacting you regarding your site assessment. 100% secure — your details are never shared beyond your matched installer.';
+  } else {
+    el.textContent = GENERIC_CONSENT;
+  }
+}
 
 window.onPostcodeInput = function() {
   validateContact();
+  validateStep2();
   var pc   = document.getElementById('postcode').value;
   var chip = document.getElementById('suburb-chip');
   clearTimeout(postcodeTimer);
-  if (pc.length < 4) { chip.style.display = 'none'; return; }
+  if (pc.length < 4) { chip.style.display = 'none'; formData.buyer_name = null; setConsentText(null); return; }
   chip.className         = 'suburb-chip loading';
   chip.style.display     = 'inline-flex';
   document.getElementById('suburb-text').textContent = 'Checking coverage…';
@@ -1209,16 +1232,41 @@ function lookupPostcode(pc) {
     if (data.buyer_name) {
       chip.className = 'suburb-chip found';
       document.getElementById('suburb-text').textContent = '✓ Coverage available';
+      formData.buyer_name = data.buyer_name;
+      setConsentText(data.buyer_name);
     } else {
       chip.className = 'suburb-chip no-coverage';
       document.getElementById('suburb-text').textContent = "No coverage yet — we'll still log your inquiry";
+      formData.buyer_name = null;
+      setConsentText(null);
     }
   })
   .catch(function() {
     var chip = document.getElementById('suburb-chip');
     chip.className = 'suburb-chip not-found';
     document.getElementById('suburb-text').textContent = 'Postcode not found';
+    formData.buyer_name = null;
+    setConsentText(null);
   });
+}
+
+/* ── STEP 2: POSTCODE NEXT BUTTON ── */
+function validateStep2() {
+  var pc = document.getElementById('postcode').value.trim();
+  document.getElementById('step2NextBtn').disabled = !/^\d{4}$/.test(pc);
+}
+
+function goToContactStep() {
+  var buyerName = formData.buyer_name;
+  var noticePara = document.getElementById('match-notice-p');
+  if (noticePara) {
+    if (buyerName) {
+      noticePara.innerHTML = '<strong>' + buyerName + '</strong> will call you shortly during business hours to book your free commercial solar site assessment. Zero pressure — just clear numbers for your business.';
+    } else {
+      noticePara.innerHTML = 'Our team will call you shortly during business hours to book your free commercial solar site assessment. Zero pressure — just clear numbers for your business.';
+    }
+  }
+  goToStep(2, 3);
 }
 
 /* ── STEP 3: CONTACT VALIDATION ── */
@@ -1227,11 +1275,9 @@ function validateContact() {
   var ln  = document.getElementById('lastName').value.trim();
   var em  = document.getElementById('email').value.trim();
   var ph  = document.getElementById('phone').value.trim();
-  var pc  = document.getElementById('postcode').value.trim();
   var emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em);
   var phoneOk = normalizeAuMobile(ph) !== null;
-  var postOk  = /^\d{4}$/.test(pc);
-  document.getElementById('submitBtn').disabled = !(fn && ln && emailOk && phoneOk && postOk);
+  document.getElementById('submitBtn').disabled = !(fn && ln && emailOk && phoneOk);
 }
 
 function fv(id, test) {
@@ -1250,7 +1296,6 @@ window.submitForm = async function() {
   ok = fv('lastName',  function(v){ return v.length > 1; }) && ok;
   ok = fv('phone',     function(v){ return normalizeAuMobile(v) !== null; }) && ok;
   ok = fv('email',     function(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }) && ok;
-  ok = fv('postcode',  function(v){ return /^\d{4}$/.test(v); }) && ok;
   if (!ok) return;
 
   var fn = document.getElementById('firstName').value.trim();
@@ -1330,7 +1375,7 @@ window.submitForm = async function() {
     successEl.innerHTML = [
       '<div style="font-size:3.2rem;margin-bottom:16px">⚡</div>',
       '<h3 style="font-family:Outfit,sans-serif;font-weight:900;font-size:1.3rem;color:var(--white);letter-spacing:-0.03em;margin-bottom:10px">Assessment booked. We\'ll call you shortly.</h3>',
-      '<p style="font-size:0.84rem;color:var(--muted);line-height:1.65;max-width:340px;margin:0 auto 22px">A commercial solar specialist will call you within <strong style="color:var(--white)">15 minutes</strong> to discuss your business and book your free site assessment.</p>',
+      '<p style="font-size:0.84rem;color:var(--muted);line-height:1.65;max-width:340px;margin:0 auto 22px">A commercial solar specialist will call you shortly during business hours to discuss your business and book your free site assessment.</p>',
       '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">',
       '<span style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);border-radius:50px;padding:6px 14px;font-size:0.73rem;font-weight:700;color:var(--cyan)">✓ CEC Accredited</span>',
       '<span style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);border-radius:50px;padding:6px 14px;font-size:0.73rem;font-weight:700;color:var(--cyan)">✓ Zero Obligation</span>',
