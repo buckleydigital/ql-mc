@@ -883,7 +883,7 @@ footer .footer-bottom{color:rgba(255,255,255,0.3)}
 
           <div class="priv-note">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1l3.09 6.26L22 8.27l-5 4.87 1.18 6.88L12 16.77l-6.18 3.25L7 13.14 2 8.27l6.91-1.01L12 1z"/></svg>
-            By submitting, you consent to a pre-vetted CEC-accredited commercial installer contacting you regarding your site assessment. 100% secure — your details are never shared beyond your matched installer.
+            <span id="consent-text">By submitting, you consent to a pre-vetted CEC-accredited commercial installer contacting you regarding your site assessment. 100% secure — your details are never shared beyond your matched installer.</span>
           </div>
 
           <button class="btn-back" style="margin-top:14px" onclick="goToStep(3,2)">
@@ -1186,13 +1186,24 @@ function normalizeAuMobile(raw) {
 
 /* ── POSTCODE LOOKUP ── */
 var postcodeTimer = null;
+var GENERIC_CONSENT = 'By submitting, you consent to a pre-vetted CEC-accredited commercial installer contacting you regarding your site assessment. 100% secure — your details are never shared beyond your matched installer.';
+
+function setConsentText(buyerName) {
+  var el = document.getElementById('consent-text');
+  if (!el) return;
+  if (buyerName) {
+    el.innerHTML = 'By submitting, you consent to <strong>' + buyerName + '</strong>, a CEC-accredited commercial installer, contacting you regarding your site assessment. 100% secure — your details are never shared beyond your matched installer.';
+  } else {
+    el.textContent = GENERIC_CONSENT;
+  }
+}
 
 window.onPostcodeInput = function() {
   validateContact();
   var pc   = document.getElementById('postcode').value;
   var chip = document.getElementById('suburb-chip');
   clearTimeout(postcodeTimer);
-  if (pc.length < 4) { chip.style.display = 'none'; return; }
+  if (pc.length < 4) { chip.style.display = 'none'; formData.buyer_name = null; setConsentText(null); return; }
   chip.className         = 'suburb-chip loading';
   chip.style.display     = 'inline-flex';
   document.getElementById('suburb-text').textContent = 'Checking coverage…';
@@ -1209,15 +1220,21 @@ function lookupPostcode(pc) {
     if (data.buyer_name) {
       chip.className = 'suburb-chip found';
       document.getElementById('suburb-text').textContent = '✓ Coverage available';
+      formData.buyer_name = data.buyer_name;
+      setConsentText(data.buyer_name);
     } else {
       chip.className = 'suburb-chip no-coverage';
       document.getElementById('suburb-text').textContent = "No coverage yet — we'll still log your inquiry";
+      formData.buyer_name = null;
+      setConsentText(null);
     }
   })
   .catch(function() {
     var chip = document.getElementById('suburb-chip');
     chip.className = 'suburb-chip not-found';
     document.getElementById('suburb-text').textContent = 'Postcode not found';
+    formData.buyer_name = null;
+    setConsentText(null);
   });
 }
 
