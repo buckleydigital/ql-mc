@@ -6,7 +6,7 @@
 <title>Mission Control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
-<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co https://*.googleapis.com https://*.twilio.com wss://*.twilio.com https://graph.facebook.com https://api.vapi.ai wss://*.daily.co https://*.daily.co wss://*.vapi.ai https://*.vapi.ai 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://maps.googleapis.com https://sdk.twilio.com; img-src * data: blob:; media-src * blob:; microphone 'self';">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co https://*.googleapis.com https://*.twilio.com wss://*.twilio.com https://graph.facebook.com https://api.vapi.ai wss://*.daily.co https://*.daily.co wss://*.vapi.ai https://*.vapi.ai 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://maps.googleapis.com https://sdk.twilio.com; img-src * data: blob:; media-src * blob:;">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
@@ -1365,7 +1365,7 @@ td strong{font-weight:500}
             <div class="frow"><label class="flabel" style="color:#00446a">VAPI Assistant ID</label><input class="fi" id="j-assistant-id" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="background:#040b18;border-color:#0a2540;color:#00d4ff;font-family:var(--mono)"></div>
             <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
               <button class="btn btn-p btn-sm" onclick="saveJarvisConfig()">Save Config</button>
-              <span style="font-family:var(--mono);font-size:10px;color:#004466">Keys stored locally in your browser. <a href="https://vapi.ai" target="_blank" rel="noopener" style="color:#00d4ff">Get a VAPI account →</a></span>
+              <span style="font-family:var(--mono);font-size:10px;color:#004466">Stored in session only (cleared on tab close). <a href="https://vapi.ai" target="_blank" rel="noopener" style="color:#00d4ff">Get a VAPI account →</a></span>
             </div>
           </div>
         </div>
@@ -2290,7 +2290,7 @@ document.addEventListener('DOMContentLoaded',()=>{ setTimeout(updateBnavPadding,
 'use strict';
 const _ep = 'https://wmegoygrancfwxagqskh.supabase.co';
 const _ak = 'sb_publishable_UHQNxVCjHJnFjssYwTiwcQ_3FYovX8I';
-const AVG_WEEKS_PER_MONTH = 4.33; // average weeks in a month (365/12/7)
+const AVG_WEEKS_PER_MONTH = 4.33; // average weeks in a month (52/12)
 const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 
 let db, currentUser;
@@ -6338,15 +6338,17 @@ async function loadAlerts() {
 ═══════════════════════════════════════════════════════════ */
 
 let _vapiInstance = null;      // Vapi SDK instance
-let _javisCallActive = false;
+let _jarvisCallActive = false;
 let _jarvisAnimFrame = null;
 let _jarvisWavePhase = 0;
 let _jarvisSessionMessages = []; // current call transcript
 
-// ── Config ──────────────────────────────────────────────
+// Config ──────────────────────────────────────────────
+// VAPI public keys are client-side credentials designed to be used in browser code.
+// We use sessionStorage so they are cleared when the tab is closed.
 function loadJarvisConfig() {
-  const key = localStorage.getItem('jarvis-vapi-key') || '';
-  const aid = localStorage.getItem('jarvis-assistant-id') || '';
+  const key = sessionStorage.getItem('jarvis-vapi-key') || '';
+  const aid = sessionStorage.getItem('jarvis-assistant-id') || '';
   if ($('j-vapi-key')) $('j-vapi-key').value = key;
   if ($('j-assistant-id')) $('j-assistant-id').value = aid;
   return { key, aid };
@@ -6354,8 +6356,8 @@ function loadJarvisConfig() {
 function saveJarvisConfig() {
   const key = ($('j-vapi-key')?.value || '').trim();
   const aid = ($('j-assistant-id')?.value || '').trim();
-  localStorage.setItem('jarvis-vapi-key', key);
-  localStorage.setItem('jarvis-assistant-id', aid);
+  sessionStorage.setItem('jarvis-vapi-key', key);
+  sessionStorage.setItem('jarvis-assistant-id', aid);
   toast('JARVIS config saved ✓');
   updateJarvisReadyState();
 }
@@ -6461,21 +6463,21 @@ function startJarvisIdleWave() {
     const ctx = canvas.getContext('2d');
     const w = canvas.width, h = canvas.height;
     ctx.clearRect(0,0,w,h);
-    ctx.strokeStyle = _javisCallActive ? '#00d4ff' : '#0a2540';
+    ctx.strokeStyle = _jarvisCallActive ? '#00d4ff' : '#0a2540';
     ctx.lineWidth = 1.5;
-    ctx.shadowBlur = _javisCallActive ? 8 : 0;
+    ctx.shadowBlur = _jarvisCallActive ? 8 : 0;
     ctx.shadowColor = '#00d4ff';
     ctx.beginPath();
-    const pts = _javisCallActive ? 60 : 80;
+    const pts = _jarvisCallActive ? 60 : 80;
     for (let i = 0; i <= pts; i++) {
       const x = (i / pts) * w;
       const t = _jarvisWavePhase + i * 0.18;
-      const amp = _javisCallActive ? (8 + 6 * Math.sin(t * 0.7)) : 3;
+      const amp = _jarvisCallActive ? (8 + 6 * Math.sin(t * 0.7)) : 3;
       const y = h / 2 + amp * Math.sin(t);
       i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
     }
     ctx.stroke();
-    if (_javisCallActive) {
+    if (_jarvisCallActive) {
       ctx.strokeStyle = 'rgba(0,212,255,.25)';
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -6488,7 +6490,7 @@ function startJarvisIdleWave() {
       }
       ctx.stroke();
     }
-    _jarvisWavePhase += _javisCallActive ? 0.12 : 0.025;
+    _jarvisWavePhase += _jarvisCallActive ? 0.12 : 0.025;
     _jarvisAnimFrame = requestAnimationFrame(draw);
   }
   draw();
@@ -6496,7 +6498,7 @@ function startJarvisIdleWave() {
 
 // ── Call Toggle ──────────────────────────────────────────
 async function toggleJarvisCall() {
-  if (_javisCallActive) { await endJarvisCall(); } else { await startJarvisCall(); }
+  if (_jarvisCallActive) { await endJarvisCall(); } else { await startJarvisCall(); }
 }
 
 async function startJarvisCall() {
@@ -6547,7 +6549,7 @@ async function startJarvisCall() {
   clearJarvisTranscript(false);
 
   _vapiInstance.on('call-start', () => {
-    _javisCallActive = true;
+    _jarvisCallActive = true;
     setJarvisStatus('● ACTIVE SESSION', 'green');
     setText('j-call-label', 'END SESSION');
     setText('j-call-icon', '⬛');
@@ -6581,7 +6583,7 @@ async function startJarvisCall() {
   });
 
   _vapiInstance.on('call-end', async () => {
-    _javisCallActive = false;
+    _jarvisCallActive = false;
     setJarvisStatus('JARVIS ONLINE', 'green');
     setText('j-call-label', 'START SESSION');
     setText('j-call-icon', '🎙');
@@ -6601,7 +6603,7 @@ async function startJarvisCall() {
     setText('j-call-icon', '🎙');
     $('j-call-btn').classList.remove('active');
     $('j-call-btn').style.cursor = 'pointer';
-    _javisCallActive = false;
+    _jarvisCallActive = false;
     setJarvisRing('');
   });
 
@@ -6616,7 +6618,7 @@ async function startJarvisCall() {
     setText('j-call-label', 'START SESSION');
     setText('j-call-icon', '🎙');
     $('j-call-btn').style.cursor = 'pointer';
-    _javisCallActive = false;
+    _jarvisCallActive = false;
   }
 }
 
@@ -6624,7 +6626,7 @@ async function endJarvisCall() {
   if (_vapiInstance) {
     try { _vapiInstance.stop(); } catch(e) {}
   }
-  _javisCallActive = false;
+  _jarvisCallActive = false;
 }
 
 // ── Transcript ────────────────────────────────────────────
