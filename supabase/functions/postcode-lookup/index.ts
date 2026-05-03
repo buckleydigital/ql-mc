@@ -24,20 +24,26 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const niche = url.searchParams.get("niche") || url.searchParams.get("lead_type");
+    if (!niche) {
+      return new Response(
+        JSON.stringify({ error: "A niche (or lead_type) parameter is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Query active PPL clients that cover this postcode and have remaining capacity.
-    // Mirrors the matching logic in submit-lead:
-    //   type = 'ppl', stage = 'active_client'
-    //   postcodes array contains the given postcode (or is empty = covers all)
-    //   leads_delivered < total_leads_purchased + leads_scrubbed
+    // Query active PPL clients filtered by niche (same logic as submit-lead).
+    // Only clients where niche matches OR active_niches contains the requested niche.
     const { data: clients, error } = await supabase
       .from("clients")
       .select("id, company_name, postcodes, leads_delivered, total_leads_purchased, leads_scrubbed")
       .eq("type", "ppl")
-      .eq("stage", "active_client");
+      .eq("stage", "active_client")
+      .or(`niche.eq.${niche},active_niches.cs.{${niche}}`);
 
     if (error) {
       console.error("DB error:", error);
@@ -47,12 +53,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Find the first client that covers this postcode and has remaining capacity
+    // Find the first client that has the exact postcode in their postcodes list
+    // and has remaining capacity. Empty postcodes array does NOT mean "covers all".
     const match = (clients ?? []).find((c) => {
       const pcs = c.postcodes as string[] | null;
-      const coversPostcode =
-        !pcs || !Array.isArray(pcs) || pcs.length === 0 || pcs.includes(postcode);
-      if (!coversPostcode) return false;
+      if (!Array.isArray(pcs) || pcs.length === 0 || !pcs.includes(postcode)) return false;
       const delivered = (c.leads_delivered as number) || 0;
       const purchased = (c.total_leads_purchased as number) || 0;
       const scrubbed = (c.leads_scrubbed as number) || 0;

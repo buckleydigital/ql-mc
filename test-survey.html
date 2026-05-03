@@ -708,7 +708,7 @@ async function lookupPostcode(pc) {
   resolvedState  = '';
 
   try {
-    const res = await fetch(POSTCODE_LOOKUP_URL + '?postcode=' + encodeURIComponent(pc), {
+    const res = await fetch(POSTCODE_LOOKUP_URL + '?postcode=' + encodeURIComponent(pc) + '&niche=' + encodeURIComponent(SURVEY_NICHE), {
       method: 'GET',
       headers: {
         'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
