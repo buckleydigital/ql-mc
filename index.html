@@ -6652,11 +6652,16 @@ async function startJarvisCall() {
   });
 
   _vapiInstance.on('call-end', async () => {
-    _jarvisCallActive = false;
     // Do NOT reset _jarvisCallStarted here. Daily.co fires an "ejected" error
     // event AFTER call-end during normal teardown. Keeping _jarvisCallStarted=true
     // lets the error handler correctly classify that noise as post-start and
     // suppress it. _jarvisCallStarted is reset to false at the top of startJarvisCall().
+
+    // If endJarvisCall() already ran (user clicked END SESSION), the cleanup
+    // and transcript save have already been handled — skip to avoid duplicates.
+    if (!_jarvisCallActive) return;
+
+    _jarvisCallActive = false;
     _vapiInstance = null;
     setJarvisStatus('JARVIS ONLINE', 'green');
     setText('j-call-label', 'START SESSION');
@@ -6731,11 +6736,24 @@ async function startJarvisCall() {
 }
 
 async function endJarvisCall() {
-  if (_vapiInstance) {
-    try { _vapiInstance.stop(); } catch(e) {}
-    _vapiInstance = null;
-  }
+  // Capture and immediately null the instance so call-end (if it fires)
+  // sees _jarvisCallActive=false and skips its duplicate cleanup path.
+  const inst = _vapiInstance;
+  _vapiInstance = null;
   _jarvisCallActive = false;
+  if (inst) {
+    try { inst.stop(); } catch(e) {}
+  }
+  // Perform UI cleanup immediately — don't wait for the async call-end event.
+  setJarvisStatus('JARVIS ONLINE', 'green');
+  setText('j-call-label', 'START SESSION');
+  setText('j-call-icon', '🎙');
+  $('j-call-btn').classList.remove('active');
+  setJarvisRing('');
+  setText('j-wave-info', 'IDLE');
+  addJarvisTranscript('system', 'Session ended.');
+  await saveJarvisTranscript();
+  await loadJarvisHistory();
 }
 
 // ── Transcript ────────────────────────────────────────────
