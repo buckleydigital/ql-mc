@@ -6653,7 +6653,10 @@ async function startJarvisCall() {
 
   _vapiInstance.on('call-end', async () => {
     _jarvisCallActive = false;
-    _jarvisCallStarted = false;
+    // Do NOT reset _jarvisCallStarted here. Daily.co fires an "ejected" error
+    // event AFTER call-end during normal teardown. Keeping _jarvisCallStarted=true
+    // lets the error handler correctly classify that noise as post-start and
+    // suppress it. _jarvisCallStarted is reset to false at the top of startJarvisCall().
     _vapiInstance = null;
     setJarvisStatus('JARVIS ONLINE', 'green');
     setText('j-call-label', 'START SESSION');
