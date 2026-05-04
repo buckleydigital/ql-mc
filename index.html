@@ -4207,10 +4207,9 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   if($('fin-rev-trend')) $('fin-rev-trend').innerHTML = trendArrow(tr,prior.priorTotalRev,true);
   if($('fin-exp-trend')) $('fin-exp-trend').innerHTML = trendArrow(totalExp,prior.priorTotalExp,false);
   // MRR / ARR / Run Rate
-  // MRR = active managed retainers (management fee revenue only)
-  const activeMgRetainer = mgClients.filter(c=>c.stage==='active')
-    .reduce((s,c)=>s+(c.management_fee||0),0);
-  const mrr = activeMgRetainer;
+  // MRR mirrors the "Retainer Revenue" KPI so the two cards always agree.
+  // ARR is simply MRR × 12.
+  const mrr = mgRetainerRev;
   const arr = mrr * 12;
   // Monthly run rate: annualise current period revenue
   const periodDays = (new Date(next)-new Date(from))/(1000*60*60*24);
@@ -5778,7 +5777,7 @@ async function loadOverview() {
 
   const [pplR, mgR, ordR, slaR, pplLeadsR, crmR, goalsR, pplOrdMtdR, mgOrdMtdR] = await Promise.all([
     db.from('clients').select('id,stage,lead_price,leads_mtd,true_cpl,total_leads_purchased,leads_delivered').eq('type','ppl'),
-    db.from('clients').select('id,stage,management_fee,next_payment_date,payments_made').eq('type','managed'),
+    db.from('clients').select('id,stage,management_fee,next_payment_date,payments_made,active_months').eq('type','managed'),
     db.from('ppl_order_log').select('id,client_id,leads_qty,status,sla_due_date,order_date').eq('status','in_progress'),
     db.from('ppl_order_log').select('id,client_id,leads_qty,sla_due_date,order_date').eq('status','in_progress').lte('sla_due_date',today).not('sla_due_date','is',null),
     db.from('ppl_leads').select('id,status').in('status',['pending','assigned']),
@@ -5799,16 +5798,22 @@ async function loadOverview() {
   }).length;
   const goals = goalsR.data||[];
 
-  // MRR = management fee revenue from active managed clients only
-  const activeMgRetainer = mgClients.filter(c=>c.stage==='active').reduce((s,c)=>s+(c.management_fee||0),0);
+  // MRR = current month's managed retainer revenue (matches the Finance "Retainer Revenue" card).
+  // Computed from each managed client's active_months (months they're booked & billed for the retainer).
+  const curMonthKey = today.slice(0,7);
+  const mgRetainerThisMonth = mgClients.reduce((s,c)=>{
+    let months=[];
+    try{months=JSON.parse(c.active_months||'[]');}catch(e){}
+    return s + (months.includes(curMonthKey) ? (c.management_fee||0) : 0);
+  },0);
   const activePpl = pplClients.filter(c=>c.stage==='active_client');
-  const mrr = activeMgRetainer;
+  const mrr = mgRetainerThisMonth;
   const arr = mrr * 12;
 
   // MTD revenue
   const mtdPplRev = (pplOrdMtdR.data||[]).reduce((s,o)=>s+((o.leads_qty||0)*(o.lead_price||0)),0);
   const mtdMgRev = (mgOrdMtdR.data||[]).reduce((s,o)=>s+(o.amount||0),0);
-  const mtdRev = mtdPplRev + mtdMgRev + activeMgRetainer;
+  const mtdRev = mtdPplRev + mtdMgRev + mgRetainerThisMonth;
 
   // Overdue payments
   const overduePayments = mgClients.filter(c=>c.stage==='active'&&c.next_payment_date&&c.next_payment_date<today).length;
