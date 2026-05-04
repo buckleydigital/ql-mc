@@ -6547,6 +6547,35 @@ async function startJarvisCall() {
   setText('j-call-label', 'CONNECTING…');
   $('j-call-btn').style.cursor = 'wait';
 
+  // Explicitly request microphone permission before loading the VAPI SDK.
+  // On Android Chrome (and some desktop browsers) the browser will only show
+  // the mic permission prompt when getUserMedia is called directly from a
+  // user-gesture context.  Without this, VAPI's internal WebRTC setup gets
+  // silently denied and the call connects but never captures any audio.
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    toast('Your browser does not support microphone access (getUserMedia). Try Chrome or Safari.', true);
+    setJarvisStatus('BROWSER NOT SUPPORTED', 'red');
+    setText('j-call-label', 'START SESSION');
+    $('j-call-btn').style.cursor = 'pointer';
+    return;
+  }
+  try {
+    setJarvisStatus('REQUESTING MIC PERMISSION…', 'yellow');
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // Permission granted — release the tracks immediately; VAPI will open its own stream.
+    stream.getTracks().forEach(t => t.stop());
+  } catch (permErr) {
+    const denied = permErr.name === 'NotAllowedError' || permErr.name === 'PermissionDeniedError';
+    const msg = denied
+      ? 'Microphone access denied. Please allow microphone access in your browser settings and try again.'
+      : 'Could not access microphone: ' + permErr.message;
+    toast(msg, true);
+    setJarvisStatus('MICROPHONE PERMISSION REQUIRED', 'red');
+    setText('j-call-label', 'START SESSION');
+    $('j-call-btn').style.cursor = 'pointer';
+    return;
+  }
+
   // Load VAPI SDK lazily
   let VapiClass;
   try {
