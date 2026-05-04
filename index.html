@@ -2742,12 +2742,10 @@ const CRM_STAGES=[{id:'new_lead',label:'New Lead'},{id:'no_answer',label:'No Ans
 async function loadCRM(resetPage) {
   if (resetPage) crmPage = 0;
 
-  // Always fetch the full active pipeline for the kanban — no date filter.
+  // Always fetch the full pipeline for the kanban — no date filter, all stages.
   // Date-filtered leads go to the table/KPIs so users can report on a period
   // without losing visibility of deals created before that window.
-  const CLOSED = ['closed_won','closed_lost'];
   const pipelineQ = db.from('leads').select('*')
-    .not('stage', 'in', `(${CLOSED.map(s=>`"${s}"`).join(',')})`)
     .order('created_at', {ascending: false});
 
   let tableQ = db.from('leads').select('*').order('created_at', {ascending: false});
