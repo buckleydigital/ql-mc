@@ -1,7 +1,1 @@
 # Supabase project configuration.
-
-# vapi-llm is called by VAPI's servers (not the browser) so it cannot
-# present a valid Supabase JWT. Disable JWT verification so the function
-# is reachable — the ANTHROPIC_API_KEY secret is the effective protection.
-[functions.vapi-llm]
-verify_jwt = false
