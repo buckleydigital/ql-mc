@@ -6717,7 +6717,7 @@ async function startJarvisCall() {
     const overrides = {};
     if (voiceId) overrides.voice = { provider: '11labs', voiceId };
     if (systemPrompt) overrides.variableValues = { systemContext: systemPrompt };
-    await _vapiInstance.start(assistantId, Object.keys(overrides).length ? overrides : undefined);
+    await _vapiInstance.start(assistantId, overrides);
   } catch(e) {
     toast('Failed to start VAPI call: ' + e.message, true);
     setJarvisStatus('CALL FAILED', 'red');
