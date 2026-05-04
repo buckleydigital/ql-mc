@@ -3055,7 +3055,7 @@ function renderCRM() {
   const staleIds=new Set(staleLeads.map(l=>String(l.id)));
   CRM_STAGES.forEach(s=>{
     const col=$('crm-col-'+s.id),cnt=$('crmc-'+s.id);
-    const sl=leads.filter(l=>l.stage===s.id);
+    const sl=pipeline.filter(l=>l.stage===s.id);
     if (cnt) cnt.textContent=sl.length;
     if (col) {
       sl.forEach(l => { LEAD_CACHE[l.id] = l; });
@@ -6720,6 +6720,7 @@ async function startJarvisCall() {
       model: {
         provider: 'custom-llm',
         url: customLlmUrl,
+        model: 'gpt-4o',
         ...(systemPrompt ? { messages: [{ role: 'system', content: systemPrompt }] } : {}),
       },
       voice: voiceId
