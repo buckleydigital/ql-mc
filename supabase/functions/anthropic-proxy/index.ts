@@ -39,6 +39,9 @@ Retainer (managed) deals are higher value and more strategic — prioritise thes
 - All spend/revenue figures are in AUD
 - Never describe MTD totals as "daily" figures — they are period totals
 
+## ⚠ Data Freshness — Critical
+The "Live Dashboard Context" section below is queried fresh from the live database on EVERY message. It is ALWAYS the authoritative ground truth. Any lead counts, pipeline figures, or financial data mentioned in previous conversation messages may be from earlier sessions with stale snapshots — IGNORE them. Always report the live figures from the current context section, never from memory or chat history.
+
 ## Instructions
 Be concise, direct and data-driven. Lead with numbers and specific names/actions. Never invent or estimate figures — if data is unavailable, say so. Flag anomalies, cold leads (7+ days no contact), and quick wins.`
 
@@ -334,31 +337,59 @@ async function buildContext(agent: string): Promise<string> {
   } catch(e: any) { console.error('anthropic-proxy ad_spend_ytd exception:', e?.message) }
 
   // ── Sales pipeline (CRM leads) — every lead, full detail ──────────────
+  // Uses a paginated fetch so any server-side max-rows cap cannot truncate
+  // the result set. All non-closed leads are fetched regardless of stage value.
   try {
     const stageLabels: Record<string,string> = {call_back:'Call Back',proposal:'Proposal',qualified:'Qualified',new_lead:'New Lead',no_answer:'No Answer',paused:'Paused',onboarding:'Onboarding',proposal_sent:'Proposal Sent',closed_won:'Closed Won',closed_lost:'Closed Lost'}
     const stageOrder:  Record<string,number>  = {call_back:1,proposal:2,proposal_sent:2,qualified:3,new_lead:4,no_answer:5,paused:6,onboarding:1}
-    const ACTIVE_STAGES = ['new_lead','no_answer','call_back','proposal','qualified','onboarding','proposal_sent','paused']
+    const LEAD_FIELDS = 'id,name,company,email,phone,stage,lead_type,value,source,notes,last_contact,next_followup,created_at,updated_at'
 
-    const [activeR, nullR, closedR] = await Promise.all([
-      sb.from('leads').select('id,name,company,email,phone,stage,lead_type,value,source,notes,last_contact,next_followup,created_at,updated_at').in('stage', ACTIVE_STAGES).order('updated_at',{ascending:false}),
-      sb.from('leads').select('id,name,company,email,phone,stage,lead_type,value,source,notes,last_contact,next_followup,created_at,updated_at').is('stage', null).order('updated_at',{ascending:false}),
-      sb.from('leads').select('id,name,company,email,phone,stage,value,updated_at').in('stage',['closed_won','closed_lost']).order('updated_at',{ascending:false}).limit(100),
-    ])
-    if (activeR.error) console.error('anthropic-proxy leads active:', activeR.error.message)
+    // Get the definitive total count of ALL leads in the database first.
+    const { count: totalLeadCount } = await sb.from('leads').select('id', {count:'exact', head:true})
 
-    const active = [...(activeR.data||[]), ...(nullR.data||[])].sort((a: any, b: any) => {
+    // Fetch ALL non-closed leads — paginated to defeat any server-side row cap.
+    // Using .not() instead of .in() means leads with any unexpected/legacy stage
+    // are still included; only explicitly closed ones are excluded.
+    const allActive: any[] = []
+    const PAGE = 200
+    let from = 0
+    while (true) {
+      const { data: page, error: pageErr, count: pageTotal } = await sb.from('leads')
+        .select(LEAD_FIELDS, {count:'exact'})
+        .not('stage', 'in', '(closed_won,closed_lost)')
+        .order('updated_at', {ascending:false})
+        .range(from, from + PAGE - 1)
+      if (pageErr) { console.error('anthropic-proxy leads page:', pageErr.message); break }
+      if (!page?.length) break
+      allActive.push(...page)
+      // If we have the total count, stop as soon as we have all rows
+      const knownTotal = pageTotal ?? null
+      if (knownTotal !== null && allActive.length >= knownTotal) break
+      if (page.length < PAGE) break
+      from += PAGE
+    }
+
+    // Fetch recently closed leads (last 100) — no pagination needed, hard cap is intentional.
+    const { data: closedRaw, error: closedErr } = await sb.from('leads')
+      .select('id,name,company,email,phone,stage,value,notes,updated_at')
+      .in('stage', ['closed_won','closed_lost'])
+      .order('updated_at', {ascending:false})
+      .limit(100)
+    if (closedErr) console.error('anthropic-proxy leads closed:', closedErr.message)
+    const closed = closedRaw || []
+
+    const active = allActive.sort((a: any, b: any) => {
       const so = (stageOrder[a.stage||'']||9) - (stageOrder[b.stage||'']||9)
       return so !== 0 ? so : (b.value||0) - (a.value||0)
     })
-    const closed = closedR.data || []
 
     const totalValue      = active.reduce((s: number, l: any) => s+(l.value||0), 0)
     const overdueContact  = active.filter((l: any) => l.last_contact && (todayMs-new Date(l.last_contact).getTime())/86400000 > 7).length
     const neverContacted  = active.filter((l: any) => !l.last_contact).length
     const counts: Record<string,number> = {}
-    active.forEach((l: any) => { const k=l.stage||'new_lead'; counts[k]=(counts[k]||0)+1 })
+    active.forEach((l: any) => { const k=l.stage||'(no stage)'; counts[k]=(counts[k]||0)+1 })
 
-    out += `\n\n## Sales Pipeline (CRM) — ${active.length} active leads`
+    out += `\n\n## Sales Pipeline (CRM) — ${active.length} active / ${totalLeadCount ?? '?'} total in DB`
     out += `\n- Total pipeline value: ${fmtN(totalValue)}/mo`
     out += `\n- By stage: ${Object.entries(counts).map(([s,n]) => `${stageLabels[s]||s}: ${n}`).join(' · ')}`
     if (overdueContact) out += `\n- ⚠ ${overdueContact} leads not contacted in 7+ days`
@@ -366,7 +397,7 @@ async function buildContext(agent: string): Promise<string> {
 
     out += `\n\n### Active Leads (${active.length}) — sorted by priority stage then value`
     active.forEach((l: any) => {
-      const stage      = stageLabels[l.stage||''] || l.stage || 'New Lead'
+      const stage      = stageLabels[l.stage||''] || l.stage || '(no stage)'
       const dsc        = l.last_contact ? Math.floor((todayMs-new Date(l.last_contact).getTime())/86400000) : null
       const contactAge = dsc != null ? `last contact ${dsc}d ago${dsc > 7 ? ' ⚠' : ''}` : 'never contacted'
       const followup   = l.next_followup ? ` · followup ${l.next_followup}` : ''
@@ -381,10 +412,10 @@ async function buildContext(agent: string): Promise<string> {
     if (closed.length) {
       out += `\n\n### Closed Leads (${closed.length} most recent)`
       closed.forEach((l: any) => {
-        out += `\n- ${l.name||'Unknown'}${l.company?` @ ${l.company}`:''}${l.phone?` · ph: ${l.phone}`:''}${l.email?` · em: ${l.email}`:''} | ${stageLabels[l.stage||'']||l.stage}${l.value?` | ${fmtN(l.value)}/mo`:''}`
+        out += `\n- ${l.name||'Unknown'}${l.company?` @ ${l.company}`:''}${l.phone?` · ph: ${l.phone}`:''}${l.email?` · em: ${l.email}`:''} | ${stageLabels[l.stage||'']||l.stage}${l.value?` | ${fmtN(l.value)}/mo`:''}${l.notes?` — ${l.notes}`:''}`
       })
     }
-  } catch(e: any) { console.error('anthropic-proxy leads exception:', e?.message); out += '\n\n## Sales Pipeline\nUnable to load pipeline data.' }
+  } catch(e: any) { console.error('anthropic-proxy leads exception:', e?.message); out += `\n\n## Sales Pipeline\nERROR loading pipeline data: ${e?.message||'unknown error'}` }
 
   return out
 }
@@ -428,7 +459,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 4096,
+        max_tokens: 8192,
         system,
         messages,
       }),
