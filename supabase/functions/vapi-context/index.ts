@@ -414,14 +414,12 @@ serve(async (req) => {
     // to store them in browser storage. vapiPublicKey will be null if the secret
     // has not been set — the frontend falls back to any manual sessionStorage override.
     const vapiPublicKey = Deno.env.get("VAPI_PUBLIC_KEY") || Deno.env.get("VAPI_API_KEY") || null
-    // ElevenLabs voice ID — passed as an inline voice override in the VAPI call.
-    // No pre-created VAPI assistant is needed; the assistant is configured inline.
+    // ElevenLabs voice ID — optional voice override passed to VAPI.
     // Set ELEVENLABS_VOICE_ID as a Supabase edge function secret.
     const elevenLabsVoiceId = Deno.env.get("ELEVENLABS_VOICE_ID") || null
-    // Custom LLM URL: points to the vapi-llm edge function which proxies to Anthropic.
-    // This means no OpenAI (or any external) API key needs to be set in the VAPI dashboard.
-    const customLlmUrl = supabaseUrl ? `${supabaseUrl}/functions/v1/vapi-llm` : null
-    return new Response(JSON.stringify({ systemPrompt, vapiPublicKey, elevenLabsVoiceId, customLlmUrl }), {
+    // Pre-created VAPI assistant ID. Set VAPI_ASSISTANT_ID as a Supabase edge function secret.
+    const vapiAssistantId = Deno.env.get("VAPI_ASSISTANT_ID") || null
+    return new Response(JSON.stringify({ systemPrompt, vapiPublicKey, elevenLabsVoiceId, vapiAssistantId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     })
   } catch (err) {
