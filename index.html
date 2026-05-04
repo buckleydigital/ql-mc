@@ -1362,7 +1362,7 @@ td strong{font-weight:500}
         <!-- In production, set VAPI_PUBLIC_KEY + VAPI_ASSISTANT_ID as Supabase edge function secrets -->
         <div id="j-config-panel" style="display:none;margin-bottom:16px">
           <div class="j-config">
-            <div class="j-config-title">Local Override — set <code style="font-size:9px;background:rgba(0,212,255,.08);padding:1px 5px;border-radius:3px">VAPI_PUBLIC_KEY</code> + <code style="font-size:9px;background:rgba(0,212,255,.08);padding:1px 5px;border-radius:3px">ELEVENLABS_VOICE_ID</code> as Supabase edge function secrets for production</div>
+            <div class="j-config-title">Local Override — set <code style="font-size:9px;background:rgba(0,212,255,.08);padding:1px 5px;border-radius:3px">VAPI_PUBLIC_KEY</code> + <code style="font-size:9px;background:rgba(0,212,255,.08);padding:1px 5px;border-radius:3px">VAPI_ASSISTANT_ID</code> + <code style="font-size:9px;background:rgba(0,212,255,.08);padding:1px 5px;border-radius:3px">ELEVENLABS_VOICE_ID</code> as Supabase edge function secrets for production</div>
             <div class="frow"><label class="flabel" style="color:#00446a">VAPI Public Key <span style="color:#003352;font-weight:300">(overrides <code style="font-size:9px;background:rgba(0,212,255,.08);padding:1px 4px;border-radius:3px">VAPI_PUBLIC_KEY</code> secret)</span></label><input class="fi" id="j-vapi-key" type="text" placeholder="leave blank to use server secret" style="background:#040b18;border-color:#0a2540;color:#00d4ff;font-family:var(--mono)"></div>
             <div class="frow"><label class="flabel" style="color:#00446a">ElevenLabs Voice ID <span style="color:#003352;font-weight:300">(overrides <code style="font-size:9px;background:rgba(0,212,255,.08);padding:1px 4px;border-radius:3px">ELEVENLABS_VOICE_ID</code> secret)</span></label><input class="fi" id="j-voice-id" type="text" placeholder="leave blank to use server secret" style="background:#040b18;border-color:#0a2540;color:#00d4ff;font-family:var(--mono)"></div>
             <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
@@ -6565,7 +6565,7 @@ async function startJarvisCall() {
   let systemPrompt = null;
   let key = sessionStorage.getItem('jarvis-vapi-key') || '';
   let voiceId = sessionStorage.getItem('jarvis-voice-id') || '';
-  let customLlmUrl = '';
+  let assistantId = '';
   try {
     const { data: { session } } = await db.auth.getSession();
     if (!session) throw new Error('Not authenticated');
@@ -6578,7 +6578,7 @@ async function startJarvisCall() {
       // Use server secrets unless a local override is already set
       if (!key) key = d.vapiPublicKey || '';
       if (!voiceId) voiceId = d.elevenLabsVoiceId || '';
-      if (d.customLlmUrl) customLlmUrl = d.customLlmUrl;
+      if (d.vapiAssistantId) assistantId = d.vapiAssistantId;
     }
   } catch(e) {
     console.warn('JARVIS: could not fetch vapi-context', e);
@@ -6591,9 +6591,9 @@ async function startJarvisCall() {
     $('j-call-btn').style.cursor = 'pointer';
     return;
   }
-  if (!customLlmUrl) {
-    toast('JARVIS LLM not configured. Deploy the vapi-llm edge function and ensure SUPABASE_URL is set.', true);
-    setJarvisStatus('DEPLOY VAPI-LLM EDGE FUNCTION', 'grey');
+  if (!assistantId) {
+    toast('VAPI assistant not configured. Set VAPI_ASSISTANT_ID as a Supabase edge function secret.', true);
+    setJarvisStatus('SET VAPI_ASSISTANT_ID SECRET IN SUPABASE DASHBOARD', 'grey');
     setText('j-call-label', 'START SESSION');
     $('j-call-btn').style.cursor = 'pointer';
     return;
@@ -6710,27 +6710,14 @@ async function startJarvisCall() {
   });
 
   try {
-    // Inline assistant config — no pre-created VAPI assistant needed.
-    // The model, system prompt, and ElevenLabs voice are all defined here.
-    // NOTE: transcriber is required for inline config in VAPI 2.x; without it
-    // the Daily.co room is created but immediately tears down with "ejected".
-    const assistantConfig = {
-      transcriber: {
-        provider: 'deepgram',
-        model: 'nova-2',
-        language: 'en-AU',
-      },
-      model: {
-        provider: 'custom-llm',
-        url: customLlmUrl,
-        model: 'gpt-4o',
-        ...(systemPrompt ? { messages: [{ role: 'system', content: systemPrompt }] } : {}),
-      },
-      voice: voiceId
-        ? { provider: '11labs', voiceId }
-        : { provider: 'vapi', voiceId: 'Elliot' },
-    };
-    await _vapiInstance.start(assistantConfig);
+    // Start the pre-created VAPI assistant by ID.
+    // Transcriber, model, and voice are all configured in the VAPI dashboard.
+    // assistantOverrides injects the ElevenLabs voice (if set) and passes the live
+    // system-prompt context as a variableValue so the assistant can reference {{ systemContext }}.
+    const overrides = {};
+    if (voiceId) overrides.voice = { provider: '11labs', voiceId };
+    if (systemPrompt) overrides.variableValues = { systemContext: systemPrompt };
+    await _vapiInstance.start(assistantId, Object.keys(overrides).length ? overrides : undefined);
   } catch(e) {
     toast('Failed to start VAPI call: ' + e.message, true);
     setJarvisStatus('CALL FAILED', 'red');
