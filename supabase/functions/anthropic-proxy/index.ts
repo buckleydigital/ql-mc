@@ -342,21 +342,21 @@ async function buildContext(agent: string): Promise<string> {
   try {
     const stageLabels: Record<string,string> = {call_back:'Call Back',proposal:'Proposal',qualified:'Qualified',new_lead:'New Lead',no_answer:'No Answer',paused:'Paused',onboarding:'Onboarding',proposal_sent:'Proposal Sent',closed_won:'Closed Won',closed_lost:'Closed Lost'}
     const stageOrder:  Record<string,number>  = {call_back:1,proposal:2,proposal_sent:2,qualified:3,new_lead:4,no_answer:5,paused:6,onboarding:1}
-    const LEAD_FIELDS = 'id,name,company,email,phone,stage,lead_type,value,source,notes,last_contact,next_followup,created_at,updated_at'
+    const LEAD_FIELDS = 'id,name,company,email,phone,stage,lead_type,value,source,notes,last_contact,next_followup,contact_count,contactable,created_at,updated_at'
 
     // Get the definitive total count of ALL leads in the database first.
     const { count: totalLeadCount } = await sb.from('leads').select('id', {count:'exact', head:true})
 
     // Fetch ALL non-closed leads — paginated to defeat any server-side row cap.
-    // Using .not() instead of .in() means leads with any unexpected/legacy stage
-    // are still included; only explicitly closed ones are excluded.
+    // Use .or() so that leads with a NULL stage are INCLUDED (NOT IN excludes NULLs
+    // in SQL, so leads that never had a stage assigned would be silently dropped).
     const allActive: any[] = []
     const PAGE = 200
     let from = 0
     while (true) {
       const { data: page, error: pageErr, count: pageTotal } = await sb.from('leads')
         .select(LEAD_FIELDS, {count:'exact'})
-        .not('stage', 'in', '(closed_won,closed_lost)')
+        .or('stage.not.in.(closed_won,closed_lost),stage.is.null')
         .order('updated_at', {ascending:false})
         .range(from, from + PAGE - 1)
       if (pageErr) { console.error('anthropic-proxy leads page:', pageErr.message); break }
@@ -397,16 +397,21 @@ async function buildContext(agent: string): Promise<string> {
 
     out += `\n\n### Active Leads (${active.length}) — sorted by priority stage then value`
     active.forEach((l: any) => {
-      const stage      = stageLabels[l.stage||''] || l.stage || '(no stage)'
-      const dsc        = l.last_contact ? Math.floor((todayMs-new Date(l.last_contact).getTime())/86400000) : null
-      const contactAge = dsc != null ? `last contact ${dsc}d ago${dsc > 7 ? ' ⚠' : ''}` : 'never contacted'
-      const followup   = l.next_followup ? ` · followup ${l.next_followup}` : ''
-      const phone      = l.phone ? ` · ph: ${l.phone}` : ''
-      const email      = l.email ? ` · em: ${l.email}` : ''
-      const notes      = l.notes ? `\n  Notes: ${l.notes}` : ''
-      const type       = l.lead_type === 'ppl' ? ' [PPL]' : l.lead_type === 'managed' ? ' [Managed]' : ''
+      const stage        = stageLabels[l.stage||''] || l.stage || '(no stage)'
+      const dsc          = l.last_contact ? Math.floor((todayMs-new Date(l.last_contact).getTime())/86400000) : null
+      const contactAge   = dsc != null ? `last contact ${dsc}d ago${dsc > 7 ? ' ⚠' : ''}` : 'never contacted'
+      const contactCount = l.contact_count != null ? ` (contacted ${l.contact_count}x)` : ''
+      const contactable  = l.contactable === true ? ' ✓contactable' : l.contactable === false ? ' ✗uncontactable' : ''
+      const followup     = l.next_followup ? ` · followup ${l.next_followup}` : ''
+      const phone        = l.phone ? ` · ph: ${l.phone}` : ''
+      const email        = l.email ? ` · em: ${l.email}` : ''
+      const src          = l.source ? ` · source: ${l.source}` : ''
+      const ageDays      = l.created_at ? Math.floor((todayMs-new Date(l.created_at).getTime())/86400000) : null
+      const age          = ageDays != null ? ` · added ${ageDays}d ago` : ''
+      const notes        = l.notes ? `\n  Notes: ${l.notes}` : ''
+      const type         = l.lead_type === 'ppl' ? ' [PPL]' : l.lead_type === 'managed' ? ' [Managed]' : ''
       out += `\n- **${l.name||'Unknown'}**${l.company?` @ ${l.company}`:''}${type}${phone}${email}`
-      out += `\n  Stage: ${stage} | ${contactAge}${followup}${l.value?` | ${fmtN(l.value)}/mo`:''}${notes}`
+      out += `\n  Stage: ${stage} | ${contactAge}${contactCount}${contactable}${followup}${l.value?` | ${fmtN(l.value)}/mo`:''}${src}${age}${notes}`
     })
 
     if (closed.length) {

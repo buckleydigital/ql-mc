@@ -337,8 +337,8 @@ async function buildContext(): Promise<string> {
     const ACTIVE_STAGES = ['new_lead','no_answer','call_back','proposal','qualified','onboarding','proposal_sent','paused']
 
     const [activeR, nullR, closedR] = await Promise.all([
-      sb.from('leads').select('name,company,email,phone,stage,lead_type,value,source,notes,last_contact,next_followup,updated_at').in('stage', ACTIVE_STAGES).order('updated_at',{ascending:false}),
-      sb.from('leads').select('name,company,email,phone,stage,lead_type,value,source,notes,last_contact,next_followup,updated_at').is('stage', null).order('updated_at',{ascending:false}),
+      sb.from('leads').select('name,company,email,phone,stage,lead_type,value,source,notes,last_contact,next_followup,contact_count,contactable,created_at,updated_at').in('stage', ACTIVE_STAGES).order('updated_at',{ascending:false}),
+      sb.from('leads').select('name,company,email,phone,stage,lead_type,value,source,notes,last_contact,next_followup,contact_count,contactable,created_at,updated_at').is('stage', null).order('updated_at',{ascending:false}),
       sb.from('leads').select('name,company,phone,email,stage,value').in('stage',['closed_won','closed_lost']).order('updated_at',{ascending:false}).limit(50),
     ])
     if (activeR.error) console.error('vapi-context leads active:', activeR.error.message)
@@ -362,15 +362,18 @@ async function buildContext(): Promise<string> {
 
     out += `\n\n### Active Leads (${active.length})`
     active.forEach((l: any) => {
-      const stage      = stageLabels[l.stage||''] || l.stage || 'New Lead'
-      const dsc        = l.last_contact ? Math.floor((todayMs-new Date(l.last_contact).getTime())/86400000) : null
-      const contactAge = dsc != null ? `last contact ${dsc}d ago` : 'never contacted'
-      const followup   = l.next_followup ? ` · followup ${l.next_followup}` : ''
-      const phone      = l.phone ? ` · ph: ${l.phone}` : ''
-      const email      = l.email ? ` · em: ${l.email}` : ''
-      const notes      = l.notes ? ` · notes: ${l.notes}` : ''
-      const type       = l.lead_type === 'ppl' ? ' [PPL]' : l.lead_type === 'managed' ? ' [Managed]' : ''
-      out += `\n- ${l.name||'Unknown'}${l.company?` (${l.company})`:''}${type}${phone}${email} | ${stage} | ${contactAge}${followup}${l.value?` | ${fmtN(l.value)}/mo`:''}${notes}`
+      const stage        = stageLabels[l.stage||''] || l.stage || 'New Lead'
+      const dsc          = l.last_contact ? Math.floor((todayMs-new Date(l.last_contact).getTime())/86400000) : null
+      const contactAge   = dsc != null ? `last contact ${dsc}d ago` : 'never contacted'
+      const contactCount = l.contact_count != null ? ` (${l.contact_count}x contacted)` : ''
+      const contactable  = l.contactable === true ? ' ✓contactable' : l.contactable === false ? ' ✗uncontactable' : ''
+      const followup     = l.next_followup ? ` · followup ${l.next_followup}` : ''
+      const phone        = l.phone ? ` · ph: ${l.phone}` : ''
+      const email        = l.email ? ` · em: ${l.email}` : ''
+      const src          = l.source ? ` · source: ${l.source}` : ''
+      const notes        = l.notes ? ` · notes: ${l.notes}` : ''
+      const type         = l.lead_type === 'ppl' ? ' [PPL]' : l.lead_type === 'managed' ? ' [Managed]' : ''
+      out += `\n- ${l.name||'Unknown'}${l.company?` (${l.company})`:''}${type}${phone}${email} | ${stage} | ${contactAge}${contactCount}${contactable}${followup}${l.value?` | ${fmtN(l.value)}/mo`:''}${src}${notes}`
     })
 
     if (closed.length) {

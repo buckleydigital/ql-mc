@@ -1838,6 +1838,8 @@ td strong{font-weight:500}
   <div class="modal">
     <h2>Edit Lead</h2><div class="msub" id="edit-lead-sub"></div>
     <input type="hidden" id="el-id">
+    <input type="hidden" id="el-contact-count-orig">
+    <input type="hidden" id="el-last-contact-orig">
     <div class="frow"><label class="flabel">Contact Name</label><input class="fi" id="el-name"></div>
     <div class="frow"><label class="flabel">Company</label><input class="fi" id="el-company"></div>
     <div class="frow"><label class="flabel">Email</label><input class="fi" id="el-email" type="email"></div>
@@ -1861,6 +1863,10 @@ td strong{font-weight:500}
         <option value="true">✓ Contactable</option>
         <option value="false">✗ Uncontactable</option>
       </select>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="frow" style="flex:1"><label class="flabel">Last Contacted <span style="font-size:9.5px;color:var(--ink3);font-weight:300">updates contact count</span></label><input class="fi" id="el-last-contact" type="date"></div>
+      <div class="frow" style="flex:1"><label class="flabel">Next Follow-up</label><input class="fi" id="el-next-followup" type="date"></div>
     </div>
     <div class="convert-banner" id="convert-banner" style="display:none">
       <div class="convert-banner-title">
@@ -3142,6 +3148,11 @@ function openEditLead(l) {
   setVal('el-type',l.lead_type||'ppl');setVal('el-value',l.value);
   setVal('el-source',l.source);setVal('el-notes',l.notes);
   setVal('el-contactable',l.contactable===true?'true':l.contactable===false?'false':'');
+  const lc = l.last_contact ? l.last_contact.split('T')[0] : '';
+  setVal('el-last-contact', lc);
+  setVal('el-last-contact-orig', lc);
+  setVal('el-contact-count-orig', l.contact_count != null ? String(l.contact_count) : '0');
+  setVal('el-next-followup', l.next_followup || '');
   setText('edit-lead-sub',(l.name||'')+(l.company?' · '+l.company:''));
   checkConvertBanner();
   openModal('m-edit-lead');
@@ -3184,7 +3195,11 @@ async function updateLead() {
   const cRaw=$('el-contactable').value;
   const autoContactable=['call_back','proposal','closed_won'].includes(stage);
   const contactable=autoContactable?true:cRaw==='true'?true:cRaw==='false'?false:null;
-  const d={name:$('el-name').value.trim(),company:$('el-company').value.trim(),email:$('el-email').value.trim(),phone:$('el-phone').value.trim(),stage,lead_type:$('el-type').value,value:parseFloat($('el-value').value)||null,source:$('el-source').value,notes:$('el-notes').value.trim(),contactable,updated_at:now()};
+  const newLastContact = $('el-last-contact').value || null;
+  const origLastContact = $('el-last-contact-orig').value || null;
+  const origCount = parseInt($('el-contact-count-orig').value||'0', 10) || 0;
+  const contactIncrement = (newLastContact && (!origLastContact || newLastContact > origLastContact)) ? 1 : 0;
+  const d={name:$('el-name').value.trim(),company:$('el-company').value.trim(),email:$('el-email').value.trim(),phone:$('el-phone').value.trim(),stage,lead_type:$('el-type').value,value:parseFloat($('el-value').value)||null,source:$('el-source').value,notes:$('el-notes').value.trim(),contactable,last_contact:newLastContact,next_followup:$('el-next-followup').value||null,contact_count:origCount+contactIncrement,updated_at:now()};
   if (!d.name) { toast('Name required',true); return; }
   const {error}=await db.from('leads').update(d).eq('id',id);
   if (error) { toast('Error: '+error.message,true); return; }
