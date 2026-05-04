@@ -3198,7 +3198,7 @@ async function updateLead() {
   const newLastContact = $('el-last-contact').value || null;
   const origLastContact = $('el-last-contact-orig').value || null;
   const origCount = parseInt($('el-contact-count-orig').value||'0', 10) || 0;
-  const contactIncrement = (newLastContact && newLastContact !== origLastContact) ? 1 : 0;
+  const contactIncrement = (newLastContact && (!origLastContact || newLastContact > origLastContact)) ? 1 : 0;
   const d={name:$('el-name').value.trim(),company:$('el-company').value.trim(),email:$('el-email').value.trim(),phone:$('el-phone').value.trim(),stage,lead_type:$('el-type').value,value:parseFloat($('el-value').value)||null,source:$('el-source').value,notes:$('el-notes').value.trim(),contactable,last_contact:newLastContact,next_followup:$('el-next-followup').value||null,contact_count:origCount+contactIncrement,updated_at:now()};
   if (!d.name) { toast('Name required',true); return; }
   const {error}=await db.from('leads').update(d).eq('id',id);
