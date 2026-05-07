@@ -5638,7 +5638,7 @@ async function redownloadInvoice(id) {
 
 async function downloadReceiptPDF(id) {
   const {data: inv} = await db.from('invoices').select('*').eq('id', id).single();
-  if (!inv) return;
+  if (!inv) { alert('Could not load invoice data. Please try again.'); return; }
   downloadInvoicePDF(inv, true);
 }
 
@@ -5664,6 +5664,7 @@ async function downloadInvoicePDF(inv, isReceipt) {
   const {jsPDF} = window.jspdf;
   const doc = new jsPDF({unit: 'mm', format: 'a4'});
   const pw = 210, ph = 297, mx = 15;
+  const GRN = [46, 204, 138]; // receipt green (matches --grn CSS token)
   let y = 0;
 
   // Header banner
@@ -5690,14 +5691,14 @@ async function downloadInvoicePDF(inv, isReceipt) {
   if (isReceipt) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(36);
-    doc.setTextColor(46, 204, 138); // --grn
+    doc.setTextColor(...GRN);
     doc.saveGraphicsState();
     doc.setGState(new doc.GState({opacity: 0.18}));
     doc.text('PAID', pw / 2, ph / 2, {align: 'center', angle: 45});
     doc.restoreGraphicsState();
     // Solid PAID badge in top-right area
     doc.setFontSize(13);
-    doc.setTextColor(46, 204, 138);
+    doc.setTextColor(...GRN);
     doc.setFont('helvetica', 'bold');
     doc.text('✓ PAID', pw - mx, 36 + 10, {align: 'right'});
   }
@@ -5782,7 +5783,7 @@ async function downloadInvoicePDF(inv, isReceipt) {
   y += 6;
   // For receipts use green total bar; for invoices use dark
   if (isReceipt) {
-    doc.setFillColor(30, 160, 100);
+    doc.setFillColor(...GRN);
   } else {
     doc.setFillColor(15, 23, 42);
   }
@@ -5801,7 +5802,7 @@ async function downloadInvoicePDF(inv, isReceipt) {
     doc.setFillColor(240, 250, 245);
     doc.rect(mx, y, pw - mx * 2, 12, 'F');
     doc.setFontSize(9);
-    doc.setTextColor(30, 160, 100);
+    doc.setTextColor(...GRN);
     doc.setFont('helvetica', 'bold');
     doc.text('Payment received in full. Thank you!', mx + 4, y + 8);
     doc.setFont('helvetica', 'normal');
