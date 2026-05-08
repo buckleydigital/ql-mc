@@ -3231,6 +3231,9 @@ async function logRetainerPayment(clientId) {
   loadManaged();
   // Refresh Finance so Retainer Revenue / Total Revenue / MRR pick up the new month.
   loadFinance();
+  // Refresh Command Center so MRR / ARR / MTD Revenue (driven by active_months)
+  // pick up the new month immediately as well.
+  loadOverview();
 }
 
 function renderOrderLogTable(data, clientId) {
@@ -3604,6 +3607,9 @@ async function updateClient(type) {
     // Also refresh Finance so any retainer-month toggle changes immediately
     // flow into the Total Revenue / Retainer Revenue calculations.
     loadFinance();
+    // Also refresh Command Center so MRR / ARR / MTD Revenue (driven by
+    // active_months) stay in sync after editing the active months.
+    loadOverview();
   }
   toast('Client updated ✓');
 }
