@@ -4180,7 +4180,14 @@ async function loadFinance() {
   const priorTotalRev = priorPplRev + priorMgRetainer + priorMgCustom;
   const priorTotalExp = (priorExpR.data||[]).reduce((s,e)=>s+(e.amount||0),0)
     + (priorSpendR.data||[]).reduce((s,e)=>s+(e.spend||0),0);
-  renderFinance(expR.data||[],spR.data||[],subR.data||[],pplR.data||[],mgR.data||[],mgOrdR.data||[],pplOrdR.data||[],from,next,spendLogR.data||[],agSp,{priorTotalRev,priorTotalExp});
+  // For YTD view, retainer revenue counts every active month in the selected
+  // year (not just months that have already started before today). This way,
+  // toggling a future retainer month on a managed client immediately flows
+  // into the Total Revenue / Retainer Revenue KPIs, which is what users
+  // expect when they pre-book retainers for upcoming months. Expense and
+  // ad-spend queries continue to cap at `today` (`next`).
+  const mgRevNext = isYtd ? `${+ytdYear+1}-01-01` : next;
+  renderFinance(expR.data||[],spR.data||[],subR.data||[],pplR.data||[],mgR.data||[],mgOrdR.data||[],pplOrdR.data||[],from,next,spendLogR.data||[],agSp,{priorTotalRev,priorTotalExp,mgRevNext});
 }
 function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOrders,from,next,spendLog=[],agSp=0,prior={}) {
   const te=expenses.reduce((s,e)=>s+(e.amount||0),0);
@@ -4198,6 +4205,20 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const pplRevClients=pplClients.reduce((s,c)=>s+((c.leads_delivered||0)*(c.lead_price||0)),0);
   const pplRev=pplRevLog>0?pplRevLog:pplRevClients;
   const mgRetainerRev=mgClients.reduce((s,c)=>{
+    let months=[];
+    try{months=JSON.parse(c.active_months||'[]');}catch(e){}
+    // Use prior.mgRevNext (end-of-year for YTD) so future-toggled retainer
+    // months in the current year still feed into Total Revenue. Falls back
+    // to `next` for monthly views where the upper bound matches the period.
+    const mgUpper=prior.mgRevNext||next;
+    const inRange=months.filter(m=>(!from||m+'-01'>=from)&&(!mgUpper||m+'-01'<mgUpper));
+    const cnt=c.active_months!=null?inRange.length:(c.payments_made||0);
+    return s+(cnt*(c.management_fee||0));
+  },0);
+  // Period-bound retainer (jan-to-today for YTD) — used only for the
+  // run-rate annualisation so future-booked months don't artificially
+  // inflate the projection.
+  const mgRetainerRevPeriod=mgClients.reduce((s,c)=>{
     let months=[];
     try{months=JSON.parse(c.active_months||'[]');}catch(e){}
     const inRange=months.filter(m=>(!from||m+'-01'>=from)&&(!next||m+'-01'<next));
@@ -4241,13 +4262,23 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   if($('fin-rev-trend')) $('fin-rev-trend').innerHTML = trendArrow(tr,prior.priorTotalRev,true);
   if($('fin-exp-trend')) $('fin-exp-trend').innerHTML = trendArrow(totalExp,prior.priorTotalExp,false);
   // MRR / ARR / Run Rate
-  // MRR mirrors the "Retainer Revenue" KPI so the two cards always agree.
-  // ARR is simply MRR × 12.
-  const mrr = mgRetainerRev;
+  // MRR is the current calendar month's managed retainer revenue (matches
+  // the Command Center MRR card). It must NOT mirror `mgRetainerRev`, since
+  // in YTD view that aggregate now spans the full selected year and would
+  // overstate "monthly recurring".
+  const _curMonthKey=new Date().toISOString().slice(0,7);
+  const mrr=mgClients.reduce((s,c)=>{
+    let months=[];
+    try{months=JSON.parse(c.active_months||'[]');}catch(e){}
+    return s+(months.includes(_curMonthKey)?(c.management_fee||0):0);
+  },0);
   const arr = mrr * 12;
-  // Monthly run rate: annualise current period revenue
+  // Monthly run rate: annualise current period revenue. Uses the
+  // period-bound retainer total so future-booked retainer months don't
+  // inflate the run-rate projection.
+  const trPeriod = pplRev + mgRetainerRevPeriod + mgCustomRev;
   const periodDays = (new Date(next)-new Date(from))/(1000*60*60*24);
-  const runRate = periodDays > 0 ? (tr/periodDays)*30 : 0;
+  const runRate = periodDays > 0 ? (trPeriod/periodDays)*30 : 0;
   if($('fin-mrr')) setText('fin-mrr', mrr>0?fmt(mrr):'—');
   if($('fin-arr')) setText('fin-arr', arr>0?fmt(arr):'—');
   if($('fin-run-rate')) setText('fin-run-rate', runRate>0?fmt(runRate):'—');
