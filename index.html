@@ -3210,12 +3210,27 @@ async function deleteManagedOrder(orderId, clientId) {
 }
 async function logRetainerPayment(clientId) {
   const c=CLIENT_CACHE[clientId]; if (!c) return;
-  const newCount=(c.payments_made||0)+1;
   const today=new Date().toISOString().split('T')[0];
-  const {error}=await db.from('clients').update({payments_made:newCount,last_payment_date:today,updated_at:now()}).eq('id',clientId);
+  const monthKey=today.slice(0,7); // YYYY-MM
+  let months=[];
+  try{months=JSON.parse(c.active_months||'[]');}catch(e){}
+  if (months.includes(monthKey)) {
+    toast(`${monthKey} retainer already logged`,true);
+    return;
+  }
+  months.push(monthKey);
+  months.sort();
+  const newCount=months.length;
+  const {error}=await db.from('clients').update({payments_made:newCount,active_months:JSON.stringify(months),last_payment_date:today,updated_at:now()}).eq('id',clientId);
   if (error) { toast('Error: '+error.message,true); return; }
+  // Keep cache in sync so subsequent clicks see the updated month list before reload completes.
+  c.payments_made=newCount;
+  c.active_months=JSON.stringify(months);
+  c.last_payment_date=today;
   toast(`Payment #${newCount} logged ✓`);
   loadManaged();
+  // Refresh Finance so Retainer Revenue / Total Revenue / MRR pick up the new month.
+  loadFinance();
 }
 
 function renderOrderLogTable(data, clientId) {
