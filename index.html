@@ -5945,8 +5945,10 @@ async function loadOverview() {
   }).length;
   const goals = goalsR.data||[];
 
-  // MRR = current month's managed retainer revenue (matches the Finance "Retainer Revenue" card).
-  // Computed from each managed client's active_months (months they're booked & billed for the retainer).
+  // MRR = Management Fee Revenue: sum of management_fee across all active managed
+  // clients. This matches the "Mgmt Fee Revenue" card in the Managed Clients section
+  // and represents true recurring monthly revenue from management fees, regardless of
+  // which retainer months are currently toggled on.
   const curMonthKey = today.slice(0,7);
   const mgRetainerThisMonth = mgClients.reduce((s,c)=>{
     let months=[];
@@ -5954,7 +5956,9 @@ async function loadOverview() {
     return s + (months.includes(curMonthKey) ? (c.management_fee||0) : 0);
   },0);
   const activePpl = pplClients.filter(c=>c.stage==='active_client');
-  const mrr = mgRetainerThisMonth;
+  const mrr = mgClients
+    .filter(c=>c.stage==='active')
+    .reduce((s,c)=>s+(c.management_fee||0),0);
   const arr = mrr * 12;
 
   // MTD revenue
