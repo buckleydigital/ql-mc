@@ -3410,14 +3410,13 @@ async function loadManaged() {
 function renderManaged(clients, orderLog=[]) {
   setText('mg-active',clients.filter(c=>c.stage==='active').length);
   setText('mg-spend',fmt(clients.reduce((s,c)=>s+(c.spend_mtd||0),0)));
-  // Mgmt Fee Revenue mirrors Financials MRR: only clients whose active_months
-  // include the current month contribute their management_fee.
-  const curMonthKey=new Date().toISOString().slice(0,7);
-  setText('mg-fees',fmt(clients.reduce((s,c)=>{
-    let months=[];
-    try{months=JSON.parse(c.active_months||'[]');}catch(e){}
-    return s + (months.includes(curMonthKey) ? (c.management_fee||0) : 0);
-  },0)));
+  // Mgmt Fee Revenue: sum of management_fee across all active managed clients
+  // (matches the "Active Clients" tab). Each active client contributes their
+  // recurring monthly management fee regardless of which retainer months are
+  // currently toggled on, so this represents true MRR from management fees.
+  setText('mg-fees',fmt(
+    clients.filter(c=>c.stage==='active').reduce((s,c)=>s+(c.management_fee||0),0)
+  ));
   const ac=clients.filter(c=>c.cpl_7d_avg>0);
   setText('mg-cpl',ac.length?'$'+(ac.reduce((s,c)=>s+c.cpl_7d_avg,0)/ac.length).toFixed(2):'—');
   // Churn metrics
@@ -3584,7 +3583,14 @@ async function updateClient(type) {
   const {error}=await db.from('clients').update(d).eq('id',id);
   if (error) { toast('Error: '+error.message,true); return; }
   closeModal(type==='ppl'?'m-edit-ppl':'m-edit-managed');
-  type==='ppl'?loadPPL():loadManaged(); toast('Client updated ✓');
+  if (type==='ppl') { loadPPL(); }
+  else {
+    loadManaged();
+    // Also refresh Finance so any retainer-month toggle changes immediately
+    // flow into the Total Revenue / Retainer Revenue calculations.
+    loadFinance();
+  }
+  toast('Client updated ✓');
 }
 async function deleteClient(type) {
   if (!confirm('Delete this client?')) return;
