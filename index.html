@@ -1163,7 +1163,7 @@ td strong{font-weight:500}
         </div>
         <div class="sl">Goals &amp; Pipeline <div class="sl-line"></div></div>
         <div class="kg c3 mb4">
-          <div class="kpi"><div class="klabel">YTD Goal Progress</div><div class="kval" id="fin-ytd-goal-pct">—</div><div class="ksub" id="fin-ytd-goal-sub"></div></div>
+          <div class="kpi"><div class="klabel">MTD Goal Progress</div><div class="kval" id="fin-ytd-goal-pct">—</div><div class="ksub" id="fin-ytd-goal-sub"></div></div>
           <div class="kpi"><div class="klabel">CRM Follow-ups</div><div class="kval amb" id="fin-followups">—</div><div class="ksub">leads needing action</div></div>
           <div class="kpi"><div class="klabel">Pending Leads</div><div class="kval" id="fin-pending-leads">—</div><div class="ksub">lead distribution queue</div></div>
         </div>
@@ -4140,8 +4140,8 @@ async function loadFinance() {
     db.from('managed_order_log').select('amount').gte('order_date',priorFrom).lte('order_date',priorNext),
     db.from('ppl_order_log').select('leads_qty,lead_price').gte('order_date',priorFrom).lte('order_date',priorNext),
     priorSpendLogQ,
-    db.from('ppl_order_log').select('leads_qty,lead_price').gte('order_date',monthStart).lte('order_date',monthEnd),
-    db.from('managed_order_log').select('amount').gte('order_date',monthStart).lte('order_date',monthEnd),
+    db.from('ppl_order_log').select('leads_qty,lead_price').gte('order_date',monthStart).lt('order_date',monthEnd),
+    db.from('managed_order_log').select('amount').gte('order_date',monthStart).lt('order_date',monthEnd),
     db.from('ppl_order_log').select('id,client_id,leads_qty,status,sla_due_date,order_date').eq('status','in_progress'),
     db.from('ppl_order_log').select('id,client_id,leads_qty,sla_due_date,order_date').eq('status','in_progress').lte('sla_due_date',today).not('sla_due_date','is',null),
     db.from('monthly_goals').select('revenue_goal,month').gte('month',`${curYear}-01`).lte('month',`${curYear}-12`),
@@ -4190,7 +4190,7 @@ async function loadFinance() {
   const ytdGoalRev = goals.filter(g=>g.month<=ytdMonth).reduce((s,g)=>s+(g.revenue_goal||0),0);
   const crmFollowups = (crmR.data||[]).filter(l=>l.next_followup&&l.next_followup<=today).length;
   const pendingLeads = (pplLeadsR.data||[]).filter(l=>l.status==='pending').length;
-  const extras = {mtdRev,curMonthKey,activeOrders,overdueOrders,dueSoon,ytdGoalRev,mtdRev,crmFollowups,pendingLeads,today,weekAhead};
+  const extras = {mtdRev,curMonthKey,activeOrders,overdueOrders,dueSoon,ytdGoalRev,crmFollowups,pendingLeads,today,weekAhead};
   renderFinance(expR.data||[],spR.data||[],subR.data||[],pplR.data||[],mgR.data||[],mgOrdR.data||[],pplOrdR.data||[],from,next,spendLogR.data||[],agSp,{priorTotalRev,priorTotalExp,mgRevNext},extras);
 }
 function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOrders,from,next,spendLog=[],agSp=0,prior={},extras={}) {
@@ -4280,7 +4280,7 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   if($('fin-run-rate')) setText('fin-run-rate', runRate>0?fmt(runRate):'—');
   if($('fin-run-rate-sub')) setText('fin-run-rate-sub', periodDays>0?`annualised from ${Math.round(periodDays)}d period`:'');
   // MTD Revenue
-  const {mtdRev=0,activeOrders=[],overdueOrders=[],dueSoon=0,ytdGoalRev=0,crmFollowups=0,pendingLeads=0,today:_today='',weekAhead:_week=''} = extras;
+  const {mtdRev=0,activeOrders=[],overdueOrders=[],dueSoon=0,ytdGoalRev=0,crmFollowups=0,pendingLeads=0,today:_today=''} = extras;
   if($('fin-mtd-rev')) setText('fin-mtd-rev', mtdRev>0?fmt(mtdRev):'—');
   if($('fin-mtd-sub')) setText('fin-mtd-sub', (new Date().toISOString().slice(0,7))+' so far');
   // Clients section
