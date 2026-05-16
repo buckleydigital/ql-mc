@@ -2191,13 +2191,13 @@ function updateClock() {
   setText('clock', new Date().toLocaleTimeString('en-AU', {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}) + ' AEST');
 }
 
-function openModal(id)  { $(id).classList.add('open'); if(id==='m-ppl') refreshCampaignDropdowns(); }
+function openModal(id)  { $(id).classList.add('open'); if(id==='m-ppl') refreshCampaignDropdowns(); if(id==='m-task'||id==='m-edit-task') loadTaskLeadDropdowns(); }
 function closeModal(id) { $(id).classList.remove('open'); }
 document.addEventListener('click', e => { if (e.target.classList.contains('overlay')) e.target.classList.remove('open'); });
 
 async function loadAll() {
   await Promise.all([loadTasks(), loadEmails(), loadCRM(), loadPPL(), loadManaged(), loadFinance()]);
-  loadTaskLeadDropdowns();
+  await loadTaskLeadDropdowns();
   loadFileContent();
   populateMapClientDropdown();
   loadAlerts();
@@ -2615,8 +2615,8 @@ function renderTaskList(id, list) {
 function openEditTask(t) {
   setVal('et-id',t.id);setVal('et-title',t.title);
   setVal('et-priority',t.priority);setVal('et-notes',t.notes);
-  setVal('et-linked-lead',t.linked_ref||'');
   openModal('m-edit-task');
+  loadTaskLeadDropdowns().then(() => setVal('et-linked-lead', t.linked_ref||''));
 }
 async function updateTask() {
   const id = $('et-id').value;
