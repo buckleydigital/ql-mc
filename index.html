@@ -1994,6 +1994,75 @@ td strong{font-weight:500}
   </div>
 </div>
 
+<!-- Action log modal (PPL & Managed clients) -->
+<div class="overlay" id="m-action-log">
+  <div class="modal" style="max-width:580px">
+    <h2>Action Log</h2>
+    <div class="msub" id="al-modal-title"></div>
+    <input type="hidden" id="al-client-id">
+    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:flex-end;flex-wrap:wrap">
+      <div style="flex:0 0 auto">
+        <div class="flabel">Type</div>
+        <select class="fs" id="al-type" style="width:120px">
+          <option value="note">Note</option>
+          <option value="call">Call</option>
+          <option value="email">Email</option>
+          <option value="meeting">Meeting</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div style="flex:1;min-width:160px">
+        <div class="flabel">Detail</div>
+        <input class="fi" id="al-notes" type="text" placeholder="Add a note…" style="width:100%;box-sizing:border-box">
+      </div>
+      <button class="btn btn-p btn-sm" onclick="addActionLogEntry()" style="flex-shrink:0;align-self:flex-end">+ Add</button>
+    </div>
+    <div id="al-modal-body"><div class="empty">Loading…</div></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-action-log')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Contact log modal (CRM / Sales Pipeline leads) -->
+<div class="overlay" id="m-contact-log">
+  <div class="modal" style="max-width:580px">
+    <h2>Contact Log</h2>
+    <div class="msub" id="cl-modal-title"></div>
+    <input type="hidden" id="cl-lead-id">
+    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:flex-end;flex-wrap:wrap">
+      <div style="flex:0 0 auto">
+        <div class="flabel">Method</div>
+        <select class="fs" id="cl-type" style="width:110px">
+          <option value="call">Call</option>
+          <option value="email">Email</option>
+          <option value="sms">SMS</option>
+          <option value="meeting">Meeting</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div style="flex:0 0 auto">
+        <div class="flabel">Outcome</div>
+        <select class="fs" id="cl-outcome" style="width:120px">
+          <option value="positive">Positive</option>
+          <option value="neutral">Neutral</option>
+          <option value="negative">Negative</option>
+          <option value="no_answer">No answer</option>
+        </select>
+      </div>
+      <div style="flex:1;min-width:140px">
+        <div class="flabel">Notes</div>
+        <input class="fi" id="cl-notes" type="text" placeholder="Add a note…" style="width:100%;box-sizing:border-box">
+      </div>
+      <button class="btn btn-p btn-sm" onclick="addContactLogEntry()" style="flex-shrink:0;align-self:flex-end">+ Add</button>
+    </div>
+    <div id="cl-modal-body"><div class="empty">Loading…</div></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-contact-log')">Close</button>
+    </div>
+  </div>
+</div>
+
 
 <style>
 @media(max-width:700px){
@@ -2520,6 +2589,110 @@ async function openDeliveryLogs(leadId, leadName) {
     </div>`).join('');
 }
 
+async function openActionLog(clientId, clientName) {
+  $('al-client-id').value = clientId;
+  $('al-modal-title').textContent = clientName || clientId;
+  $('al-modal-body').innerHTML = '<div class="empty">Loading…</div>';
+  $('al-notes').value = '';
+  openModal('m-action-log');
+  await refreshActionLog(clientId);
+}
+async function refreshActionLog(clientId) {
+  const { data, error } = await db
+    .from('client_action_log')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('logged_at', { ascending: false });
+  if (error) {
+    $('al-modal-body').innerHTML = `<div class="empty" style="color:var(--red)">Error: ${esc(error.message)}</div>`;
+    return;
+  }
+  if (!data || !data.length) {
+    $('al-modal-body').innerHTML = '<div class="empty">No actions logged yet.</div>';
+    return;
+  }
+  const typeIcon = t => ({ call: '📞', email: '✉️', meeting: '🤝', note: '📝', other: '📌' })[t] || '📌';
+  const fmtTs = ts => {
+    if (!ts) return '—';
+    return new Date(ts).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+  $('al-modal-body').innerHTML = data.map(entry => `
+    <div style="border:1px solid var(--bd2);border-radius:var(--r2);padding:10px 14px;margin-bottom:8px;background:var(--s2)">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:14px">${typeIcon(entry.action_type)}</span>
+        <strong style="font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em">${esc(entry.action_type || '—')}</strong>
+        <span style="font-family:var(--mono);font-size:9.5px;color:var(--ink3);margin-left:auto">${fmtTs(entry.logged_at)}</span>
+      </div>
+      ${entry.notes ? `<div style="margin-top:6px;font-size:12px;color:var(--ink)">${esc(entry.notes)}</div>` : ''}
+    </div>`).join('');
+}
+async function addActionLogEntry() {
+  const clientId = $('al-client-id').value;
+  const type = $('al-type').value;
+  const notes = $('al-notes').value.trim();
+  if (!notes) { toast('Please enter a note', true); return; }
+  const { error } = await db.from('client_action_log').insert({ client_id: clientId, action_type: type, notes });
+  if (error) { toast('Error: ' + error.message, true); return; }
+  $('al-notes').value = '';
+  toast('Action logged');
+  await refreshActionLog(clientId);
+}
+
+async function openContactLog(leadId, leadName) {
+  $('cl-lead-id').value = leadId;
+  $('cl-modal-title').textContent = leadName || leadId;
+  $('cl-modal-body').innerHTML = '<div class="empty">Loading…</div>';
+  $('cl-notes').value = '';
+  openModal('m-contact-log');
+  await refreshContactLog(leadId);
+}
+async function refreshContactLog(leadId) {
+  const { data, error } = await db
+    .from('lead_contact_log')
+    .select('*')
+    .eq('lead_id', leadId)
+    .order('contacted_at', { ascending: false });
+  if (error) {
+    $('cl-modal-body').innerHTML = `<div class="empty" style="color:var(--red)">Error: ${esc(error.message)}</div>`;
+    return;
+  }
+  if (!data || !data.length) {
+    $('cl-modal-body').innerHTML = '<div class="empty">No contact attempts logged yet.</div>';
+    return;
+  }
+  const typeIcon = t => ({ call: '📞', email: '✉️', sms: '💬', meeting: '🤝', other: '📌' })[t] || '📌';
+  const outcomeBadge = o => {
+    const cls = { positive: 'bg-grn', neutral: 'bg-gray', negative: 'bg-red', no_answer: 'bg-amb' };
+    return `<span class="badge ${cls[o] || 'bg-gray'}">${esc(o ? o.replace('_', ' ') : '—')}</span>`;
+  };
+  const fmtTs = ts => {
+    if (!ts) return '—';
+    return new Date(ts).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+  $('cl-modal-body').innerHTML = data.map(entry => `
+    <div style="border:1px solid var(--bd2);border-radius:var(--r2);padding:10px 14px;margin-bottom:8px;background:var(--s2)">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:14px">${typeIcon(entry.contact_type)}</span>
+        <strong style="font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em">${esc(entry.contact_type || '—')}</strong>
+        ${outcomeBadge(entry.outcome)}
+        <span style="font-family:var(--mono);font-size:9.5px;color:var(--ink3);margin-left:auto">${fmtTs(entry.contacted_at)}</span>
+      </div>
+      ${entry.notes ? `<div style="margin-top:6px;font-size:12px;color:var(--ink)">${esc(entry.notes)}</div>` : ''}
+    </div>`).join('');
+}
+async function addContactLogEntry() {
+  const leadId = $('cl-lead-id').value;
+  const type = $('cl-type').value;
+  const outcome = $('cl-outcome').value;
+  const notes = $('cl-notes').value.trim();
+  if (!notes) { toast('Please enter a note', true); return; }
+  const { error } = await db.from('lead_contact_log').insert({ lead_id: leadId, contact_type: type, outcome, notes });
+  if (error) { toast('Error: ' + error.message, true); return; }
+  $('cl-notes').value = '';
+  toast('Contact logged');
+  await refreshContactLog(leadId);
+}
+
 async function loadDeliveryLogOverview() {
   const tbody = $('dlogs-tbody');
   if (!tbody) return;
@@ -2834,11 +3007,11 @@ function renderCRM() {
       <td>${esc(l.source||'—')}</td>
       <td>${contactCell}</td>
       <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink2)">${esc(l.notes||'—')}</td>
-      <td><button class="btn btn-xs edit-lead-btn" data-lead-id="${esc(l.id)}">Edit</button></td>
+      <td style="white-space:nowrap"><button class="btn btn-xs contact-log-btn" data-lead-id="${esc(l.id)}" data-lead-name="${esc(l.name||l.company||'Lead')}" style="margin-right:4px">Log</button><button class="btn btn-xs edit-lead-btn" data-lead-id="${esc(l.id)}">Edit</button></td>
     </tr>`}).join('');
   tb.querySelectorAll('.lead-row').forEach(row => {
     row.addEventListener('click', e => {
-      if (e.target.classList.contains('edit-lead-btn')) { e.stopPropagation(); }
+      if (e.target.classList.contains('edit-lead-btn')||e.target.classList.contains('contact-log-btn')) { e.stopPropagation(); return; }
       const id = row.dataset.leadId;
       if (LEAD_CACHE[id]) openEditLead(LEAD_CACHE[id]);
     });
@@ -2849,6 +3022,9 @@ function renderCRM() {
       const id = btn.dataset.leadId;
       if (LEAD_CACHE[id]) openEditLead(LEAD_CACHE[id]);
     });
+  });
+  tb.querySelectorAll('.contact-log-btn').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); openContactLog(btn.dataset.leadId, btn.dataset.leadName); });
   });
   renderPager('crm-pager', crmPage, leads.length, p => { crmPage = p; renderCRM(crmAllLeads); });
 }
@@ -3035,7 +3211,7 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
       <td style="color:${balRem>0?'var(--red)':'var(--grn)'};font-weight:500">${balRem>0?fmt(balRem):'—'}</td>
       <td>${c.pct_sold?Number(c.pct_sold).toFixed(1)+'%':'—'}</td>
       <td>${reordBadge}</td>
-      <td><button class="btn btn-xs client-edit-btn" data-client-id="${esc(String(c.id))}" data-client-type="ppl">Edit</button></td>
+      <td style="white-space:nowrap"><button class="btn btn-xs action-log-btn" data-client-id="${esc(String(c.id))}" data-client-name="${esc(c.company_name)}" style="margin-right:4px">Log</button><button class="btn btn-xs client-edit-btn" data-client-id="${esc(String(c.id))}" data-client-type="ppl">Edit</button></td>
     </tr>
     <tr id="ol-row-${esc(String(c.id))}" style="display:none">
       <td colspan="13" style="padding:0;border-top:none">
@@ -3044,7 +3220,7 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
     </tr>`}).join('');
   tb.querySelectorAll('.client-row').forEach(row=>{
     row.addEventListener('click',e=>{
-      if (e.target.classList.contains('client-edit-btn')||e.target.classList.contains('order-log-toggle')) return;
+      if (e.target.classList.contains('client-edit-btn')||e.target.classList.contains('order-log-toggle')||e.target.classList.contains('action-log-btn')) return;
       const id=row.dataset.clientId,type=row.dataset.clientType;
       if (CLIENT_CACHE[id]) openEditClient(type,CLIENT_CACHE[id]);
     });
@@ -3058,6 +3234,9 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
   });
   tb.querySelectorAll('.order-log-toggle').forEach(btn=>{
     btn.addEventListener('click',e=>{ e.stopPropagation(); toggleInlineOrderLog(btn.dataset.clientId); });
+  });
+  tb.querySelectorAll('.action-log-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{ e.stopPropagation(); openActionLog(btn.dataset.clientId, btn.dataset.clientName); });
   });
 }
 
@@ -3460,11 +3639,11 @@ function renderManaged(clients, orderLog=[]) {
       <td>${fmtCpl(c.cpl_7d_avg)}</td>
       <td>${c.leads_mtd||0}</td>
       <td>${fmt(c.management_fee||0)}</td>
-      <td><button class="btn btn-xs client-edit-btn" data-client-id="${esc(String(c.id))}" data-client-type="managed">Edit</button></td>
+      <td style="white-space:nowrap"><button class="btn btn-xs action-log-btn" data-client-id="${esc(String(c.id))}" data-client-name="${esc(c.company_name)}" style="margin-right:4px">Log</button><button class="btn btn-xs client-edit-btn" data-client-id="${esc(String(c.id))}" data-client-type="managed">Edit</button></td>
     </tr>`).join('');
   tb.querySelectorAll('.client-row').forEach(row=>{
     row.addEventListener('click',e=>{
-      if (e.target.classList.contains('client-edit-btn')) return;
+      if (e.target.classList.contains('client-edit-btn')||e.target.classList.contains('action-log-btn')) return;
       const id=row.dataset.clientId,type=row.dataset.clientType;
       if (CLIENT_CACHE[id]) openEditClient(type,CLIENT_CACHE[id]);
     });
@@ -3475,6 +3654,9 @@ function renderManaged(clients, orderLog=[]) {
       const id=btn.dataset.clientId,type=btn.dataset.clientType;
       if (CLIENT_CACHE[id]) openEditClient(type,CLIENT_CACHE[id]);
     });
+  });
+  tb.querySelectorAll('.action-log-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{ e.stopPropagation(); openActionLog(btn.dataset.clientId, btn.dataset.clientName); });
   });
   renderManagedPayments(clients, orderLog);
 }
