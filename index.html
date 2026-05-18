@@ -1540,6 +1540,7 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Management Fee (AUD/mo)</label><input class="fi" id="mg-fee" type="number" placeholder="e.g. 1500"></div>
     <div class="frow"><label class="flabel">Stage</label>
       <select class="fs" id="mg-stage">
+        <option value="onboarding">Onboarding</option>
         <option value="active">Active</option>
         <option value="paused">Paused</option><option value="churned">Churned</option>
       </select>
@@ -1761,8 +1762,29 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Ad Account ID</label><input class="fi" id="em-acc"></div>
     <div class="frow"><label class="flabel">Monthly Budget (AUD)</label><input class="fi" id="em-budget" type="number"></div>
     <div class="frow"><label class="flabel">Management Fee (AUD/mo)</label><input class="fi" id="em-fee" type="number" oninput="updateMgMonthSummary()"></div>
+    <div class="frow" id="em-onboarding-sub-row" style="display:none"><label class="flabel">Onboarding Stage</label>
+      <select class="fs" id="em-onboarding-sub-stage">
+        <option value="">— Select stage —</option>
+        <option value="Paid &amp; Signed">Paid &amp; Signed</option>
+        <option value="Form Filled">Form Filled</option>
+        <option value="Meta/Google Access Granted">Meta/Google Access Granted</option>
+        <option value="Assets Provided &amp; Previews Pending">Assets Provided &amp; Previews Pending</option>
+        <option value="Previews Accepted">Previews Accepted</option>
+      </select>
+    </div>
+    <div class="frow" id="em-active-status-row" style="display:none"><label class="flabel">Ad Status</label>
+      <select class="fs" id="em-active-status">
+        <option value="">— Select status —</option>
+        <option value="Ads Live">Ads Live</option>
+        <option value="Ads Paused (Self Paused)">Ads Paused (Self Paused)</option>
+        <option value="Ads Paused (Billing Issue)">Ads Paused (Billing Issue)</option>
+        <option value="Ads Scaling (+20% every 3-5 days)">Ads Scaling (+20% every 3-5 days)</option>
+        <option value="Churned">Churned</option>
+      </select>
+    </div>
     <div class="frow"><label class="flabel">Stage</label>
-      <select class="fs" id="em-stage">
+      <select class="fs" id="em-stage" onchange="updateMgSubStageVisibility()">
+        <option value="onboarding">Onboarding</option>
         <option value="active">Active</option>
         <option value="paused">Paused</option><option value="churned">Churned</option>
       </select>
@@ -3290,8 +3312,8 @@ function calcNextPaymentNew() {
 }
 function renderManagedPayments(clients, orderLog=[]) {
   const tb = $('mg-payment-tbody'); if (!tb) return;
-  const active = clients.filter(c => c.stage === 'active');
-  if (!active.length) { tb.innerHTML='<tr><td colspan="10" class="empty">No active managed clients.</td></tr>'; return; }
+  const active = clients.filter(c => c.stage === 'active' || c.stage === 'onboarding');
+  if (!active.length) { tb.innerHTML='<tr><td colspan="10" class="empty">No active or onboarding managed clients.</td></tr>'; return; }
   const today = new Date().toISOString().split('T')[0];
   tb.innerHTML = active.map(c => {
     const np = c.next_payment_date;
@@ -3573,7 +3595,9 @@ async function logPplOrder() {
   loadPPL();
 }
 
-const MG_STAGES=[{id:'active',label:'Active'},{id:'paused',label:'Paused'},{id:'churned',label:'Churned'}];
+const MG_STAGES=[{id:'onboarding',label:'Onboarding'},{id:'active',label:'Active'},{id:'paused',label:'Paused'},{id:'churned',label:'Churned'}];
+const MG_ONBOARDING_SUB_STAGES=['Paid & Signed','Form Filled','Meta/Google Access Granted','Assets Provided & Previews Pending','Previews Accepted'];
+const MG_ACTIVE_STATUSES=['Ads Live','Ads Paused (Self Paused)','Ads Paused (Billing Issue)','Ads Scaling (+20% every 3-5 days)','Churned'];
 async function loadManaged() {
   const [{data,error},{data:orderData}]=await Promise.all([
     db.from('clients').select('*').eq('type','managed').order('created_at',{ascending:false}),
@@ -3585,23 +3609,21 @@ async function loadManaged() {
 function renderManaged(clients, orderLog=[]) {
   setText('mg-active',clients.filter(c=>c.stage==='active').length);
   setText('mg-spend',fmt(clients.reduce((s,c)=>s+(c.spend_mtd||0),0)));
-  // Mgmt Fee Revenue: sum of management_fee across all active managed clients
-  // (matches the "Active Clients" tab). Each active client contributes their
-  // recurring monthly management fee regardless of which retainer months are
-  // currently toggled on, so this represents true MRR from management fees.
+  // Mgmt Fee Revenue: active + onboarding clients both count toward MRR
   setText('mg-fees',fmt(
-    clients.filter(c=>c.stage==='active').reduce((s,c)=>s+(c.management_fee||0),0)
+    clients.filter(c=>c.stage==='active'||c.stage==='onboarding').reduce((s,c)=>s+(c.management_fee||0),0)
   ));
   const ac=clients.filter(c=>c.cpl_7d_avg>0);
   setText('mg-cpl',ac.length?'$'+(ac.reduce((s,c)=>s+c.cpl_7d_avg,0)/ac.length).toFixed(2):'—');
   // Churn metrics
+  const mgOnboarding=clients.filter(c=>c.stage==='onboarding').length;
   const mgActive=clients.filter(c=>c.stage==='active').length;
   const mgPaused=clients.filter(c=>c.stage==='paused').length;
   const mgChurned=clients.filter(c=>c.stage==='churned').length;
   const mgTotal=clients.length;
   setText('mg-total',mgTotal||'—');
   setText('mg-churn-rate',mgTotal>0?(mgChurned/mgTotal*100).toFixed(1)+'%':'—');
-  setText('mg-retention-rate',mgTotal>0?((mgActive+mgPaused)/mgTotal*100).toFixed(1)+'%':'—');
+  setText('mg-retention-rate',mgTotal>0?((mgOnboarding+mgActive+mgPaused)/mgTotal*100).toFixed(1)+'%':'—');
   mgChurnChart=renderChurnChart('chart-mg-churn',mgActive,mgPaused,mgChurned,mgChurnChart);
   renderChurnBreakdown('mg-churn-breakdown',mgActive,mgPaused,mgChurned);
   MG_STAGES.forEach(s=>{
@@ -3613,6 +3635,8 @@ function renderManaged(clients, orderLog=[]) {
       col.innerHTML=sl.map(c=>`
         <div class="kcard" id="kc-mg-${esc(String(c.id))}" data-client-id="${esc(String(c.id))}" data-client-type="managed">
           <div class="kcard-name">${esc(c.company_name)}</div>
+          ${c.stage==='onboarding'&&c.onboarding_sub_stage?`<div style="font-size:8.5px;font-family:var(--mono);margin-top:2px;color:var(--vio);background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.25);border-radius:3px;padding:1px 5px;display:inline-block">${esc(c.onboarding_sub_stage)}</div>`:''}
+          ${c.stage==='active'&&c.active_status?`<div style="font-size:8.5px;font-family:var(--mono);margin-top:2px;color:${c.active_status.startsWith('Ads Live')||c.active_status.startsWith('Ads Scaling')?'var(--grn)':c.active_status.startsWith('Churned')?'var(--red)':'var(--amb)'};background:${c.active_status.startsWith('Ads Live')||c.active_status.startsWith('Ads Scaling')?'rgba(16,185,129,.1)':c.active_status.startsWith('Churned')?'rgba(239,68,68,.1)':'rgba(245,158,11,.1)'};border:1px solid ${c.active_status.startsWith('Ads Live')||c.active_status.startsWith('Ads Scaling')?'rgba(16,185,129,.25)':c.active_status.startsWith('Churned')?'rgba(239,68,68,.25)':'rgba(245,158,11,.25)'};border-radius:3px;padding:1px 5px;display:inline-block">${esc(c.active_status)}</div>`:''}
           <div class="kcard-meta">${fmt(c.spend_mtd||0)} MTD</div>
           ${c.cx_score!=null?`<div style="font-size:9px;font-family:var(--mono);margin-top:2px;color:${c.cx_score>=8?'var(--grn)':c.cx_score>=5?'var(--amb)':'var(--red)'}">CX ${c.cx_score}/10</div>`:''}
           ${c.phone?`<div class="kcard-phone">${esc(c.phone)}</div>`:''}
@@ -3694,8 +3718,11 @@ async function openEditClient(type,c) {
     setVal('em-id',c.id);setVal('em-co',c.company_name);setVal('em-cn',c.contact_name);
     setVal('em-em',c.email);setVal('em-ph',c.phone);setVal('em-acc',c.ad_account_id);
     setVal('em-budget',c.monthly_budget);setVal('em-fee',c.management_fee);
-    const mgStage=['active','paused','churned'].includes(c.stage)?c.stage:'active';
+    const mgStage=['onboarding','active','paused','churned'].includes(c.stage)?c.stage:'active';
     setVal('em-stage',mgStage);
+    setVal('em-onboarding-sub-stage',c.onboarding_sub_stage||'');
+    setVal('em-active-status',c.active_status||'');
+    updateMgSubStageVisibility();
     setVal('em-cx',c.cx_score!=null?c.cx_score:'');
     setVal('em-start',c.start_date||'');
     setVal('em-last-pay',c.last_payment_date||'');
@@ -3711,6 +3738,13 @@ async function openEditClient(type,c) {
     loadManagedOrderLog(c.id);
     openModal('m-edit-managed');
   }
+}
+function updateMgSubStageVisibility() {
+  const stage=$('em-stage')?.value;
+  const onbRow=$('em-onboarding-sub-row');
+  const actRow=$('em-active-status-row');
+  if (onbRow) onbRow.style.display=stage==='onboarding'?'':'none';
+  if (actRow) actRow.style.display=stage==='active'?'':'none';
 }
 function toggleDeliveryFields(prefix) {
   const method = $(prefix === 'ep' ? 'ep-delivery-method' : 'ppl-delivery-method')?.value || 'email';
@@ -3755,7 +3789,8 @@ async function updateClient(type) {
   } else {
     id=$('em-id').value;
     const _activeMo=getActiveMgMonths();
-    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),stage:$('em-stage').value,cx_score:$('em-cx').value!==''?parseInt($('em-cx').value):null,start_date:$('em-start').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),client_webhook:$('em-client-webhook').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
+    const _emStage=$('em-stage').value;
+    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),stage:_emStage,onboarding_sub_stage:_emStage==='onboarding'?($('em-onboarding-sub-stage').value||null):null,active_status:_emStage==='active'?($('em-active-status').value||null):null,cx_score:$('em-cx').value!==''?parseInt($('em-cx').value):null,start_date:$('em-start').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),client_webhook:$('em-client-webhook').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   }
   const {error}=await db.from('clients').update(d).eq('id',id);
@@ -4449,7 +4484,7 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   if($('fin-exp-trend')) $('fin-exp-trend').innerHTML = trendArrow(totalExp,prior.priorTotalExp,false);
   // MRR / ARR / Run Rate
   // MRR = sum of management_fee for all active managed clients (same logic as Command Center).
-  const mrr=mgClients.filter(c=>c.stage==='active').reduce((s,c)=>s+(c.management_fee||0),0);
+  const mrr=mgClients.filter(c=>c.stage==='active'||c.stage==='onboarding').reduce((s,c)=>s+(c.management_fee||0),0);
   const arr = mrr * 12;
   // Monthly run rate: annualise current period revenue. Uses the
   // period-bound retainer total so future-booked retainer months don't
@@ -4467,9 +4502,9 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   if($('fin-mtd-sub')) setText('fin-mtd-sub', (new Date().toISOString().slice(0,7))+' so far');
   // Clients section
   const activePpl = pplClients.filter(c=>c.stage==='active_client').length;
-  const activeMg = mgClients.filter(c=>c.stage==='active').length;
+  const activeMg = mgClients.filter(c=>c.stage==='active'||c.stage==='onboarding').length;
   const curTodayStr = _today || new Date().toISOString().split('T')[0];
-  const overduePayments = mgClients.filter(c=>c.stage==='active'&&c.next_payment_date&&c.next_payment_date<curTodayStr).length;
+  const overduePayments = mgClients.filter(c=>(c.stage==='active'||c.stage==='onboarding')&&c.next_payment_date&&c.next_payment_date<curTodayStr).length;
   const reorderDue = pplClients.filter(c=>c.stage==='active_client'&&(c.total_leads_purchased||0)>0&&(c.leads_delivered||0)>0&&((c.leads_delivered/c.total_leads_purchased)>=0.75)).length;
   if($('fin-ppl-active')) setText('fin-ppl-active', activePpl||'—');
   if($('fin-mg-active-cnt')) setText('fin-mg-active-cnt', activeMg||'—');
