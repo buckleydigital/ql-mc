@@ -1,1 +1,4 @@
 # Supabase project configuration.
+
+[functions.delivery-config]
+verify_jwt = false
