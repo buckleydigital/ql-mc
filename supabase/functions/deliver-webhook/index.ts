@@ -291,6 +291,43 @@ Deno.serve(async (req: Request) => {
     let anySuccess = false;
     let firstError: string | null = null;
 
+    // If the client is linked to ql-hq, use delivery_configs channels
+    let usedDeliveryConfig = false;
+    if (client.ql_hq_company_id) {
+      const { data: dc } = await supabaseAdmin
+        .from("delivery_configs")
+        .select("email, sms_number, webhook_url")
+        .eq("ql_hq_company_id", client.ql_hq_company_id as string)
+        .maybeSingle();
+
+      if (dc && (dc.email || dc.sms_number || dc.webhook_url)) {
+        usedDeliveryConfig = true;
+        const channelJobs: Array<[string, Promise<{ ok: boolean; status: number; body: string }>]> = [];
+        if (dc.email) {
+          channelJobs.push(["email", deliverEmail(supabaseAdmin, lead, { ...client, delivery_email: dc.email }, subject, htmlBody, emailPreview)]);
+        }
+        if (dc.sms_number) {
+          channelJobs.push(["sms", deliverSms(supabaseAdmin, lead, { ...client, delivery_phone: dc.sms_number }, smsBody)]);
+        }
+        if (dc.webhook_url) {
+          channelJobs.push(["webhook", deliverWebhook(supabaseAdmin, lead, { ...client, client_webhook: dc.webhook_url })]);
+        }
+        const settled = await Promise.allSettled(channelJobs.map(([, p]) => p));
+        settled.forEach((r, i) => {
+          const [methodName] = channelJobs[i];
+          if (r.status === "fulfilled") {
+            methods.push({ method: methodName, status: r.value.ok ? "delivered" : "failed", ...(!r.value.ok && { error: r.value.body }) });
+            if (r.value.ok) anySuccess = true;
+            else firstError = firstError || r.value.body;
+          } else {
+            methods.push({ method: methodName, status: "failed", error: r.reason?.message });
+            firstError = firstError || r.reason?.message;
+          }
+        });
+      }
+    }
+
+    if (!usedDeliveryConfig) {
     const deliveryMethod = client.delivery_method || (client.delivery_email ? "email" : null);
 
     switch (deliveryMethod) {
@@ -369,7 +406,8 @@ Deno.serve(async (req: Request) => {
           return jsonResponse({ success: false, lead_id, methods }, 400);
         }
       }
-    }
+    } // end switch
+    } // end if (!usedDeliveryConfig)
 
     // STEP 5 — UPDATE PPL_LEADS TABLE
     if (anySuccess) {
