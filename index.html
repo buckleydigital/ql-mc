@@ -3551,7 +3551,6 @@ async function recalcPplClient(clientId) {
   if (tgEl&&totalGen>0) tgEl.value=totalGen;
 }
 async function markOrderDelivered(orderId, clientId) {
-  const {data:orderRow}=await db.from('ppl_order_log').select('leads_qty,lead_price,order_date').eq('id',orderId).maybeSingle();
   const gen=prompt('How many leads were generated to fulfill this order?');
   if (gen===null) return;
   const leadsGenerated=parseInt(gen)||0;
@@ -3560,12 +3559,6 @@ async function markOrderDelivered(orderId, clientId) {
   if (error) { toast('Error: '+error.message,true); return; }
   await recalcPplClient(clientId);
   toast('Delivered — % sold & True CPL updated ✓');
-  // Internal notification
-  try {
-    const client=CLIENT_CACHE[clientId]||{};
-    const {data:{session}}=await db.auth.getSession();
-    fetch(`${_ep}/functions/v1/notify-internal`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session?.access_token||_ak}`},body:JSON.stringify({type:'order_delivered',data:{company_name:client.company_name,contact_name:client.contact_name,email:client.email,phone:client.phone,niche:client.niche,leads_qty:orderRow?.leads_qty,leads_generated:leadsGenerated,lead_price:orderRow?.lead_price,order_date:orderRow?.order_date,order_id:orderId}})}).catch(()=>{});
-  } catch(e){}
   loadPplOrderLog(clientId);
   const cell=$('ol-cell-'+clientId);
   if (cell&&$('ol-row-'+clientId)?.style.display!=='none') {

@@ -425,6 +425,48 @@ Deno.serve(async (req: Request) => {
           leads_delivered: (client.leads_delivered || 0) + 1,
         }).eq("id", client_id);
       }
+
+      // STEP 5b — ORDER COMPLETE CHECK
+      // After this delivery the client's leads_delivered becomes prev+1.
+      // If that now equals total_leads_purchased the order is fulfilled —
+      // send an internal notification to contact@quoteleads.com.au.
+      const newDelivered = (client.leads_delivered as number || 0) + 1;
+      const totalPurchased = client.total_leads_purchased as number || 0;
+      if (totalPurchased > 0 && newDelivered >= totalPurchased) {
+        const fromEmail = Deno.env.get("RESEND_FROM_EMAIL")!;
+        const apiKey = Deno.env.get("RESEND_API_KEY")!;
+        const orderRevenue = totalPurchased * (client.lead_price as number || 0);
+        const orderHtml = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#1a1a20;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+<div style="max-width:560px;margin:0 auto;background:#1a1a20">
+  <div style="background:#0f0f12;padding:14px 20px">
+    <span style="color:#eeeef3;font-weight:700;font-size:14px">QuoteLeads · PPL Order Complete</span>
+  </div>
+  <table style="width:100%;border-collapse:collapse;background:#1a1a20">
+    <tr><td style="padding:5px 12px;color:#72728a;font-size:12px;white-space:nowrap">Client</td><td style="padding:5px 12px;color:#eeeef3;font-weight:600;font-size:12px">${esc(client.company_name as string || "—")}</td></tr>
+    ${client.contact_name ? `<tr><td style="padding:5px 12px;color:#72728a;font-size:12px;white-space:nowrap">Contact</td><td style="padding:5px 12px;color:#eeeef3;font-weight:600;font-size:12px">${esc(client.contact_name as string)}</td></tr>` : ""}
+    ${client.email ? `<tr><td style="padding:5px 12px;color:#72728a;font-size:12px;white-space:nowrap">Email</td><td style="padding:5px 12px;font-size:12px"><a href="mailto:${esc(client.email as string)}" style="color:#4f8fff">${esc(client.email as string)}</a></td></tr>` : ""}
+    ${client.phone ? `<tr><td style="padding:5px 12px;color:#72728a;font-size:12px;white-space:nowrap">Phone</td><td style="padding:5px 12px;font-size:12px"><a href="tel:${esc(client.phone as string)}" style="color:#4f8fff">${esc(client.phone as string)}</a></td></tr>` : ""}
+    ${client.niche ? `<tr><td style="padding:5px 12px;color:#72728a;font-size:12px;white-space:nowrap">Niche</td><td style="padding:5px 12px;color:#eeeef3;font-weight:600;font-size:12px">${esc(client.niche as string)}</td></tr>` : ""}
+    <tr><td style="padding:5px 12px;color:#72728a;font-size:12px;white-space:nowrap">Leads Ordered</td><td style="padding:5px 12px;color:#eeeef3;font-weight:600;font-size:12px">${totalPurchased}</td></tr>
+    <tr><td style="padding:5px 12px;color:#72728a;font-size:12px;white-space:nowrap">Leads Delivered</td><td style="padding:5px 12px;color:#10b981;font-weight:700;font-size:12px">${newDelivered}</td></tr>
+    ${client.lead_price ? `<tr><td style="padding:5px 12px;color:#72728a;font-size:12px;white-space:nowrap">$/Lead</td><td style="padding:5px 12px;color:#eeeef3;font-weight:600;font-size:12px">$${Number(client.lead_price).toFixed(0)}</td></tr>` : ""}
+    ${orderRevenue > 0 ? `<tr><td style="padding:5px 12px;color:#72728a;font-size:12px;white-space:nowrap">Order Revenue</td><td style="padding:5px 12px;color:#10b981;font-weight:700;font-size:12px">$${orderRevenue.toFixed(0)}</td></tr>` : ""}
+  </table>
+  <div style="padding:12px;margin:0 12px 12px;background:#0f0f12;border-radius:4px;font-size:11px;color:#72728a">All ordered leads have been delivered. Consider reaching out for a reorder.</div>
+</div></body></html>`;
+        try {
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              from: `QuoteLeads <${fromEmail}>`,
+              to: ["contact@quoteleads.com.au"],
+              subject: `Order Complete — ${client.company_name} · ${totalPurchased}/${totalPurchased} leads delivered`,
+              html: orderHtml,
+            }),
+          });
+        } catch { /* best-effort */ }
+      }
     } else {
       await supabaseAdmin.from("ppl_leads").update({
         delivered_at: new Date().toISOString(),
@@ -432,7 +474,7 @@ Deno.serve(async (req: Request) => {
       }).eq("id", lead_id);
     }
 
-    // STEP 6 — ADMIN NOTIFICATION
+    // STEP 6 — ADMIN NOTIFICATION (per-lead, to sending address)
     if (anySuccess) {
       const notifyEmail = Deno.env.get("RESEND_FROM_EMAIL");
       if (notifyEmail) {
