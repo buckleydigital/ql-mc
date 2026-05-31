@@ -2,3 +2,8 @@
 
 [functions.delivery-config]
 verify_jwt = false
+
+[functions.check-payment-due]
+verify_jwt = false
+# Runs daily at 9pm UTC = 7am AEST (8am AEDT). Called with service role key by the scheduler.
+schedule = "0 21 * * *"

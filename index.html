@@ -3685,19 +3685,6 @@ function renderManaged(clients, orderLog=[]) {
     btn.addEventListener('click',e=>{ e.stopPropagation(); openActionLog(btn.dataset.clientId, btn.dataset.clientName); });
   });
   renderManagedPayments(clients, orderLog);
-  // Internal payment-due notifications (once per client per day via localStorage)
-  const _today=new Date().toISOString().split('T')[0];
-  const payDueClients=clients.filter(c=>c.stage==='active'&&c.next_payment_date===_today);
-  if (payDueClients.length) {
-    db.auth.getSession().then(({data:{session}})=>{
-      payDueClients.forEach(c=>{
-        const _key=`ql_pay_notified_${c.id}_${_today}`;
-        if (localStorage.getItem(_key)) return;
-        localStorage.setItem(_key,'1');
-        fetch(`${_ep}/functions/v1/notify-internal`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session?.access_token||_ak}`},body:JSON.stringify({type:'payment_due',data:{company_name:c.company_name,contact_name:c.contact_name,email:c.email,phone:c.phone,ad_account_id:c.ad_account_id,monthly_budget:c.monthly_budget,management_fee:c.management_fee,start_date:c.start_date,last_payment_date:c.last_payment_date,next_payment_date:c.next_payment_date}})}).catch(()=>{});
-      });
-    }).catch(()=>{});
-  }
 }
 async function openEditClient(type,c) {
   if (type==='ppl') {
