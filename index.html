@@ -3501,7 +3501,8 @@ async function updatePplOrder() {
   const notes=$('epo-notes').value.trim();
   const date=$('epo-date').value||null;
   if (!qty) { toast('Leads sold qty required',true); return; }
-  const upd={leads_qty:qty,lead_price:price,status,notes,order_date:date};
+  const upd={leads_qty:qty,status,notes,order_date:date};
+  if (price!==null) upd.lead_price=price;
   if (gen!==null) upd.leads_generated=gen; else upd.leads_generated=null;
   if (metaCpl!==null) upd.meta_cpl=metaCpl; else upd.meta_cpl=null;
   const purchaseDate=$('epo-purchase-date').value||null;
