@@ -151,12 +151,12 @@ Deno.serve(async (req: Request) => {
     // STEP 5 — CLIENT MATCHING
     const { data: candidates } = await supabaseAdmin
       .from("clients")
-      .select("id, postcodes, weekly_cap, monthly_cap, leads_delivered, total_leads_purchased, company_name, from_name, has_quoteleads_platform_account, hq_bearer_token, delivery_method")
+      .select("id, postcodes, weekly_cap, monthly_cap, leads_delivered, total_leads_purchased, company_name, from_name, has_quoteleads_platform_account, hq_bearer_token, delivery_method, ql_hq_company_id")
       .eq("type", "ppl")
       .eq("stage", "active_client")
       .or(`niche.eq.${lead_type},active_niches.cs.{${lead_type}}`);
 
-    let matchedClient: { id: string; company_name: string; has_quoteleads_platform_account?: boolean; hq_bearer_token?: string | null } | null = null;
+    let matchedClient: { id: string; company_name: string; has_quoteleads_platform_account?: boolean; hq_bearer_token?: string | null; ql_hq_company_id?: string | null } | null = null;
 
     if (candidates && candidates.length > 0) {
       // Filter by postcode match
@@ -226,6 +226,7 @@ Deno.serve(async (req: Request) => {
           company_name: best.company_name as string,
           has_quoteleads_platform_account: best.has_quoteleads_platform_account as boolean | undefined,
           hq_bearer_token: best.hq_bearer_token as string | null | undefined,
+          ql_hq_company_id: best.ql_hq_company_id as string | null | undefined,
         };
       }
     }
@@ -270,8 +271,8 @@ Deno.serve(async (req: Request) => {
         console.error("deliver-webhook invocation failed:", err.message);
       });
 
-      // Forward to QuoteLeads HQ if the client has a platform account and bearer token
-      if (matchedClient.has_quoteleads_platform_account && matchedClient.hq_bearer_token) {
+      // Forward to QuoteLeads HQ if the client has a ql_hq_company_id or a platform bearer token
+      if (matchedClient.ql_hq_company_id || (matchedClient.has_quoteleads_platform_account && matchedClient.hq_bearer_token)) {
         forwardToQuoteLeadsHQ(
           { id: inserted.id, name, email, phone: normalisedPhone, postcode, lead_type, source, custom_fields },
           matchedClient,
@@ -322,7 +323,7 @@ async function fetchWithRetry(
 
 async function forwardToQuoteLeadsHQ(
   lead: Record<string, unknown>,
-  client: { id: string; company_name: string; hq_bearer_token: string | null | undefined },
+  client: { id: string; company_name: string; hq_bearer_token?: string | null | undefined; ql_hq_company_id?: string | null | undefined },
 ): Promise<void> {
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -337,6 +338,7 @@ async function forwardToQuoteLeadsHQ(
     lead_type: lead.lead_type,
     source: lead.source,
     custom_fields: lead.custom_fields,
+    company_id: client.ql_hq_company_id ?? null,
   };
 
   let status: "delivered" | "failed" = "failed";
@@ -344,13 +346,14 @@ async function forwardToQuoteLeadsHQ(
   let responseBody = "";
 
   try {
+    const authToken = client.hq_bearer_token || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const res = await fetchWithRetry(
       "https://api.quoteleadshq.com/v1/leads",
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${client.hq_bearer_token}`,
+          "Authorization": `Bearer ${authToken}`,
         },
         body: JSON.stringify(hqPayload),
       },
