@@ -14,10 +14,12 @@ const NAMED_FIELDS = new Set([
 
 function normalisePhone(raw: string): string | null {
   let p = (raw || "").replace(/[\s\-().]/g, "");
-  if (p.startsWith("04")) p = "+61" + p.slice(1);
-  else if (p.startsWith("614")) p = "+" + p;
-  else if (p.startsWith("61") && !p.startsWith("+")) p = "+" + p;
-  if (/^\+614[0-9]{8}$/.test(p)) return p;
+  // Normalise to E.164 (+61XXXXXXXXX)
+  if (p.startsWith("0") && p.length === 10) p = "+61" + p.slice(1);
+  else if (p.startsWith("614") && p.length === 11) p = "+" + p;
+  else if (p.startsWith("61") && !p.startsWith("+") && p.length === 11) p = "+" + p;
+  // Accept any valid Australian number (mobile +614x or landline +612/3/7/8x, 11 chars)
+  if (/^\+61[2-9][0-9]{8}$/.test(p)) return p;
   return null;
 }
 
@@ -103,10 +105,12 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // STEP 3 — DEDUPLICATE
+    // STEP 3 — DEDUPLICATE (within the same lead_type only — cross-niche dedup
+    // would incorrectly block e.g. an aircon lead from a phone already used for solar)
     let dedupQuery = supabaseAdmin
       .from("ppl_leads")
       .select("id")
+      .eq("lead_type", lead_type)
       .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
       .limit(1);
 
