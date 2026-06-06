@@ -3836,6 +3836,10 @@ async function updateClient(type) {
   }
   const {error}=await db.from('clients').update(d).eq('id',id);
   if (error) { toast('Error: '+error.message,true); return; }
+  if (type==='ppl' && d.ql_hq_company_id) {
+    const {data:{session}}=await db.auth.getSession();
+    fetch(`${_ep}/functions/v1/sync-to-hq`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({ql_hq_company_id:d.ql_hq_company_id,email:d.delivery_email,sms_number:d.delivery_phone,webhook_url:d.client_webhook,postcodes:d.postcodes})}).catch(e=>console.warn('sync-to-hq:',e));
+  }
   closeModal(type==='ppl'?'m-edit-ppl':'m-edit-managed');
   if (type==='ppl') { loadPPL(); }
   else {
@@ -3870,6 +3874,10 @@ async function saveClient(type) {
   }
   const {error}=await db.from('clients').insert([d]);
   if (error) { toast('DB error: '+error.message,true); return; }
+  if (type==='ppl' && d.ql_hq_company_id) {
+    const {data:{session}}=await db.auth.getSession();
+    fetch(`${_ep}/functions/v1/sync-to-hq`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({ql_hq_company_id:d.ql_hq_company_id,email:d.delivery_email,sms_number:d.delivery_phone,webhook_url:null,postcodes:d.postcodes})}).catch(e=>console.warn('sync-to-hq:',e));
+  }
   if (type==='ppl') {['ppl-co','ppl-cn','ppl-em','ppl-price','ppl-meta-cpl','ppl-ld','ppl-tlp','ppl-scrubbed','ppl-postcodes','ppl-delivery-email','ppl-delivery-phone','ppl-ql-hq-id','ppl-hq-bearer-token'].forEach(id=>{if($(id))$(id).value='';});setCheckedCampaigns('ppl-campaign-picker',[]);}
   else ['mg-co','mg-cn','mg-em','mg-acc','mg-budget','mg-fee','mg-start','mg-last-pay','mg-next-pay'].forEach(id=>{$(id).value='';});
   closeModal('m-'+type); toast('Client saved ✓');
