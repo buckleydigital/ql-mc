@@ -7,3 +7,8 @@ verify_jwt = false
 verify_jwt = false
 # Runs daily at 9pm UTC = 7am AEST (8am AEDT). Called with service role key by the scheduler.
 schedule = "0 21 * * *"
+
+[functions.sync-from-hq]
+verify_jwt = false
+# Called by ql-hq stripe-webhook using x-api-secret header authentication.
+# JWT verification is off because the caller is a server-side process, not a user session.
