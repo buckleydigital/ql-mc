@@ -27,7 +27,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { ql_hq_company_id, company_name, email, sms_number, webhook_url } = body;
+    const { ql_hq_company_id, company_name, email, sms_number, webhook_url, postcodes } = body;
 
     if (!ql_hq_company_id || typeof ql_hq_company_id !== "string" || !ql_hq_company_id.trim()) {
       return json({ error: "ql_hq_company_id is required" }, 400);
@@ -41,7 +41,8 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { error } = await supabaseAdmin
+    // 1. Upsert delivery_configs — used by deliver-webhook for email/SMS/webhook routing
+    const { error: configError } = await supabaseAdmin
       .from("delivery_configs")
       .upsert(
         {
@@ -55,7 +56,25 @@ Deno.serve(async (req: Request) => {
         { onConflict: "ql_hq_company_id" },
       );
 
-    if (error) throw error;
+    if (configError) throw configError;
+
+    // 2. Mirror onto the clients row (postcodes for lead matching, delivery fields for submit-lead)
+    const clientUpdate: Record<string, unknown> = {
+      delivery_email: email ?? null,
+      delivery_phone: sms_number ?? null,
+      client_webhook: webhook_url ?? null,
+    };
+    if (Array.isArray(postcodes)) {
+      clientUpdate.postcodes = (postcodes as unknown[])
+        .map((p) => String(p).trim().toUpperCase())
+        .filter(Boolean);
+    }
+
+    // Only update — if no client row exists yet that's fine, skip silently
+    await supabaseAdmin
+      .from("clients")
+      .update(clientUpdate)
+      .eq("ql_hq_company_id", ql_hq_company_id.trim());
 
     return json({ ok: true });
   } catch (err) {
