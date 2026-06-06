@@ -16,7 +16,6 @@ function json(body: unknown, status = 200) {
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
-  // Validate caller is an authenticated MC user
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) return json({ error: 'unauthorized' }, 401)
 
@@ -29,11 +28,53 @@ Deno.serve(async (req: Request) => {
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token)
   if (authErr || !user) return json({ error: 'unauthorized' }, 401)
 
-  const QL_HQ_API_URL    = Deno.env.get('QL_HQ_API_URL')!     // e.g. https://api.ql-hq.com or https://<ref>.supabase.co/functions/v1
-  const QL_MC_API_SECRET = Deno.env.get('QL_MC_API_SECRET')!   // shared secret
+  const QL_HQ_API_URL    = Deno.env.get('QL_HQ_API_URL')!
+  const QL_MC_API_SECRET = Deno.env.get('QL_MC_API_SECRET')!
 
   try {
     const body = await req.json()
+    const { action } = body
+
+    // ── action: scrub ─────────────────────────────────────────────────────────
+    // Looks up the lead → client → ql_hq_company_id, then notifies ql-hq to
+    // decrement delivered_leads on the matching ppl_order.
+    if (action === 'scrub') {
+      const { lead_id } = body as { lead_id?: string }
+      if (!lead_id) return json({ error: 'lead_id is required for scrub action' }, 400)
+
+      // Get the lead's assigned client
+      const { data: lead } = await supabase
+        .from('ppl_leads')
+        .select('assigned_client_id')
+        .eq('id', lead_id)
+        .maybeSingle()
+
+      if (!lead?.assigned_client_id) return json({ ok: true, note: 'lead has no assigned client' })
+
+      // Get the client's ql_hq_company_id
+      const { data: client } = await supabase
+        .from('clients')
+        .select('ql_hq_company_id')
+        .eq('id', lead.assigned_client_id)
+        .maybeSingle()
+
+      if (!client?.ql_hq_company_id) return json({ ok: true, note: 'client not linked to ql-hq' })
+
+      const res = await fetch(`${QL_HQ_API_URL}/sync-from-mc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-secret': QL_MC_API_SECRET },
+        body: JSON.stringify({ action: 'scrub', ql_hq_company_id: client.ql_hq_company_id }),
+      })
+
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`ql-hq returned ${res.status}: ${text}`)
+      }
+
+      return json({ ok: true })
+    }
+
+    // ── default action: sync delivery config + postcodes ─────────────────────
     const { ql_hq_company_id, email, sms_number, webhook_url, postcodes } = body
 
     if (!ql_hq_company_id || typeof ql_hq_company_id !== 'string' || !ql_hq_company_id.trim()) {
@@ -42,10 +83,7 @@ Deno.serve(async (req: Request) => {
 
     const res = await fetch(`${QL_HQ_API_URL}/sync-from-mc`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-secret': QL_MC_API_SECRET,
-      },
+      headers: { 'Content-Type': 'application/json', 'x-api-secret': QL_MC_API_SECRET },
       body: JSON.stringify({
         ql_hq_company_id: ql_hq_company_id.trim(),
         email:       email       ?? null,

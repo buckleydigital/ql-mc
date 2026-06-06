@@ -2599,6 +2599,10 @@ async function updateLeadStatus(leadId, newStatus, selectEl) {
     ({error} = await db.rpc('mark_lead_delivered', {p_lead_id: leadId, p_note: 'Manually marked delivered'}));
   } else if (newStatus === 'scrubbed') {
     ({error} = await db.rpc('mark_lead_scrubbed', {p_lead_id: leadId}));
+    if (!error) {
+      const {data:{session}}=await db.auth.getSession();
+      fetch(`${_ep}/functions/v1/sync-to-hq`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({action:'scrub',lead_id:leadId})}).catch(e=>console.warn('sync-to-hq scrub:',e));
+    }
   } else {
     ({error} = await db.from('ppl_leads').update({status: newStatus, updated_at: new Date().toISOString()}).eq('id', leadId));
   }
