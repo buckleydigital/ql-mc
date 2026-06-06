@@ -2600,8 +2600,8 @@ async function updateLeadStatus(leadId, newStatus, selectEl) {
   } else if (newStatus === 'scrubbed') {
     ({error} = await db.rpc('mark_lead_scrubbed', {p_lead_id: leadId}));
     if (!error) {
-      const {data:{session}}=await db.auth.getSession();
-      fetch(`${_ep}/functions/v1/sync-to-hq`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({action:'scrub',lead_id:leadId})}).catch(e=>console.warn('sync-to-hq scrub:',e));
+      const {data:_sd0}=await db.auth.getSession();
+      if(_sd0?.session)fetch(`${_ep}/functions/v1/sync-to-hq`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${_sd0.session.access_token}`},body:JSON.stringify({action:'scrub',lead_id:leadId})}).catch(e=>console.warn('sync-to-hq scrub:',e));
     }
   } else {
     ({error} = await db.from('ppl_leads').update({status: newStatus, updated_at: new Date().toISOString()}).eq('id', leadId));
@@ -3821,7 +3821,7 @@ async function updateClient(type) {
     id=$('ep-id').value;
     const _ld=parseInt($('ep-ld').value)||0;const _tlp=parseInt($('ep-tlp').value)||0;const _scrubbed=parseInt($('ep-scrubbed').value)||0;const _price=parseFloat($('ep-price').value)||0;const _balCalc=(_tlp-_ld+_scrubbed)*_price;
     const _metaCpl=parseFloat($('ep-meta-cpl').value)||null;
-    const _postcodes=$('ep-postcodes').value.split(',').map(s=>s.trim()).filter(Boolean);
+    const _postcodes=$('ep-postcodes').value.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean);
     const _cfRaw=$('ep-custom-fields').value.trim();const _customFields=_cfRaw?{_text:_cfRaw}:{};
     const _weeklyCap=$('ep-weekly-cap').value!==''?parseInt($('ep-weekly-cap').value):null;
     const _monthlyCap=$('ep-monthly-cap').value!==''?parseInt($('ep-monthly-cap').value):null;
@@ -3841,8 +3841,8 @@ async function updateClient(type) {
   const {error}=await db.from('clients').update(d).eq('id',id);
   if (error) { toast('Error: '+error.message,true); return; }
   if (type==='ppl' && d.ql_hq_company_id) {
-    const {data:{session}}=await db.auth.getSession();
-    fetch(`${_ep}/functions/v1/sync-to-hq`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({ql_hq_company_id:d.ql_hq_company_id,email:d.delivery_email,sms_number:d.delivery_phone,webhook_url:d.client_webhook,postcodes:d.postcodes})}).catch(e=>console.warn('sync-to-hq:',e));
+    const {data:_sd1}=await db.auth.getSession();
+    if(_sd1?.session)fetch(`${_ep}/functions/v1/sync-to-hq`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${_sd1.session.access_token}`},body:JSON.stringify({ql_hq_company_id:d.ql_hq_company_id,email:d.delivery_email,sms_number:d.delivery_phone,webhook_url:d.client_webhook,postcodes:d.postcodes})}).catch(e=>console.warn('sync-to-hq:',e));
   }
   closeModal(type==='ppl'?'m-edit-ppl':'m-edit-managed');
   if (type==='ppl') { loadPPL(); }
@@ -3865,7 +3865,7 @@ async function deleteClient(type) {
 async function saveClient(type) {
   let d;
   if (type==='ppl') {
-    const _pplPostcodes=$('ppl-postcodes').value.split(',').map(s=>s.trim()).filter(Boolean);
+    const _pplPostcodes=$('ppl-postcodes').value.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean);
     const _pplCfRaw=$('ppl-custom-fields')?.value.trim()||'';const _pplCf=_pplCfRaw?{_text:_pplCfRaw}:{};
     const _pplWeeklyCap=$('ppl-weekly-cap')?.value!==''?parseInt($('ppl-weekly-cap').value)||null:null;
     const _pplMonthlyCap=$('ppl-monthly-cap')?.value!==''?parseInt($('ppl-monthly-cap').value)||null:null;
@@ -3879,8 +3879,8 @@ async function saveClient(type) {
   const {error}=await db.from('clients').insert([d]);
   if (error) { toast('DB error: '+error.message,true); return; }
   if (type==='ppl' && d.ql_hq_company_id) {
-    const {data:{session}}=await db.auth.getSession();
-    fetch(`${_ep}/functions/v1/sync-to-hq`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({ql_hq_company_id:d.ql_hq_company_id,email:d.delivery_email,sms_number:d.delivery_phone,webhook_url:null,postcodes:d.postcodes})}).catch(e=>console.warn('sync-to-hq:',e));
+    const {data:_sd2}=await db.auth.getSession();
+    if(_sd2?.session)fetch(`${_ep}/functions/v1/sync-to-hq`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${_sd2.session.access_token}`},body:JSON.stringify({ql_hq_company_id:d.ql_hq_company_id,email:d.delivery_email,sms_number:d.delivery_phone,webhook_url:null,postcodes:d.postcodes})}).catch(e=>console.warn('sync-to-hq:',e));
   }
   if (type==='ppl') {['ppl-co','ppl-cn','ppl-em','ppl-price','ppl-meta-cpl','ppl-ld','ppl-tlp','ppl-scrubbed','ppl-postcodes','ppl-delivery-email','ppl-delivery-phone','ppl-ql-hq-id','ppl-hq-bearer-token'].forEach(id=>{if($(id))$(id).value='';});setCheckedCampaigns('ppl-campaign-picker',[]);}
   else ['mg-co','mg-cn','mg-em','mg-acc','mg-budget','mg-fee','mg-start','mg-last-pay','mg-next-pay'].forEach(id=>{$(id).value='';});
