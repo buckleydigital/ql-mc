@@ -21,6 +21,75 @@ function getMonthStart(): string {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
 }
 
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  retries = 2,
+  delayMs = 500,
+): Promise<Response> {
+  let lastRes: Response | null = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, delayMs * attempt));
+    const res = await fetch(url, options);
+    if (res.ok) return res;
+    lastRes = res;
+  }
+  if (!lastRes) throw new Error("fetchWithRetry: no response obtained");
+  return lastRes;
+}
+
+async function forwardToQuoteLeadsHQ(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  lead: Record<string, unknown>,
+  client: { id: string; company_name: string; hq_bearer_token?: string | null; ql_hq_company_id?: string | null },
+): Promise<void> {
+  const hqPayload: Record<string, unknown> = {
+    name: lead.name,
+    email: lead.email,
+    phone: lead.phone,
+    postcode: lead.postcode,
+    lead_type: lead.lead_type,
+    source: lead.source,
+    custom_fields: lead.custom_fields,
+    company_id: client.ql_hq_company_id ?? null,
+  };
+
+  let status: "delivered" | "failed" = "failed";
+  let responseCode: number | null = null;
+  let responseBody = "";
+
+  try {
+    const authToken = client.hq_bearer_token || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const res = await fetchWithRetry("https://api.quoteleadshq.com/v1/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authToken}` },
+      body: JSON.stringify(hqPayload),
+    });
+    responseCode = res.status;
+    responseBody = (await res.text().catch((e: Error) => e.message)).slice(0, 500);
+    status = res.ok ? "delivered" : "failed";
+  } catch (err) {
+    responseBody = err instanceof Error ? err.message : String(err);
+  }
+
+  const { error: logError } = await supabaseAdmin.from("lead_delivery_log").insert([{
+    lead_id: lead.id,
+    client_id: client.id,
+    method: "quoteleads_hq",
+    destination: "api.quoteleadshq.com",
+    status,
+    response_code: responseCode,
+    response_body: responseBody,
+    delivered_at: status === "delivered" ? new Date().toISOString() : null,
+  }]);
+  if (logError) {
+    console.error(`forwardToQuoteLeadsHQ: failed to write delivery log for lead_id=${lead.id}:`, logError.message);
+  }
+  if (status === "failed") {
+    console.error(`forwardToQuoteLeadsHQ failed: lead_id=${lead.id} client_id=${client.id} response_body=${responseBody}`);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -40,10 +109,10 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Fetch the lead
+    // Fetch the lead — include all fields needed for HQ forwarding
     const { data: lead, error: leadError } = await supabaseAdmin
       .from("ppl_leads")
-      .select("id, postcode, lead_type, status, name, email, phone")
+      .select("id, postcode, lead_type, status, name, email, phone, source, custom_fields")
       .eq("id", lead_id)
       .single();
 
@@ -152,7 +221,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Update lead to assigned — only if it's still pending (guard against race conditions)
+    // Update lead to assigned — only if still pending (guard against races)
     const { error: updateError } = await supabaseAdmin
       .from("ppl_leads")
       .update({
@@ -164,16 +233,21 @@ Deno.serve(async (req: Request) => {
       .eq("id", lead_id)
       .eq("status", "pending");
 
-    if (updateError) {
-      throw new Error(updateError.message);
-    }
+    if (updateError) throw new Error(updateError.message);
 
-    // Fire-and-forget delivery
+    // Fire deliver-webhook (email/SMS/webhook channels)
     supabaseAdmin.functions.invoke("deliver-webhook", {
       body: { lead_id, client_id: matchedClient.id },
     }).catch((err: Error) => {
       console.error("deliver-webhook invocation failed:", err.message);
     });
+
+    // Forward to QuoteLeads HQ platform if the client is linked
+    if (matchedClient.ql_hq_company_id || (matchedClient.has_quoteleads_platform_account && matchedClient.hq_bearer_token)) {
+      forwardToQuoteLeadsHQ(supabaseAdmin, lead, matchedClient).catch((err: Error) => {
+        console.error("forwardToQuoteLeadsHQ unhandled error:", err.message);
+      });
+    }
 
     return new Response(
       JSON.stringify({ success: true, matched: true, client_name: matchedClient.company_name }),
