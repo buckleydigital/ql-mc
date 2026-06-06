@@ -2529,6 +2529,7 @@ async function loadLeads(resetPage) {
           <option value="failed" ${l.status==='failed'?'selected':''}>Failed</option>
         </select>
         ${l.phone ? `<button class="btn btn-xs sms-lead-btn" data-lead-id="${esc(l.id)}" data-phone="${esc(l.phone)}" data-name="${esc(l.name||'')}">SMS</button>` : ''}
+        ${l.status === 'pending' ? `<button class="btn btn-xs recheck-lead-btn" data-lead-id="${esc(l.id)}" style="background:var(--amb);color:#fff">Recheck</button>` : ''}
         <button class="btn btn-xs dlogs-btn" data-lead-id="${esc(l.id)}" data-lead-name="${esc(l.name||'')}">📋 Logs</button>
       </td>
     </tr>`).join('');
@@ -2552,7 +2553,43 @@ async function loadLeads(resetPage) {
       openDeliveryLogs(btn.dataset.leadId, btn.dataset.leadName);
     });
   });
+  // Attach recheck button listeners
+  document.querySelectorAll('.recheck-lead-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      recheckLead(btn.dataset.leadId, btn);
+    });
+  });
   loadDeliveryLogOverview();
+}
+
+async function recheckLead(leadId, btn) {
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) throw new Error('Not logged in');
+    const res = await fetch(`${_ep}/functions/v1/recheck-lead`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+      body: JSON.stringify({ lead_id: leadId }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Recheck failed');
+    if (data.matched) {
+      toast(`Matched to ${data.client_name} — delivering now`);
+    } else {
+      toast('No matching client found for this postcode/niche yet', true);
+      btn.disabled = false;
+      btn.textContent = 'Recheck';
+      return;
+    }
+    loadLeads();
+  } catch (err) {
+    toast('Recheck failed: ' + err.message, true);
+    btn.disabled = false;
+    btn.textContent = 'Recheck';
+  }
 }
 async function updateLeadStatus(leadId, newStatus, selectEl) {
   const prev = Array.from(selectEl.options).find(o => o.defaultSelected)?.value || selectEl.value;
