@@ -4131,7 +4131,9 @@ async function loadCampaigns() {
 
   // Campaigns table
   const tb=$('mc-tbody');
-  if(!campaigns.length){tb.innerHTML='<tr><td colspan="10" class="empty">No campaigns yet</td></tr>';return;}
+  if(!campaigns.length){
+    tb.innerHTML='<tr><td colspan="10" class="empty">No campaigns yet</td></tr>';
+  } else {
   const fmt$=v=>v?'$'+Number(v).toLocaleString('en-AU',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
   const fmtN=v=>v?Number(v).toLocaleString('en-AU'):'—';
   const synced=campaigns.some(c=>c.last_synced_at);
@@ -4158,10 +4160,13 @@ async function loadCampaigns() {
     </tr>`;
   }).join('');
   if(!synced){$('mc-tbody').insertAdjacentHTML('afterbegin','<tr><td colspan="10" style="text-align:center;font-size:11px;color:var(--ink3);padding:8px">Stats not synced yet — click <strong>Sync Stats</strong> to pull live data from Meta</td></tr>');}
+  }
 
   // API log table
   const ltb=$('mc-log-tbody');
-  if(!logs.length){ltb.innerHTML='<tr><td colspan="5" class="empty">No logs yet</td></tr>';return;}
+  if(!logs.length){
+    ltb.innerHTML='<tr><td colspan="5" class="empty">No logs yet</td></tr>';
+  } else {
   ltb.innerHTML=logs.map(l=>{
     const t=new Date(l.created_at).toLocaleString('en-AU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
     const cids=(l.campaign_ids||[]).join(', ')||'—';
@@ -4175,6 +4180,9 @@ async function loadCampaigns() {
       <td style="font-family:var(--mono);font-size:9px;color:var(--ink3);max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${esc(JSON.stringify(l.results))}">${esc(det)}</td>
     </tr>`;
   }).join('');
+  }
+  // Manual Spend Log renders independently — always load it, even when there are
+  // no campaigns or no API log entries, so it never stays stuck on "Loading…".
   loadSpendLog();
 }
 
