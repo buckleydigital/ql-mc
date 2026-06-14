@@ -28,6 +28,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS campaign_spend_log_sync_uniq
 -- RLS
 ALTER TABLE campaign_spend_log ENABLE ROW LEVEL SECURITY;
 
+-- Drop first so re-running this migration is idempotent (CREATE POLICY has no IF NOT EXISTS)
+DROP POLICY IF EXISTS "Authenticated users manage spend log" ON campaign_spend_log;
+
 CREATE POLICY "Authenticated users manage spend log"
   ON campaign_spend_log
   FOR ALL
