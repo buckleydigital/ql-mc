@@ -23,6 +23,48 @@ function normalisePhone(raw: string): string | null {
   return null;
 }
 
+// ── Consent-bound routing helpers ────────────────────────────────────────────
+// Normalise free text for name matching: lowercase, drop punctuation, collapse
+// whitespace. Keeps '&' since it's common in trading names.
+function normaliseText(s: string): string {
+  return (s || "").toLowerCase().replace(/[^a-z0-9& ]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+// Same, but also strips common legal suffixes so "Yagi Solar Pty Ltd" → "yagi solar".
+function normaliseName(n: string): string {
+  return normaliseText(n).replace(/\b(pty\s*ltd|pty|ltd|inc|llc|co)\b/g, " ").replace(/\s+/g, " ").trim();
+}
+
+// Pull the consent sentence off the lead — either a top-level consent_text field
+// or one nested inside the custom_fields JSON. Returns it normalised, or null.
+function getConsentText(body: Record<string, unknown>, customFieldsStr: string | null): string | null {
+  const direct = body?.consent_text;
+  if (typeof direct === "string" && direct.trim()) return normaliseText(direct);
+  if (customFieldsStr) {
+    try {
+      const parsed = JSON.parse(customFieldsStr);
+      if (parsed && typeof parsed.consent_text === "string" && (parsed.consent_text as string).trim()) {
+        return normaliseText(parsed.consent_text as string);
+      }
+    } catch { /* custom_fields isn't JSON — ignore */ }
+  }
+  return null;
+}
+
+// Longest of a client's names (company_name / from_name) that appears in the
+// consent text, or "" if neither does. Length lets us prefer the most specific
+// match when one name is a substring of another.
+function longestNameInConsent(client: Record<string, unknown>, consentText: string): string {
+  const names = [client.company_name as string, client.from_name as string]
+    .map(normaliseName)
+    .filter((n) => n.length >= 3);
+  let best = "";
+  for (const n of names) {
+    if (consentText.includes(n) && n.length > best.length) best = n;
+  }
+  return best;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -170,68 +212,105 @@ Deno.serve(async (req: Request) => {
         return pcs.includes(postcode);
       });
 
-      // Check caps for each candidate
-      const validCandidates: Array<{
-        client: Record<string, unknown>;
-        ratio: number;
-        exactMatch: boolean;
-      }> = [];
-
-      const weekStart = getWeekStart();
-      const monthStart = getMonthStart();
-
-      for (const client of postcodeFiltered) {
-        const clientId = client.id as string;
-        const leadsDelivered = (client.leads_delivered as number) || 0;
-        const totalPurchased = (client.total_leads_purchased as number) || 0;
-        const leadsRemaining = totalPurchased - leadsDelivered;
-
-        if (leadsRemaining <= 0) continue;
-
-        // Count weekly delivered
-        const { count: weeklyDelivered } = await supabaseAdmin
-          .from("ppl_leads")
-          .select("id", { count: "exact", head: true })
-          .eq("assigned_client_id", clientId)
-          .eq("status", "delivered")
-          .gte("created_at", weekStart);
-
-        const weeklyCap = client.weekly_cap as number | null;
-        if (weeklyCap != null && (weeklyDelivered || 0) >= weeklyCap) continue;
-
-        // Count monthly delivered
-        const { count: monthlyDelivered } = await supabaseAdmin
-          .from("ppl_leads")
-          .select("id", { count: "exact", head: true })
-          .eq("assigned_client_id", clientId)
-          .eq("status", "delivered")
-          .gte("created_at", monthStart);
-
-        const monthlyCap = client.monthly_cap as number | null;
-        if (monthlyCap != null && (monthlyDelivered || 0) >= monthlyCap) continue;
-
-        const pcs = client.postcodes as string[] | null;
-        const exactMatch = Array.isArray(pcs) && pcs.length > 0 && pcs.includes(postcode);
-        const ratio = totalPurchased > 0 ? leadsDelivered / totalPurchased : 0;
-
-        validCandidates.push({ client, ratio, exactMatch });
+      // ── CONSENT-BOUND ROUTING ──────────────────────────────────────────────
+      // Only when the postcode is contested (2+ clients serve it) do we honour
+      // the installer named in the homeowner's consent text. A match needs the
+      // company name to appear in the consent AND the client to serve this
+      // postcode — and postcodeFiltered already guarantees the postcode, so a
+      // same-named company in another area can never be picked here. If exactly
+      // one client matches we route to them, even if they're capped or out of
+      // pack (consent wins, per business rule). Anything ambiguous — no name
+      // found, or two same-named clients on this same postcode — falls through
+      // to the normal fill-ratio routing below, completely unchanged.
+      if (postcodeFiltered.length >= 2) {
+        const consentText = getConsentText(body, custom_fields);
+        if (consentText) {
+          const scored = postcodeFiltered
+            .map((c: Record<string, unknown>) => ({ client: c, matched: longestNameInConsent(c, consentText) }))
+            .filter((s) => s.matched.length > 0)
+            .sort((a, b) => b.matched.length - a.matched.length);
+          if (scored.length > 0) {
+            const topLen = scored[0].matched.length;
+            const top = scored.filter((s) => s.matched.length === topLen);
+            if (top.length === 1) {
+              const c = top[0].client;
+              matchedClient = {
+                id: c.id as string,
+                company_name: c.company_name as string,
+                has_quoteleads_platform_account: c.has_quoteleads_platform_account as boolean | undefined,
+                hq_bearer_token: c.hq_bearer_token as string | null | undefined,
+                ql_hq_company_id: c.ql_hq_company_id as string | null | undefined,
+              };
+            }
+          }
+        }
       }
 
-      // Sort: exact postcode match first, then lowest ratio
-      validCandidates.sort((a, b) => {
-        if (a.exactMatch !== b.exactMatch) return a.exactMatch ? -1 : 1;
-        return a.ratio - b.ratio;
-      });
+      // Fill-ratio routing — runs only if consent didn't already pick a client
+      if (!matchedClient) {
+        // Check caps for each candidate
+        const validCandidates: Array<{
+          client: Record<string, unknown>;
+          ratio: number;
+          exactMatch: boolean;
+        }> = [];
 
-      if (validCandidates.length > 0) {
-        const best = validCandidates[0].client;
-        matchedClient = {
-          id: best.id as string,
-          company_name: best.company_name as string,
-          has_quoteleads_platform_account: best.has_quoteleads_platform_account as boolean | undefined,
-          hq_bearer_token: best.hq_bearer_token as string | null | undefined,
-          ql_hq_company_id: best.ql_hq_company_id as string | null | undefined,
-        };
+        const weekStart = getWeekStart();
+        const monthStart = getMonthStart();
+
+        for (const client of postcodeFiltered) {
+          const clientId = client.id as string;
+          const leadsDelivered = (client.leads_delivered as number) || 0;
+          const totalPurchased = (client.total_leads_purchased as number) || 0;
+          const leadsRemaining = totalPurchased - leadsDelivered;
+
+          if (leadsRemaining <= 0) continue;
+
+          // Count weekly delivered
+          const { count: weeklyDelivered } = await supabaseAdmin
+            .from("ppl_leads")
+            .select("id", { count: "exact", head: true })
+            .eq("assigned_client_id", clientId)
+            .eq("status", "delivered")
+            .gte("created_at", weekStart);
+
+          const weeklyCap = client.weekly_cap as number | null;
+          if (weeklyCap != null && (weeklyDelivered || 0) >= weeklyCap) continue;
+
+          // Count monthly delivered
+          const { count: monthlyDelivered } = await supabaseAdmin
+            .from("ppl_leads")
+            .select("id", { count: "exact", head: true })
+            .eq("assigned_client_id", clientId)
+            .eq("status", "delivered")
+            .gte("created_at", monthStart);
+
+          const monthlyCap = client.monthly_cap as number | null;
+          if (monthlyCap != null && (monthlyDelivered || 0) >= monthlyCap) continue;
+
+          const pcs = client.postcodes as string[] | null;
+          const exactMatch = Array.isArray(pcs) && pcs.length > 0 && pcs.includes(postcode);
+          const ratio = totalPurchased > 0 ? leadsDelivered / totalPurchased : 0;
+
+          validCandidates.push({ client, ratio, exactMatch });
+        }
+
+        // Sort: exact postcode match first, then lowest ratio
+        validCandidates.sort((a, b) => {
+          if (a.exactMatch !== b.exactMatch) return a.exactMatch ? -1 : 1;
+          return a.ratio - b.ratio;
+        });
+
+        if (validCandidates.length > 0) {
+          const best = validCandidates[0].client;
+          matchedClient = {
+            id: best.id as string,
+            company_name: best.company_name as string,
+            has_quoteleads_platform_account: best.has_quoteleads_platform_account as boolean | undefined,
+            hq_bearer_token: best.hq_bearer_token as string | null | undefined,
+            ql_hq_company_id: best.ql_hq_company_id as string | null | undefined,
+          };
+        }
       }
     }
 
