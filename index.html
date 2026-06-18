@@ -764,6 +764,15 @@ td strong{font-weight:500}
           </button>
         </div>
 
+        <div class="sb-divider" id="rep-admin-nav-div"></div>
+
+        <div class="sb-group" id="rep-admin-nav" style="display:none">
+          <span class="sb-group-label">Admin</span>
+          <button class="navbtn" data-panel="salesreps" onclick="nav('salesreps',this)">
+            <span class="ni">◐</span>Sales Reps
+          </button>
+        </div>
+
       </div>
 
       <div class="sb-bottom">
@@ -821,6 +830,12 @@ td strong{font-weight:500}
           <button class="btn btn-xs crm-period-btn" data-period="ytd" onclick="switchCrmFilter('ytd',this)">YTD 2026</button>
           <button class="btn btn-xs crm-period-btn" data-period="custom" onclick="switchCrmFilter('custom',this)">Custom</button>
           <input type="date" class="fi" id="crm-date" style="width:auto;font-size:11.5px;padding:5px 10px;display:none;font-family:var(--mono)" onchange="loadCRM(true)">
+        </div>
+        <div class="kg c4 mb4 rep-stat-strip" style="display:none">
+          <div class="kpi"><div class="klabel">Calls Taken</div><div class="kval blu" id="rep-calls">—</div></div>
+          <div class="kpi"><div class="klabel">Pickup Rate</div><div class="kval" id="rep-pickup">—</div></div>
+          <div class="kpi"><div class="klabel">Close Rate</div><div class="kval grn" id="rep-close">—</div></div>
+          <div class="kpi"><div class="klabel">My Open Leads</div><div class="kval" id="rep-open">—</div></div>
         </div>
         <div class="kg c4 mb4">
           <div class="kpi"><div class="klabel">Total Leads</div><div class="kval blu" id="crm-total">—</div></div>
@@ -1108,7 +1123,7 @@ td strong{font-weight:500}
         <div class="ph">
           <div class="ph-left"><h1>Invoices</h1><p>Generate &amp; manage client invoices</p></div>
           <div class="ph-right">
-            <button class="btn btn-sm" onclick="openBizSettingsModal()" style="margin-right:6px">Business Settings</button>
+            <button class="btn btn-sm admin-only-field" onclick="openBizSettingsModal()" style="margin-right:6px">Business Settings</button>
             <button class="btn btn-p btn-sm" onclick="openInvoiceModal()">+ New Invoice</button>
           </div>
         </div>
@@ -1122,6 +1137,37 @@ td strong{font-weight:500}
           <table>
             <thead><tr><th>Invoice #</th><th>Client</th><th>Type</th><th>Date</th><th>Due</th><th>Total</th><th>Status</th><th></th></tr></thead>
             <tbody id="inv-tbody"><tr><td colspan="8" class="empty">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══ SALES REPS (admin only) ══ -->
+      <div class="panel" id="panel-salesreps">
+        <div class="ph">
+          <div class="ph-left"><h1>Sales Reps</h1><p>Restricted accounts — pipeline &amp; their own invoices only</p></div>
+          <div class="ph-right"><button class="btn btn-p btn-sm" onclick="openCreateRepModal()">+ New Rep</button></div>
+        </div>
+        <div class="kg c4 mb4">
+          <div class="kpi"><div class="klabel">Total Reps</div><div class="kval blu" id="rep-kpi-total">—</div></div>
+          <div class="kpi"><div class="klabel">Active</div><div class="kval grn" id="rep-kpi-active">—</div></div>
+          <div class="kpi"><div class="klabel">Assigned Leads</div><div class="kval" id="rep-kpi-assigned">—</div></div>
+          <div class="kpi"><div class="klabel">Unassigned</div><div class="kval amb" id="rep-kpi-unassigned">—</div></div>
+        </div>
+
+        <div class="sl">Lead Assignment <div class="sl-line"></div></div>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--bd);border-radius:var(--r);background:var(--s1);margin-bottom:18px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer">
+            <input type="checkbox" id="rep-autoassign" onchange="saveAutoAssign()" style="width:15px;height:15px;cursor:pointer">
+            <span>Auto-assign new leads to the least-busy active rep</span>
+          </label>
+          <button class="btn btn-sm" onclick="autoAssignNow()" style="margin-left:auto">Assign unassigned now</button>
+        </div>
+
+        <div class="sl">Team <div class="sl-line"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Rep</th><th>Email</th><th>Status</th><th>Assigned</th><th>Open</th><th>Won</th><th>Calls</th><th>Pickup</th><th>Close</th><th></th></tr></thead>
+            <tbody id="rep-tbody"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1302,6 +1348,7 @@ td strong{font-weight:500}
   <div class="bnav" style="flex-wrap:wrap;height:auto;padding:4px 2px;">
     <button class="bnbtn active" data-panel="tasks" onclick="nav('tasks',this)"><span class="bnbtn-icon">✦</span><span class="bnbtn-lbl">Tasks</span></button>
     <button class="bnbtn" data-panel="crm" onclick="nav('crm',this)"><span class="bnbtn-icon">◎</span><span class="bnbtn-lbl">Sales</span></button>
+    <button class="bnbtn" data-panel="invoices" onclick="nav('invoices',this)"><span class="bnbtn-icon">⊞</span><span class="bnbtn-lbl">Invoices</span></button>
     <button class="bnbtn" data-panel="ppl" onclick="nav('ppl',this)"><span class="bnbtn-icon">◈</span><span class="bnbtn-lbl">PPL</span></button>
     <button class="bnbtn" data-panel="managed" onclick="nav('managed',this)"><span class="bnbtn-icon">▣</span><span class="bnbtn-lbl">Managed</span></button>
     <button class="bnbtn" data-panel="finance" onclick="nav('finance',this)"><span class="bnbtn-icon">$</span><span class="bnbtn-lbl">Finance</span></button>
@@ -1382,6 +1429,33 @@ td strong{font-weight:500}
     <div class="macts">
       <button class="btn" onclick="closeModal('m-lead')">Cancel</button>
       <button class="btn btn-p" onclick="saveLead()">Save lead</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create / edit a sales rep account -->
+<div class="overlay" id="m-rep">
+  <div class="modal">
+    <h2>New Sales Rep</h2><div class="msub">Creates a restricted login (pipeline + own invoices only)</div>
+    <div class="frow"><label class="flabel">Name</label><input class="fi" id="rep-name" placeholder="e.g. Jordan Lee"></div>
+    <div class="frow"><label class="flabel">Email</label><input class="fi" id="rep-email" type="email" placeholder="jordan@quoteleads.com.au"></div>
+    <div class="frow"><label class="flabel">Password</label><input class="fi" id="rep-pass" type="text" placeholder="min 8 characters"></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-rep')">Cancel</button>
+      <button class="btn btn-p" onclick="createRep()">Create rep</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset a sales rep's password -->
+<div class="overlay" id="m-rep-pass">
+  <div class="modal">
+    <h2>Set Password</h2><div class="msub" id="rep-pass-sub">—</div>
+    <input type="hidden" id="rep-pass-uid">
+    <div class="frow"><label class="flabel">New Password</label><input class="fi" id="rep-pass-new" type="text" placeholder="min 8 characters"></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-rep-pass')">Cancel</button>
+      <button class="btn btn-p" onclick="saveRepPassword()">Update password</button>
     </div>
   </div>
 </div>
@@ -1610,9 +1684,12 @@ td strong{font-weight:500}
         <option value="inbound">Inbound</option><option value="cold_email">Cold Email</option><option value="linkedin">LinkedIn</option>
       </select>
     </div>
+    <div class="frow admin-only-field" id="el-owner-row"><label class="flabel">Owner (Sales Rep)</label>
+      <select class="fs" id="el-owner"><option value="">— Unassigned</option></select>
+    </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="el-notes"></textarea></div>
     <div class="macts">
-      <button class="btn btn-red btn-sm" onclick="deleteLead()">Delete</button>
+      <button class="btn btn-red btn-sm admin-only-field" onclick="deleteLead()">Delete</button>
       <div style="flex:1"></div>
       <button class="btn" onclick="closeModal('m-edit-lead')">Cancel</button>
       <button class="btn btn-p" onclick="updateLead()">Save changes</button>
@@ -2117,6 +2194,7 @@ const AVG_WEEKS_PER_MONTH = 4.33; // average weeks in a month (52/12)
 const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 
 let db, currentUser;
+let IS_REP = false;   // true when the logged-in account_type is 'sales_rep'
 let revChart = null, cplChart = null, goalRevChart = null, goalMarginChart = null;
 let pplChurnChart = null, mgChurnChart = null;
 let curCrmRange = '';   // '' = no date filter → full pipeline visible by default
@@ -2237,11 +2315,13 @@ function initSupabase() {
           return;
         }
         currentUser = session.user;
+        IS_REP = session.user.app_metadata?.account_type === 'sales_rep';
         setText('uname', currentUser.email.split('@')[0]);
         $('login-screen').style.display = 'none';
         $('app').classList.add('visible');
 
-        loadAll();
+        applyRoleUI();
+        if (IS_REP) loadRepView(); else loadRepCache().then(loadAll);
         setTimeout(updateBnavPadding, 300);
       } else {
         currentUser = null;
@@ -2266,7 +2346,11 @@ document.addEventListener('keydown', e => {
 });
 async function doLogout() { if (db) await db.auth.signOut(); }
 
+// Panels a sales rep is allowed to open. Everything else is hidden + blocked.
+const REP_PANELS = new Set(['crm', 'invoices']);
+
 function nav(panel, el) {
+  if (IS_REP && !REP_PANELS.has(panel)) panel = 'crm';
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   $('panel-' + panel).classList.add('active');
   document.querySelectorAll('.navbtn').forEach(b => b.classList.remove('active'));
@@ -2278,6 +2362,42 @@ function nav(panel, el) {
   if (panel === 'leads') loadLeads();
   if (panel === 'invoices') loadInvoices();
   if (panel === 'goals') loadGoals();
+  if (panel === 'salesreps') loadReps();
+}
+
+// ── Role-based UI ───────────────────────────────────────────────────────────
+// Reps get a stripped-down dashboard: only the Sales Pipeline and Invoices
+// nav items survive, and the admin "Sales Reps" panel is revealed only for
+// full users. RLS does the real enforcement server-side; this is just the UI.
+function applyRoleUI() {
+  const repNav = $('rep-admin-nav');
+  if (IS_REP) {
+    document.querySelectorAll('.sb-nav .navbtn[data-panel]').forEach(b => {
+      if (!REP_PANELS.has(b.dataset.panel)) b.style.display = 'none';
+    });
+    document.querySelectorAll('.bnav .bnbtn[data-panel]').forEach(b => {
+      if (!REP_PANELS.has(b.dataset.panel)) b.style.display = 'none';
+    });
+    // Hide group labels / dividers that no longer head a visible button.
+    document.querySelectorAll('.sb-group').forEach(g => {
+      if (![...g.querySelectorAll('.navbtn[data-panel]')].some(b => b.style.display !== 'none')) g.style.display = 'none';
+    });
+    document.querySelectorAll('.sb-nav .sb-divider').forEach(d => d.style.display = 'none');
+    if (repNav) repNav.style.display = 'none';
+    document.querySelectorAll('.rep-stat-strip').forEach(e => e.style.display = '');
+    document.querySelectorAll('.admin-only-field').forEach(e => e.style.display = 'none');
+    nav('crm');
+  } else {
+    if (repNav) repNav.style.display = '';
+    document.querySelectorAll('.rep-stat-strip').forEach(e => e.style.display = 'none');
+  }
+}
+
+// Reps only ever load the two panels they can see. We deliberately skip
+// loadAll() (clients, finance, tasks, alerts…) so a rep's session never even
+// queries the tables they're walled off from.
+async function loadRepView() {
+  await loadCRM();
 }
 
 function updateClock() {
@@ -2982,6 +3102,26 @@ async function loadCRM(resetPage) {
   // When no date filter is active the table shows the same full set as the kanban
   crmAllLeads = curCrmRange ? (tableR.data || []) : crmPipelineLeads;
   renderCRM();
+  if (IS_REP) loadRepStats();
+}
+
+// Rep performance strip: calls taken, pickup rate, close rate, open leads.
+// All data here is already RLS-scoped to the rep's own assigned leads.
+async function loadRepStats() {
+  const leads = crmPipelineLeads || [];
+  const CLOSED = ['closed_won', 'closed_lost', 'churned'];
+  const won = leads.filter(l => l.stage === 'closed_won').length;
+  const lost = leads.filter(l => l.stage === 'closed_lost' || l.stage === 'churned').length;
+  const open = leads.filter(l => !CLOSED.includes(l.stage || '')).length;
+  const decided = won + lost;
+  setText('rep-close', decided ? Math.round(won / decided * 100) + '%' : '—');
+  setText('rep-open', open);
+
+  const { data: logs } = await db.from('lead_contact_log').select('contact_type, outcome');
+  const calls = (logs || []).filter(l => l.contact_type === 'call');
+  const answered = calls.filter(l => l.outcome !== 'no_answer').length;
+  setText('rep-calls', calls.length);
+  setText('rep-pickup', calls.length ? Math.round(answered / calls.length * 100) + '%' : '—');
 }
 function renderCRM() {
   const allLeads = crmAllLeads;           // table + KPIs (date-filtered)
@@ -3040,6 +3180,7 @@ function renderCRM() {
             ${l.lead_type?`<span class="badge ${typeBadge(l.lead_type)}" style="font-size:8.5px">${typeLabel(l.lead_type)}</span>`:''}
             ${l.value?`<span class="kcard-val">${fmt(l.value)}</span>`:''}
           </div>
+          ${(!IS_REP && l.owner_id)?`<div class="kcard-meta" style="margin-top:2px;color:var(--acc);font-size:9.5px">▸ ${esc(repName(l.owner_id)||'assigned')}</div>`:''}
           <div class="kcard-contact-row">${cPill}${cToggleYes}${cToggleNo}</div>
           ${isStale?`<div style="font-size:9px;color:var(--amb);font-family:var(--mono);margin-top:3px">⚠ ${ds!==null?ds+'d since contact':'not yet contacted'}</div>`:''}
         </div>`}).join('');
@@ -3094,8 +3235,9 @@ function renderCRM() {
   renderPager('crm-pager', crmPage, leads.length, p => { crmPage = p; renderCRM(crmAllLeads); });
 }
 function checkConvertBanner() {
+  // Converting a lead spins up a PPL/Managed client — out of scope for reps.
   const stage = $('el-stage').value;
-  $('convert-banner').style.display = stage === 'closed_won' ? 'block' : 'none';
+  $('convert-banner').style.display = (!IS_REP && stage === 'closed_won') ? 'block' : 'none';
 }
 function openEditLead(l) {
   setVal('el-id',l.id);setVal('el-name',l.name);setVal('el-company',l.company);
@@ -3109,8 +3251,22 @@ function openEditLead(l) {
   setVal('el-contact-count-orig', l.contact_count != null ? String(l.contact_count) : '0');
   setVal('el-next-followup', l.next_followup || '');
   setText('edit-lead-sub',(l.name||'')+(l.company?' · '+l.company:''));
+  if (!IS_REP) ensureRepOptions().then(() => setVal('el-owner', l.owner_id || ''));
   checkConvertBanner();
   openModal('m-edit-lead');
+}
+
+// Fill the Edit-Lead owner dropdown with the current sales reps (admin only).
+async function ensureRepOptions() {
+  if (IS_REP) return;
+  const sel = $('el-owner'); if (!sel) return;
+  if (!_reps.length) {
+    try { const r = await callRepEdge('list_reps'); _reps = r.reps || []; } catch (e) { /* leave unassigned-only */ }
+  }
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Unassigned</option>' +
+    _reps.map(r => `<option value="${r.user_id}">${esc(r.name || r.email)}${r.active ? '' : ' (inactive)'}</option>`).join('');
+  sel.value = cur;
 }
 async function toggleContactable(e,id,value) {
   e.stopPropagation();
@@ -3155,6 +3311,8 @@ async function updateLead() {
   const origCount = parseInt($('el-contact-count-orig').value||'0', 10) || 0;
   const contactIncrement = (newLastContact && (!origLastContact || newLastContact > origLastContact)) ? 1 : 0;
   const d={name:$('el-name').value.trim(),company:$('el-company').value.trim(),email:$('el-email').value.trim(),phone:$('el-phone').value.trim(),stage,lead_type:$('el-type').value,value:parseFloat($('el-value').value)||null,source:$('el-source').value,notes:$('el-notes').value.trim(),contactable,last_contact:newLastContact,next_followup:$('el-next-followup').value||null,contact_count:origCount+contactIncrement,updated_at:now()};
+  // Only full users can (re)assign a lead's owner; reps can't touch it.
+  if (!IS_REP) d.owner_id = $('el-owner').value || null;
   if (!d.name) { toast('Name required',true); return; }
   const {error}=await db.from('leads').update(d).eq('id',id);
   if (error) { toast('Error: '+error.message,true); return; }
@@ -6292,6 +6450,146 @@ async function loadAlerts() {
   const crmFollowups = (crmR.data||[]).filter(l=>l.next_followup&&l.next_followup<=today).length;
   _lastAlerts = buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoon);
   updateAlertBadge(_lastAlerts.length);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SALES REPS — admin panel (full users only; reps never reach this code path)
+// ════════════════════════════════════════════════════════════════════════════
+let _reps = [];
+
+// Populate the rep cache so the pipeline can show owner names (admin only).
+async function loadRepCache() {
+  if (IS_REP) return;
+  try { const r = await callRepEdge('list_reps'); _reps = r.reps || []; } catch (e) { /* ignore */ }
+}
+function repName(uid) {
+  if (!uid) return '';
+  const r = _reps.find(x => x.user_id === uid);
+  return r ? (r.name || r.email || 'rep') : '';
+}
+
+async function callRepEdge(action, payload = {}) {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) throw new Error('Not logged in');
+  const res = await fetch(`${_ep}/functions/v1/sales-rep-api`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+    body: JSON.stringify({ action, ...payload }),
+  });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(out.error || `Request failed (${res.status})`);
+  return out;
+}
+
+async function loadReps() {
+  try {
+    const [repsRes, cfgRes, unassignedRes] = await Promise.all([
+      callRepEdge('list_reps'),
+      callRepEdge('get_config'),
+      db.from('leads').select('id', { count: 'exact', head: true }).is('owner_id', null),
+    ]);
+    $('rep-autoassign').checked = cfgRes.auto_assign_enabled === true;
+    renderReps(repsRes.reps || [], unassignedRes.count || 0);
+  } catch (e) {
+    $('rep-tbody').innerHTML = `<tr><td colspan="10" class="empty" style="color:var(--red)">Error: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+function renderReps(reps, unassigned) {
+  _reps = reps;
+  setText('rep-kpi-total', reps.length);
+  setText('rep-kpi-active', reps.filter(r => r.active).length);
+  setText('rep-kpi-assigned', reps.reduce((s, r) => s + (r.assigned || 0), 0));
+  setText('rep-kpi-unassigned', unassigned);
+  if (!reps.length) { $('rep-tbody').innerHTML = '<tr><td colspan="10" class="empty">No sales reps yet. Click “New Rep” to create one.</td></tr>'; return; }
+  $('rep-tbody').innerHTML = reps.map(r => {
+    const status = r.active ? '<span class="badge bg-grn">Active</span>' : '<span class="badge bg-gray">Inactive</span>';
+    const pickup = r.pickup_rate == null ? '—' : r.pickup_rate + '%';
+    const close  = r.close_rate  == null ? '—' : r.close_rate  + '%';
+    return `<tr>
+      <td>${esc(r.name || '—')}</td>
+      <td style="font-family:var(--mono);font-size:11px">${esc(r.email || '—')}</td>
+      <td>${status}</td>
+      <td>${r.assigned || 0}</td>
+      <td>${r.open || 0}</td>
+      <td class="grn">${r.won || 0}</td>
+      <td>${r.calls || 0}</td>
+      <td>${pickup}</td>
+      <td>${close}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-xs" onclick="openRepPassword('${r.user_id}')">Password</button>
+        <button class="btn btn-xs" onclick="toggleRepActive('${r.user_id}',${!r.active})">${r.active ? 'Disable' : 'Enable'}</button>
+        <button class="btn btn-xs" style="color:var(--red)" onclick="deleteRep('${r.user_id}')">Delete</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openCreateRepModal() {
+  setVal('rep-name', ''); setVal('rep-email', ''); setVal('rep-pass', '');
+  openModal('m-rep');
+}
+async function createRep() {
+  const name = $('rep-name').value.trim();
+  const email = $('rep-email').value.trim();
+  const password = $('rep-pass').value;
+  if (!email || !password) { toast('Email and password required', true); return; }
+  if (password.length < 8) { toast('Password must be at least 8 characters', true); return; }
+  try {
+    await callRepEdge('create_rep', { name, email, password });
+    closeModal('m-rep'); toast('Rep created ✓'); loadReps();
+  } catch (e) { toast('Error: ' + e.message, true); }
+}
+
+function openRepPassword(uid) {
+  const r = _reps.find(x => x.user_id === uid);
+  $('rep-pass-uid').value = uid;
+  setText('rep-pass-sub', r ? (r.name || r.email) : '');
+  setVal('rep-pass-new', '');
+  openModal('m-rep-pass');
+}
+async function saveRepPassword() {
+  const uid = $('rep-pass-uid').value;
+  const password = $('rep-pass-new').value;
+  if (password.length < 8) { toast('Password must be at least 8 characters', true); return; }
+  try {
+    await callRepEdge('set_password', { user_id: uid, password });
+    closeModal('m-rep-pass'); toast('Password updated ✓');
+  } catch (e) { toast('Error: ' + e.message, true); }
+}
+
+async function toggleRepActive(uid, active) {
+  try {
+    await callRepEdge('set_active', { user_id: uid, active });
+    toast(active ? 'Rep enabled' : 'Rep disabled — open leads returned to pool');
+    loadReps();
+  } catch (e) { toast('Error: ' + e.message, true); }
+}
+
+async function deleteRep(uid) {
+  const r = _reps.find(x => x.user_id === uid);
+  const label = r ? (r.name || r.email) : 'this rep';
+  if (!confirm(`Delete ${label}?\n\nTheir login is removed and any assigned leads return to the unassigned pool. This cannot be undone.`)) return;
+  try { await callRepEdge('delete_rep', { user_id: uid }); toast('Rep deleted'); loadReps(); }
+  catch (e) { toast('Error: ' + e.message, true); }
+}
+
+async function saveAutoAssign() {
+  try {
+    await callRepEdge('set_config', { auto_assign_enabled: $('rep-autoassign').checked });
+    toast('Auto-assign ' + ($('rep-autoassign').checked ? 'on' : 'off'));
+  } catch (e) {
+    toast('Error: ' + e.message, true);
+    $('rep-autoassign').checked = !$('rep-autoassign').checked;
+  }
+}
+
+async function autoAssignNow() {
+  try {
+    const r = await callRepEdge('auto_assign_now');
+    toast(`Assigned ${r.assigned} lead${r.assigned === 1 ? '' : 's'}`);
+    loadReps();
+  } catch (e) { toast('Error: ' + e.message, true); }
 }
 
 </script>
