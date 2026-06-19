@@ -2650,6 +2650,7 @@ async function loadLeads(resetPage) {
         </select>
         ${l.phone ? `<button class="btn btn-xs sms-lead-btn" data-lead-id="${esc(l.id)}" data-phone="${esc(l.phone)}" data-name="${esc(l.name||'')}">SMS</button>` : ''}
         ${l.status === 'pending' ? `<button class="btn btn-xs recheck-lead-btn" data-lead-id="${esc(l.id)}" style="background:var(--amb);color:#fff">Recheck</button>` : ''}
+        ${l.status === 'assigned' ? `<button class="btn btn-xs deliver-lead-btn" data-lead-id="${esc(l.id)}" data-client="${esc(l.clients?.company_name||'')}" style="background:var(--grn);color:#fff">Deliver →</button>` : ''}
         <button class="btn btn-xs dlogs-btn" data-lead-id="${esc(l.id)}" data-lead-name="${esc(l.name||'')}">📋 Logs</button>
       </td>
     </tr>`).join('');
@@ -2673,16 +2674,25 @@ async function loadLeads(resetPage) {
       openDeliveryLogs(btn.dataset.leadId, btn.dataset.leadName);
     });
   });
-  // Attach recheck button listeners
+  // Attach recheck (assign) button listeners
   document.querySelectorAll('.recheck-lead-btn').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       recheckLead(btn.dataset.leadId, btn);
     });
   });
+  // Attach deliver button listeners (2nd step — actually sends)
+  document.querySelectorAll('.deliver-lead-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      deliverLead(btn.dataset.leadId, btn.dataset.client, btn);
+    });
+  });
   loadDeliveryLogOverview();
 }
 
+// STEP 1 — Recheck = match + assign ONLY. Nothing is sent, no counts move,
+// no HQ forward. The operator reviews the matched client, then clicks Deliver.
 async function recheckLead(leadId, btn) {
   btn.disabled = true;
   btn.textContent = '…';
@@ -2692,16 +2702,12 @@ async function recheckLead(leadId, btn) {
     const res = await fetch(`${_ep}/functions/v1/recheck-lead`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-      body: JSON.stringify({ lead_id: leadId }),
+      body: JSON.stringify({ lead_id: leadId, action: 'assign' }),
     });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Recheck failed');
     if (data.matched) {
-      if (data.delivered) {
-        toast(`Delivered to ${data.client_name} ✓`);
-      } else {
-        toast(`Matched to ${data.client_name} but delivery failed: ${data.delivery_error || 'unknown error'}`, true);
-      }
+      toast(`Assigned to ${data.client_name} — review, then click Deliver to send`);
     } else {
       toast('No matching client found for this postcode/niche yet', true);
       btn.disabled = false;
@@ -2713,6 +2719,39 @@ async function recheckLead(leadId, btn) {
     toast('Recheck failed: ' + err.message, true);
     btn.disabled = false;
     btn.textContent = 'Recheck';
+  }
+}
+
+// STEP 2 — Deliver = actually send the assigned lead (email/SMS/webhook + HQ
+// forward + delivered-count increment). This is the only step that contacts
+// anyone, so a wrong match can be caught at the assign step before this runs.
+async function deliverLead(leadId, clientName, btn) {
+  if (!confirm(`Deliver this lead to ${clientName || 'the assigned client'}?\n\nThis sends the lead and bumps their delivered count. Make sure it's the right client.`)) return;
+  btn.disabled = true;
+  btn.textContent = 'Delivering…';
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) throw new Error('Not logged in');
+    const res = await fetch(`${_ep}/functions/v1/recheck-lead`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+      body: JSON.stringify({ lead_id: leadId, action: 'deliver' }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Deliver failed');
+    if (data.delivered) {
+      toast(`Delivered to ${data.client_name || clientName} ✓`);
+    } else {
+      toast(`Delivery failed: ${data.delivery_error || 'unknown error'}`, true);
+      btn.disabled = false;
+      btn.textContent = 'Deliver →';
+      return;
+    }
+    loadLeads();
+  } catch (err) {
+    toast('Deliver failed: ' + err.message, true);
+    btn.disabled = false;
+    btn.textContent = 'Deliver →';
   }
 }
 async function updateLeadStatus(leadId, newStatus, selectEl) {

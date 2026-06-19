@@ -143,7 +143,12 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { lead_id } = await req.json();
+    const reqBody = await req.json();
+    const lead_id = reqBody?.lead_id;
+    // Two-step rescue flow:
+    //   action "assign"  (default) → match + claim only. Nothing is sent.
+    //   action "deliver"           → actually send the already-assigned lead.
+    const action = reqBody?.action === "deliver" ? "deliver" : "assign";
 
     if (!lead_id) {
       return new Response(JSON.stringify({ error: "missing_lead_id" }), {
@@ -151,10 +156,10 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Fetch the lead — include all fields needed for HQ forwarding
+    // Fetch the lead — include all fields needed for HQ forwarding + delivery
     const { data: lead, error: leadError } = await supabaseAdmin
       .from("ppl_leads")
-      .select("id, postcode, lead_type, status, name, email, phone, source, custom_fields")
+      .select("id, postcode, lead_type, status, name, email, phone, source, custom_fields, assigned_client_id")
       .eq("id", lead_id)
       .single();
 
@@ -164,6 +169,62 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // ── DELIVER: send a lead that was already assigned (manual 2nd step) ──────
+    // At assign time NOTHING was sent — no email/SMS, no delivered-count bump,
+    // no HQ forward. This step performs the real delivery to the assigned
+    // client, so a wrong match can be caught before anything leaves the system.
+    if (action === "deliver") {
+      if (lead.status !== "assigned" || !lead.assigned_client_id) {
+        return new Response(
+          JSON.stringify({ error: "lead_not_assigned", status: lead.status }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      const deliverClientId = lead.assigned_client_id as string;
+      const { data: client } = await supabaseAdmin
+        .from("clients")
+        .select("id, company_name, has_quoteleads_platform_account, hq_bearer_token, ql_hq_company_id")
+        .eq("id", deliverClientId)
+        .single();
+
+      let delivered = false;
+      let deliveryError: string | null = null;
+      try {
+        const { data: delivRes, error: delivErr } = await supabaseAdmin.functions.invoke(
+          "deliver-webhook",
+          { body: { lead_id, client_id: deliverClientId } },
+        );
+        if (delivErr) {
+          deliveryError = delivErr.message;
+        } else if (delivRes && (delivRes as { success?: boolean }).success === false) {
+          deliveryError = "delivery failed — check the client's delivery settings";
+        } else {
+          delivered = true;
+        }
+      } catch (err) {
+        deliveryError = err instanceof Error ? err.message : String(err);
+      }
+      if (deliveryError) console.error("deliver-webhook failed:", deliveryError);
+
+      if (client && (client.ql_hq_company_id || (client.has_quoteleads_platform_account && client.hq_bearer_token))) {
+        try {
+          await forwardToQuoteLeadsHQ(
+            supabaseAdmin,
+            lead,
+            client as unknown as { id: string; company_name: string; hq_bearer_token?: string | null; ql_hq_company_id?: string | null },
+          );
+        } catch (err) {
+          console.error("forwardToQuoteLeadsHQ unhandled error:", err instanceof Error ? err.message : String(err));
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, delivered, client_name: client?.company_name ?? null, delivery_error: deliveryError }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // ── ASSIGN (default): match + claim. No send, no count, no forward. ───────
     if (lead.status !== "pending") {
       return new Response(
         JSON.stringify({ error: "lead_not_pending", status: lead.status }),
@@ -306,47 +367,12 @@ Deno.serve(async (req: Request) => {
 
     if (updateError) throw new Error(updateError.message);
 
-    // Deliver (email/SMS/webhook). AWAIT it — a fire-and-forget invoke gets
-    // killed the moment this function returns, which left leads stuck on
-    // "assigned" and never actually delivered. Awaiting guarantees the send
-    // runs to completion and deliver-webhook flips the lead to "delivered".
-    let delivered = false;
-    let deliveryError: string | null = null;
-    try {
-      const { data: delivRes, error: delivErr } = await supabaseAdmin.functions.invoke(
-        "deliver-webhook",
-        { body: { lead_id, client_id: matchedClient.id } },
-      );
-      if (delivErr) {
-        deliveryError = delivErr.message;
-      } else if (delivRes && (delivRes as { success?: boolean }).success === false) {
-        deliveryError = "delivery failed — check the client's delivery settings";
-      } else {
-        delivered = true;
-      }
-    } catch (err) {
-      deliveryError = err instanceof Error ? err.message : String(err);
-    }
-    if (deliveryError) console.error("deliver-webhook failed:", deliveryError);
-
-    // Forward to QuoteLeads HQ platform if the client is linked. Await so it
-    // actually completes before the function returns.
-    if (matchedClient.ql_hq_company_id || (matchedClient.has_quoteleads_platform_account && matchedClient.hq_bearer_token)) {
-      try {
-        await forwardToQuoteLeadsHQ(supabaseAdmin, lead, matchedClient);
-      } catch (err) {
-        console.error("forwardToQuoteLeadsHQ unhandled error:", err instanceof Error ? err.message : String(err));
-      }
-    }
-
+    // ASSIGN ONLY — the lead is now claimed for this client but NOTHING has
+    // been sent: no email/SMS, no delivered-count increment, no HQ forward.
+    // The operator reviews the match in the table, then clicks Deliver, which
+    // calls this same function again with action: "deliver".
     return new Response(
-      JSON.stringify({
-        success: true,
-        matched: true,
-        client_name: matchedClient.company_name,
-        delivered,
-        delivery_error: deliveryError,
-      }),
+      JSON.stringify({ success: true, matched: true, assigned: true, client_name: matchedClient.company_name }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
