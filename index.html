@@ -2697,7 +2697,11 @@ async function recheckLead(leadId, btn) {
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Recheck failed');
     if (data.matched) {
-      toast(`Matched to ${data.client_name} — delivering now`);
+      if (data.delivered) {
+        toast(`Delivered to ${data.client_name} ✓`);
+      } else {
+        toast(`Matched to ${data.client_name} but delivery failed: ${data.delivery_error || 'unknown error'}`, true);
+      }
     } else {
       toast('No matching client found for this postcode/niche yet', true);
       btn.disabled = false;

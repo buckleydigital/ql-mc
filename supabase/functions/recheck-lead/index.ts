@@ -306,22 +306,47 @@ Deno.serve(async (req: Request) => {
 
     if (updateError) throw new Error(updateError.message);
 
-    // Fire deliver-webhook (email/SMS/webhook channels)
-    supabaseAdmin.functions.invoke("deliver-webhook", {
-      body: { lead_id, client_id: matchedClient.id },
-    }).catch((err: Error) => {
-      console.error("deliver-webhook invocation failed:", err.message);
-    });
+    // Deliver (email/SMS/webhook). AWAIT it — a fire-and-forget invoke gets
+    // killed the moment this function returns, which left leads stuck on
+    // "assigned" and never actually delivered. Awaiting guarantees the send
+    // runs to completion and deliver-webhook flips the lead to "delivered".
+    let delivered = false;
+    let deliveryError: string | null = null;
+    try {
+      const { data: delivRes, error: delivErr } = await supabaseAdmin.functions.invoke(
+        "deliver-webhook",
+        { body: { lead_id, client_id: matchedClient.id } },
+      );
+      if (delivErr) {
+        deliveryError = delivErr.message;
+      } else if (delivRes && (delivRes as { success?: boolean }).success === false) {
+        deliveryError = "delivery failed — check the client's delivery settings";
+      } else {
+        delivered = true;
+      }
+    } catch (err) {
+      deliveryError = err instanceof Error ? err.message : String(err);
+    }
+    if (deliveryError) console.error("deliver-webhook failed:", deliveryError);
 
-    // Forward to QuoteLeads HQ platform if the client is linked
+    // Forward to QuoteLeads HQ platform if the client is linked. Await so it
+    // actually completes before the function returns.
     if (matchedClient.ql_hq_company_id || (matchedClient.has_quoteleads_platform_account && matchedClient.hq_bearer_token)) {
-      forwardToQuoteLeadsHQ(supabaseAdmin, lead, matchedClient).catch((err: Error) => {
-        console.error("forwardToQuoteLeadsHQ unhandled error:", err.message);
-      });
+      try {
+        await forwardToQuoteLeadsHQ(supabaseAdmin, lead, matchedClient);
+      } catch (err) {
+        console.error("forwardToQuoteLeadsHQ unhandled error:", err instanceof Error ? err.message : String(err));
+      }
     }
 
     return new Response(
-      JSON.stringify({ success: true, matched: true, client_name: matchedClient.company_name }),
+      JSON.stringify({
+        success: true,
+        matched: true,
+        client_name: matchedClient.company_name,
+        delivered,
+        delivery_error: deliveryError,
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
