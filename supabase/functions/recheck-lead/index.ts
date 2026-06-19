@@ -80,11 +80,41 @@ async function fetchWithRetry(
   return lastRes;
 }
 
+// Build qualifying details for HQ — structured custom_data + a human-readable
+// notes block. Consent is read raw from the stored custom_fields JSON.
+function buildHqExtras(lead: Record<string, unknown>): { custom_data: Record<string, string>; notes: string } {
+  let consent = typeof lead.consent_text === "string" ? lead.consent_text.trim() : "";
+  if (!consent && typeof lead.custom_fields === "string" && lead.custom_fields.trim()) {
+    try {
+      const parsed = JSON.parse(lead.custom_fields);
+      if (parsed && typeof parsed.consent_text === "string") consent = parsed.consent_text.trim();
+    } catch { /* not JSON */ }
+  }
+  const bill = lead.avg_quarterly_bill != null ? String(lead.avg_quarterly_bill).trim() : "";
+  const timeline = lead.purchase_timeline != null ? String(lead.purchase_timeline).trim() : "";
+
+  const cd: Record<string, string> = {};
+  const lines: string[] = [];
+  if (bill)     { cd["Avg Quarterly Bill"] = bill;     lines.push(`Avg Quarterly Bill: ${bill}`); }
+  if (timeline) { cd["Purchase Timeline"]  = timeline; lines.push(`Purchase Timeline: ${timeline}`); }
+  if (typeof lead.interested_in === "string" && lead.interested_in.trim()) {
+    cd["Interested In"] = lead.interested_in.trim(); lines.push(`Interested In: ${lead.interested_in.trim()}`);
+  }
+  if (lead.is_homeowner === true) { cd["Homeowner"] = "Yes"; lines.push("Homeowner: Yes"); }
+  else if (lead.is_homeowner === false) { cd["Homeowner"] = "No"; lines.push("Homeowner: No"); }
+  if (consent)  { cd["Consent"] = consent;             lines.push(`Consent: ${consent}`); }
+
+  return { custom_data: cd, notes: lines.join("\n") };
+}
+
 async function forwardToQuoteLeadsHQ(
   supabaseAdmin: ReturnType<typeof createClient>,
   lead: Record<string, unknown>,
   client: { id: string; company_name: string; hq_bearer_token?: string | null; ql_hq_company_id?: string | null },
 ): Promise<void> {
+  // HQ drops `custom_fields`; it stores `custom_data` (shown on the lead) and
+  // `notes` (always visible). Send the qualifying details via both.
+  const extras = buildHqExtras(lead);
   const hqPayload: Record<string, unknown> = {
     name: lead.name,
     email: lead.email,
@@ -92,7 +122,8 @@ async function forwardToQuoteLeadsHQ(
     postcode: lead.postcode,
     lead_type: lead.lead_type,
     source: lead.source,
-    custom_fields: lead.custom_fields,
+    custom_data: extras.custom_data,
+    notes: extras.notes || undefined,
     company_id: client.ql_hq_company_id ?? null,
   };
 
@@ -159,7 +190,7 @@ Deno.serve(async (req: Request) => {
     // Fetch the lead — include all fields needed for HQ forwarding + delivery
     const { data: lead, error: leadError } = await supabaseAdmin
       .from("ppl_leads")
-      .select("id, postcode, lead_type, status, name, email, phone, source, custom_fields, assigned_client_id")
+      .select("id, postcode, lead_type, status, name, email, phone, source, custom_fields, assigned_client_id, avg_quarterly_bill, purchase_timeline, is_homeowner, interested_in")
       .eq("id", lead_id)
       .single();
 

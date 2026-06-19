@@ -65,6 +65,49 @@ function longestNameInConsent(client: Record<string, unknown>, consentText: stri
   return best;
 }
 
+// The average-quarterly-bill answer, as free text, no matter the format ("$300–$600",
+// "$1,000+", "More than $600") or the exact key Make posts it under. Prefers the
+// named field, then falls back to any body key that looks like a power-bill field.
+function pickBillText(body: Record<string, unknown>): string | null {
+  const named = body?.avg_quarterly_bill;
+  if (named != null && String(named).trim()) return String(named).trim();
+  for (const [k, v] of Object.entries(body)) {
+    if (/(quarter|power|electric|energy).*bill|^bill$|bill.*amount/i.test(k) && v != null && String(v).trim()) {
+      return String(v).trim();
+    }
+  }
+  return null;
+}
+
+// Build the qualifying details we forward to QuoteLeadsHQ — as structured
+// custom_data AND a human-readable notes block (which is always visible on the
+// HQ lead, regardless of a company's custom-field setup). Consent is read from
+// an explicit field or the stored custom_fields JSON, raw (never normalised).
+function buildHqExtras(lead: Record<string, unknown>): { custom_data: Record<string, string>; notes: string } {
+  let consent = typeof lead.consent_text === "string" ? lead.consent_text.trim() : "";
+  if (!consent && typeof lead.custom_fields === "string" && lead.custom_fields.trim()) {
+    try {
+      const parsed = JSON.parse(lead.custom_fields);
+      if (parsed && typeof parsed.consent_text === "string") consent = parsed.consent_text.trim();
+    } catch { /* custom_fields isn't JSON — ignore */ }
+  }
+  const bill = lead.avg_quarterly_bill != null ? String(lead.avg_quarterly_bill).trim() : "";
+  const timeline = lead.purchase_timeline != null ? String(lead.purchase_timeline).trim() : "";
+
+  const cd: Record<string, string> = {};
+  const lines: string[] = [];
+  if (bill)     { cd["Avg Quarterly Bill"] = bill;     lines.push(`Avg Quarterly Bill: ${bill}`); }
+  if (timeline) { cd["Purchase Timeline"]  = timeline; lines.push(`Purchase Timeline: ${timeline}`); }
+  if (typeof lead.interested_in === "string" && lead.interested_in.trim()) {
+    cd["Interested In"] = lead.interested_in.trim(); lines.push(`Interested In: ${lead.interested_in.trim()}`);
+  }
+  if (lead.is_homeowner === true) { cd["Homeowner"] = "Yes"; lines.push("Homeowner: Yes"); }
+  else if (lead.is_homeowner === false) { cd["Homeowner"] = "No"; lines.push("Homeowner: No"); }
+  if (consent)  { cd["Consent"] = consent;             lines.push(`Consent: ${consent}`); }
+
+  return { custom_data: cd, notes: lines.join("\n") };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -326,7 +369,8 @@ Deno.serve(async (req: Request) => {
       source,
       custom_fields,
       is_homeowner: is_homeowner != null ? is_homeowner : null,
-      avg_quarterly_bill: avg_quarterly_bill != null ? parseFloat(avg_quarterly_bill) || null : null,
+      // Stored verbatim as text — never parseFloat'd — so "$300–$600"/"$1,000+" survive.
+      avg_quarterly_bill: pickBillText(body),
       interested_in: interested_in || null,
       purchase_timeline: purchase_timeline || null,
       assigned_client_id: matchedClient ? matchedClient.id : null,
@@ -357,7 +401,11 @@ Deno.serve(async (req: Request) => {
       // Forward to QuoteLeads HQ if the client has a ql_hq_company_id or a platform bearer token
       if (matchedClient.ql_hq_company_id || (matchedClient.has_quoteleads_platform_account && matchedClient.hq_bearer_token)) {
         forwardToQuoteLeadsHQ(
-          { id: inserted.id, name, email, phone: normalisedPhone, postcode, lead_type, source, custom_fields },
+          {
+            id: inserted.id, name, email, phone: normalisedPhone, postcode, lead_type, source, custom_fields,
+            avg_quarterly_bill: pickBillText(body), purchase_timeline: purchase_timeline || null,
+            is_homeowner: is_homeowner != null ? is_homeowner : null, interested_in: interested_in || null,
+          },
           matchedClient,
         ).catch((err: Error) => {
           console.error("forwardToQuoteLeadsHQ unhandled error:", err.message);
@@ -413,6 +461,9 @@ async function forwardToQuoteLeadsHQ(
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  // HQ's intake drops `custom_fields`; it accepts `custom_data` (jsonb, shown on
+  // the lead) and `notes` (always visible). Send the qualifying details via both.
+  const extras = buildHqExtras(lead);
   const hqPayload: Record<string, unknown> = {
     name: lead.name,
     email: lead.email,
@@ -420,7 +471,8 @@ async function forwardToQuoteLeadsHQ(
     postcode: lead.postcode,
     lead_type: lead.lead_type,
     source: lead.source,
-    custom_fields: lead.custom_fields,
+    custom_data: extras.custom_data,
+    notes: extras.notes || undefined,
     company_id: client.ql_hq_company_id ?? null,
   };
 
