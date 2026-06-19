@@ -48,14 +48,15 @@ serve(async (req) => {
       })
     }
 
-    // Week boundaries (Mon-Sun)
+    // Week (Mon) + month boundaries in UTC, to match how submit-lead and
+    // recheck-lead count delivered leads for caps.
     const now = new Date()
-    const dayOfWeek = now.getDay()
+    const dayOfWeek = now.getUTCDay()
     const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
     const weekStart = new Date(now)
-    weekStart.setDate(now.getDate() + mondayOffset)
-    weekStart.setHours(0, 0, 0, 0)
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    weekStart.setUTCDate(now.getUTCDate() + mondayOffset)
+    weekStart.setUTCHours(0, 0, 0, 0)
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
 
     // ── Step 1: Check each client's cap status ──
     type ClientCapStatus = {
@@ -84,17 +85,20 @@ serve(async (req) => {
         continue
       }
 
+      // Count delivered leads from ppl_leads (where status='delivered' actually
+      // exists) keyed by assigned_client_id — NOT ppl_order_log, whose status
+      // can only be in_progress/completed/cancelled, so the old query was always 0.
       const { count: weeklyLeads } = await dbClient
-        .from('ppl_order_log')
+        .from('ppl_leads')
         .select('id', { count: 'exact', head: true })
-        .eq('client_id', client.id)
+        .eq('assigned_client_id', client.id)
         .eq('status', 'delivered')
         .gte('created_at', weekStart.toISOString())
 
       const { count: monthlyLeads } = await dbClient
-        .from('ppl_order_log')
+        .from('ppl_leads')
         .select('id', { count: 'exact', head: true })
-        .eq('client_id', client.id)
+        .eq('assigned_client_id', client.id)
         .eq('status', 'delivered')
         .gte('created_at', monthStart.toISOString())
 
