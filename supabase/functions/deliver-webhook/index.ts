@@ -42,6 +42,17 @@ function sanitizeSmsField(value: unknown): string {
   return String(value ?? "").replace(/[\x00-\x1F\x7F]/g, " ").trim();
 }
 
+// Tidy a Facebook-style choice value for display: "asap_(next_30_days)" →
+// "asap - next 30 days", "3–6_months" → "3–6 months".
+function prettifyChoice(v: unknown): string {
+  return String(v ?? "")
+    .replace(/_/g, " ")
+    .replace(/\(/g, " - ")
+    .replace(/[)\]\[{}]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // Parse the stored custom_fields JSON into clean [label, value] pairs for
 // delivery. NEVER emits raw JSON or braces. Falls back to plain text if not JSON.
 function parseCustomFields(cf: unknown): Array<[string, string]> {
@@ -82,7 +93,7 @@ function buildEmailHtml(lead: Record<string, unknown>, _client: Record<string, u
 
   if (lead.avg_quarterly_bill != null && String(lead.avg_quarterly_bill).trim() !== "") rows += row("Quarterly Bill", esc(String(lead.avg_quarterly_bill)));
   if (lead.interested_in) rows += row("Interested In", esc(lead.interested_in as string));
-  if (lead.purchase_timeline) rows += row("Timeline", esc(lead.purchase_timeline as string));
+  if (lead.purchase_timeline) rows += row("Timeline", esc(prettifyChoice(lead.purchase_timeline)));
 
   // Qualifying / consent details — clean labelled rows, never raw JSON.
   let customSection = "";
@@ -116,7 +127,7 @@ function buildEmailPreview(lead: Record<string, unknown>, subject: string): stri
   if (lead.is_homeowner != null) lines.push(`Homeowner: ${lead.is_homeowner ? "Yes" : "No"}`);
   if (lead.avg_quarterly_bill != null && String(lead.avg_quarterly_bill).trim() !== "") lines.push(`Quarterly Bill: ${lead.avg_quarterly_bill}`);
   if (lead.interested_in) lines.push(`Interested In: ${lead.interested_in}`);
-  if (lead.purchase_timeline) lines.push(`Timeline: ${lead.purchase_timeline}`);
+  if (lead.purchase_timeline) lines.push(`Timeline: ${prettifyChoice(lead.purchase_timeline)}`);
   for (const [label, value] of parseCustomFields(lead.custom_fields)) lines.push(`${label}: ${value}`);
   return lines.join("\n");
 }
@@ -132,7 +143,7 @@ function buildSmsBody(lead: Record<string, unknown>): string {
   if (lead.is_homeowner != null) lines.push(`Homeowner: ${lead.is_homeowner ? "Yes" : "No"}`);
   if (lead.avg_quarterly_bill != null && String(lead.avg_quarterly_bill).trim() !== "") lines.push(`Quarterly Bill: ${sanitizeSmsField(lead.avg_quarterly_bill)}`);
   if (lead.interested_in) lines.push(`Interested In: ${sanitizeSmsField(lead.interested_in)}`);
-  if (lead.purchase_timeline) lines.push(`Timeline: ${sanitizeSmsField(lead.purchase_timeline)}`);
+  if (lead.purchase_timeline) lines.push(`Timeline: ${sanitizeSmsField(prettifyChoice(lead.purchase_timeline))}`);
 
   return lines.join("\n");
 }

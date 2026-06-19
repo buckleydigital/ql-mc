@@ -65,6 +65,18 @@ function longestNameInConsent(client: Record<string, unknown>, consentText: stri
   return best;
 }
 
+// Tidy a Facebook-style choice value for display: "asap_(next_30_days)" →
+// "asap - next 30 days", "3–6_months" → "3–6 months". Underscores → spaces,
+// "(" → " - ", other brackets removed, whitespace collapsed. (Idempotent.)
+function prettifyChoice(v: unknown): string {
+  return String(v ?? "")
+    .replace(/_/g, " ")
+    .replace(/\(/g, " - ")
+    .replace(/[)\]\[{}]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // The average-quarterly-bill answer, as free text, no matter the format ("$300–$600",
 // "$1,000+", "More than $600") or the exact key Make posts it under. Prefers the
 // named field, then falls back to any body key that looks like a power-bill field.
@@ -134,6 +146,9 @@ Deno.serve(async (req: Request) => {
       });
     }
     if (!source) source = "webhook";
+    // Tidy the timeline choice ("asap_(next_30_days)" → "asap - next 30 days")
+    // once, so the stored value and every delivery downstream are clean.
+    if (purchase_timeline) purchase_timeline = prettifyChoice(purchase_timeline);
 
     // Collect any extra fields into custom_fields (stored as JSON text)
     const extraFields: Record<string, unknown> = {};

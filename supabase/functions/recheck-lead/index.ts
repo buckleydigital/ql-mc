@@ -80,6 +80,16 @@ async function fetchWithRetry(
   return lastRes;
 }
 
+// Tidy a Facebook-style choice value: "asap_(next_30_days)" → "asap - next 30 days".
+function prettifyChoice(v: unknown): string {
+  return String(v ?? "")
+    .replace(/_/g, " ")
+    .replace(/\(/g, " - ")
+    .replace(/[)\]\[{}]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // Build qualifying details for HQ — structured custom_data + a human-readable
 // notes block. Consent is read raw from the stored custom_fields JSON.
 function buildHqExtras(lead: Record<string, unknown>): { custom_data: Record<string, string>; notes: string } {
@@ -91,7 +101,7 @@ function buildHqExtras(lead: Record<string, unknown>): { custom_data: Record<str
     } catch { /* not JSON */ }
   }
   const bill = lead.avg_quarterly_bill != null ? String(lead.avg_quarterly_bill).trim() : "";
-  const timeline = lead.purchase_timeline != null ? String(lead.purchase_timeline).trim() : "";
+  const timeline = lead.purchase_timeline != null ? prettifyChoice(lead.purchase_timeline) : "";
 
   const cd: Record<string, string> = {};
   const lines: string[] = [];
