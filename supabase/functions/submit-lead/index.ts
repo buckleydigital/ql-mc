@@ -291,8 +291,10 @@ Deno.serve(async (req: Request) => {
       // If they don't serve this postcode → leave as pending.
       // Only when consent doesn't name any known client do we fall through to
       // fill-ratio routing.
-      let consentBlocked = false;
+      // Any consent text at all blocks fill-ratio — a lead may only go to a
+      // client whose name appears in the consent. No name match = pending.
       const consentText = getConsentText(body, custom_fields);
+      const consentBlocked = !!consentText;
       if (consentText && candidates.length > 0) {
         const allScored = (candidates as Record<string, unknown>[])
           .map((c) => ({ client: c, matched: longestNameInConsent(c, consentText) }))
@@ -300,8 +302,6 @@ Deno.serve(async (req: Request) => {
           .sort((a, b) => b.matched.length - a.matched.length);
 
         if (allScored.length > 0) {
-          // Consent names a business we know — block fill-ratio regardless of outcome
-          consentBlocked = true;
           const topLen = allScored[0].matched.length;
           const top = allScored.filter((s) => s.matched.length === topLen);
           if (top.length === 1) {
