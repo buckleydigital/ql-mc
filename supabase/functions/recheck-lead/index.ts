@@ -299,22 +299,25 @@ Deno.serve(async (req: Request) => {
       });
 
       // ── CONSENT-BOUND ROUTING (mirrors submit-lead) ────────────────────────
-      // When the postcode is contested (2+ clients serve it), honour the
-      // installer named in the homeowner's stored consent text. Exactly one
-      // clean name match wins — even if that client is capped — consistent with
-      // the live intake flow. Anything ambiguous falls through to fill-ratio.
-      if (postcodeFiltered.length >= 2) {
-        const consentText = getConsentText({}, (lead.custom_fields as string | null) ?? null);
-        if (consentText) {
-          const scored = postcodeFiltered
-            .map((c: Record<string, unknown>) => ({ client: c, matched: longestNameInConsent(c, consentText) }))
-            .filter((s) => s.matched.length > 0)
-            .sort((a, b) => b.matched.length - a.matched.length);
-          if (scored.length > 0) {
-            const topLen = scored[0].matched.length;
-            const top = scored.filter((s) => s.matched.length === topLen);
-            if (top.length === 1) {
-              const c = top[0].client;
+      // If consent names a known business, ONLY route to that business.
+      // Check ALL candidates (not just postcode-filtered) so a named client
+      // who doesn't serve this postcode still blocks fill-ratio routing.
+      let consentBlocked = false;
+      const consentText = getConsentText({}, (lead.custom_fields as string | null) ?? null);
+      if (consentText && candidates.length > 0) {
+        const allScored = (candidates as Record<string, unknown>[])
+          .map((c) => ({ client: c, matched: longestNameInConsent(c, consentText) }))
+          .filter((s) => s.matched.length > 0)
+          .sort((a, b) => b.matched.length - a.matched.length);
+
+        if (allScored.length > 0) {
+          consentBlocked = true;
+          const topLen = allScored[0].matched.length;
+          const top = allScored.filter((s) => s.matched.length === topLen);
+          if (top.length === 1) {
+            const c = top[0].client;
+            const pcs = c.postcodes as string[] | null;
+            if (Array.isArray(pcs) && pcs.includes(postcode)) {
               matchedClient = {
                 id: c.id as string,
                 company_name: c.company_name as string,
@@ -323,7 +326,9 @@ Deno.serve(async (req: Request) => {
                 ql_hq_company_id: c.ql_hq_company_id as string | null | undefined,
               };
             }
+            // else: named client doesn't serve this postcode → stays pending
           }
+          // else: ambiguous match → stays pending
         }
       }
 
@@ -375,7 +380,7 @@ Deno.serve(async (req: Request) => {
         return a.ratio - b.ratio;
       });
 
-      if (!matchedClient && validCandidates.length > 0) {
+      if (!matchedClient && !consentBlocked && validCandidates.length > 0) {
         const best = validCandidates[0].client;
         matchedClient = {
           id: best.id as string,
