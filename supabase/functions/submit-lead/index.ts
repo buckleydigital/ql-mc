@@ -283,27 +283,31 @@ Deno.serve(async (req: Request) => {
       });
 
       // ── CONSENT-BOUND ROUTING ──────────────────────────────────────────────
-      // Only when the postcode is contested (2+ clients serve it) do we honour
-      // the installer named in the homeowner's consent text. A match needs the
-      // company name to appear in the consent AND the client to serve this
-      // postcode — and postcodeFiltered already guarantees the postcode, so a
-      // same-named company in another area can never be picked here. If exactly
-      // one client matches we route to them, even if they're capped or out of
-      // pack (consent wins, per business rule). Anything ambiguous — no name
-      // found, or two same-named clients on this same postcode — falls through
-      // to the normal fill-ratio routing below, completely unchanged.
-      if (postcodeFiltered.length >= 2) {
-        const consentText = getConsentText(body, custom_fields);
-        if (consentText) {
-          const scored = postcodeFiltered
-            .map((c: Record<string, unknown>) => ({ client: c, matched: longestNameInConsent(c, consentText) }))
-            .filter((s) => s.matched.length > 0)
-            .sort((a, b) => b.matched.length - a.matched.length);
-          if (scored.length > 0) {
-            const topLen = scored[0].matched.length;
-            const top = scored.filter((s) => s.matched.length === topLen);
-            if (top.length === 1) {
-              const c = top[0].client;
+      // If the consent text names a specific business we have on the platform,
+      // the lead MUST only go to that business. We check against ALL candidates
+      // for the niche (not just those serving this postcode) so a client who
+      // serves a different area still acts as a consent "lock". If the named
+      // client also serves this postcode → route to them (caps ignored).
+      // If they don't serve this postcode → leave as pending.
+      // Only when consent doesn't name any known client do we fall through to
+      // fill-ratio routing.
+      let consentBlocked = false;
+      const consentText = getConsentText(body, custom_fields);
+      if (consentText && candidates.length > 0) {
+        const allScored = (candidates as Record<string, unknown>[])
+          .map((c) => ({ client: c, matched: longestNameInConsent(c, consentText) }))
+          .filter((s) => s.matched.length > 0)
+          .sort((a, b) => b.matched.length - a.matched.length);
+
+        if (allScored.length > 0) {
+          // Consent names a business we know — block fill-ratio regardless of outcome
+          consentBlocked = true;
+          const topLen = allScored[0].matched.length;
+          const top = allScored.filter((s) => s.matched.length === topLen);
+          if (top.length === 1) {
+            const c = top[0].client;
+            const pcs = c.postcodes as string[] | null;
+            if (Array.isArray(pcs) && pcs.includes(postcode)) {
               matchedClient = {
                 id: c.id as string,
                 company_name: c.company_name as string,
@@ -312,12 +316,14 @@ Deno.serve(async (req: Request) => {
                 ql_hq_company_id: c.ql_hq_company_id as string | null | undefined,
               };
             }
+            // else: named client doesn't serve this postcode → stays pending
           }
+          // else: ambiguous (two clients share same name) → stays pending
         }
       }
 
-      // Fill-ratio routing — runs only if consent didn't already pick a client
-      if (!matchedClient) {
+      // Fill-ratio routing — skipped when consent named a specific business
+      if (!matchedClient && !consentBlocked) {
         // Check caps for each candidate
         const validCandidates: Array<{
           client: Record<string, unknown>;
