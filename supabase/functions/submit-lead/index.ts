@@ -209,10 +209,9 @@ Deno.serve(async (req: Request) => {
     // would incorrectly block e.g. an aircon lead from a phone already used for solar)
     let dedupQuery = supabaseAdmin
       .from("ppl_leads")
-      .select("id")
+      .select("id, consent_text, custom_fields")
       .eq("lead_type", lead_type)
-      .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-      .limit(1);
+      .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
 
     if (email) {
       dedupQuery = dedupQuery.or(`phone.eq.${normalisedPhone},email.eq.${email}`);
@@ -222,9 +221,22 @@ Deno.serve(async (req: Request) => {
 
     const { data: dupes } = await dedupQuery;
     if (dupes && dupes.length > 0) {
-      return new Response(JSON.stringify({ status: "duplicate", lead_id: dupes[0].id }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      // If the consent_text differs (different advertiser/business name), the same person
+      // filling out another form is a new exclusive lead — allow it through.
+      const incomingConsent = getConsentText(body, custom_fields);
+      const trueDedup = dupes.some((d) => {
+        const existingConsent = getConsentText(
+          d as Record<string, unknown>,
+          typeof d.custom_fields === "string" ? d.custom_fields : null,
+        );
+        if (!incomingConsent && !existingConsent) return true;
+        return !!incomingConsent && !!existingConsent && incomingConsent === existingConsent;
       });
+      if (trueDedup) {
+        return new Response(JSON.stringify({ status: "duplicate", lead_id: dupes[0].id }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // STEP 4 — POSTCODE ENRICHMENT
