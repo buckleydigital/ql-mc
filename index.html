@@ -1130,6 +1130,13 @@ td strong{font-weight:500}
             <button class="btn btn-sm" onclick="openTwilioSettings()">⚙ Twilio Settings</button>
           </div>
         </div>
+        <div style="background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r2);padding:12px 16px;margin-bottom:20px;font-size:11.5px">
+          <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3);margin-bottom:6px">Twilio Webhook URL — paste in Twilio Console → Phone Numbers → [your number] → Messaging → "A message comes in" → HTTP POST</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <code id="conv-webhook-display" style="font-family:var(--mono);font-size:11px;color:var(--acc);background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r);padding:5px 10px;flex:1;word-break:break-all;color:var(--ink3)">Loading…</code>
+            <button class="btn btn-xs" onclick="copyConvWebhook()">Copy</button>
+          </div>
+        </div>
         <div class="kg c3 mb4">
           <div class="kpi"><div class="klabel">Lead Threads</div><div class="kval" id="conv-threads">—</div></div>
           <div class="kpi"><div class="klabel">Inbound Received</div><div class="kval blu" id="conv-inbound-count">—</div></div>
@@ -6729,9 +6736,25 @@ async function autoAssignNow() {
 // CONVERSATIONS — SMS inbox (inbound + outbound) grouped by lead
 // ══════════════════════════════════════════════════════════════════════════════
 
+let _convWebhookUrl = '';
+function copyConvWebhook() {
+  if (_convWebhookUrl) navigator.clipboard.writeText(_convWebhookUrl).then(() => toast('Copied ✓'));
+}
+
 async function loadConversations() {
   const tbody = $('conv-tbody');
   if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty">Loading…</td></tr>';
+
+  // Fetch webhook URL from business_settings (authenticated, never in page source)
+  try {
+    const { data: biz } = await db.from('business_settings').select('twilio_webhook_url').limit(1).maybeSingle();
+    _convWebhookUrl = biz?.twilio_webhook_url || '';
+    const display = $('conv-webhook-display');
+    if (display) {
+      display.textContent = _convWebhookUrl || 'Not set — save via ⚙ Twilio Settings';
+      display.style.color = _convWebhookUrl ? 'var(--acc)' : 'var(--ink3)';
+    }
+  } catch (_) {}
 
   try {
     // Pull all SMS log entries joined with lead info, ordered newest first
@@ -6912,12 +6935,13 @@ async function saveTwilioSettings() {
   btn.textContent = 'Saving…';
   try {
     const fromNum = $('ts-from-number').value.trim() || null;
+    const webhookUrl = _twilioWebhookUrl;
     const existing = await db.from('business_settings').select('id').limit(1).single();
     let error;
     if (existing.data) {
-      ({ error } = await db.from('business_settings').update({ twilio_from_number: fromNum, updated_at: new Date().toISOString() }).eq('id', existing.data.id));
+      ({ error } = await db.from('business_settings').update({ twilio_from_number: fromNum, twilio_webhook_url: webhookUrl, updated_at: new Date().toISOString() }).eq('id', existing.data.id));
     } else {
-      ({ error } = await db.from('business_settings').insert({ twilio_from_number: fromNum }));
+      ({ error } = await db.from('business_settings').insert({ twilio_from_number: fromNum, twilio_webhook_url: webhookUrl }));
     }
     if (error) throw error;
     toast('Twilio settings saved ✓');
