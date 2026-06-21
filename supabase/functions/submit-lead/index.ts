@@ -306,21 +306,24 @@ Deno.serve(async (req: Request) => {
         if (allScored.length > 0) {
           const topLen = allScored[0].matched.length;
           const top = allScored.filter((s) => s.matched.length === topLen);
-          if (top.length === 1) {
-            const c = top[0].client;
-            const pcs = c.postcodes as string[] | null;
-            if (Array.isArray(pcs) && pcs.includes(postcode)) {
-              matchedClient = {
-                id: c.id as string,
-                company_name: c.company_name as string,
-                has_quoteleads_platform_account: c.has_quoteleads_platform_account as boolean | undefined,
-                hq_bearer_token: c.hq_bearer_token as string | null | undefined,
-                ql_hq_company_id: c.ql_hq_company_id as string | null | undefined,
-              };
-            }
-            // else: named client doesn't serve this postcode → stays pending
+          // Narrow to whichever tied clients actually serve this postcode.
+          // Handles same-named franchises with non-overlapping territories.
+          const postcodeTop = top.filter((s) => {
+            const pcs = s.client.postcodes as string[] | null;
+            return Array.isArray(pcs) && pcs.includes(postcode);
+          });
+          if (postcodeTop.length === 1) {
+            const c = postcodeTop[0].client;
+            matchedClient = {
+              id: c.id as string,
+              company_name: c.company_name as string,
+              has_quoteleads_platform_account: c.has_quoteleads_platform_account as boolean | undefined,
+              hq_bearer_token: c.hq_bearer_token as string | null | undefined,
+              ql_hq_company_id: c.ql_hq_company_id as string | null | undefined,
+            };
           }
-          // else: ambiguous (two clients share same name) → stays pending
+          // postcodeTop.length === 0 → named client doesn't serve this postcode → pending
+          // postcodeTop.length > 1  → same name, overlapping postcodes → pending
         }
       }
 
