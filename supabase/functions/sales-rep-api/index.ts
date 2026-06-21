@@ -189,35 +189,37 @@ serve(async (req) => {
     // ── get_config ───────────────────────────────────────────────────────────
     if (action === "get_config") {
       const { data } = await admin
-        .from("sales_rep_config").select("auto_assign_enabled").eq("id", 1).maybeSingle();
-      return json({ auto_assign_enabled: data?.auto_assign_enabled === true });
+        .from("sales_rep_config").select("auto_assign_enabled, auto_assign_rep_id").eq("id", 1).maybeSingle();
+      return json({
+        auto_assign_enabled: data?.auto_assign_enabled === true,
+        auto_assign_rep_id: data?.auto_assign_rep_id ?? null,
+      });
     }
 
     // ── set_config ───────────────────────────────────────────────────────────
     if (action === "set_config") {
-      const enabled = (body as { auto_assign_enabled?: boolean }).auto_assign_enabled === true;
-      const { error } = await admin.from("sales_rep_config")
-        .upsert({ id: 1, auto_assign_enabled: enabled, updated_at: new Date().toISOString() }, { onConflict: "id" });
+      const { auto_assign_enabled, auto_assign_rep_id } = body as {
+        auto_assign_enabled?: boolean;
+        auto_assign_rep_id?: string | null;
+      };
+      const enabled = auto_assign_enabled === true;
+      const repId = auto_assign_rep_id || null;
+      const { error } = await admin.from("sales_rep_config").upsert(
+        { id: 1, auto_assign_enabled: enabled, auto_assign_rep_id: repId, updated_at: new Date().toISOString() },
+        { onConflict: "id" },
+      );
       if (error) return json({ error: error.message }, 500);
-      return json({ ok: true, auto_assign_enabled: enabled });
+      return json({ ok: true, auto_assign_enabled: enabled, auto_assign_rep_id: repId });
     }
 
     // ── auto_assign_now ──────────────────────────────────────────────────────
-    // Distribute every currently-unassigned, still-open lead across active reps
-    // using the same least-loaded rule the trigger uses.
+    // Distribute every currently-unassigned, still-open lead.
+    // If a fixed rep is configured (and active) they get all of them;
+    // otherwise uses the same least-loaded round-robin the trigger uses.
     if (action === "auto_assign_now") {
-      const { data: reps } = await admin
-        .from("sales_reps").select("user_id").eq("active", true);
-      const repIds = (reps || []).map((r: { user_id: string }) => r.user_id);
-      if (!repIds.length) return json({ error: "No active reps to assign to" }, 400);
-
-      const { data: load } = await admin
-        .from("leads").select("owner_id, stage").in("owner_id", repIds);
-      const open: Record<string, number> = {};
-      for (const id of repIds) open[id] = 0;
-      for (const l of load || []) {
-        if (!CLOSED_STAGES.includes((l.stage as string) || "")) open[l.owner_id as string] = (open[l.owner_id as string] || 0) + 1;
-      }
+      const { data: cfg } = await admin
+        .from("sales_rep_config").select("auto_assign_rep_id").eq("id", 1).maybeSingle();
+      const fixedId: string | null = (cfg as Record<string, unknown>)?.auto_assign_rep_id as string ?? null;
 
       const { data: pending } = await admin
         .from("leads").select("id").is("owner_id", null)
@@ -225,12 +227,35 @@ serve(async (req) => {
         .order("created_at", { ascending: true });
 
       let assigned = 0;
-      for (const lead of pending || []) {
-        // pick least-loaded active rep
-        let best = repIds[0];
-        for (const id of repIds) if (open[id] < open[best]) best = id;
-        const { error } = await admin.from("leads").update({ owner_id: best }).eq("id", lead.id);
-        if (!error) { open[best] += 1; assigned += 1; }
+
+      if (fixedId) {
+        // Fixed-rep mode: verify they're active, then bulk-assign.
+        const { data: rep } = await admin
+          .from("sales_reps").select("user_id").eq("user_id", fixedId).eq("active", true).maybeSingle();
+        if (!rep) return json({ error: "The configured rep is not active" }, 400);
+        for (const lead of pending || []) {
+          const { error } = await admin.from("leads").update({ owner_id: fixedId }).eq("id", lead.id);
+          if (!error) assigned++;
+        }
+      } else {
+        // Least-loaded mode.
+        const { data: reps } = await admin.from("sales_reps").select("user_id").eq("active", true);
+        const repIds = (reps || []).map((r: { user_id: string }) => r.user_id);
+        if (!repIds.length) return json({ error: "No active reps to assign to" }, 400);
+
+        const { data: load } = await admin
+          .from("leads").select("owner_id, stage").in("owner_id", repIds);
+        const open: Record<string, number> = {};
+        for (const id of repIds) open[id] = 0;
+        for (const l of load || []) {
+          if (!CLOSED_STAGES.includes((l.stage as string) || "")) open[l.owner_id as string] = (open[l.owner_id as string] || 0) + 1;
+        }
+        for (const lead of pending || []) {
+          let best = repIds[0];
+          for (const id of repIds) if (open[id] < open[best]) best = id;
+          const { error } = await admin.from("leads").update({ owner_id: best }).eq("id", lead.id);
+          if (!error) { open[best] += 1; assigned++; }
+        }
       }
       return json({ ok: true, assigned });
     }

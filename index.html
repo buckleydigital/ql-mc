@@ -1198,9 +1198,15 @@ td strong{font-weight:500}
         <div class="sl">Lead Assignment <div class="sl-line"></div></div>
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--bd);border-radius:var(--r);background:var(--s1);margin-bottom:18px">
           <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer">
-            <input type="checkbox" id="rep-autoassign" onchange="saveAutoAssign()" style="width:15px;height:15px;cursor:pointer">
-            <span>Auto-assign new leads to the least-busy active rep</span>
+            <input type="checkbox" id="rep-autoassign" onchange="onAutoAssignToggle()" style="width:15px;height:15px;cursor:pointer">
+            <span>Auto-assign new leads</span>
           </label>
+          <div id="rep-assign-target-wrap" style="display:none;align-items:center;gap:8px">
+            <span style="font-size:12px;color:var(--ink2)">to</span>
+            <select id="rep-assign-target" class="fi" style="font-size:12px;padding:5px 10px;width:auto" onchange="saveAutoAssign()">
+              <option value="">Least-busy active rep</option>
+            </select>
+          </div>
           <button class="btn btn-sm" onclick="autoAssignNow()" style="margin-left:auto">Assign unassigned now</button>
         </div>
 
@@ -6631,8 +6637,13 @@ async function loadReps() {
       callRepEdge('get_config'),
       db.from('leads').select('id', { count: 'exact', head: true }).is('owner_id', null),
     ]);
-    $('rep-autoassign').checked = cfgRes.auto_assign_enabled === true;
+    const enabled = cfgRes.auto_assign_enabled === true;
+    $('rep-autoassign').checked = enabled;
     renderReps(repsRes.reps || [], unassignedRes.count || 0);
+    // Restore target dropdown state after renderReps populates the options.
+    const wrap = $('rep-assign-target-wrap');
+    wrap.style.display = enabled ? 'flex' : 'none';
+    if (cfgRes.auto_assign_rep_id) setVal('rep-assign-target', cfgRes.auto_assign_rep_id);
   } catch (e) {
     $('rep-tbody').innerHTML = `<tr><td colspan="10" class="empty" style="color:var(--red)">Error: ${esc(e.message)}</td></tr>`;
   }
@@ -6640,6 +6651,16 @@ async function loadReps() {
 
 function renderReps(reps, unassigned) {
   _reps = reps;
+  // Rebuild the target-rep dropdown (active reps only).
+  const sel = $('rep-assign-target');
+  const prev = sel ? sel.value : '';
+  if (sel) {
+    sel.innerHTML = '<option value="">Least-busy active rep</option>' +
+      reps.filter(r => r.active).map(r =>
+        `<option value="${esc(r.user_id)}">${esc(r.name || r.email)}</option>`
+      ).join('');
+    if (prev) sel.value = prev;
+  }
   setText('rep-kpi-total', reps.length);
   setText('rep-kpi-active', reps.filter(r => r.active).length);
   setText('rep-kpi-assigned', reps.reduce((s, r) => s + (r.assigned || 0), 0));
@@ -6717,13 +6738,25 @@ async function deleteRep(uid) {
   catch (e) { toast('Error: ' + e.message, true); }
 }
 
+function onAutoAssignToggle() {
+  const enabled = $('rep-autoassign').checked;
+  $('rep-assign-target-wrap').style.display = enabled ? 'flex' : 'none';
+  saveAutoAssign();
+}
+
 async function saveAutoAssign() {
+  const enabled = $('rep-autoassign').checked;
+  const repId = $('rep-assign-target').value || null;
   try {
-    await callRepEdge('set_config', { auto_assign_enabled: $('rep-autoassign').checked });
-    toast('Auto-assign ' + ($('rep-autoassign').checked ? 'on' : 'off'));
+    await callRepEdge('set_config', { auto_assign_enabled: enabled, auto_assign_rep_id: repId });
+    const label = enabled
+      ? (repId ? ('on → ' + ((_reps||[]).find(r=>r.user_id===repId)?.name || 'selected rep')) : 'on → least-busy rep')
+      : 'off';
+    toast('Auto-assign ' + label);
   } catch (e) {
     toast('Error: ' + e.message, true);
-    $('rep-autoassign').checked = !$('rep-autoassign').checked;
+    $('rep-autoassign').checked = !enabled;
+    $('rep-assign-target-wrap').style.display = !enabled ? 'flex' : 'none';
   }
 }
 
