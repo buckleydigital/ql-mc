@@ -81,7 +81,14 @@ Deno.serve(async (req: Request) => {
     // Send SMS via Twilio
     const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID")!;
     const authToken = Deno.env.get("TWILIO_AUTH_TOKEN")!;
-    const fromNumber = Deno.env.get("TWILIO_FROM_NUMBER")!;
+
+    // from number: prefer business_settings (UI-configurable), fall back to env var
+    const { data: bizSettings } = await supabaseAdmin
+      .from("business_settings")
+      .select("twilio_from_number")
+      .limit(1)
+      .maybeSingle();
+    const fromNumber = bizSettings?.twilio_from_number || Deno.env.get("TWILIO_FROM_NUMBER") || "";;
 
     const params = new URLSearchParams();
     params.set("To", normalisedTo);
@@ -117,6 +124,7 @@ Deno.serve(async (req: Request) => {
         sent_by: user.email || user.id,
         twilio_sid: twilioSid,
         status: "delivered",
+        direction: "outbound",
       }]);
 
       return new Response(
@@ -131,6 +139,7 @@ Deno.serve(async (req: Request) => {
         sent_by: user.email || user.id,
         twilio_sid: twilioSid,
         status: "failed",
+        direction: "outbound",
       }]);
 
       return new Response(

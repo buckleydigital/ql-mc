@@ -8,6 +8,10 @@ verify_jwt = false
 # Runs daily at 9pm UTC = 7am AEST (8am AEDT). Called with service role key by the scheduler.
 schedule = "0 21 * * *"
 
+[functions.twilio-inbound-sms]
+verify_jwt = false
+# Receives inbound SMS webhooks from Twilio. No JWT — Twilio cannot send one.
+
 [functions.sync-from-hq]
 verify_jwt = false
 # Called by ql-hq stripe-webhook using x-api-secret header authentication.

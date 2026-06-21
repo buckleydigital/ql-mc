@@ -738,6 +738,9 @@ td strong{font-weight:500}
           <button class="navbtn" data-panel="leads" onclick="nav('leads',this)">
             <span class="ni">⚡</span>Lead Distribution
           </button>
+          <button class="navbtn" data-panel="conversations" onclick="nav('conversations',this)">
+            <span class="ni">💬</span>Conversations<span id="conv-unread-badge" style="display:none;background:var(--acc);color:#fff;border-radius:10px;font-size:9px;padding:1px 6px;margin-left:5px;font-family:var(--mono);font-weight:700;line-height:1.5">0</span>
+          </button>
         </div>
 
         <div class="sb-divider"></div>
@@ -1114,6 +1117,45 @@ td strong{font-weight:500}
               </tr>
             </thead>
             <tbody id="dlogs-tbody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══ CONVERSATIONS ══ -->
+      <div class="panel" id="panel-conversations">
+        <div class="ph">
+          <div class="ph-left"><h1>Conversations</h1><p>Inbound &amp; outbound SMS threads with leads</p></div>
+          <div class="ph-right">
+            <button class="btn btn-sm" onclick="loadConversations()">↻ Refresh</button>
+            <button class="btn btn-sm" onclick="openTwilioSettings()">⚙ Twilio Settings</button>
+          </div>
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r2);padding:12px 16px;margin-bottom:20px;font-size:11.5px">
+          <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3);margin-bottom:6px">Twilio Webhook URL — paste this in Twilio Console → Phone Numbers → [your number] → Messaging → "A message comes in"</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <code id="twilio-webhook-url" style="font-family:var(--mono);font-size:11px;color:var(--acc);background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r);padding:5px 10px;word-break:break-all">https://wmegoygrancfwxagqskh.supabase.co/functions/v1/twilio-inbound-sms</code>
+            <button class="btn btn-xs" onclick="navigator.clipboard.writeText('https://wmegoygrancfwxagqskh.supabase.co/functions/v1/twilio-inbound-sms').then(()=>toast('Copied ✓'))">Copy</button>
+          </div>
+          <div style="color:var(--ink3);font-size:10.5px;margin-top:6px">HTTP Method: <strong style="color:var(--ink2)">HTTP POST</strong></div>
+        </div>
+        <div class="kg c3 mb4">
+          <div class="kpi"><div class="klabel">Lead Threads</div><div class="kval" id="conv-threads">—</div></div>
+          <div class="kpi"><div class="klabel">Inbound Received</div><div class="kval blu" id="conv-inbound-count">—</div></div>
+          <div class="kpi"><div class="klabel">Outbound Sent</div><div class="kval grn" id="conv-outbound-count">—</div></div>
+        </div>
+        <div class="twrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Lead</th>
+                <th>Phone</th>
+                <th>Messages</th>
+                <th>Last Message</th>
+                <th>Time</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="conv-tbody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1922,6 +1964,8 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">PayID</label><input class="fi" id="bs-payid" placeholder="e.g. payments@quoteleads.com.au"></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Invoice Defaults</div>
     <div class="frow"><label class="flabel">Default Notes / Footer</label><textarea class="fta" id="bs-notes" placeholder="Thank you for your business."></textarea></div>
+    <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Twilio / SMS</div>
+    <div class="frow"><label class="flabel">From Number</label><input class="fi" id="bs-twilio-from" placeholder="+61400000000" type="tel"></div>
     <div class="macts">
       <div style="flex:1"></div>
       <button class="btn" onclick="closeModal('m-biz-settings')">Cancel</button>
@@ -2079,6 +2123,53 @@ td strong{font-weight:500}
     <div class="macts">
       <button class="btn" onclick="closeModal('m-sms-lead')">Cancel</button>
       <button class="btn btn-p" id="sms-send-btn" onclick="sendSms()">Send SMS</button>
+    </div>
+  </div>
+</div>
+
+<!-- Twilio Settings modal -->
+<div class="overlay" id="m-twilio-settings">
+  <div class="modal" style="max-width:480px">
+    <h2>Twilio / SMS Settings</h2>
+    <div class="msub">Configure your SMS number</div>
+    <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">SMS Number</div>
+    <div class="frow"><label class="flabel">From / Receive Number</label><input class="fi" id="ts-from-number" placeholder="+61400000000" type="tel"></div>
+    <p style="font-size:11px;color:var(--ink3);margin:4px 0 14px;line-height:1.6">This is the Twilio number all SMS messages are sent from and received to. Keep your Account SID and Auth Token in Supabase Edge Function secrets (<code style="font-family:var(--mono)">TWILIO_ACCOUNT_SID</code>, <code style="font-family:var(--mono)">TWILIO_AUTH_TOKEN</code>) — never paste them here.</p>
+    <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Twilio Webhook Setup</div>
+    <p style="font-size:11px;color:var(--ink3);margin-bottom:8px;line-height:1.6">In <strong style="color:var(--ink2)">Twilio Console → Phone Numbers → [your number] → Messaging</strong>, set <em>"When a message comes in"</em> to:</p>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+      <code style="font-family:var(--mono);font-size:10.5px;color:var(--acc);background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);padding:5px 10px;flex:1;word-break:break-all">https://wmegoygrancfwxagqskh.supabase.co/functions/v1/twilio-inbound-sms</code>
+      <button class="btn btn-xs" onclick="navigator.clipboard.writeText('https://wmegoygrancfwxagqskh.supabase.co/functions/v1/twilio-inbound-sms').then(()=>toast('Copied ✓'))">Copy</button>
+    </div>
+    <p style="font-size:10.5px;color:var(--ink3);margin-top:4px">Method: <strong style="color:var(--ink2)">HTTP POST</strong></p>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-twilio-settings')">Cancel</button>
+      <button class="btn btn-p" id="ts-save-btn" onclick="saveTwilioSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Conversation Thread modal -->
+<div class="overlay" id="m-conv-thread">
+  <div class="modal" style="max-width:500px">
+    <h2 id="conv-thread-title">Conversation</h2>
+    <div class="msub" id="conv-thread-sub"></div>
+    <input type="hidden" id="conv-thread-lead-id">
+    <input type="hidden" id="conv-thread-phone">
+    <input type="hidden" id="conv-thread-name">
+    <div id="conv-thread-messages" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:6px 0;margin-bottom:14px"></div>
+    <div style="border-top:1px solid var(--bd);padding-top:12px">
+      <div class="frow" style="align-items:flex-start">
+        <label class="flabel" style="padding-top:6px">Reply</label>
+        <div style="flex:1">
+          <textarea class="fi" id="conv-reply-body" rows="2" placeholder="Type your reply…" style="resize:vertical;font-size:12px" oninput="updateConvReplyCounter()"></textarea>
+          <div id="conv-reply-counter" style="font-family:var(--mono);font-size:10px;color:var(--ink3);text-align:right;margin-top:2px">0 / 160</div>
+        </div>
+      </div>
+    </div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-conv-thread')">Close</button>
+      <button class="btn btn-p" id="conv-reply-btn" onclick="sendConvReply()">Send Reply</button>
     </div>
   </div>
 </div>
@@ -2360,6 +2451,7 @@ function nav(panel, el) {
   if (panel === 'ppl') { populateMapClientDropdown(); }
   if (panel === 'campaigns') { loadCampaigns(); renderMetaTokenBanner(); }
   if (panel === 'leads') loadLeads();
+  if (panel === 'conversations') loadConversations();
   if (panel === 'invoices') loadInvoices();
   if (panel === 'goals') loadGoals();
   if (panel === 'salesreps') loadReps();
@@ -2662,7 +2754,7 @@ async function loadLeads(resetPage) {
       $('sms-lead-id').value = btn.dataset.leadId;
       $('sms-lead-phone').value = btn.dataset.phone;
       $('sms-lead-info').textContent = (btn.dataset.name || '') + ' · ' + (btn.dataset.phone || '');
-      $('sms-message').value = `Hi ${btn.dataset.name || ''}, this is QuoteLeads following up on your enquiry. Are you still interested? Reply or call us back.`;
+      $('sms-message').value = `Hi ${btn.dataset.name || ''}, `;
       updateSmsCounter();
       openModal('m-sms-lead');
     });
@@ -5921,6 +6013,7 @@ async function openBizSettingsModal() {
   setVal('bs-accname', s.account_name || '');
   setVal('bs-payid', s.payid || '');
   setVal('bs-notes', s.default_notes || '');
+  setVal('bs-twilio-from', s.twilio_from_number || '');
   openModal('m-biz-settings');
 }
 
@@ -5933,6 +6026,7 @@ async function saveBizSettings() {
     account_name: $('bs-accname').value.trim(),
     payid: $('bs-payid').value.trim(),
     default_notes: $('bs-notes').value.trim(),
+    twilio_from_number: $('bs-twilio-from').value.trim() || null,
     updated_at: new Date().toISOString()
   };
   const existing = await db.from('business_settings').select('id').limit(1).single();
@@ -6633,6 +6727,211 @@ async function autoAssignNow() {
     toast(`Assigned ${r.assigned} lead${r.assigned === 1 ? '' : 's'}`);
     loadReps();
   } catch (e) { toast('Error: ' + e.message, true); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CONVERSATIONS — SMS inbox (inbound + outbound) grouped by lead
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function loadConversations() {
+  const tbody = $('conv-tbody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty">Loading…</td></tr>';
+
+  try {
+    // Pull all SMS log entries joined with lead info, ordered newest first
+    const { data, error } = await db
+      .from('lead_sms_log')
+      .select('*, ppl_leads(name, phone)')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const rows = data || [];
+
+    // Group by lead_id
+    const byLead = {};
+    rows.forEach(r => {
+      if (!byLead[r.lead_id]) {
+        byLead[r.lead_id] = {
+          lead_id: r.lead_id,
+          name: r.ppl_leads?.name || '—',
+          phone: r.ppl_leads?.phone || r.to_number || '—',
+          messages: [],
+        };
+      }
+      byLead[r.lead_id].messages.push(r);
+    });
+
+    const threads = Object.values(byLead);
+    const totalInbound  = rows.filter(r => (r.direction || 'outbound') === 'inbound').length;
+    const totalOutbound = rows.filter(r => (r.direction || 'outbound') === 'outbound').length;
+
+    setText('conv-threads',       threads.length);
+    setText('conv-inbound-count', totalInbound);
+    setText('conv-outbound-count', totalOutbound);
+
+    // Update sidebar badge (inbound messages with no outbound reply after them)
+    const badge = $('conv-unread-badge');
+    if (badge) {
+      if (totalInbound > 0) {
+        badge.textContent = totalInbound;
+        badge.style.display = '';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    if (!threads.length) {
+      if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty">No SMS conversations yet. Send an SMS from Lead Distribution to start a thread.</td></tr>';
+      return;
+    }
+
+    if (tbody) {
+      tbody.innerHTML = threads.map(t => {
+        const lastMsg = t.messages[0];
+        const lastBody = lastMsg ? (lastMsg.message || '').substring(0, 60) + (lastMsg.message?.length > 60 ? '…' : '') : '—';
+        const lastTime = lastMsg ? fmtDate(lastMsg.created_at, false) : '—';
+        const inCount  = t.messages.filter(m => (m.direction || 'outbound') === 'inbound').length;
+        const outCount = t.messages.filter(m => (m.direction || 'outbound') === 'outbound').length;
+        const dirBadge = inCount > 0
+          ? `<span class="badge bg-blu" style="font-size:9px">${inCount} in</span> `
+          : '';
+        return `<tr>
+          <td><strong>${esc(t.name)}</strong></td>
+          <td style="font-family:var(--mono);font-size:11px">${esc(t.phone)}</td>
+          <td style="font-family:var(--mono);font-size:11px">${dirBadge}<span style="color:var(--ink3)">${outCount} out</span></td>
+          <td style="font-size:11px;color:var(--ink2);max-width:220px;white-space:pre-wrap;word-break:break-word">${esc(lastBody)}</td>
+          <td style="font-family:var(--mono);font-size:10px;color:var(--ink3);white-space:nowrap">${lastTime}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-xs" onclick="openConvThread('${esc(t.lead_id)}','${esc(t.name)}','${esc(t.phone)}')">View Thread</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+  } catch (err) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="empty" style="color:var(--red)">Error: ${esc(err.message)}</td></tr>`;
+  }
+}
+
+async function openConvThread(leadId, leadName, leadPhone) {
+  $('conv-thread-lead-id').value  = leadId;
+  $('conv-thread-phone').value    = leadPhone;
+  $('conv-thread-name').value     = leadName;
+  $('conv-thread-title').textContent = leadName || 'Conversation';
+  $('conv-thread-sub').textContent = leadPhone || '';
+  $('conv-reply-body').value = '';
+  updateConvReplyCounter();
+
+  const container = $('conv-thread-messages');
+  container.innerHTML = '<div class="empty">Loading…</div>';
+  openModal('m-conv-thread');
+
+  const { data, error } = await db
+    .from('lead_sms_log')
+    .select('*')
+    .eq('lead_id', leadId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    container.innerHTML = `<div class="empty" style="color:var(--red)">Error: ${esc(error.message)}</div>`;
+    return;
+  }
+
+  const msgs = data || [];
+  if (!msgs.length) {
+    container.innerHTML = '<div class="empty">No messages yet.</div>';
+    return;
+  }
+
+  container.innerHTML = msgs.map(m => {
+    const isInbound = (m.direction || 'outbound') === 'inbound';
+    const align    = isInbound ? 'flex-start' : 'flex-end';
+    const bubbleBg = isInbound ? 'var(--s3)' : 'var(--acc)';
+    const bubbleClr= isInbound ? 'var(--ink)' : '#fff';
+    const label    = isInbound ? 'Lead' : (m.sent_by || 'You');
+    const time     = fmtDate(m.created_at, false);
+    return `<div style="display:flex;flex-direction:column;align-items:${align};gap:2px;max-width:100%">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--ink3);padding:0 4px">${esc(label)} · ${time}</div>
+      <div style="background:${bubbleBg};color:${bubbleClr};border-radius:10px;padding:8px 12px;max-width:82%;font-size:12.5px;line-height:1.5;word-break:break-word">${esc(m.message || '')}</div>
+    </div>`;
+  }).join('');
+
+  // Scroll to bottom of thread
+  container.scrollTop = container.scrollHeight;
+}
+
+function updateConvReplyCounter() {
+  const body = $('conv-reply-body')?.value || '';
+  const el = $('conv-reply-counter');
+  if (el) {
+    el.textContent = body.length + ' / 160';
+    el.style.color = body.length > 160 ? 'var(--red)' : 'var(--ink3)';
+  }
+}
+
+async function sendConvReply() {
+  const btn   = $('conv-reply-btn');
+  const body  = $('conv-reply-body').value.trim();
+  const phone = $('conv-thread-phone').value;
+  const leadId = $('conv-thread-lead-id').value;
+  if (!body) { toast('Enter a message first', true); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) throw new Error('Not logged in');
+    const res = await fetch(`${_ep}/functions/v1/send-sms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+      body: JSON.stringify({ to: phone, message: body, lead_id: leadId })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'SMS failed');
+    toast('Reply sent ✓');
+    $('conv-reply-body').value = '';
+    updateConvReplyCounter();
+    // Reload thread
+    await openConvThread(leadId, $('conv-thread-name').value, phone);
+    loadConversations();
+  } catch (err) {
+    toast('Send failed: ' + err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send Reply';
+  }
+}
+
+// ── Twilio Settings (standalone modal, also reachable from Conversations panel) ──
+
+async function openTwilioSettings() {
+  const s = await loadBizSettings();
+  setVal('ts-from-number', s.twilio_from_number || '');
+  openModal('m-twilio-settings');
+}
+
+async function saveTwilioSettings() {
+  const btn = $('ts-save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    const fromNum = $('ts-from-number').value.trim() || null;
+    const existing = await db.from('business_settings').select('id').limit(1).single();
+    let error;
+    if (existing.data) {
+      ({ error } = await db.from('business_settings').update({ twilio_from_number: fromNum, updated_at: new Date().toISOString() }).eq('id', existing.data.id));
+    } else {
+      ({ error } = await db.from('business_settings').insert({ twilio_from_number: fromNum }));
+    }
+    if (error) throw error;
+    toast('Twilio settings saved ✓');
+    closeModal('m-twilio-settings');
+  } catch (err) {
+    toast('Save failed: ' + err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save';
+  }
 }
 
 </script>
