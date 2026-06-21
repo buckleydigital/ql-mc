@@ -2016,6 +2016,7 @@ td strong{font-weight:500}
       <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;margin-bottom:4px;color:var(--ink3)"><span>GST (10%)</span><span id="inv-gst-amt">$0.00</span></div>
       <div style="display:flex;justify-content:space-between;font-family:var(--display);font-size:16px;font-weight:700;border-top:1px solid var(--bd);padding-top:6px"><span>Total</span><span id="inv-total-amt">$0.00</span></div>
     </div>
+    <div class="frow" style="margin-top:10px"><label class="flabel">Payment Details</label><textarea class="fta" id="inv-payment-details" rows="3" placeholder="PayID: contact@quoteleads.com.au"></textarea></div>
     <div class="frow" style="margin-top:10px"><label class="flabel">Notes</label><textarea class="fta" id="inv-notes" placeholder="Thank you for your business."></textarea></div>
     <div class="macts">
       <div style="flex:1"></div>
@@ -6116,6 +6117,7 @@ async function openInvoiceModal(clientId, offerType) {
   setVal('inv-period-start', '');
   setVal('inv-period-end', '');
   setVal('inv-vertical', '');
+  setVal('inv-payment-details', 'PayID: contact@quoteleads.com.au');
 
   // Load business settings for default notes
   const biz = await loadBizSettings();
@@ -6234,6 +6236,7 @@ async function saveInvoice(andDownload) {
     delivery_period_end: $('inv-period-end').value || null,
     line_items: lines,
     subtotal, gst_type: gstType, gst_amount: gst, total,
+    payment_details: $('inv-payment-details').value.trim(),
     notes: $('inv-notes').value.trim(),
     status: 'draft',
     invoice_date: $('inv-date').value || new Date().toISOString().slice(0, 10),
@@ -6314,6 +6317,7 @@ async function editInvoice(id) {
   setVal('inv-offer-type', inv.offer_type || 'ppl');
   setVal('inv-period-start', inv.delivery_period_start || '');
   setVal('inv-period-end', inv.delivery_period_end || '');
+  setVal('inv-payment-details', inv.payment_details || 'PayID: contact@quoteleads.com.au');
   setVal('inv-notes', inv.notes || '');
   // Set client dropdown
   if (inv.client_id) $('inv-client').value = String(inv.client_id);
@@ -6365,7 +6369,7 @@ async function downloadInvoicePDF(inv, isReceipt) {
   doc.setFillColor(15, 23, 42);
   doc.rect(0, 0, pw, 36, 'F');
   if (QL_LOGO_B64) {
-    try { doc.addImage(QL_LOGO_B64, 'PNG', mx, 8, 50, 20); } catch(e) {}
+    try { doc.addImage(QL_LOGO_B64, 'PNG', mx, 8, 57, 20); } catch(e) {}
   } else {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
@@ -6511,23 +6515,33 @@ async function downloadInvoicePDF(inv, isReceipt) {
     doc.setFontSize(9);
     doc.setTextColor(30, 30, 30);
 
-    if (biz.bsb || biz.account_number) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Option 1 - Bank Transfer', mx, y);
+    if (inv.payment_details) {
+      // Per-invoice freeform payment details
       doc.setFont('helvetica', 'normal');
-      y += 5;
-      if (biz.bsb) { doc.text('BSB: ' + biz.bsb, mx, y); y += 4; }
-      if (biz.account_number) { doc.text('Account: ' + biz.account_number, mx, y); y += 4; }
-      if (biz.account_name) { doc.text('Account Name: ' + biz.account_name, mx, y); y += 4; }
-      y += 3;
-    }
-    if (biz.payid) {
-      doc.setFont('helvetica', 'bold');
-      doc.text((biz.bsb ? 'Option 2' : 'Option 1') + ' - PayID', mx, y);
-      doc.setFont('helvetica', 'normal');
-      y += 5;
-      doc.text('PayID: ' + biz.payid, mx, y);
-      y += 8;
+      const safePayment = inv.payment_details.replace(/[^\x20-\x7E\n]/g, ' ');
+      const payLines = doc.splitTextToSize(safePayment, pw - mx * 2);
+      doc.text(payLines, mx, y);
+      y += payLines.length * 4.5 + 4;
+    } else {
+      // Fall back to global business_settings
+      if (biz.bsb || biz.account_number) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Option 1 - Bank Transfer', mx, y);
+        doc.setFont('helvetica', 'normal');
+        y += 5;
+        if (biz.bsb) { doc.text('BSB: ' + biz.bsb, mx, y); y += 4; }
+        if (biz.account_number) { doc.text('Account: ' + biz.account_number, mx, y); y += 4; }
+        if (biz.account_name) { doc.text('Account Name: ' + biz.account_name, mx, y); y += 4; }
+        y += 3;
+      }
+      if (biz.payid) {
+        doc.setFont('helvetica', 'bold');
+        doc.text((biz.bsb ? 'Option 2' : 'Option 1') + ' - PayID', mx, y);
+        doc.setFont('helvetica', 'normal');
+        y += 5;
+        doc.text('PayID: ' + biz.payid, mx, y);
+        y += 8;
+      }
     }
   }
 
