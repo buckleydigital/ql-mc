@@ -68,13 +68,20 @@ Deno.serve(async (req: Request) => {
 
     const normFrom = normalisePhone(from);
 
+    // Build a deduplicated list of candidate phone formats to check.
+    // Twilio sends E.164 (+61412345678) and that's what submit-lead stores,
+    // so normFrom === from in the happy path. The .in() approach avoids
+    // Supabase filter-string issues with the leading '+' that .or() can trip on.
+    const candidates = [...new Set([from, normFrom])].filter(Boolean);
+
     // Find the lead by their phone number in ppl_leads
-    const { data: lead } = await db
+    const { data: leads } = await db
       .from("ppl_leads")
       .select("id, name, phone")
-      .or(`phone.eq.${from},phone.eq.${normFrom}`)
-      .limit(1)
-      .maybeSingle();
+      .in("phone", candidates)
+      .limit(1);
+
+    const lead = leads?.[0] ?? null;
 
     if (!lead) {
       console.warn(`Inbound SMS from unknown number: ${from}`);
