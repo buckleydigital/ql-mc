@@ -1461,7 +1461,7 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Stage</label>
       <select class="fs" id="l-stage">
         <option value="new_lead">New Lead</option><option value="no_answer">No Answer</option>
-        <option value="call_back">Call-Back</option><option value="proposal">Proposal / Follow-up</option>
+        <option value="call_back">Call-Back/Booked</option><option value="proposal">Proposal / Follow-up</option>
         <option value="closed_won">Closed Won</option><option value="closed_lost">Closed Lost</option>
       </select>
     </div>
@@ -1697,7 +1697,7 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Stage</label>
       <select class="fs" id="el-stage" onchange="checkConvertBanner()">
         <option value="new_lead">New Lead</option><option value="no_answer">No Answer</option>
-        <option value="call_back">Call-Back</option><option value="proposal">Proposal / Follow-up</option>
+        <option value="call_back">Call-Back/Booked</option><option value="proposal">Proposal / Follow-up</option>
         <option value="closed_won">Closed Won</option><option value="closed_lost">Closed Lost</option>
       </select>
     </div>
@@ -2348,7 +2348,7 @@ function stageBadge(s) {
   return 'bg-blu';
 }
 function stageLabel(s) {
-  return {active_client:'Active',paused:'Paused',churned:'Churned',lead:'Lead',qualified:'Qualified',onboarding:'Onboarding',active:'Active',proposal_sent:'Proposal Sent',new_lead:'New Lead',no_answer:'No Answer',call_back:'Call-Back',proposal:'Proposal',closed_won:'Closed Won',closed_lost:'Closed Lost'}[s] || s;
+  return {active_client:'Active',paused:'Paused',churned:'Churned',lead:'Lead',qualified:'Qualified',onboarding:'Onboarding',active:'Active',proposal_sent:'Proposal Sent',new_lead:'New Lead',no_answer:'No Answer',call_back:'Call-Back/Booked',proposal:'Proposal',closed_won:'Closed Won',closed_lost:'Closed Lost'}[s] || s;
 }
 function typeLabel(t) { return t === 'managed' ? 'MA' : 'PPL'; }
 function typeBadge(t) { return t === 'managed' ? 'bg-vio' : 'bg-sky'; }
@@ -3221,7 +3221,7 @@ async function drop(e,prefix,newStage) {
   if (prefix==='crm') loadCRM(); else if (prefix==='ppl') loadPPL(); else loadManaged();
 }
 
-const CRM_STAGES=[{id:'new_lead',label:'New Lead'},{id:'no_answer',label:'No Answer'},{id:'call_back',label:'Call-Back'},{id:'proposal',label:'Proposal'},{id:'closed_won',label:'Closed Won'},{id:'closed_lost',label:'Closed Lost'}];
+const CRM_STAGES=[{id:'new_lead',label:'New Lead'},{id:'no_answer',label:'No Answer'},{id:'call_back',label:'Call-Back/Booked'},{id:'proposal',label:'Proposal'},{id:'closed_won',label:'Closed Won'},{id:'closed_lost',label:'Closed Lost'}];
 async function loadCRM(resetPage) {
   if (resetPage) crmPage = 0;
 
