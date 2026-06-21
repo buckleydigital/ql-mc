@@ -291,8 +291,10 @@ Deno.serve(async (req: Request) => {
       // If they don't serve this postcode → leave as pending.
       // Only when consent doesn't name any known client do we fall through to
       // fill-ratio routing.
-      // Any consent text at all blocks fill-ratio — a lead may only go to a
-      // client whose name appears in the consent. No name match = pending.
+      // Any consent text blocks fill-ratio entirely. These are exclusive leads —
+      // every form is set up for a specific client. If the consent names a
+      // client we have → route to them. If not → pending. Never fall through
+      // to fill-ratio when consent text is present.
       const consentText = getConsentText(body, custom_fields);
       const consentBlocked = !!consentText;
       if (consentText && candidates.length > 0) {
