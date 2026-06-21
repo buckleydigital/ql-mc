@@ -4723,7 +4723,7 @@ async function loadFinance() {
     db.from('ppl_order_log').select('leads_qty,lead_price').gte('order_date',monthStart).lt('order_date',monthEnd),
     db.from('managed_order_log').select('amount').gte('order_date',monthStart).lt('order_date',monthEnd),
     db.from('ppl_order_log').select('id,client_id,leads_qty,status,sla_due_date,order_date').eq('status','in_progress'),
-    db.from('ppl_order_log').select('id,client_id,leads_qty,sla_due_date,order_date').eq('status','in_progress').lte('sla_due_date',today).not('sla_due_date','is',null),
+    db.from('ppl_order_log').select('id,client_id,leads_qty,sla_due_date,order_date,clients(company_name)').eq('status','in_progress').lte('sla_due_date',today).not('sla_due_date','is',null),
     db.from('monthly_goals').select('revenue_goal,month').gte('month',`${curYear}-01`).lte('month',`${curYear}-12`),
     db.from('leads').select('id,stage,next_followup').in('stage',['new_lead','qualified','call_back','no_answer','onboarding','proposal','proposal_sent']),
     db.from('ppl_leads').select('id,status').in('status',['pending','assigned']),
@@ -4905,10 +4905,10 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   if (slaListEl) {
     if (overdueOrders.length) {
       slaListEl.innerHTML = `<div class="sl" style="margin-bottom:8px">Overdue SLA Orders <div class="sl-line"></div></div>` +
-        `<div class="twrap"><table><thead><tr><th>Order Date</th><th>Qty</th><th>SLA Due</th><th>Days Overdue</th></tr></thead><tbody>` +
+        `<div class="twrap"><table><thead><tr><th>Client</th><th>Order Date</th><th>Qty</th><th>SLA Due</th><th>Days Overdue</th></tr></thead><tbody>` +
         overdueOrders.map(o=>{
           const days=Math.ceil((new Date(curTodayStr)-new Date(o.sla_due_date))/(1000*60*60*24));
-          return `<tr><td style="font-family:var(--mono);font-size:11px">${o.order_date||'—'}</td><td style="font-family:var(--mono)">${o.leads_qty}</td><td style="font-family:var(--mono);color:var(--red);font-weight:600">${o.sla_due_date}</td><td style="font-family:var(--mono);color:var(--red)">${days}d</td></tr>`;
+          return `<tr><td><strong>${esc(o.clients?.company_name||'—')}</strong></td><td style="font-family:var(--mono);font-size:11px">${o.order_date||'—'}</td><td style="font-family:var(--mono)">${o.leads_qty}</td><td style="font-family:var(--mono);color:var(--red);font-weight:600">${o.sla_due_date}</td><td style="font-family:var(--mono);color:var(--red)">${days}d</td></tr>`;
         }).join('') + `</tbody></table></div>`;
     } else {
       slaListEl.innerHTML = '';
@@ -6552,11 +6552,17 @@ async function downloadInvoicePDF(inv, isReceipt) {
 
 let _lastAlerts = [];
 
-function buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoon) {
+function buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoonOrders) {
   const items = [];
-  if (overdueOrders.length > 0) items.push({type:'error', msg: `${overdueOrders.length} PPL order${overdueOrders.length>1?'s':''} past SLA due date`, panel:'ppl'});
+  if (overdueOrders.length > 0) {
+    const names = overdueOrders.map(o => o.clients?.company_name || 'Unknown').join(', ');
+    items.push({type:'error', msg: `${overdueOrders.length} PPL order${overdueOrders.length>1?'s':''} past SLA due date — ${names}`, panel:'ppl'});
+  }
   if (overduePayments > 0) items.push({type:'error', msg: `${overduePayments} managed client${overduePayments>1?'s':''} with overdue payment`, panel:'managed'});
-  if (dueSoon > 0) items.push({type:'warn', msg: `${dueSoon} PPL order${dueSoon>1?'s':''} SLA due within 7 days`, panel:'ppl'});
+  if (dueSoonOrders.length > 0) {
+    const names = dueSoonOrders.map(o => o.clients?.company_name || 'Unknown').join(', ');
+    items.push({type:'warn', msg: `${dueSoonOrders.length} PPL order${dueSoonOrders.length>1?'s':''} SLA due within 7 days — ${names}`, panel:'ppl'});
+  }
   if (crmFollowups > 0) items.push({type:'warn', msg: `${crmFollowups} CRM lead${crmFollowups>1?'s':''} need follow-up`, panel:'crm'});
   return items;
 }
@@ -6588,16 +6594,16 @@ async function loadAlerts() {
   const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
   const weekAhead = new Date(Date.now() + MS_PER_WEEK).toISOString().split('T')[0];
   const [slaR, mgR, crmR, dueSoonR] = await Promise.all([
-    db.from('ppl_order_log').select('id').eq('status','in_progress').lte('sla_due_date',today).not('sla_due_date','is',null),
+    db.from('ppl_order_log').select('id,client_id,sla_due_date,clients(company_name)').eq('status','in_progress').lte('sla_due_date',today).not('sla_due_date','is',null),
     db.from('clients').select('id,stage,next_payment_date').eq('type','managed'),
     db.from('leads').select('id,stage,next_followup').in('stage',['new_lead','qualified','call_back','no_answer','onboarding','proposal','proposal_sent']),
-    db.from('ppl_order_log').select('id').eq('status','in_progress').gt('sla_due_date',today).lte('sla_due_date',weekAhead).not('sla_due_date','is',null),
+    db.from('ppl_order_log').select('id,client_id,sla_due_date,clients(company_name)').eq('status','in_progress').gt('sla_due_date',today).lte('sla_due_date',weekAhead).not('sla_due_date','is',null),
   ]);
   const overdueOrders = slaR.data||[];
   const overduePayments = (mgR.data||[]).filter(c=>c.stage==='active'&&c.next_payment_date&&c.next_payment_date<today).length;
-  const dueSoon = (dueSoonR.data||[]).length;
+  const dueSoonOrders = dueSoonR.data||[];
   const crmFollowups = (crmR.data||[]).filter(l=>l.next_followup&&l.next_followup<=today).length;
-  _lastAlerts = buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoon);
+  _lastAlerts = buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoonOrders);
   updateAlertBadge(_lastAlerts.length);
 }
 
