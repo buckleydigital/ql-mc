@@ -3330,11 +3330,11 @@ function renderCRM() {
     }
   });
   const tb=$('crm-tbody');
-  if (!leads.length) { tb.innerHTML='<tr><td colspan="9" class="empty">No leads yet.</td></tr>'; $('crm-pager').innerHTML=''; return; }
-  leads.forEach(l => { LEAD_CACHE[l.id] = l; });
-  const totalPages = Math.ceil(leads.length / PAGE_SIZE);
+  if (!allLeads.length) { tb.innerHTML='<tr><td colspan="9" class="empty">No leads yet.</td></tr>'; $('crm-pager').innerHTML=''; return; }
+  allLeads.forEach(l => { LEAD_CACHE[l.id] = l; });
+  const totalPages = Math.ceil(allLeads.length / PAGE_SIZE);
   if (crmPage >= totalPages) crmPage = totalPages - 1;
-  const pageLeads = leads.slice(crmPage * PAGE_SIZE, (crmPage + 1) * PAGE_SIZE);
+  const pageLeads = allLeads.slice(crmPage * PAGE_SIZE, (crmPage + 1) * PAGE_SIZE);
   tb.innerHTML=pageLeads.map(l=>{
     const ds=l.last_contact?Math.floor((Date.now()-new Date(l.last_contact))/(1000*86400)):null;
     const isStale=staleIds.has(String(l.id));
@@ -3370,7 +3370,7 @@ function renderCRM() {
   tb.querySelectorAll('.contact-log-btn').forEach(btn => {
     btn.addEventListener('click', e => { e.stopPropagation(); openContactLog(btn.dataset.leadId, btn.dataset.leadName); });
   });
-  renderPager('crm-pager', crmPage, leads.length, p => { crmPage = p; renderCRM(crmAllLeads); });
+  renderPager('crm-pager', crmPage, allLeads.length, p => { crmPage = p; renderCRM(); });
 }
 function checkConvertBanner() {
   // Converting a lead spins up a PPL/Managed client — out of scope for reps.
@@ -5999,6 +5999,9 @@ async function populateMapClientDropdown() {
 // external repo — set business_settings.logo_url to a Supabase Storage URL
 // (or any CSP-allowed URL) to render a logo on PDF invoices.
 let QL_LOGO_B64 = null;
+fetch('./quoteleads-logo-white.png').then(r=>r.blob()).then(b=>{
+  const rd=new FileReader(); rd.onload=e=>{QL_LOGO_B64=e.target.result;}; rd.readAsDataURL(b);
+}).catch(()=>{});
 
 async function loadBizSettings() {
   try {
@@ -6115,7 +6118,7 @@ async function openInvoiceModal(clientId, offerType) {
   // Populate client / lead dropdown
   const [{data: clients}, {data: pipelineLeads}] = await Promise.all([
     db.from('clients').select('id,company_name,type,niche,lead_price,management_fee,contact_name,email').order('company_name'),
-    db.from('leads').select('id,name,company,email,type,deal_value').not('stage','in','(closed_won,closed_lost)').order('name')
+    db.from('leads').select('id,name,company,email,type,deal_value').neq('stage','closed_lost').order('name')
   ]);
   const sel = $('inv-client');
   const pplClients = (clients||[]).filter(c => c.type === 'ppl');
