@@ -1669,6 +1669,7 @@ td strong{font-weight:500}
     </div>
     <div class="frow"><label class="flabel">CX Score <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10 — client experience rating</span></label><input class="fi" id="mg-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
     <div class="frow"><label class="flabel">Start Date</label><input class="fi" id="mg-start" type="date"></div>
+    <div class="frow"><label class="flabel">Ads First Live Date</label><input class="fi" id="mg-ads-live" type="date" oninput="calcNextPaymentNew()"></div>
     <div class="frow"><label class="flabel">Last Payment Date</label><input class="fi" id="mg-last-pay" type="date" oninput="calcNextPaymentNew()"></div>
     <div class="frow"><label class="flabel">Next Payment Due</label><input class="fi" id="mg-next-pay" type="date"></div>
     <div class="macts">
@@ -1917,6 +1918,7 @@ td strong{font-weight:500}
     </div>
     <div class="frow"><label class="flabel">CX Score <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10 — client experience rating</span></label><input class="fi" id="em-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
     <div class="frow"><label class="flabel">Start Date</label><input class="fi" id="em-start" type="date"></div>
+    <div class="frow"><label class="flabel">Ads First Live Date</label><input class="fi" id="em-ads-live" type="date" oninput="calcNextPayment()"></div>
     <div class="frow"><label class="flabel">Last Payment Date</label><input class="fi" id="em-last-pay" type="date" oninput="calcNextPayment()"></div>
     <div class="frow"><label class="flabel">Next Payment Due</label><input class="fi" id="em-next-pay" type="date"></div>
     <input type="hidden" id="em-payments-made">
@@ -3616,7 +3618,10 @@ function calcActiveMonths(startDate) {
   return months <= 0 ? '< 1 mo' : months + ' mo';
 }
 function calcNextPayment() {
-  const v = $('em-last-pay')?.value; if (!v) return;
+  const adsLive = $('em-ads-live')?.value;
+  const lastPay = $('em-last-pay')?.value;
+  const v = adsLive || lastPay;
+  if (!v) return;
   const d = new Date(v+'T00:00:00'); d.setDate(d.getDate()+30);
   setVal('em-next-pay', d.toISOString().split('T')[0]);
 }
@@ -3652,7 +3657,10 @@ function getActiveMgMonths(){
   return [...btns].filter(b=>b.dataset.on==='1').map(b=>b.dataset.month);
 }
 function calcNextPaymentNew() {
-  const v = $('mg-last-pay')?.value; if (!v) return;
+  const adsLive = $('mg-ads-live')?.value;
+  const lastPay = $('mg-last-pay')?.value;
+  const v = adsLive || lastPay;
+  if (!v) return;
   const d = new Date(v+'T00:00:00'); d.setDate(d.getDate()+30);
   setVal('mg-next-pay', d.toISOString().split('T')[0]);
 }
@@ -4073,9 +4081,10 @@ async function openEditClient(type,c) {
     updateMgSubStageVisibility();
     setVal('em-cx',c.cx_score!=null?c.cx_score:'');
     setVal('em-start',c.start_date||'');
+    setVal('em-ads-live',c.ads_first_live_date||'');
     setVal('em-last-pay',c.last_payment_date||'');
     setVal('em-next-pay',c.next_payment_date||'');
-    if (c.last_payment_date && !c.next_payment_date) calcNextPayment();
+    if ((c.ads_first_live_date || c.last_payment_date) && !c.next_payment_date) calcNextPayment();
     setVal('em-payments-made',c.payments_made||0);
     setVal('em-notes',c.notes);
     setVal('em-client-webhook',c.client_webhook||'');
@@ -4145,7 +4154,7 @@ async function updateClient(type) {
     id=$('em-id').value;
     const _activeMo=getActiveMgMonths();
     const _emStage=$('em-stage').value;
-    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),stage:_emStage,onboarding_sub_stage:_emStage==='onboarding'?($('em-onboarding-sub-stage').value||null):null,active_status:_emStage==='active'?($('em-active-status').value||null):null,cx_score:$('em-cx').value!==''?parseInt($('em-cx').value):null,start_date:$('em-start').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),client_webhook:$('em-client-webhook').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
+    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),stage:_emStage,onboarding_sub_stage:_emStage==='onboarding'?($('em-onboarding-sub-stage').value||null):null,active_status:_emStage==='active'?($('em-active-status').value||null):null,cx_score:$('em-cx').value!==''?parseInt($('em-cx').value):null,start_date:$('em-start').value||null,ads_first_live_date:$('em-ads-live').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),client_webhook:$('em-client-webhook').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   }
   const {error}=await db.from('clients').update(d).eq('id',id);
@@ -4183,7 +4192,7 @@ async function saveClient(type) {
     d={type:'ppl',company_name:$('ppl-co').value.trim(),contact_name:$('ppl-cn').value.trim(),email:$('ppl-em').value.trim(),niche:$('ppl-niche').value,lead_price:parseFloat($('ppl-price').value)||0,meta_cpl:parseFloat($('ppl-meta-cpl').value)||null,leads_delivered:parseInt($('ppl-ld').value)||0,total_leads_purchased:parseInt($('ppl-tlp').value)||0,leads_scrubbed:parseInt($('ppl-scrubbed').value)||0,stage:$('ppl-stage').value,cx_score:$('ppl-cx').value!==''?parseInt($('ppl-cx').value):null,postcodes:_pplPostcodes,weekly_cap:_pplWeeklyCap,monthly_cap:_pplMonthlyCap,meta_campaign_ids:_pplMetaCampaignIds.length?_pplMetaCampaignIds:null,delivery_method:$('ppl-delivery-method').value,delivery_email:$('ppl-delivery-email').value.trim()||null,delivery_phone:$('ppl-delivery-phone').value.trim()||null,custom_fields:_pplCf,ql_hq_company_id:$('ppl-ql-hq-id').value.trim()||null,has_quoteleads_platform_account:$('ppl-has-ql-account').value==='true',hq_bearer_token:$('ppl-hq-bearer-token').value.trim()||null,created_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   } else {
-    d={type:'managed',company_name:$('mg-co').value.trim(),contact_name:$('mg-cn').value.trim(),email:$('mg-em').value.trim(),ad_account_id:$('mg-acc').value.trim(),monthly_budget:parseFloat($('mg-budget').value)||0,management_fee:parseFloat($('mg-fee').value)||0,stage:$('mg-stage').value,cx_score:$('mg-cx').value!==''?parseInt($('mg-cx').value):null,start_date:$('mg-start').value||null,last_payment_date:$('mg-last-pay').value||null,next_payment_date:$('mg-next-pay').value||null,created_at:now()};
+    d={type:'managed',company_name:$('mg-co').value.trim(),contact_name:$('mg-cn').value.trim(),email:$('mg-em').value.trim(),ad_account_id:$('mg-acc').value.trim(),monthly_budget:parseFloat($('mg-budget').value)||0,management_fee:parseFloat($('mg-fee').value)||0,stage:$('mg-stage').value,cx_score:$('mg-cx').value!==''?parseInt($('mg-cx').value):null,start_date:$('mg-start').value||null,ads_first_live_date:$('mg-ads-live').value||null,last_payment_date:$('mg-last-pay').value||null,next_payment_date:$('mg-next-pay').value||null,created_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   }
   const {error}=await db.from('clients').insert([d]);
