@@ -4037,7 +4037,7 @@ async function openEditClient(type,c) {
     setVal('ep-em',c.email);setVal('ep-ph',c.phone);setVal('ep-niche',c.niche);
     setVal('ep-active-niches',Array.isArray(c.active_niches)?c.active_niches.join(', '):'');
     setVal('ep-price',c.lead_price);setVal('ep-meta-cpl',c.meta_cpl||'');setVal('ep-pct',c.pct_sold);
-    setVal('ep-ld',c.leads_delivered||0);setVal('ep-tlp',c.total_leads_purchased||0);setVal('ep-scrubbed',c.leads_scrubbed||0);setVal('ep-total-gen',c.total_leads_generated||'');
+    setVal('ep-ld',c.leads_delivered||0);setVal('ep-tlp',c.total_leads_purchased||0);setVal('ep-scrubbed',c.leads_scrubbed||0);_prevScrubbed=c.leads_scrubbed||0;setVal('ep-total-gen',c.total_leads_generated||'');
     setVal('ep-stage',c.stage||'active_client');setVal('ep-cx',c.cx_score!=null?c.cx_score:'');setVal('ep-notes',c.notes);
     const epPc=Array.isArray(c.postcodes)?c.postcodes.join(', '):(c.postcodes||'');
     setVal('ep-postcodes',epPc);
@@ -4106,15 +4106,22 @@ function toggleDeliveryFields(prefix) {
   if (phoneRow) phoneRow.style.display = showPhone ? '' : 'none';
   if (crmRow)   crmRow.style.display   = showCrm   ? '' : 'none';
 }
-function updatePplCalc() {
+let _prevScrubbed=0;function updatePplCalc() {
   const price=parseFloat($('ep-price')?.value)||0;
   const ld=parseInt($('ep-ld')?.value)||0;
   const tlp=parseInt($('ep-tlp')?.value)||0;
   const scrubbed=parseInt($('ep-scrubbed')?.value)||0;
-  const rem=tlp-ld+scrubbed;const bal=rem*price;
+  const scrubbedDiff=scrubbed-_prevScrubbed;
+  if(scrubbedDiff!==0){
+    const newLd=Math.max(0,ld-scrubbedDiff);
+    $('ep-ld').value=newLd;
+    _prevScrubbed=scrubbed;
+  }
+  const currentLd=parseInt($('ep-ld')?.value)||0;
+  const rem=tlp-currentLd;const bal=rem*price;
   const remEl=$('ep-leads-rem');const balEl=$('ep-bal-rem');const scrubNote=$('ep-scrub-note');
   if (remEl) remEl.textContent=rem>=0?rem:'0';
-  if (scrubNote) scrubNote.textContent=scrubbed>0?`incl. ${scrubbed} scrubbed`:'';
+  if (scrubNote) scrubNote.textContent=scrubbed>0?` (${scrubbed} scrubbed)`:'';
   if (balEl) balEl.textContent=bal>0?'$'+Number(bal).toLocaleString('en-AU',{minimumFractionDigits:0,maximumFractionDigits:0}):(rem<=0?'Delivered ✓':'—');
   if (balEl) balEl.style.color=bal>0?'var(--red)':'var(--grn)';
 }
@@ -4122,7 +4129,7 @@ async function updateClient(type) {
   let id,d;
   if (type==='ppl') {
     id=$('ep-id').value;
-    const _ld=parseInt($('ep-ld').value)||0;const _tlp=parseInt($('ep-tlp').value)||0;const _scrubbed=parseInt($('ep-scrubbed').value)||0;const _price=parseFloat($('ep-price').value)||0;const _balCalc=(_tlp-_ld+_scrubbed)*_price;
+    const _ld=parseInt($('ep-ld').value)||0;const _tlp=parseInt($('ep-tlp').value)||0;const _scrubbed=parseInt($('ep-scrubbed').value)||0;const _price=parseFloat($('ep-price').value)||0;const _balCalc=(_tlp-_ld)*_price;
     const _metaCpl=parseFloat($('ep-meta-cpl').value)||null;
     const _postcodes=$('ep-postcodes').value.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean);
     const _cfRaw=$('ep-custom-fields').value.trim();const _customFields=_cfRaw?{_text:_cfRaw}:{};
