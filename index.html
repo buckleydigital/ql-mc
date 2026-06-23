@@ -2330,6 +2330,11 @@ const now  = () => new Date().toISOString();
 const esc  = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const fmt  = n => (!n && n !== 0) ? '—' : '$' + Number(n).toLocaleString('en-AU', {minimumFractionDigits:0,maximumFractionDigits:0});
 const fmtCpl = n => n ? '$' + Number(n).toFixed(2) : '—';
+const fmtDate = (d, time) => {
+  if (!d) return '—';
+  const opts = time ? {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'} : {day:'numeric',month:'short'};
+  return new Date(d).toLocaleDateString('en-AU', opts);
+};
 
 function toast(msg, err = false) {
   const old = $('ql-toast'); if (old) old.remove();
@@ -2722,11 +2727,6 @@ async function loadLeads(resetPage) {
   const nicheBadge = n => {
     if (!n) return '<span class="badge bg-gray">—</span>';
     return `<span class="badge bg-sky">${esc(n.charAt(0).toUpperCase()+n.slice(1))}</span>`;
-  };
-  const fmtDate = (d, time) => {
-    if (!d) return '—';
-    const opts = time ? {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'} : {day:'numeric',month:'short'};
-    return new Date(d).toLocaleDateString('en-AU', opts);
   };
   $('ld-tbody').innerHTML = rows.map(l => `
     <tr>
