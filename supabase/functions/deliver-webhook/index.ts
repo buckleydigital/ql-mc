@@ -77,13 +77,13 @@ function buildEmailHtml(lead: Record<string, unknown>, _client: Record<string, u
   const typeStr = lead.lead_type as string || "—";
 
   const row = (label: string, value: string) =>
-    `<tr><td style="padding:6px 12px;color:#72728a;font-size:13px;white-space:nowrap;vertical-align:top">${esc(label)}</td><td style="padding:6px 12px;color:#eeeef3;font-weight:600;font-size:13px">${value}</td></tr>`;
+    `<tr><td style="padding:6px 12px;color:#666666;font-size:13px;white-space:nowrap;vertical-align:top">${esc(label)}</td><td style="padding:6px 12px;color:#111111;font-weight:600;font-size:13px">${value}</td></tr>`;
 
   let rows = "";
   rows += row("Name", esc(lead.name as string));
-  rows += row("Phone", `<a href="tel:${lead.phone}" style="color:#4f8fff">${esc(lead.phone as string)}</a>`);
+  rows += row("Phone", `<a href="tel:${lead.phone}" style="color:#2563eb">${esc(lead.phone as string)}</a>`);
   rows += row("Email", lead.email
-    ? `<a href="mailto:${lead.email}" style="color:#4f8fff">${esc(lead.email as string)}</a>`
+    ? `<a href="mailto:${lead.email}" style="color:#2563eb">${esc(lead.email as string)}</a>`
     : "—");
   rows += row("Postcode", esc(lead.postcode as string || "—"));
   rows += row("Type", esc(typeStr));
@@ -99,18 +99,18 @@ function buildEmailHtml(lead: Record<string, unknown>, _client: Record<string, u
   let customSection = "";
   const cfPairs = parseCustomFields(lead.custom_fields);
   if (cfPairs.length) {
-    customSection = `<tr><td colspan="2" style="padding:14px 12px 6px;font-size:10px;color:#72728a;text-transform:uppercase;letter-spacing:.1em;font-variant:small-caps">Details</td></tr>`;
+    customSection = `<tr><td colspan="2" style="padding:14px 12px 6px;font-size:10px;color:#666666;text-transform:uppercase;letter-spacing:.1em;font-variant:small-caps">Details</td></tr>`;
     for (const [label, value] of cfPairs) customSection += row(label, esc(value));
   }
 
-  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#1a1a20;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
-<div style="max-width:560px;margin:0 auto;background:#1a1a20">
-  <div style="background:#0f0f12;padding:14px 20px;display:flex;justify-content:space-between;align-items:center">
-    <span style="color:#eeeef3;font-weight:700;font-size:14px">QuoteLeads · New Lead</span>
-    <span style="color:#72728a;font-size:12px">${esc(now)}</span>
+  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+<div style="max-width:560px;margin:0 auto;background:#ffffff">
+  <div style="background:#ffffff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e5e5e5">
+    <span style="color:#111111;font-weight:700;font-size:14px">QuoteLeads · New Lead</span>
+    <span style="color:#666666;font-size:12px">${esc(now)}</span>
   </div>
-  <table style="width:100%;border-collapse:collapse;background:#1a1a20">${rows}${customSection}</table>
-  <div style="padding:16px 12px;font-size:11px;color:#55556a">Delivered by QuoteLeads · ${esc(lead.id as string)}</div>
+  <table style="width:100%;border-collapse:collapse;background:#ffffff">${rows}${customSection}</table>
+  <div style="padding:16px 12px;font-size:11px;color:#999999">Delivered by QuoteLeads · ${esc(lead.id as string)}</div>
 </div></body></html>`;
 }
 
