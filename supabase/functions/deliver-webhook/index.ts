@@ -309,7 +309,7 @@ Deno.serve(async (req: Request) => {
     const client = clientR.data;
 
     // STEP 2 — BUILD EMAIL
-    const subject = `New ${lead.lead_type || "PPL"} Lead — ${lead.name} · ${lead.postcode}${lead.suburb ? " " + lead.suburb : ""}`;
+    const subject = `New ${lead.lead_type ? titleCase(lead.lead_type as string) : "PPL"} Lead — ${lead.name} · ${lead.postcode}${lead.suburb ? " " + lead.suburb : ""}`;
     const htmlBody = buildEmailHtml(lead, client);
     const emailPreview = buildEmailPreview(lead, subject);
 
