@@ -2209,6 +2209,7 @@ td strong{font-weight:500}
     <input type="hidden" id="conv-thread-lead-id">
     <input type="hidden" id="conv-thread-phone">
     <input type="hidden" id="conv-thread-name">
+    <input type="hidden" id="conv-thread-source" value="ppl">
     <div id="conv-thread-messages" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:6px 0;margin-bottom:14px"></div>
     <div style="border-top:1px solid var(--bd);padding-top:12px">
       <div class="frow" style="align-items:flex-start">
@@ -3424,7 +3425,7 @@ function renderCRM() {
       <td>${esc(l.source||'—')}</td>
       <td>${contactCell}</td>
       <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink2)">${esc(l.notes||'—')}</td>
-      <td style="white-space:nowrap"><button class="btn btn-xs contact-log-btn" data-lead-id="${esc(l.id)}" data-lead-name="${esc(l.name||l.company||'Lead')}" style="margin-right:4px">Log</button><button class="btn btn-xs edit-lead-btn" data-lead-id="${esc(l.id)}">Edit</button></td>
+      <td style="white-space:nowrap"><button class="btn btn-xs contact-log-btn" data-lead-id="${esc(l.id)}" data-lead-name="${esc(l.name||l.company||'Lead')}" style="margin-right:4px">Log</button><button class="btn btn-xs edit-lead-btn" data-lead-id="${esc(l.id)}" style="margin-right:4px">Edit</button>${l.phone?`<button class="btn btn-xs sales-sms-btn" data-lead-id="${esc(l.id)}" data-phone="${esc(l.phone)}" data-name="${esc(l.name||l.company||'')}">SMS</button>`:''}</td>
     </tr>`}).join('');
   tb.querySelectorAll('.lead-row').forEach(row => {
     row.addEventListener('click', e => {
@@ -3442,6 +3443,9 @@ function renderCRM() {
   });
   tb.querySelectorAll('.contact-log-btn').forEach(btn => {
     btn.addEventListener('click', e => { e.stopPropagation(); openContactLog(btn.dataset.leadId, btn.dataset.leadName); });
+  });
+  tb.querySelectorAll('.sales-sms-btn').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); openSalesConvThread(btn.dataset.leadId, btn.dataset.name, btn.dataset.phone); });
   });
   renderPager('crm-pager', crmPage, allLeads.length, p => { crmPage = p; renderCRM(); });
 }
@@ -7053,6 +7057,7 @@ async function openSalesConvThread(leadId, leadName, leadPhone) {
   $('conv-thread-lead-id').value  = leadId;
   $('conv-thread-phone').value    = leadPhone;
   $('conv-thread-name').value     = leadName;
+  $('conv-thread-source').value   = 'sales';
   $('conv-thread-title').textContent = leadName || 'Conversation';
   $('conv-thread-sub').textContent = leadPhone || '';
   $('conv-reply-body').value = '';
@@ -7089,6 +7094,7 @@ async function openConvThread(leadId, leadName, leadPhone) {
   $('conv-thread-lead-id').value  = leadId;
   $('conv-thread-phone').value    = leadPhone;
   $('conv-thread-name').value     = leadName;
+  $('conv-thread-source').value   = 'ppl';
   $('conv-thread-title').textContent = leadName || 'Conversation';
   $('conv-thread-sub').textContent = leadPhone || '';
   $('conv-reply-body').value = '';
@@ -7142,10 +7148,11 @@ function updateConvReplyCounter() {
 }
 
 async function sendConvReply() {
-  const btn   = $('conv-reply-btn');
-  const body  = $('conv-reply-body').value.trim();
-  const phone = $('conv-thread-phone').value;
+  const btn    = $('conv-reply-btn');
+  const body   = $('conv-reply-body').value.trim();
+  const phone  = $('conv-thread-phone').value;
   const leadId = $('conv-thread-lead-id').value;
+  const source = $('conv-thread-source').value || 'ppl';
   if (!body) { toast('Enter a message first', true); return; }
 
   btn.disabled = true;
@@ -7156,16 +7163,21 @@ async function sendConvReply() {
     const res = await fetch(`${_ep}/functions/v1/send-sms`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-      body: JSON.stringify({ to: phone, message: body, lead_id: leadId })
+      body: JSON.stringify({ to: phone, message: body, lead_id: leadId, source })
     });
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.error || 'SMS failed');
     toast('Reply sent ✓');
     $('conv-reply-body').value = '';
     updateConvReplyCounter();
-    // Reload thread
-    await openConvThread(leadId, $('conv-thread-name').value, phone);
-    loadConversations();
+    const name = $('conv-thread-name').value;
+    if (source === 'sales') {
+      await openSalesConvThread(leadId, name, phone);
+      loadSalesConversations();
+    } else {
+      await openConvThread(leadId, name, phone);
+      loadConversations();
+    }
   } catch (err) {
     toast('Send failed: ' + err.message, true);
   } finally {
