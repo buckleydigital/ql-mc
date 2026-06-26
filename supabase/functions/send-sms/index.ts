@@ -43,7 +43,8 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { to, message, lead_id } = await req.json();
+    const { to, message, lead_id, source } = await req.json();
+    const isSales = source === "sales";
 
     // Validate phone
     const normalisedTo = normalisePhone(to);
@@ -65,9 +66,9 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Validate lead_id exists in ppl_leads
+    // Validate lead_id exists in the correct table
     const { data: lead } = await supabaseAdmin
-      .from("ppl_leads")
+      .from(isSales ? "leads" : "ppl_leads")
       .select("id")
       .eq("id", lead_id)
       .single();
@@ -116,8 +117,10 @@ Deno.serve(async (req: Request) => {
       // ignore parse error
     }
 
+    const smsTable = isSales ? "sales_sms_log" : "lead_sms_log";
+
     if (res.ok) {
-      await supabaseAdmin.from("lead_sms_log").insert([{
+      await supabaseAdmin.from(smsTable).insert([{
         lead_id,
         to_number: normalisedTo,
         message: message.trim(),
@@ -132,7 +135,7 @@ Deno.serve(async (req: Request) => {
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     } else {
-      await supabaseAdmin.from("lead_sms_log").insert([{
+      await supabaseAdmin.from(smsTable).insert([{
         lead_id,
         to_number: normalisedTo,
         message: message.trim(),
