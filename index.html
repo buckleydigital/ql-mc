@@ -739,7 +739,10 @@ td strong{font-weight:500}
             <span class="ni">⚡</span>Lead Distribution
           </button>
           <button class="navbtn" data-panel="conversations" onclick="nav('conversations',this)">
-            <span class="ni">💬</span>Conversations<span id="conv-unread-badge" style="display:none;background:var(--acc);color:#fff;border-radius:10px;font-size:9px;padding:1px 6px;margin-left:5px;font-family:var(--mono);font-weight:700;line-height:1.5">0</span>
+            <span class="ni">💬</span>PPL Conversations<span id="conv-unread-badge" style="display:none;background:var(--acc);color:#fff;border-radius:10px;font-size:9px;padding:1px 6px;margin-left:5px;font-family:var(--mono);font-weight:700;line-height:1.5">0</span>
+          </button>
+          <button class="navbtn" data-panel="sales-conv" onclick="nav('sales-conv',this)">
+            <span class="ni">💬</span>Sales Conversations
           </button>
         </div>
 
@@ -1073,8 +1076,11 @@ td strong{font-weight:500}
           <div class="kpi"><div class="klabel">Delivered</div><div class="kval grn" id="ld-delivered">—</div></div>
           <div class="kpi"><div class="klabel">Failed / Scrubbed</div><div class="kval red" id="ld-failed">—</div></div>
         </div>
-        <div class="sl">By Client <div class="sl-line"></div></div>
-        <div id="ld-client-breakdown" class="mb4"><div class="empty">Loading…</div></div>
+        <div class="sl" style="cursor:pointer;user-select:none" onclick="toggleClientBreakdown()" id="ld-client-toggle">
+          By Client <span id="ld-client-chevron" style="font-size:10px;margin-left:6px;color:var(--ink3)">▶</span>
+          <div class="sl-line"></div>
+        </div>
+        <div id="ld-client-breakdown" class="mb4" style="display:none"><div class="empty">Loading…</div></div>
         <div class="sl">All Leads <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
@@ -1121,10 +1127,10 @@ td strong{font-weight:500}
         </div>
       </div>
 
-      <!-- ══ CONVERSATIONS ══ -->
+      <!-- ══ PPL CONVERSATIONS ══ -->
       <div class="panel" id="panel-conversations">
         <div class="ph">
-          <div class="ph-left"><h1>Conversations</h1><p>Inbound &amp; outbound SMS threads with leads</p></div>
+          <div class="ph-left"><h1>PPL Conversations</h1><p>Inbound &amp; outbound SMS threads with PPL / lead distribution leads</p></div>
           <div class="ph-right">
             <button class="btn btn-sm" onclick="loadConversations()">↻ Refresh</button>
             <button class="btn btn-sm" onclick="openTwilioSettings()">⚙ Twilio Settings</button>
@@ -1155,6 +1161,44 @@ td strong{font-weight:500}
               </tr>
             </thead>
             <tbody id="conv-tbody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══ SALES CONVERSATIONS ══ -->
+      <div class="panel" id="panel-sales-conv">
+        <div class="ph">
+          <div class="ph-left"><h1>Sales Conversations</h1><p>Inbound &amp; outbound SMS threads with sales pipeline leads</p></div>
+          <div class="ph-right">
+            <button class="btn btn-sm" onclick="loadSalesConversations()">↻ Refresh</button>
+            <button class="btn btn-sm" onclick="openTwilioSettings()">⚙ Twilio Settings</button>
+          </div>
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r2);padding:12px 16px;margin-bottom:20px;font-size:11.5px">
+          <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3);margin-bottom:6px">Twilio Webhook URL — paste in Twilio Console → Phone Numbers → [your number] → Messaging → "A message comes in" → HTTP POST</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <code id="sales-conv-webhook-display" style="font-family:var(--mono);font-size:11px;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r);padding:5px 10px;flex:1;word-break:break-all;color:var(--ink3)">Loading…</code>
+            <button class="btn btn-xs" onclick="copySalesConvWebhook()">Copy</button>
+          </div>
+        </div>
+        <div class="kg c3 mb4">
+          <div class="kpi"><div class="klabel">Lead Threads</div><div class="kval" id="sales-conv-threads">—</div></div>
+          <div class="kpi"><div class="klabel">Inbound Received</div><div class="kval blu" id="sales-conv-inbound-count">—</div></div>
+          <div class="kpi"><div class="klabel">Outbound Sent</div><div class="kval grn" id="sales-conv-outbound-count">—</div></div>
+        </div>
+        <div class="twrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Lead</th>
+                <th>Phone</th>
+                <th>Messages</th>
+                <th>Last Message</th>
+                <th>Time</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="sales-conv-tbody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -2457,6 +2501,14 @@ async function doLogout() { if (db) await db.auth.signOut(); }
 // Panels a sales rep is allowed to open. Everything else is hidden + blocked.
 const REP_PANELS = new Set(['crm', 'invoices']);
 
+function toggleClientBreakdown() {
+  const el = $('ld-client-breakdown');
+  const chevron = $('ld-client-chevron');
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : '';
+  chevron.textContent = open ? '▶' : '▼';
+}
+
 function nav(panel, el) {
   if (IS_REP && !REP_PANELS.has(panel)) panel = 'crm';
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -2469,6 +2521,7 @@ function nav(panel, el) {
   if (panel === 'campaigns') { loadCampaigns(); renderMetaTokenBanner(); }
   if (panel === 'leads') loadLeads();
   if (panel === 'conversations') loadConversations();
+  if (panel === 'sales-conv') loadSalesConversations();
   if (panel === 'invoices') loadInvoices();
   if (panel === 'goals') loadGoals();
   if (panel === 'salesreps') loadReps();
@@ -2705,13 +2758,24 @@ async function loadLeads(resetPage) {
   });
   const entries = Object.entries(clientMap);
   $('ld-client-breakdown').innerHTML = entries.length
-    ? `<div class="ld-client-grid">${entries.map(([name, s]) => `
-        <div class="ld-client-card">
-          <div class="ld-client-name">${esc(name)}</div>
-          <div class="ld-client-val">${s.total}</div>
-          <div class="ld-client-sub">${s.delivered} delivered · ${s.assigned} assigned · ${s.failed ? `<span style="color:var(--red)">${s.failed} failed</span>` : '0 failed'}</div>
-        </div>`).join('')}
-      </div>`
+    ? `<table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="border-bottom:1px solid var(--bd2)">
+          <th style="text-align:left;padding:6px 10px;font-family:var(--mono);font-size:10px;color:var(--ink3);font-weight:500;text-transform:uppercase;letter-spacing:.08em">Client</th>
+          <th style="text-align:right;padding:6px 10px;font-family:var(--mono);font-size:10px;color:var(--ink3);font-weight:500;text-transform:uppercase;letter-spacing:.08em">Total</th>
+          <th style="text-align:right;padding:6px 10px;font-family:var(--mono);font-size:10px;color:var(--ink3);font-weight:500;text-transform:uppercase;letter-spacing:.08em">Delivered</th>
+          <th style="text-align:right;padding:6px 10px;font-family:var(--mono);font-size:10px;color:var(--ink3);font-weight:500;text-transform:uppercase;letter-spacing:.08em">Assigned</th>
+          <th style="text-align:right;padding:6px 10px;font-family:var(--mono);font-size:10px;color:var(--ink3);font-weight:500;text-transform:uppercase;letter-spacing:.08em">Failed</th>
+        </tr></thead>
+        <tbody>${entries.map(([name, s]) => `
+          <tr style="border-bottom:1px solid var(--bd)">
+            <td style="padding:7px 10px;font-weight:600">${esc(name)}</td>
+            <td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:11px">${s.total}</td>
+            <td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:11px;color:var(--grn)">${s.delivered}</td>
+            <td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:11px;color:var(--acc)">${s.assigned}</td>
+            <td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-size:11px${s.failed ? ';color:var(--red)' : ';color:var(--ink3)'}">${s.failed || 0}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`
     : '<div class="empty">No leads matched to clients yet.</div>';
 
   const rows = tableR.data || [];
@@ -2743,7 +2807,7 @@ async function loadLeads(resetPage) {
       <td style="font-family:var(--mono);font-size:10px;color:var(--ink3);white-space:nowrap">${fmtDate(l.delivered_at, false)}</td>
       <td style="font-family:var(--mono);font-size:10px;color:var(--ink3)">${esc(l.delivery_method||'—')}</td>
       <td><span class="badge bg-gray">${esc(l.source||'webhook')}</span></td>
-      <td style="font-size:11px;color:var(--ink2);max-width:180px;white-space:pre-wrap;word-break:break-word">${esc(l.custom_fields||'')}</td>
+      <td style="font-size:6px;color:var(--ink2);max-width:180px;white-space:pre-wrap;word-break:break-word">${esc(l.custom_fields||'')}</td>
       <td style="white-space:nowrap">
         <select class="fi" style="font-size:10.5px;padding:3px 6px;width:auto;font-family:var(--mono)" onchange="updateLeadStatus('${esc(l.id)}', this.value, this)">
           <option value="pending" ${l.status==='pending'?'selected':''}>Pending</option>
@@ -6901,6 +6965,123 @@ async function loadConversations() {
     }
   } catch (err) {
     if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="empty" style="color:var(--red)">Error: ${esc(err.message)}</td></tr>`;
+  }
+}
+
+async function loadSalesConversations() {
+  const tbody = $('sales-conv-tbody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty">Loading…</td></tr>';
+
+  try {
+    const { data: biz } = await db.from('business_settings').select('twilio_webhook_url').limit(1).maybeSingle();
+    const webhookUrl = biz?.twilio_webhook_url || '';
+    const display = $('sales-conv-webhook-display');
+    if (display) {
+      display.textContent = webhookUrl || 'Not set — save via ⚙ Twilio Settings';
+      display.style.color = webhookUrl ? 'var(--acc)' : 'var(--ink3)';
+    }
+  } catch (_) {}
+
+  try {
+    const { data, error } = await db
+      .from('sales_sms_log')
+      .select('*, leads(name, phone)')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const rows = data || [];
+
+    const byLead = {};
+    rows.forEach(r => {
+      if (!byLead[r.lead_id]) {
+        byLead[r.lead_id] = {
+          lead_id: r.lead_id,
+          name: r.leads?.name || '—',
+          phone: r.leads?.phone || r.to_number || '—',
+          messages: [],
+        };
+      }
+      byLead[r.lead_id].messages.push(r);
+    });
+
+    const threads = Object.values(byLead);
+    const totalInbound  = rows.filter(r => (r.direction || 'outbound') === 'inbound').length;
+    const totalOutbound = rows.filter(r => (r.direction || 'outbound') === 'outbound').length;
+
+    setText('sales-conv-threads',       threads.length);
+    setText('sales-conv-inbound-count', totalInbound);
+    setText('sales-conv-outbound-count', totalOutbound);
+
+    if (!threads.length) {
+      if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty">No SMS conversations yet. Send an SMS from a sales pipeline lead to start a thread.</td></tr>';
+      return;
+    }
+
+    if (tbody) {
+      tbody.innerHTML = threads.map(t => {
+        const lastMsg = t.messages[0];
+        const lastBody = lastMsg ? (lastMsg.message || '').substring(0, 60) + (lastMsg.message?.length > 60 ? '…' : '') : '—';
+        const lastTime = lastMsg ? fmtDate(lastMsg.created_at, false) : '—';
+        const inCount  = t.messages.filter(m => (m.direction || 'outbound') === 'inbound').length;
+        const outCount = t.messages.filter(m => (m.direction || 'outbound') === 'outbound').length;
+        const dirBadge = inCount > 0 ? `<span class="badge bg-blu" style="font-size:9px">${inCount} in</span> ` : '';
+        return `<tr>
+          <td><strong>${esc(t.name)}</strong></td>
+          <td style="font-family:var(--mono);font-size:11px">${esc(t.phone)}</td>
+          <td style="font-family:var(--mono);font-size:11px">${dirBadge}<span style="color:var(--ink3)">${outCount} out</span></td>
+          <td style="font-size:11px;color:var(--ink2);max-width:220px;white-space:pre-wrap;word-break:break-word">${esc(lastBody)}</td>
+          <td style="font-family:var(--mono);font-size:10px;color:var(--ink3);white-space:nowrap">${lastTime}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-xs" onclick="openSalesConvThread('${esc(t.lead_id)}','${esc(t.name)}','${esc(t.phone)}')">View Thread</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+  } catch (err) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="empty" style="color:var(--red)">Error loading sales conversations: ${esc(err.message)}</td></tr>`;
+  }
+}
+
+function copySalesConvWebhook() {
+  const url = $('sales-conv-webhook-display')?.textContent || '';
+  if (!url || url === 'Not set — save via ⚙ Twilio Settings') { toast('No webhook URL set', true); return; }
+  navigator.clipboard.writeText(url).then(() => toast('Webhook URL copied')).catch(() => toast('Copy failed', true));
+}
+
+async function openSalesConvThread(leadId, leadName, leadPhone) {
+  $('conv-thread-lead-id').value  = leadId;
+  $('conv-thread-phone').value    = leadPhone;
+  $('conv-thread-name').value     = leadName;
+  $('conv-thread-title').textContent = leadName || 'Conversation';
+  $('conv-thread-sub').textContent = leadPhone || '';
+  $('conv-reply-body').value = '';
+  updateConvReplyCounter();
+
+  const container = $('conv-thread-messages');
+  container.innerHTML = '<div class="empty">Loading…</div>';
+  openModal('m-conv-thread');
+
+  try {
+    const { data, error } = await db
+      .from('sales_sms_log')
+      .select('*')
+      .eq('lead_id', leadId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    const msgs = data || [];
+    container.innerHTML = msgs.length
+      ? msgs.map(m => {
+          const isIn = (m.direction || 'outbound') === 'inbound';
+          return `<div style="display:flex;flex-direction:column;align-items:${isIn ? 'flex-start' : 'flex-end'}">
+            <div style="max-width:80%;background:${isIn ? 'var(--s2)' : 'var(--acc)'};color:${isIn ? 'var(--ink)' : '#fff'};border-radius:10px;padding:8px 12px;font-size:12px">${esc(m.message || '')}</div>
+            <div style="font-size:9.5px;color:var(--ink3);margin-top:2px">${isIn ? 'Inbound' : 'Outbound'} · ${fmtDate(m.created_at, false)}</div>
+          </div>`;
+        }).join('')
+      : '<div class="empty">No messages yet.</div>';
+    container.scrollTop = container.scrollHeight;
+  } catch (err) {
+    container.innerHTML = `<div class="empty" style="color:var(--red)">Error: ${esc(err.message)}</div>`;
   }
 }
 
