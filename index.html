@@ -3724,6 +3724,15 @@ function getActiveMgMonths(){
   const btns=$('em-month-picker')?.querySelectorAll('button')||[];
   return [...btns].filter(b=>b.dataset.on==='1').map(b=>b.dataset.month);
 }
+// Cash-basis retainer attribution: returns one "YYYY-MM" per active month for a
+// managed client, mapped to the month the retainer was *paid* (recorded when the
+// month was toggled on) rather than the month it covers. Falls back to the
+// covered month for legacy rows that have no recorded payment date.
+function mgPaymentMonths(client){
+  let months=[];try{months=JSON.parse(client.active_months||'[]');}catch(e){}
+  let pd={};try{pd=JSON.parse(client.retainer_payment_dates||'{}');}catch(e){}
+  return months.map(m=>(pd&&pd[m])?String(pd[m]).slice(0,7):m);
+}
 function calcNextPaymentNew() {
   const adsLive = $('mg-ads-live')?.value;
   const lastPay = $('mg-last-pay')?.value;
@@ -3825,11 +3834,16 @@ async function logRetainerPayment(clientId) {
   months.push(monthKey);
   months.sort();
   const newCount=months.length;
-  const {error}=await db.from('clients').update({payments_made:newCount,active_months:JSON.stringify(months),last_payment_date:today,updated_at:now()}).eq('id',clientId);
+  // Record the payment date for this month so Finance attributes the fee to the
+  // month it was received (cash basis). Here covered month == payment month.
+  let payDates={};try{payDates=JSON.parse(c.retainer_payment_dates||'{}');}catch(e){}
+  payDates[monthKey]=today;
+  const {error}=await db.from('clients').update({payments_made:newCount,active_months:JSON.stringify(months),retainer_payment_dates:JSON.stringify(payDates),last_payment_date:today,updated_at:now()}).eq('id',clientId);
   if (error) { toast('Error: '+error.message,true); return; }
   // Keep cache in sync so subsequent clicks see the updated month list before reload completes.
   c.payments_made=newCount;
   c.active_months=JSON.stringify(months);
+  c.retainer_payment_dates=JSON.stringify(payDates);
   c.last_payment_date=today;
   toast(`Payment #${newCount} logged ✓`);
   loadManaged();
@@ -4221,8 +4235,13 @@ async function updateClient(type) {
   } else {
     id=$('em-id').value;
     const _activeMo=getActiveMgMonths();
+    // Cash-basis attribution: stamp newly-toggled months with today's date (the
+    // month the payment was received), preserving dates for already-active months.
+    let _prevPayDates={};try{_prevPayDates=JSON.parse((CLIENT_CACHE[id]&&CLIENT_CACHE[id].retainer_payment_dates)||'{}');}catch(e){}
+    const _todayStr=new Date().toISOString().split('T')[0];
+    const _payDates={};_activeMo.forEach(m=>{_payDates[m]=(_prevPayDates&&_prevPayDates[m])||_todayStr;});
     const _emStage=$('em-stage').value;
-    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),stage:_emStage,onboarding_sub_stage:_emStage==='onboarding'?($('em-onboarding-sub-stage').value||null):null,active_status:_emStage==='active'?($('em-active-status').value||null):null,cx_score:$('em-cx').value!==''?parseInt($('em-cx').value):null,start_date:$('em-start').value||null,ads_first_live_date:$('em-ads-live').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),client_webhook:$('em-client-webhook').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
+    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),retainer_payment_dates:JSON.stringify(_payDates),stage:_emStage,onboarding_sub_stage:_emStage==='onboarding'?($('em-onboarding-sub-stage').value||null):null,active_status:_emStage==='active'?($('em-active-status').value||null):null,cx_score:$('em-cx').value!==''?parseInt($('em-cx').value):null,start_date:$('em-start').value||null,ads_first_live_date:$('em-ads-live').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),client_webhook:$('em-client-webhook').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   }
   const {error}=await db.from('clients').update(d).eq('id',id);
@@ -4796,7 +4815,7 @@ async function loadFinance() {
     db.from('ad_spend_daily').select('date,account_type,spend,leads').gte('date',from).lt('date',next).order('date',{ascending:false}),
     db.from('subscriptions').select('*').order('created_at'),
     db.from('clients').select('leads_delivered,lead_price,leads_mtd,pct_sold,meta_cpl,true_cpl,stage,total_leads_purchased').eq('type','ppl'),
-    db.from('clients').select('id,company_name,management_fee,payments_made,stage,active_months,next_payment_date').eq('type','managed'),
+    db.from('clients').select('id,company_name,management_fee,payments_made,stage,active_months,retainer_payment_dates,next_payment_date').eq('type','managed'),
     db.from('managed_order_log').select('client_id,amount,order_date').gte('order_date',from).lte('order_date',next),
     db.from('ppl_order_log').select('leads_qty,lead_price,order_date').gte('order_date',from).lte('order_date',next),
     spendLogQ,
@@ -4822,8 +4841,7 @@ async function loadFinance() {
   const priorMgRetainer = mgR.data ? (() => {
     const pFrom=priorFrom, pNext=priorNext;
     return (mgR.data||[]).reduce((s,c)=>{
-      let months=[];try{months=JSON.parse(c.active_months||'[]');}catch(e){}
-      const inRange=months.filter(m=>m+'-01'>=pFrom&&m+'-01'<pNext);
+      const inRange=mgPaymentMonths(c).filter(m=>m+'-01'>=pFrom&&m+'-01'<pNext);
       const cnt=c.active_months!=null?inRange.length:0;
       return s+(cnt*(c.management_fee||0));
     },0);
@@ -4841,8 +4859,8 @@ async function loadFinance() {
   // Extras for sections migrated from Command Center
   const curMonthKey = today.slice(0,7);
   const mgRetainerThisMonth = (mgR.data||[]).reduce((s,c)=>{
-    let months=[];try{months=JSON.parse(c.active_months||'[]');}catch(e){}
-    return s+(months.includes(curMonthKey)?(c.management_fee||0):0);
+    const cnt=mgPaymentMonths(c).filter(m=>m===curMonthKey).length;
+    return s+(cnt*(c.management_fee||0));
   },0);
   const mtdPplRev = (pplOrdMtdR.data||[]).reduce((s,o)=>s+((o.leads_qty||0)*(o.lead_price||0)),0);
   const mtdMgRev = (mgOrdMtdR.data||[]).reduce((s,o)=>s+(o.amount||0),0);
@@ -4874,13 +4892,12 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const pplRevClients=pplClients.reduce((s,c)=>s+((c.leads_delivered||0)*(c.lead_price||0)),0);
   const pplRev=pplRevLog>0?pplRevLog:pplRevClients;
   const mgRetainerRev=mgClients.reduce((s,c)=>{
-    let months=[];
-    try{months=JSON.parse(c.active_months||'[]');}catch(e){}
-    // Use prior.mgRevNext (end-of-year for YTD) so future-toggled retainer
-    // months in the current year still feed into Total Revenue. Falls back
-    // to `next` for monthly views where the upper bound matches the period.
+    // Cash basis: attribute each active month's fee to the month it was paid.
+    // Use prior.mgRevNext (end-of-year for YTD) so retainers paid this year for
+    // upcoming months still feed into Total Revenue. Falls back to `next` for
+    // monthly views where the upper bound matches the period.
     const mgUpper=prior.mgRevNext||next;
-    const inRange=months.filter(m=>(!from||m+'-01'>=from)&&(!mgUpper||m+'-01'<mgUpper));
+    const inRange=mgPaymentMonths(c).filter(m=>(!from||m+'-01'>=from)&&(!mgUpper||m+'-01'<mgUpper));
     const cnt=c.active_months!=null?inRange.length:(c.payments_made||0);
     return s+(cnt*(c.management_fee||0));
   },0);
@@ -4888,9 +4905,7 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   // run-rate annualisation so future-booked months don't artificially
   // inflate the projection.
   const mgRetainerRevPeriod=mgClients.reduce((s,c)=>{
-    let months=[];
-    try{months=JSON.parse(c.active_months||'[]');}catch(e){}
-    const inRange=months.filter(m=>(!from||m+'-01'>=from)&&(!next||m+'-01'<next));
+    const inRange=mgPaymentMonths(c).filter(m=>(!from||m+'-01'>=from)&&(!next||m+'-01'<next));
     const cnt=c.active_months!=null?inRange.length:(c.payments_made||0);
     return s+(cnt*(c.management_fee||0));
   },0);
@@ -5182,7 +5197,7 @@ async function loadGoals() {
   const [goalsR, pplOrdR, mgR, mgOrdR, expR, spendLogR, priorPplOrdR, priorMgOrdR, priorExpR, priorSpendLogR] = await Promise.all([
     db.from('monthly_goals').select('*').gte('month', `${year}-01`).lte('month', `${year}-12`).order('month'),
     db.from('ppl_order_log').select('leads_qty,lead_price,order_date').gte('order_date', `${year}-01-01`).lte('order_date', `${year}-12-31`),
-    db.from('clients').select('id,company_name,management_fee,payments_made,stage,active_months').eq('type','managed'),
+    db.from('clients').select('id,company_name,management_fee,payments_made,stage,active_months,retainer_payment_dates').eq('type','managed'),
     db.from('managed_order_log').select('client_id,amount,order_date').gte('order_date', `${year}-01-01`).lte('order_date', `${year}-12-31`),
     db.from('expenses').select('amount,date').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),
     db.from('campaign_spend_log').select('period,spend').gte('period',`${year}-01`).lte('period',`${year}-12`),
@@ -5240,12 +5255,11 @@ async function loadGoals() {
       .filter(o => o.order_date >= from && o.order_date < next)
       .reduce((s, o) => s + ((o.leads_qty||0) * (o.lead_price||0)), 0);
 
-    // Managed retainer revenue for this month
+    // Managed retainer revenue for this month (cash basis: attributed to the
+    // month the retainer was paid, not the month it covers).
     const mgRetainer = mgClients.reduce((s, c) => {
-      let months = [];
-      try { months = JSON.parse(c.active_months || '[]'); } catch(e) {}
-      const inRange = months.filter(mo => mo === key);
-      return s + (inRange.length * (c.management_fee || 0));
+      const cnt = mgPaymentMonths(c).filter(mo => mo === key).length;
+      return s + (cnt * (c.management_fee || 0));
     }, 0);
 
     // Managed custom orders for this month
