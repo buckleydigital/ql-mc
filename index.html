@@ -337,6 +337,8 @@ body::after {
 
 /* ═══ KPI GRID ═══ */
 .kg{display:grid;gap:7px;margin-bottom:14px}
+.kg.c6{grid-template-columns:repeat(6,1fr)}
+.kg.c5{grid-template-columns:repeat(5,1fr)}
 .kg.c4{grid-template-columns:repeat(4,1fr)}
 .kg.c3{grid-template-columns:repeat(3,1fr)}
 .kg.c2{grid-template-columns:1fr 1fr}
@@ -618,6 +620,7 @@ td strong{font-weight:500}
 
 /* ═══ RESPONSIVE ═══ */
 @media(max-width:960px){
+  .kg.c6,.kg.c5{grid-template-columns:repeat(3,1fr)}
   .kg.c4,.kg.c3{grid-template-columns:repeat(2,1fr)}
   .md-layout{grid-template-columns:1fr;height:auto}
   .md-files{flex-direction:row;flex-wrap:wrap}
@@ -629,14 +632,14 @@ td strong{font-weight:500}
   .sidebar{display:none}
   .bnav{display:flex}
   .panel{padding:11px 11px calc(var(--bnav-h, 200px) + 40px + env(safe-area-inset-bottom,0px))}
-  .kg.c4,.kg.c3{grid-template-columns:1fr 1fr}
+  .kg.c6,.kg.c5,.kg.c4,.kg.c3{grid-template-columns:1fr 1fr}
   .task-grid{grid-template-columns:1fr}
   .g2{grid-template-columns:1fr}
   .ph{flex-direction:column}
   .ph-right{width:100%}
   #clock,.live-pill{display:none}
 }
-@media(max-width:400px){.kg.c4,.kg.c3,.kg.c2{grid-template-columns:1fr}}
+@media(max-width:400px){.kg.c6,.kg.c5,.kg.c4,.kg.c3,.kg.c2{grid-template-columns:1fr}}
 
 /* ══ LEAD DISTRIBUTION ══ */
 .ld-client-grid{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px}
@@ -1069,12 +1072,13 @@ td strong{font-weight:500}
             <button class="btn btn-sm" onclick="populateTestLeadNiches();openModal('m-test-lead')">＋ Test Lead</button>
           </div>
         </div>
-        <div class="kg c5 mb4">
+        <div class="kg c6 mb4">
           <div class="kpi"><div class="klabel">Total Received</div><div class="kval blu" id="ld-total">—</div></div>
           <div class="kpi"><div class="klabel">Pending</div><div class="kval amb" id="ld-pending">—</div></div>
           <div class="kpi"><div class="klabel">Assigned</div><div class="kval ink" id="ld-assigned">—</div></div>
           <div class="kpi"><div class="klabel">Delivered</div><div class="kval grn" id="ld-delivered">—</div></div>
           <div class="kpi"><div class="klabel">Failed / Scrubbed</div><div class="kval red" id="ld-failed">—</div></div>
+          <div class="kpi"><div class="klabel">Total Outstanding Leads</div><div class="kval amb" id="ld-outstanding">—</div><div class="ksub">active clients · purchased − delivered</div></div>
         </div>
         <div class="sl" style="cursor:pointer;user-select:none" onclick="toggleClientBreakdown()" id="ld-client-toggle">
           By Client <span id="ld-client-chevron" style="font-size:10px;margin-left:6px;color:var(--ink3)">▶</span>
@@ -2724,7 +2728,20 @@ async function loadLeads(resetPage) {
   if (typeFilter !== 'all') tableQ.eq('lead_type', typeFilter);
   tableQ.range(leadsPage * PAGE_SIZE, (leadsPage + 1) * PAGE_SIZE - 1);
 
-  const [nicheR, statsR, tableR] = await Promise.all([nicheQ, statsQ, tableQ]);
+  // Outstanding leads owed to active clients (from the Active Clients / PPL tab):
+  // remaining per client = purchased − delivered + scrubbed, exactly as shown there.
+  const outstandingQ = db.from('clients')
+    .select('total_leads_purchased, leads_delivered, leads_scrubbed')
+    .eq('type', 'ppl').eq('stage', 'active_client');
+
+  const [nicheR, statsR, tableR, outstandingR] = await Promise.all([nicheQ, statsQ, tableQ, outstandingQ]);
+
+  // Sum positive remaining balances only — over-delivered clients (✓ in the table) don't offset.
+  const totalOutstanding = (outstandingR.data || []).reduce((sum, c) => {
+    const rem = (c.total_leads_purchased || 0) - (c.leads_delivered || 0) + (c.leads_scrubbed || 0);
+    return sum + Math.max(0, rem);
+  }, 0);
+  setText('ld-outstanding', outstandingR.error ? '—' : totalOutstanding);
 
   // Rebuild niche filter options
   if (nicheR.data) {
