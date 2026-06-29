@@ -1060,6 +1060,9 @@ td strong{font-weight:500}
             <select class="fi" id="ld-type-filter" onchange="loadLeads(true)" style="width:auto;font-size:11.5px;padding:5px 10px;font-family:var(--mono)">
               <option value="all">All Niches</option>
             </select>
+            <select class="fi" id="ld-client-filter" onchange="loadLeads(true)" style="width:auto;font-size:11.5px;padding:5px 10px;font-family:var(--mono)">
+              <option value="all">All Clients</option>
+            </select>
             <select class="fi" id="ld-filter" onchange="loadLeads(true)" style="width:auto;font-size:11.5px;padding:5px 10px;font-family:var(--mono)">
               <option value="all">All Statuses</option>
               <option value="pending">Pending</option>
@@ -2716,16 +2719,20 @@ async function loadLeads(resetPage) {
   if (resetPage) leadsPage = 0;
   const filter = $('ld-filter')?.value || 'all';
   const typeFilter = $('ld-type-filter')?.value || 'all';
+  const clientFilter = $('ld-client-filter')?.value || 'all';
 
   // ppl_leads is the dedicated distribution-leads table — no filter needed.
-  const nicheQ = db.from('ppl_leads').select('lead_type').limit(500);
+  // Pull lead_type + assigned client to build the niche & client filter dropdowns.
+  const nicheQ = db.from('ppl_leads').select('lead_type, assigned_client_id, clients(company_name)').limit(500);
   // Stats query — lightweight, all PPL rows, just status + lead_type + client info
   const statsQ = db.from('ppl_leads').select('status, lead_type, assigned_client_id, clients(company_name)');
   if (typeFilter !== 'all') statsQ.eq('lead_type', typeFilter);
+  if (clientFilter !== 'all') statsQ.eq('assigned_client_id', clientFilter);
   // Table query — paginated, with server-side filter
   const tableQ = db.from('ppl_leads').select('*, clients(company_name)', {count:'exact'}).order('created_at', {ascending: false});
   if (filter !== 'all') tableQ.eq('status', filter);
   if (typeFilter !== 'all') tableQ.eq('lead_type', typeFilter);
+  if (clientFilter !== 'all') tableQ.eq('assigned_client_id', clientFilter);
   tableQ.range(leadsPage * PAGE_SIZE, (leadsPage + 1) * PAGE_SIZE - 1);
 
   // Outstanding leads owed to active clients (from the Active Clients / PPL tab):
@@ -2749,6 +2756,18 @@ async function loadLeads(resetPage) {
     const sel = $('ld-type-filter');
     const curVal = sel.value;
     sel.innerHTML = '<option value="all">All Niches</option>' + niches.map(n => `<option value="${esc(n)}"${n===curVal?' selected':''}>${esc(n.charAt(0).toUpperCase()+n.slice(1))}</option>`).join('');
+
+    // Rebuild client filter options from leads that have an assigned client
+    const clientSel = $('ld-client-filter');
+    if (clientSel) {
+      const curClient = clientSel.value;
+      const clientMapOpts = {};
+      nicheR.data.forEach(r => {
+        if (r.assigned_client_id) clientMapOpts[r.assigned_client_id] = r.clients?.company_name || 'Unknown Client';
+      });
+      const clientOpts = Object.entries(clientMapOpts).sort((a, b) => a[1].localeCompare(b[1]));
+      clientSel.innerHTML = '<option value="all">All Clients</option>' + clientOpts.map(([id, name]) => `<option value="${esc(id)}"${id===curClient?' selected':''}>${esc(name)}</option>`).join('');
+    }
   }
 
   if (statsR.error || tableR.error) {
