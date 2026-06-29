@@ -7013,6 +7013,7 @@ async function loadConversations() {
           <td style="font-family:var(--mono);font-size:10px;color:var(--ink3);white-space:nowrap">${lastTime}</td>
           <td style="white-space:nowrap">
             <button class="btn btn-xs" onclick="openConvThread('${esc(t.lead_id)}','${esc(t.name)}','${esc(t.phone)}')">View Thread</button>
+            <button class="btn btn-xs" onclick="deleteConversation('${esc(t.lead_id)}','${esc(t.name)}')" style="background:var(--red);color:#fff">Delete</button>
           </td>
         </tr>`;
       }).join('');
@@ -7020,6 +7021,14 @@ async function loadConversations() {
   } catch (err) {
     if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="empty" style="color:var(--red)">Error: ${esc(err.message)}</td></tr>`;
   }
+}
+
+async function deleteConversation(leadId, name) {
+  if (!confirm(`Delete the entire conversation with ${name || 'this lead'}?\n\nThis permanently removes all SMS messages in this thread.`)) return;
+  const { error } = await db.from('lead_sms_log').delete().eq('lead_id', leadId);
+  if (error) { toast('Delete failed: ' + error.message, true); return; }
+  toast('Conversation deleted ✓');
+  loadConversations();
 }
 
 async function loadSalesConversations() {
@@ -7088,6 +7097,7 @@ async function loadSalesConversations() {
           <td style="font-family:var(--mono);font-size:10px;color:var(--ink3);white-space:nowrap">${lastTime}</td>
           <td style="white-space:nowrap">
             <button class="btn btn-xs" onclick="openSalesConvThread('${esc(t.lead_id)}','${esc(t.name)}','${esc(t.phone)}')">View Thread</button>
+            <button class="btn btn-xs" onclick="deleteSalesConversation('${esc(t.lead_id)}','${esc(t.name)}')" style="background:var(--red);color:#fff">Delete</button>
           </td>
         </tr>`;
       }).join('');
@@ -7095,6 +7105,14 @@ async function loadSalesConversations() {
   } catch (err) {
     if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="empty" style="color:var(--red)">Error loading sales conversations: ${esc(err.message)}</td></tr>`;
   }
+}
+
+async function deleteSalesConversation(leadId, name) {
+  if (!confirm(`Delete the entire conversation with ${name || 'this lead'}?\n\nThis permanently removes all SMS messages in this thread.`)) return;
+  const { error } = await db.from('sales_sms_log').delete().eq('lead_id', leadId);
+  if (error) { toast('Delete failed: ' + error.message, true); return; }
+  toast('Conversation deleted ✓');
+  loadSalesConversations();
 }
 
 function copySalesConvWebhook() {
