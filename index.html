@@ -1648,7 +1648,7 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Email</label><input class="fi" id="ppl-em" type="email" placeholder="john@example.com"></div>
     <div class="frow"><label class="flabel">Niche</label>
       <select class="fs" id="ppl-niche">
-        <option>Solar Residential</option><option>Solar Commercial</option><option>Battery Storage</option><option>EV Charger</option><option>HVAC</option><option>Roofing — Restorations</option><option>Roofing — Replacements</option><option>Renovation — Kitchens</option><option>Renovation — Bathrooms</option><option>Renovation — Decks</option><option>Renovation — Fencing</option><option>Carpentry</option><option>Other</option>
+        <option>Solar Residential</option><option>Solar Commercial</option><option>Battery Storage</option><option>Battery Retrofit</option><option>EV Charger</option><option>HVAC</option><option>Roofing — Restorations</option><option>Roofing — Replacements</option><option>Renovation — Kitchens</option><option>Renovation — Bathrooms</option><option>Renovation — Decks</option><option>Renovation — Fencing</option><option>Carpentry</option><option>Other</option>
       </select>
     </div>
     <div class="frow"><label class="flabel">Lead Price (AUD)</label><input class="fi" id="ppl-price" type="number" placeholder="e.g. 85"></div>
@@ -1806,7 +1806,7 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Phone</label><input class="fi" id="ep-ph"></div>
     <div class="frow"><label class="flabel">Niche</label>
       <select class="fs" id="ep-niche">
-        <option>Solar Residential</option><option>Solar Commercial</option><option>Battery Storage</option><option>EV Charger</option><option>HVAC</option><option>Roofing — Restorations</option><option>Roofing — Replacements</option><option>Renovation — Kitchens</option><option>Renovation — Bathrooms</option><option>Renovation — Decks</option><option>Renovation — Fencing</option><option>Carpentry</option><option>Other</option>
+        <option>Solar Residential</option><option>Solar Commercial</option><option>Battery Storage</option><option>Battery Retrofit</option><option>EV Charger</option><option>HVAC</option><option>Roofing — Restorations</option><option>Roofing — Replacements</option><option>Renovation — Kitchens</option><option>Renovation — Bathrooms</option><option>Renovation — Decks</option><option>Renovation — Fencing</option><option>Carpentry</option><option>Other</option>
       </select>
     </div>
     <div class="frow"><label class="flabel">Active Niches <span style="font-size:9.5px;color:var(--ink3);font-weight:300">all niches this client accepts</span></label><input class="fi" id="ep-active-niches" placeholder="solar, hvac, roofing"></div>
@@ -2114,6 +2114,7 @@ td strong{font-weight:500}
         <option value="roofing">Roofing</option>
         <option value="hvac">HVAC</option>
         <option value="renovations">Renovations</option>
+        <option value="battery_retrofit">Battery Retrofit</option>
       </select>
     </div>
     <div class="frow"><label class="flabel">Full Name</label><input class="fi" id="tl-name" value="Jane Test"></div>
@@ -2590,7 +2591,7 @@ async function populateTestLeadNiches() {
   const sel = $('tl-niche');
   if (!sel) return;
   // Default niches shown when DB has no data yet
-  const defaultNiches = ['solar', 'roofing', 'hvac', 'renovations'];
+  const defaultNiches = ['solar', 'roofing', 'hvac', 'renovations', 'battery_retrofit'];
   try {
     // ppl_leads is the dedicated distribution-leads table — no filter needed.
     const { data } = await db.from('ppl_leads')
