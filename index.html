@@ -735,6 +735,9 @@ td strong{font-weight:500}
 
         <div class="sb-group">
           <span class="sb-group-label">Advertising</span>
+          <button class="navbtn" data-panel="pcal" onclick="nav('pcal',this)">
+            <span class="ni">▦</span>PCAL
+          </button>
           <button class="navbtn" data-panel="campaigns" onclick="nav('campaigns',this)">
             <span class="ni">▶</span>Meta Campaigns
           </button>
@@ -1007,6 +1010,40 @@ td strong{font-weight:500}
           <table>
             <thead><tr><th>Campaign</th><th>Period</th><th>Spend</th><th>Leads</th><th>CPL</th><th>Source</th><th>Notes</th><th></th></tr></thead>
             <tbody id="spend-log-tbody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══ PPL CAMPAIGN ACTION LOG (PCAL) ══ -->
+      <div class="panel" id="panel-pcal">
+        <div class="ph">
+          <div class="ph-left"><h1>PPL Campaign Action Log</h1><p>Track PPL campaigns and log every change</p></div>
+          <div class="ph-right"><button class="btn btn-p btn-sm" onclick="openModal('m-add-ppl-campaign')">+ New Campaign</button></div>
+        </div>
+        <div class="kg c3 mb4">
+          <div class="kpi"><div class="klabel">Total Campaigns</div><div class="kval blu" id="pcal-total">—</div></div>
+          <div class="kpi"><div class="klabel">Active</div><div class="kval grn" id="pcal-active">—</div></div>
+          <div class="kpi"><div class="klabel">Paused</div><div class="kval" id="pcal-paused" style="color:var(--amb)">—</div></div>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;align-items:center">
+          <span style="font-size:10px;color:var(--ink3);margin-right:4px">Filter:</span>
+          <button class="btn btn-xs pcal-filter-btn active" data-filter="all" onclick="filterPcal('all',this)">All</button>
+          <button class="btn btn-xs pcal-filter-btn" data-filter="active" onclick="filterPcal('active',this)">Active</button>
+          <button class="btn btn-xs pcal-filter-btn" data-filter="paused" onclick="filterPcal('paused',this)">Paused</button>
+          <button class="btn btn-xs pcal-filter-btn" data-filter="nuked" onclick="filterPcal('nuked',this)">Nuked</button>
+        </div>
+        <div class="sl">PPL Campaigns <div class="sl-line"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Campaign</th><th>Niche</th><th>Area</th><th>Status</th><th>Linked Meta Campaign</th><th>Notes</th><th>Last Action</th><th></th></tr></thead>
+            <tbody id="pcal-tbody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="sl" style="margin-top:16px">Action Log <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px">recent actions across all campaigns</span><div class="sl-line"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Time</th><th>Campaign</th><th>Action</th><th>Details</th></tr></thead>
+            <tbody id="pcal-log-tbody"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -2319,6 +2356,84 @@ td strong{font-weight:500}
   </div>
 </div>
 
+<div class="overlay" id="m-add-ppl-campaign">
+  <div class="modal">
+    <h2>New PPL Campaign</h2><div class="msub">Create a campaign to track changes and actions</div>
+    <div class="frow"><label class="flabel">Campaign Name</label><input class="fi" id="pc-name" placeholder="e.g. Solar Brisbane North"></div>
+    <div class="frow"><label class="flabel">Niche</label><input class="fi" id="pc-niche" placeholder="e.g. solar, roofing"></div>
+    <div class="frow"><label class="flabel">Area</label><input class="fi" id="pc-area" placeholder="e.g. Brisbane, Gold Coast"></div>
+    <div class="frow"><label class="flabel">Status</label>
+      <select class="fs" id="pc-status">
+        <option value="active">Active</option>
+        <option value="paused">Paused</option>
+      </select>
+    </div>
+    <div class="frow"><label class="flabel">Link to Meta Campaign <span style="font-size:9.5px;color:var(--ink3);font-weight:300">optional</span></label>
+      <select class="fs" id="pc-meta-link"><option value="">— None —</option></select>
+    </div>
+    <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="pc-notes" placeholder="Initial notes about this campaign…"></textarea></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-add-ppl-campaign')">Cancel</button>
+      <button class="btn btn-p" onclick="savePplCampaign()">Create Campaign</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="m-edit-ppl-campaign">
+  <div class="modal">
+    <h2>Edit PPL Campaign</h2><div class="msub" id="epc-sub"></div>
+    <input type="hidden" id="epc-id">
+    <div class="frow"><label class="flabel">Campaign Name</label><input class="fi" id="epc-name"></div>
+    <div class="frow"><label class="flabel">Niche</label><input class="fi" id="epc-niche"></div>
+    <div class="frow"><label class="flabel">Area</label><input class="fi" id="epc-area"></div>
+    <div class="frow"><label class="flabel">Status</label>
+      <select class="fs" id="epc-status">
+        <option value="active">Active</option>
+        <option value="paused">Paused</option>
+        <option value="nuked">Nuked</option>
+      </select>
+    </div>
+    <div class="frow"><label class="flabel">Link to Meta Campaign</label>
+      <select class="fs" id="epc-meta-link"><option value="">— None —</option></select>
+    </div>
+    <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="epc-notes"></textarea></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-edit-ppl-campaign')">Cancel</button>
+      <button class="btn btn-danger btn-sm" onclick="deletePplCampaign()" style="margin-right:auto">Delete</button>
+      <button class="btn btn-p" onclick="updatePplCampaign()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="m-pcal-log">
+  <div class="modal" style="max-width:580px">
+    <h2>Campaign Action Log</h2>
+    <div class="msub" id="pcal-modal-title"></div>
+    <input type="hidden" id="pcal-modal-campaign-id">
+    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:flex-end;flex-wrap:wrap">
+      <div style="flex:0 0 auto">
+        <div class="flabel">Action Type</div>
+        <select class="fs" id="pcal-action-type" style="width:150px">
+          <option value="note">Note</option>
+          <option value="status_change">Status Change</option>
+          <option value="budget_change">Budget Change</option>
+          <option value="targeting_change">Targeting Change</option>
+          <option value="creative_change">Creative Change</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div style="flex:1;min-width:160px">
+        <div class="flabel">Details</div>
+        <input class="fi" id="pcal-action-details" type="text" placeholder="What changed…" style="width:100%;box-sizing:border-box">
+      </div>
+      <button class="btn btn-p btn-sm" onclick="addPcalEntry()" style="flex-shrink:0;align-self:flex-end">+ Log</button>
+    </div>
+    <div id="pcal-modal-body"><div class="empty">Loading…</div></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-pcal-log')">Close</button>
+    </div>
+  </div>
+</div>
 
 <style>
 @media(max-width:700px){
@@ -2530,6 +2645,7 @@ function nav(panel, el) {
   document.querySelectorAll(`[data-panel="${panel}"]`).forEach(b => b.classList.add('active'));
   if (panel === 'files') { loadFileContent(); loadTemplateClientDropdown(); }
   if (panel === 'ppl') { populateMapClientDropdown(); }
+  if (panel === 'pcal') loadPcal();
   if (panel === 'campaigns') { loadCampaigns(); renderMetaTokenBanner(); }
   if (panel === 'leads') loadLeads();
   if (panel === 'conversations') loadConversations();
@@ -2578,7 +2694,7 @@ function updateClock() {
   setText('clock', new Date().toLocaleTimeString('en-AU', {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}) + ' AEST');
 }
 
-function openModal(id)  { $(id).classList.add('open'); if(id==='m-ppl') refreshCampaignDropdowns(); if(id==='m-task'||id==='m-edit-task') loadTaskLeadDropdowns(); }
+function openModal(id)  { $(id).classList.add('open'); if(id==='m-ppl') refreshCampaignDropdowns(); if(id==='m-task'||id==='m-edit-task') loadTaskLeadDropdowns(); if(id==='m-add-ppl-campaign'){ $('pc-name').value='';$('pc-niche').value='';$('pc-area').value='';$('pc-status').value='active';$('pc-notes').value='';populatePcalMetaDropdown('pc-meta-link'); } }
 function closeModal(id) { $(id).classList.remove('open'); }
 document.addEventListener('click', e => { if (e.target.classList.contains('overlay')) e.target.classList.remove('open'); });
 
@@ -7290,6 +7406,195 @@ async function saveTwilioSettings() {
     btn.textContent = 'Save';
   }
 }
+
+// ── PPL Campaign Action Log (PCAL) ─────────────────────────────────────────
+let _pcalFilter = 'all';
+let _pcalCampaigns = [];
+
+function filterPcal(f, btn) {
+  _pcalFilter = f;
+  document.querySelectorAll('.pcal-filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderPcalTable();
+}
+
+async function loadPcal() {
+  const [campRes, logRes, metaRes] = await Promise.all([
+    db.from('ppl_campaigns').select('*, meta_campaigns(name)').order('created_at', { ascending: false }),
+    db.from('ppl_campaign_action_log').select('*, ppl_campaigns(name)').order('logged_at', { ascending: false }).limit(50),
+    db.from('meta_campaigns').select('id, name').order('name')
+  ]);
+  _pcalCampaigns = campRes.data || [];
+  const total = _pcalCampaigns.length;
+  const active = _pcalCampaigns.filter(c => c.status === 'active').length;
+  const paused = _pcalCampaigns.filter(c => c.status === 'paused').length;
+  $('pcal-total').textContent = total;
+  $('pcal-active').textContent = active;
+  $('pcal-paused').textContent = paused;
+  renderPcalTable();
+  renderPcalLog(logRes.data || []);
+  _pcalMetaCampaigns = metaRes.data || [];
+}
+
+let _pcalMetaCampaigns = [];
+
+function pcalStatusBadge(s) {
+  const colors = { active: 'var(--grn)', paused: 'var(--amb)', nuked: 'var(--red)' };
+  const c = colors[s] || 'var(--ink3)';
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;background:${c}22;color:${c};border:1px solid ${c}44">${esc(s)}</span>`;
+}
+
+function renderPcalTable() {
+  const filtered = _pcalFilter === 'all' ? _pcalCampaigns : _pcalCampaigns.filter(c => c.status === _pcalFilter);
+  const tbody = $('pcal-tbody');
+  if (!filtered.length) { tbody.innerHTML = `<tr><td colspan="8" class="empty">No ${_pcalFilter === 'all' ? '' : _pcalFilter + ' '}campaigns.</td></tr>`; return; }
+  tbody.innerHTML = filtered.map(c => {
+    const metaName = c.meta_campaigns?.name || '—';
+    return `<tr>
+      <td><strong>${esc(c.name)}</strong></td>
+      <td>${esc(c.niche || '—')}</td>
+      <td>${esc(c.area || '—')}</td>
+      <td>${pcalStatusBadge(c.status)}</td>
+      <td style="font-size:11px">${esc(metaName)}</td>
+      <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(c.notes || '')}">${esc(c.notes || '—')}</td>
+      <td style="font-size:11px;color:var(--ink3)">${fmtDate(c.updated_at)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-xs" onclick="openPcalLog('${c.id}','${esc(c.name)}')">Log</button>
+        <button class="btn btn-xs" onclick="editPplCampaign('${c.id}')">Edit</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPcalLog(logs) {
+  const tbody = $('pcal-log-tbody');
+  if (!logs.length) { tbody.innerHTML = '<tr><td colspan="4" class="empty">No actions logged yet.</td></tr>'; return; }
+  tbody.innerHTML = logs.map(l => `<tr>
+    <td style="font-size:11px;color:var(--ink3);white-space:nowrap">${fmtDate(l.logged_at, true)}</td>
+    <td style="font-size:11px">${esc(l.ppl_campaigns?.name || '—')}</td>
+    <td><span style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--ink3)">${esc(l.action_type)}</span></td>
+    <td style="font-size:12px">${esc(l.details || '—')}</td>
+  </tr>`).join('');
+}
+
+
+
+function populatePcalMetaDropdown(selectId) {
+  const sel = $(selectId);
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— None —</option>' + _pcalMetaCampaigns.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('');
+  if (current) sel.value = current;
+}
+
+async function savePplCampaign() {
+  const name = $('pc-name').value.trim();
+  if (!name) { toast('Campaign name required', true); return; }
+  const d = {
+    name,
+    niche: $('pc-niche').value.trim() || null,
+    area: $('pc-area').value.trim() || null,
+    status: $('pc-status').value,
+    meta_campaign_id: $('pc-meta-link').value || null,
+    notes: $('pc-notes').value.trim() || null
+  };
+  const { error } = await db.from('ppl_campaigns').insert([d]);
+  if (error) { toast('Error: ' + error.message, true); return; }
+  closeModal('m-add-ppl-campaign');
+  toast('Campaign created');
+  loadPcal();
+}
+
+async function editPplCampaign(id) {
+  const c = _pcalCampaigns.find(x => x.id === id);
+  if (!c) return;
+  populatePcalMetaDropdown('epc-meta-link');
+  $('epc-id').value = c.id;
+  $('epc-name').value = c.name || '';
+  $('epc-niche').value = c.niche || '';
+  $('epc-area').value = c.area || '';
+  $('epc-status').value = c.status || 'active';
+  $('epc-meta-link').value = c.meta_campaign_id || '';
+  $('epc-notes').value = c.notes || '';
+  $('epc-sub').textContent = c.name;
+  openModal('m-edit-ppl-campaign');
+}
+
+async function updatePplCampaign() {
+  const id = $('epc-id').value;
+  const oldCamp = _pcalCampaigns.find(x => x.id === id);
+  const newStatus = $('epc-status').value;
+  const d = {
+    name: $('epc-name').value.trim(),
+    niche: $('epc-niche').value.trim() || null,
+    area: $('epc-area').value.trim() || null,
+    status: newStatus,
+    meta_campaign_id: $('epc-meta-link').value || null,
+    notes: $('epc-notes').value.trim() || null,
+    updated_at: new Date().toISOString()
+  };
+  if (!d.name) { toast('Campaign name required', true); return; }
+  const { error } = await db.from('ppl_campaigns').update(d).eq('id', id);
+  if (error) { toast('Error: ' + error.message, true); return; }
+  if (oldCamp && oldCamp.status !== newStatus) {
+    await db.from('ppl_campaign_action_log').insert([{ campaign_id: id, action_type: 'status_change', details: `${oldCamp.status} → ${newStatus}` }]);
+  }
+  closeModal('m-edit-ppl-campaign');
+  toast('Campaign updated');
+  loadPcal();
+}
+
+async function deletePplCampaign() {
+  const id = $('epc-id').value;
+  const name = $('epc-name').value;
+  if (!confirm(`Delete campaign "${name}"? This will also remove all action log entries.`)) return;
+  const { error } = await db.from('ppl_campaigns').delete().eq('id', id);
+  if (error) { toast('Error: ' + error.message, true); return; }
+  closeModal('m-edit-ppl-campaign');
+  toast('Campaign deleted');
+  loadPcal();
+}
+
+async function openPcalLog(campaignId, campaignName) {
+  $('pcal-modal-title').textContent = campaignName;
+  $('pcal-modal-campaign-id').value = campaignId;
+  $('pcal-action-type').value = 'note';
+  $('pcal-action-details').value = '';
+  openModal('m-pcal-log');
+  await refreshPcalLog(campaignId);
+}
+
+async function refreshPcalLog(campaignId) {
+  $('pcal-modal-body').innerHTML = '<div class="empty">Loading…</div>';
+  const { data } = await db.from('ppl_campaign_action_log').select('*').eq('campaign_id', campaignId).order('logged_at', { ascending: false }).limit(100);
+  const logs = data || [];
+  if (!logs.length) { $('pcal-modal-body').innerHTML = '<div class="empty">No actions logged yet.</div>'; return; }
+  $('pcal-modal-body').innerHTML = '<div style="max-height:340px;overflow-y:auto">' + logs.map(l => `
+    <div style="padding:8px 0;border-bottom:1px solid var(--bd);font-size:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:600;text-transform:uppercase;font-size:10px;color:var(--ink3)">${esc(l.action_type)}</span>
+        <span style="font-size:10px;color:var(--ink3)">${fmtDate(l.logged_at, true)}</span>
+      </div>
+      <div style="margin-top:4px">${esc(l.details || '—')}</div>
+    </div>`).join('') + '</div>';
+}
+
+async function addPcalEntry() {
+  const campaignId = $('pcal-modal-campaign-id').value;
+  const details = $('pcal-action-details').value.trim();
+  if (!details) { toast('Add some details', true); return; }
+  const { error } = await db.from('ppl_campaign_action_log').insert([{
+    campaign_id: campaignId,
+    action_type: $('pcal-action-type').value,
+    details
+  }]);
+  if (error) { toast('Error: ' + error.message, true); return; }
+  await db.from('ppl_campaigns').update({ updated_at: new Date().toISOString() }).eq('id', campaignId);
+  $('pcal-action-details').value = '';
+  toast('Logged ✓');
+  refreshPcalLog(campaignId);
+  loadPcal();
+}
+
 
 </script>
 
