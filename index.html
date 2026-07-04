@@ -1507,6 +1507,7 @@ td strong{font-weight:500}
       <select class="fs" id="l-type">
         <option value="ppl">Pay-Per-Lead (PPL)</option>
         <option value="managed">Managed Advertising (MA)</option>
+        <option value="ppl_managed">PPL + Managed</option>
       </select>
     </div>
     <div class="frow"><label class="flabel">Stage</label>
@@ -1744,6 +1745,7 @@ td strong{font-weight:500}
       <select class="fs" id="el-type">
         <option value="ppl">Pay-Per-Lead (PPL)</option>
         <option value="managed">Managed Advertising (MA)</option>
+        <option value="ppl_managed">PPL + Managed</option>
       </select>
     </div>
     <div class="frow"><label class="flabel">Stage</label>
@@ -2047,6 +2049,7 @@ td strong{font-weight:500}
         <select class="fs" id="inv-offer-type">
           <option value="ppl">Pay-Per-Lead</option>
           <option value="managed">Managed Advertising</option>
+          <option value="ppl_managed">PPL + Managed</option>
         </select>
       </div>
       <div class="frow"><label class="flabel">Vertical / Niche</label><input class="fi" id="inv-vertical" placeholder="e.g. Solar Residential"></div>
@@ -3179,10 +3182,10 @@ async function loadTaskLeadDropdowns() {
     opts.push('</optgroup>');
   }
   if (clientsR.data?.length) {
-    const ppl=clientsR.data.filter(c=>c.type==='ppl');
-    const mg=clientsR.data.filter(c=>c.type==='managed');
-    if (ppl.length) {opts.push('<optgroup label="PPL Clients">');ppl.forEach(c=>opts.push(`<option value="client:${esc(c.id)}">[PPL] ${esc(c.company_name)}</option>`));opts.push('</optgroup>');}
-    if (mg.length) {opts.push('<optgroup label="Managed Ads">');mg.forEach(c=>opts.push(`<option value="client:${esc(c.id)}">[Managed] ${esc(c.company_name)}</option>`));opts.push('</optgroup>');}
+    const ppl=clientsR.data.filter(c=>c.type==='ppl'||c.type==='ppl_managed');
+    const mg=clientsR.data.filter(c=>c.type==='managed'||c.type==='ppl_managed');
+    if (ppl.length) {opts.push('<optgroup label="PPL Clients">');ppl.forEach(c=>opts.push(`<option value="client:${esc(c.id)}">[${c.type==='ppl_managed'?'PPL+M':'PPL'}] ${esc(c.company_name)}</option>`));opts.push('</optgroup>');}
+    if (mg.length) {opts.push('<optgroup label="Managed Ads">');mg.forEach(c=>opts.push(`<option value="client:${esc(c.id)}">[${c.type==='ppl_managed'?'PPL+M':'Managed'}] ${esc(c.company_name)}</option>`));opts.push('</optgroup>');}
   }
   const html = opts.join('');
   const newSel = $('t-linked-lead');
@@ -5558,7 +5561,7 @@ async function loadTemplateClientDropdown() {
   const sel = $('tmpl-client-sel');
   if (!sel) return;
   sel.innerHTML = '<option value="">— Preview with client —</option>' +
-    _tmplClients.map(c=>`<option value="${esc(String(c.id))}">${esc(c.company_name)} [${c.type==='ppl'?'PPL':'Managed'}]</option>`).join('');
+    _tmplClients.map(c=>`<option value="${esc(String(c.id))}">${esc(c.company_name)} [${c.type==='ppl'?'PPL':c.type==='ppl_managed'?'PPL+M':'Managed'}]</option>`).join('');
 }
 function applyTemplateVars(text, client) {
   if (!client) return text;
