@@ -12,7 +12,7 @@ create table if not exists ppl_campaigns (
 );
 create index if not exists ppl_campaigns_status_idx on ppl_campaigns(status);
 alter table ppl_campaigns enable row level security;
-create policy "Allow all for authenticated" on ppl_campaigns for all using (auth.role() = 'authenticated');
+create policy "ppl_campaigns_auth_all" on ppl_campaigns for all using (auth.role() = 'authenticated');
 
 -- PPL Campaign Action Log (PCAL): tracks every change/action on a campaign
 create table if not exists ppl_campaign_action_log (
@@ -24,4 +24,4 @@ create table if not exists ppl_campaign_action_log (
 );
 create index if not exists pcal_campaign_id_idx on ppl_campaign_action_log(campaign_id);
 alter table ppl_campaign_action_log enable row level security;
-create policy "Allow all for authenticated" on ppl_campaign_action_log for all using (auth.role() = 'authenticated');
+create policy "pcal_auth_all" on ppl_campaign_action_log for all using (auth.role() = 'authenticated');
