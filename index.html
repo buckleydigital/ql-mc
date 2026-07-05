@@ -2623,7 +2623,7 @@ async function doLogin() {
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && $('login-screen').style.display !== 'none') doLogin();
 });
-async function doLogout() { if (db) await db.auth.signOut(); }
+async function doLogout() { if (!confirm('Sign out?')) return; if (db) await db.auth.signOut(); }
 
 // Panels a sales rep is allowed to open. Everything else is hidden + blocked.
 const REP_PANELS = new Set(['crm', 'invoices']);
