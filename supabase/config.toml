@@ -16,3 +16,8 @@ verify_jwt = false
 verify_jwt = false
 # Called by ql-hq stripe-webhook using x-api-secret header authentication.
 # JWT verification is off because the caller is a server-side process, not a user session.
+
+[functions.sync-sales-conversation]
+verify_jwt = false
+# Called by ql-hq twilio-inbound-sms (super-admin company only) using x-api-secret
+# header authentication to mirror agency AI SMS threads into Sales Conversations.
