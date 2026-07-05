@@ -1815,7 +1815,7 @@ td strong{font-weight:500}
         <button class="btn btn-p btn-sm" onclick="convertLead('managed')">→ Managed Ads</button>
       </div>
     </div>
-    <div class="frow"><label class="flabel">Deal Value (AUD/mo)</label><input class="fi" id="el-value" type="number"></div>
+    <div class="frow admin-only-field"><label class="flabel">Deal Value (AUD/mo)</label><input class="fi" id="el-value" type="number"></div>
     <div class="frow"><label class="flabel">Source</label>
       <select class="fs" id="el-source">
         <option value="outbound">Outbound</option><option value="referral">Referral</option>
@@ -1830,7 +1830,7 @@ td strong{font-weight:500}
       <button class="btn btn-red btn-sm admin-only-field" onclick="deleteLead()">Delete</button>
       <div style="flex:1"></div>
       <button class="btn" onclick="closeModal('m-edit-lead')">Cancel</button>
-      <button class="btn btn-p" onclick="updateLead()">Save changes</button>
+      <button class="btn btn-p admin-only-field" onclick="updateLead()">Save changes</button>
     </div>
   </div>
 </div>
@@ -3425,6 +3425,7 @@ function buildKanban(containerId,stages,prefix) {
 }
 let draggedId=null,draggedPrefix=null;
 function initCardDrag(card,id,prefix) {
+  if (IS_REP) return;   // reps are view-only — no stage changes via drag
   card.draggable=true;
   card.addEventListener('dragstart',e=>{draggedId=id;draggedPrefix=prefix;card.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.stopPropagation();});
   card.addEventListener('dragend',()=>{card.classList.remove('dragging');document.querySelectorAll('.kcards').forEach(c=>c.classList.remove('drag-over'));});
@@ -3433,6 +3434,7 @@ function dragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over
 function dragLeave(e){e.currentTarget.classList.remove('drag-over');}
 async function drop(e,prefix,newStage) {
   e.preventDefault();e.currentTarget.classList.remove('drag-over');
+  if (IS_REP) return;   // reps are view-only
   if (!draggedId||draggedPrefix!==prefix) return;
   const TABLE_MAP = { crm: 'leads' };
   const table = TABLE_MAP[prefix] || 'clients';
@@ -3546,10 +3548,10 @@ function renderCRM() {
           ${l.phone?`<div class="kcard-phone">${esc(l.phone)}</div>`:''}
           <div style="display:flex;gap:4px;margin-top:3px;align-items:center">
             ${l.lead_type?`<span class="badge ${typeBadge(l.lead_type)}" style="font-size:8.5px">${typeLabel(l.lead_type)}</span>`:''}
-            ${l.value?`<span class="kcard-val">${fmt(l.value)}</span>`:''}
+            ${(!IS_REP && l.value)?`<span class="kcard-val">${fmt(l.value)}</span>`:''}
           </div>
           ${(!IS_REP && l.owner_id)?`<div class="kcard-meta" style="margin-top:2px;color:var(--acc);font-size:9.5px">▸ ${esc(repName(l.owner_id)||'assigned')}</div>`:''}
-          <div class="kcard-contact-row">${cPill}${cToggleYes}${cToggleNo}</div>
+          <div class="kcard-contact-row">${cPill}${IS_REP?'':cToggleYes+cToggleNo}</div>
           ${isStale?`<div style="font-size:9px;color:var(--amb);font-family:var(--mono);margin-top:3px">⚠ ${ds!==null?ds+'d since contact':'not yet contacted'}</div>`:''}
         </div>`}).join('');
       col.querySelectorAll('.kcard').forEach(card=>{
@@ -3641,6 +3643,7 @@ async function ensureRepOptions() {
 }
 async function toggleContactable(e,id,value) {
   e.stopPropagation();
+  if (IS_REP) return;   // reps are view-only
   const {error}=await db.from('leads').update({contactable:value,updated_at:now()}).eq('id',id);
   if (error) { toast('Error: '+error.message,true); return; }
   loadCRM();
@@ -3672,6 +3675,7 @@ async function convertLead(targetType) {
   }, 800);
 }
 async function updateLead() {
+  if (IS_REP) { closeModal('m-edit-lead'); return; }   // reps are view-only
   const id=$('el-id').value;
   const stage=$('el-stage').value;
   const cRaw=$('el-contactable').value;
