@@ -3425,7 +3425,9 @@ function buildKanban(containerId,stages,prefix) {
 }
 let draggedId=null,draggedPrefix=null;
 function initCardDrag(card,id,prefix) {
-  if (IS_REP) return;   // reps are view-only — no stage changes via drag
+  // Reps may drag CRM leads to change stage (only) via a guarded RPC; they
+  // cannot drag PPL/Managed client cards.
+  if (IS_REP && prefix !== 'crm') return;
   card.draggable=true;
   card.addEventListener('dragstart',e=>{draggedId=id;draggedPrefix=prefix;card.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.stopPropagation();});
   card.addEventListener('dragend',()=>{card.classList.remove('dragging');document.querySelectorAll('.kcards').forEach(c=>c.classList.remove('drag-over'));});
@@ -3434,8 +3436,17 @@ function dragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over
 function dragLeave(e){e.currentTarget.classList.remove('drag-over');}
 async function drop(e,prefix,newStage) {
   e.preventDefault();e.currentTarget.classList.remove('drag-over');
-  if (IS_REP) return;   // reps are view-only
   if (!draggedId||draggedPrefix!==prefix) return;
+  if (IS_REP) {
+    // Reps may only change the stage of their own CRM leads, via the guarded RPC.
+    if (prefix !== 'crm') { draggedId=null;draggedPrefix=null; return; }
+    const { error } = await db.rpc('rep_update_lead_stage', { p_lead_id: draggedId, p_stage: newStage });
+    if (error) { toast('Move failed: ' + error.message, true); return; }
+    toast('→ ' + stageLabel(newStage));
+    draggedId=null;draggedPrefix=null;
+    loadCRM();
+    return;
+  }
   const TABLE_MAP = { crm: 'leads' };
   const table = TABLE_MAP[prefix] || 'clients';
   const updateData={stage:newStage,updated_at:now()};
