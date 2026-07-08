@@ -3512,10 +3512,9 @@ async function loadRepStats() {
   const leads = crmPipelineLeads || [];
   const CLOSED = ['closed_won', 'closed_lost', 'churned'];
   const won = leads.filter(l => l.stage === 'closed_won').length;
-  const lost = leads.filter(l => l.stage === 'closed_lost' || l.stage === 'churned').length;
   const open = leads.filter(l => !CLOSED.includes(l.stage || '')).length;
-  const decided = won + lost;
-  setText('rep-close', decided ? Math.round(won / decided * 100) + '%' : '—');
+  const total = leads.length;
+  setText('rep-close', total ? Math.round(won / total * 100) + '%' : '—');
   setText('rep-open', open);
 
   const { data: logs } = await db.from('lead_contact_log').select('contact_type, outcome');
@@ -3535,11 +3534,11 @@ function renderCRM() {
   const rvStats = $('crm-repview-stats');
   if (rvStats) {
     if (!IS_REP && crmRepView) {
+      const total = pipeline.length;
       const w  = pipeline.filter(l => l.stage === 'closed_won').length;
       const lo = pipeline.filter(l => l.stage === 'closed_lost' || l.stage === 'churned').length;
       const op = pipeline.filter(l => !['closed_won','closed_lost','churned'].includes(l.stage || '')).length;
-      const dec = w + lo;
-      rvStats.textContent = `Close rate ${dec ? Math.round(w/dec*100)+'%' : '—'} · Won ${w} · Lost ${lo} · Open ${op}`;
+      rvStats.textContent = `Close rate ${total ? Math.round(w/total*100)+'%' : '—'} · Won ${w} · Lost ${lo} · Open ${op} · ${total} leads`;
     } else { rvStats.textContent = ''; }
   }
   const won=allLeads.filter(l=>l.stage==='closed_won').length;
