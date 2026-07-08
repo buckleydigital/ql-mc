@@ -843,6 +843,13 @@ td strong{font-weight:500}
           <button class="btn btn-xs crm-period-btn" data-period="custom" onclick="switchCrmFilter('custom',this)">Custom</button>
           <input type="date" class="fi" id="crm-date" style="width:auto;font-size:11.5px;padding:5px 10px;display:none;font-family:var(--mono)" onchange="loadCRM(true)">
         </div>
+        <div class="admin-only-field" id="crm-repview-row" style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+          <span style="font-size:10px;color:var(--ink3)">View as rep:</span>
+          <select class="fi" id="crm-rep-view" style="width:auto;font-size:11.5px;padding:5px 10px" onchange="setCrmRepView(this.value)">
+            <option value="">Everyone</option>
+          </select>
+          <span id="crm-repview-stats" style="font-size:11px;color:var(--acc);font-family:var(--mono)"></span>
+        </div>
         <div class="kg c4 mb4 rep-stat-strip" style="display:none">
           <div class="kpi"><div class="klabel">Calls Taken</div><div class="kval blu" id="rep-calls">—</div></div>
           <div class="kpi"><div class="klabel">Pickup Rate</div><div class="kval" id="rep-pickup">—</div></div>
@@ -1484,6 +1491,7 @@ td strong{font-weight:500}
     <button class="bnbtn active" data-panel="tasks" onclick="nav('tasks',this)"><span class="bnbtn-icon">✦</span><span class="bnbtn-lbl">Tasks</span></button>
     <button class="bnbtn" data-panel="crm" onclick="nav('crm',this)"><span class="bnbtn-icon">◎</span><span class="bnbtn-lbl">Sales</span></button>
     <button class="bnbtn" data-panel="invoices" onclick="nav('invoices',this)"><span class="bnbtn-icon">⊞</span><span class="bnbtn-lbl">Invoices</span></button>
+    <button class="bnbtn" data-panel="sales-conv" onclick="nav('sales-conv',this)"><span class="bnbtn-icon">💬</span><span class="bnbtn-lbl">Convos</span></button>
     <button class="bnbtn" data-panel="ppl" onclick="nav('ppl',this)"><span class="bnbtn-icon">◈</span><span class="bnbtn-lbl">PPL</span></button>
     <button class="bnbtn" data-panel="managed" onclick="nav('managed',this)"><span class="bnbtn-icon">▣</span><span class="bnbtn-lbl">Managed</span></button>
     <button class="bnbtn" data-panel="finance" onclick="nav('finance',this)"><span class="bnbtn-icon">$</span><span class="bnbtn-lbl">Finance</span></button>
@@ -2482,6 +2490,17 @@ let leadsTotal = 0;
 let crmPage = 0;
 let crmAllLeads = [];       // date-filtered leads (table/KPIs)
 let crmPipelineLeads = [];  // all active leads regardless of date (kanban)
+let crmRepView = '';        // owner-only: '' = everyone, else a rep's user_id
+
+// Owner-only "view as rep": fill the selector from the loaded rep list.
+function populateCrmRepView() {
+  const sel = $('crm-rep-view'); if (!sel || IS_REP) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Everyone</option>' +
+    _reps.map(r => `<option value="${esc(r.user_id)}">${esc(r.name || r.email)}${r.active ? '' : ' (inactive)'}</option>`).join('');
+  sel.value = cur;
+}
+function setCrmRepView(v) { crmRepView = v; crmPage = 0; renderCRM(); }
 const PAGE_SIZE = 50;
 function renderPager(elId, page, total, onPage) {
   const pages = Math.ceil(total / PAGE_SIZE);
@@ -3482,6 +3501,7 @@ async function loadCRM(resetPage) {
   crmPipelineLeads = pipelineR.data || [];
   // When no date filter is active the table shows the same full set as the kanban
   crmAllLeads = curCrmRange ? (tableR.data || []) : crmPipelineLeads;
+  if (!IS_REP) populateCrmRepView();
   renderCRM();
   if (IS_REP) loadRepStats();
 }
@@ -3505,8 +3525,23 @@ async function loadRepStats() {
   setText('rep-pickup', calls.length ? Math.round(answered / calls.length * 100) + '%' : '—');
 }
 function renderCRM() {
-  const allLeads = crmAllLeads;           // table + KPIs (date-filtered)
-  const pipeline = crmPipelineLeads;     // kanban + follow-up banner (always all active)
+  let allLeads = crmAllLeads;           // table + KPIs (date-filtered)
+  let pipeline = crmPipelineLeads;     // kanban + follow-up banner (always all active)
+  // Owner "view as rep": scope the whole panel to one rep's assigned leads.
+  if (!IS_REP && crmRepView) {
+    allLeads = allLeads.filter(l => l.owner_id === crmRepView);
+    pipeline = pipeline.filter(l => l.owner_id === crmRepView);
+  }
+  const rvStats = $('crm-repview-stats');
+  if (rvStats) {
+    if (!IS_REP && crmRepView) {
+      const w  = pipeline.filter(l => l.stage === 'closed_won').length;
+      const lo = pipeline.filter(l => l.stage === 'closed_lost' || l.stage === 'churned').length;
+      const op = pipeline.filter(l => !['closed_won','closed_lost','churned'].includes(l.stage || '')).length;
+      const dec = w + lo;
+      rvStats.textContent = `Close rate ${dec ? Math.round(w/dec*100)+'%' : '—'} · Won ${w} · Lost ${lo} · Open ${op}`;
+    } else { rvStats.textContent = ''; }
+  }
   const won=allLeads.filter(l=>l.stage==='closed_won').length;
   setText('crm-total',allLeads.length);
   setText('crm-active',allLeads.filter(l=>!['closed_won','closed_lost'].includes(l.stage)).length);
@@ -3636,6 +3671,10 @@ function openEditLead(l) {
   setVal('el-next-followup', l.next_followup || '');
   setText('edit-lead-sub',(l.name||'')+(l.company?' · '+l.company:''));
   if (!IS_REP) ensureRepOptions().then(() => setVal('el-owner', l.owner_id || ''));
+  // Reps view lead details read-only — they change stage via drag, nothing else.
+  ['el-name','el-company','el-email','el-phone','el-stage','el-type','el-source','el-notes','el-contactable','el-last-contact','el-next-followup'].forEach(id => {
+    const e = $(id); if (e) e.disabled = IS_REP;
+  });
   checkConvertBanner();
   openModal('m-edit-lead');
 }
