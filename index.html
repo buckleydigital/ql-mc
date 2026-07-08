@@ -853,14 +853,14 @@ td strong{font-weight:500}
         <div class="kg c4 mb4 rep-stat-strip" style="display:none">
           <div class="kpi"><div class="klabel">Calls Taken</div><div class="kval blu" id="rep-calls">—</div></div>
           <div class="kpi"><div class="klabel">Pickup Rate</div><div class="kval" id="rep-pickup">—</div></div>
-          <div class="kpi"><div class="klabel">Close Rate</div><div class="kval grn" id="rep-close">—</div></div>
+          <div class="kpi"><div class="klabel">Close Rate</div><div class="kval grn" id="rep-close">—</div><div class="ksub" id="rep-close-sub"></div></div>
           <div class="kpi"><div class="klabel">My Open Leads</div><div class="kval" id="rep-open">—</div></div>
         </div>
         <div class="kg c4 mb4">
           <div class="kpi"><div class="klabel">Total Leads</div><div class="kval blu" id="crm-total">—</div></div>
           <div class="kpi"><div class="klabel">In Progress</div><div class="kval" id="crm-active">—</div></div>
           <div class="kpi"><div class="klabel">Closed Won</div><div class="kval grn" id="crm-won">—</div></div>
-          <div class="kpi"><div class="klabel">Win Rate</div><div class="kval" id="crm-rate">—</div></div>
+          <div class="kpi"><div class="klabel">Win Rate</div><div class="kval" id="crm-rate">—</div><div class="ksub" id="crm-rate-sub"></div></div>
         </div>
         <div class="sl">Pipeline <div class="sl-line"></div></div>
         <div class="kanban-wrap"><div class="kanban" id="crm-kanban"></div></div>
@@ -3512,9 +3512,12 @@ async function loadRepStats() {
   const leads = crmPipelineLeads || [];
   const CLOSED = ['closed_won', 'closed_lost', 'churned'];
   const won = leads.filter(l => l.stage === 'closed_won').length;
+  const lost = leads.filter(l => l.stage === 'closed_lost' || l.stage === 'churned').length;
   const open = leads.filter(l => !CLOSED.includes(l.stage || '')).length;
   const total = leads.length;
+  const decided = won + lost;
   setText('rep-close', total ? Math.round(won / total * 100) + '%' : '—');
+  setText('rep-close-sub', decided ? Math.round(won / decided * 100) + '% of decided' : '');
   setText('rep-open', open);
 
   const { data: logs } = await db.from('lead_contact_log').select('contact_type, outcome');
@@ -3538,14 +3541,20 @@ function renderCRM() {
       const w  = pipeline.filter(l => l.stage === 'closed_won').length;
       const lo = pipeline.filter(l => l.stage === 'closed_lost' || l.stage === 'churned').length;
       const op = pipeline.filter(l => !['closed_won','closed_lost','churned'].includes(l.stage || '')).length;
-      rvStats.textContent = `Close rate ${total ? Math.round(w/total*100)+'%' : '—'} · Won ${w} · Lost ${lo} · Open ${op} · ${total} leads`;
+      const dec = w + lo;
+      const allPct = total ? Math.round(w/total*100)+'%' : '—';
+      const decPct = dec ? Math.round(w/dec*100)+'%' : '—';
+      rvStats.textContent = `Close rate ${allPct} (all) · ${decPct} (decided) · Won ${w} · Lost ${lo} · Open ${op} · ${total} leads`;
     } else { rvStats.textContent = ''; }
   }
   const won=allLeads.filter(l=>l.stage==='closed_won').length;
+  const lostAll=allLeads.filter(l=>l.stage==='closed_lost'||l.stage==='churned').length;
+  const decidedAll=won+lostAll;
   setText('crm-total',allLeads.length);
   setText('crm-active',allLeads.filter(l=>!['closed_won','closed_lost'].includes(l.stage)).length);
   setText('crm-won',won);
-  setText('crm-rate',allLeads.length>0?((won/allLeads.length)*100).toFixed(0)+'%':'—');
+  setText('crm-rate',allLeads.length>0?Math.round(won/allLeads.length*100)+'%':'—');
+  setText('crm-rate-sub',decidedAll>0?Math.round(won/decidedAll*100)+'% of decided':'');
   const staleLeads=pipeline.filter(l=>{
     if (['closed_won','closed_lost'].includes(l.stage)) return false;
     if (l.contactable===false) return false;
