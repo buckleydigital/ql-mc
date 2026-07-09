@@ -783,6 +783,9 @@ td strong{font-weight:500}
           <button class="navbtn" data-panel="salesreps" onclick="nav('salesreps',this)">
             <span class="ni">◐</span>Sales Reps
           </button>
+          <button class="navbtn" data-panel="payrates" onclick="nav('payrates',this)">
+            <span class="ni">₵</span>Pay Rates
+          </button>
         </div>
 
       </div>
@@ -1310,6 +1313,32 @@ td strong{font-weight:500}
           <table>
             <thead><tr><th>Rep</th><th>Email</th><th>Status</th><th>Assigned</th><th>Open</th><th>Won</th><th>Calls</th><th>Pickup</th><th>Close</th><th></th></tr></thead>
             <tbody id="rep-tbody"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══ PAY RATES ══ -->
+      <div class="panel" id="panel-payrates">
+        <div class="ph">
+          <div class="ph-left"><h1>Pay Rates</h1><p>Role pay definitions — fixed salary or commission. Internal only.</p></div>
+        </div>
+        <div class="sl">Add Pay Rate <div class="sl-line"></div></div>
+        <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;padding:14px;border:1px solid var(--bd);border-radius:var(--r);background:var(--s1);margin-bottom:18px">
+          <div><label class="flabel">Role type</label><input class="fi" id="pr-role" placeholder="e.g. Sales Rep, Setter, Closer" style="width:220px"></div>
+          <div><label class="flabel">Pay type</label>
+            <select class="fi" id="pr-type" style="width:170px" onchange="onPayRateTypeChange()">
+              <option value="fixed">Fixed ($)</option>
+              <option value="commission">Commission (%)</option>
+            </select>
+          </div>
+          <div><label class="flabel"><span id="pr-amount-label">Amount ($)</span></label><input class="fi" id="pr-amount" type="number" step="0.01" min="0" placeholder="e.g. 1500" style="width:150px"></div>
+          <button class="btn btn-p btn-sm" onclick="addPayRate()">+ Add</button>
+        </div>
+        <div class="sl">Rates <div class="sl-line"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Role Type</th><th>Pay Type</th><th>Amount</th><th></th></tr></thead>
+            <tbody id="payrates-tbody"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -2672,6 +2701,7 @@ function nav(panel, el) {
   if (panel === 'invoices') loadInvoices();
   if (panel === 'goals') loadGoals();
   if (panel === 'salesreps') loadReps();
+  if (panel === 'payrates') loadPayRates();
 }
 
 // ── Role-based UI ───────────────────────────────────────────────────────────
@@ -6964,6 +6994,51 @@ async function callRepEdge(action, payload = {}) {
   const out = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(out.error || `Request failed (${res.status})`);
   return out;
+}
+
+// ── Pay Rates (owner-only; RLS blocks reps) ─────────────────────────────────
+function onPayRateTypeChange() {
+  const commission = $('pr-type').value === 'commission';
+  setText('pr-amount-label', commission ? 'Amount (%)' : 'Amount ($)');
+  const inp = $('pr-amount'); if (inp) inp.placeholder = commission ? 'e.g. 10' : 'e.g. 1500';
+}
+async function loadPayRates() {
+  const tb = $('payrates-tbody');
+  if (tb) tb.innerHTML = '<tr><td colspan="4" class="empty">Loading…</td></tr>';
+  const { data, error } = await db.from('pay_rates').select('*').order('created_at', { ascending: true });
+  if (error) { if (tb) tb.innerHTML = `<tr><td colspan="4" class="empty" style="color:var(--red)">Error: ${esc(error.message)}</td></tr>`; return; }
+  const rows = data || [];
+  if (!rows.length) { if (tb) tb.innerHTML = '<tr><td colspan="4" class="empty">No pay rates yet.</td></tr>'; return; }
+  if (tb) tb.innerHTML = rows.map(r => {
+    const commission = r.rate_type === 'commission';
+    const amt = commission ? Number(r.amount) + '%' : '$' + Number(r.amount).toLocaleString('en-AU');
+    const pill = `<span style="display:inline-block;padding:1px 8px;border-radius:20px;font-size:10px;font-weight:600;background:${commission ? 'rgba(71,151,255,.12);color:var(--acc)' : 'rgba(52,199,89,.12);color:var(--grn)'}">${commission ? 'Commission' : 'Fixed'}</span>`;
+    return `<tr>
+      <td><strong>${esc(r.role_type)}</strong></td>
+      <td>${pill}</td>
+      <td style="font-family:var(--mono)">${amt}</td>
+      <td style="white-space:nowrap"><button class="btn btn-xs" onclick="deletePayRate('${esc(String(r.id))}','${esc(r.role_type)}')" style="background:var(--red);color:#fff">Delete</button></td>
+    </tr>`;
+  }).join('');
+}
+async function addPayRate() {
+  const role = $('pr-role').value.trim();
+  const type = $('pr-type').value;
+  const amount = parseFloat($('pr-amount').value);
+  if (!role) { toast('Enter a role type', true); return; }
+  if (isNaN(amount) || amount < 0) { toast('Enter a valid amount', true); return; }
+  const { error } = await db.from('pay_rates').insert([{ role_type: role, rate_type: type, amount }]);
+  if (error) { toast('Error: ' + error.message, true); return; }
+  $('pr-role').value = ''; $('pr-amount').value = '';
+  toast('Pay rate added ✓');
+  loadPayRates();
+}
+async function deletePayRate(id, role) {
+  if (!confirm(`Delete the pay rate for "${role || 'this role'}"?`)) return;
+  const { error } = await db.from('pay_rates').delete().eq('id', id);
+  if (error) { toast('Delete failed: ' + error.message, true); return; }
+  toast('Deleted ✓');
+  loadPayRates();
 }
 
 async function loadReps() {
