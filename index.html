@@ -28,8 +28,8 @@
   --bd2:       #262630;
   --bd3:       #32323e;
   --ink:       #eeeef3;
-  --ink2:      #72728a;
-  --ink3:      #3e3e50;
+  --ink2:      #8a8aa0;
+  --ink3:      #58586e;
   --ink4:      #252530;
   --acc:       #4f8fff;
   --acc2:      #3070e0;
@@ -47,9 +47,9 @@
   --display:   'Syne', sans-serif;
   --sw:        220px;
   --th:        46px;
-  --r:         5px;
-  --r2:        9px;
-  --r3:        13px;
+  --r:         8px;
+  --r2:        12px;
+  --r3:        16px;
 }
 
 [data-theme="light"] {
@@ -91,9 +91,9 @@ body::before {
   content:'';position:fixed;inset:0;
   background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
   background-size: 200px 200px;
-  opacity:.4;pointer-events:none;z-index:0;
+  opacity:.06;pointer-events:none;z-index:0;
 }
-[data-theme="light"] body::before { opacity:.15; }
+[data-theme="light"] body::before { opacity:.04; }
 
 /* Subtle grid */
 body::after {
@@ -248,41 +248,29 @@ body::after {
 }
 
 .navbtn{
-  display:flex;align-items:center;gap:9px;
-  padding:7px 10px;border-radius:6px;
-  font-size:12px;font-weight:400;color:var(--ink2);
+  display:flex;align-items:center;gap:11px;
+  padding:9px 11px;border-radius:var(--r);
+  font-size:13.5px;font-weight:500;color:var(--ink2);
   border:1px solid transparent;background:transparent;width:100%;text-align:left;
-  transition:all .14s;line-height:1;position:relative;
+  transition:all .14s;line-height:1.1;position:relative;
   margin-bottom:1px;
-  letter-spacing:.01em;
 }
 .navbtn:hover{
-  background:var(--s3);color:var(--ink);border-color:var(--bd);
+  background:var(--s3);color:var(--ink);
 }
 .navbtn.active{
-  background:linear-gradient(135deg, rgba(79,143,255,.1) 0%, rgba(79,143,255,.05) 100%);
-  color:var(--acc);border-color:rgba(79,143,255,.18);
+  background:var(--acc-dim);
+  color:var(--acc-ink);font-weight:600;
 }
-[data-theme="light"] .navbtn.active{color:var(--acc-ink)}
-
-.navbtn.active::before{
-  content:'';position:absolute;left:-1px;top:50%;transform:translateY(-50%);
-  width:2px;height:55%;background:var(--acc);border-radius:0 2px 2px 0;
-  box-shadow:0 0 10px rgba(79,143,255,.8);
-}
+.navbtn.active .ni{color:var(--acc)}
 
 .ni{
-  width:18px;height:18px;flex-shrink:0;
+  width:17px;height:17px;flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
-  border-radius:5px;font-size:10px;
-  background:var(--s3);border:1px solid var(--bd);
-  color:var(--ink3);transition:all .14s;
+  color:var(--ink3);transition:color .14s;
 }
-.navbtn:hover .ni{background:var(--s4);color:var(--ink2);border-color:var(--bd2);}
-.navbtn.active .ni{
-  background:rgba(79,143,255,.12);border-color:rgba(79,143,255,.2);color:var(--acc);
-  box-shadow:0 0 8px rgba(79,143,255,.15);
-}
+.ni svg{width:17px;height:17px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.navbtn:hover .ni{color:var(--ink2);}
 
 .sb-divider{
   height:1px;background:var(--bd);margin:8px 10px;
@@ -336,7 +324,7 @@ body::after {
 .btn-grn:hover{opacity:.85;transform:translateY(-1px)}
 
 /* ═══ KPI GRID ═══ */
-.kg{display:grid;gap:7px;margin-bottom:14px}
+.kg{display:grid;gap:14px;margin-bottom:22px}
 .kg.c6{grid-template-columns:repeat(6,1fr)}
 .kg.c5{grid-template-columns:repeat(5,1fr)}
 .kg.c4{grid-template-columns:repeat(4,1fr)}
@@ -344,65 +332,61 @@ body::after {
 .kg.c2{grid-template-columns:1fr 1fr}
 .kpi{
   background:var(--s1);border:1px solid var(--bd);
-  border-radius:var(--r2);padding:14px 16px;
-  transition:all .15s;position:relative;overflow:hidden;
+  border-radius:var(--r2);padding:16px 18px;
+  transition:all .15s;position:relative;
+  box-shadow:0 1px 2px rgba(0,0,0,.2),0 4px 16px rgba(0,0,0,.14);
 }
-.kpi::after{
-  content:'';position:absolute;top:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent,rgba(79,143,255,.1),transparent);
-}
-.kpi:hover{border-color:var(--bd2);box-shadow:0 4px 20px rgba(0,0,0,.2)}
-.klabel{font-family:var(--mono);font-size:9px;color:var(--ink3);margin-bottom:9px;font-weight:400;letter-spacing:.07em;text-transform:uppercase;}
-.kval{font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-.8px;line-height:1;color:var(--ink)}
+[data-theme="light"] .kpi{box-shadow:0 1px 2px rgba(16,24,40,.05),0 4px 14px rgba(16,24,40,.05)}
+.kpi:hover{border-color:var(--bd2)}
+.klabel{font-size:12px;color:var(--ink2);margin-bottom:11px;font-weight:500;}
+.kval{font-family:var(--mono);font-size:25px;font-weight:600;letter-spacing:-.6px;line-height:1;color:var(--ink)}
 .kval.blu{color:var(--acc)}
 .kval.red{color:var(--red)}
 .kval.grn{color:var(--grn)}
-.ksub{font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:5px}
+.ksub{font-size:11.5px;color:var(--ink3);margin-top:6px}
 .ksub.up{color:var(--grn)}
 .ksub.dn{color:var(--red)}
 
 /* ═══ SECTION LABEL ═══ */
 .sl{
-  font-family:var(--mono);font-size:9px;font-weight:500;color:var(--ink3);
-  text-transform:uppercase;letter-spacing:.13em;
-  margin-bottom:9px;margin-top:20px;display:flex;align-items:center;gap:8px;
+  font-size:11px;font-weight:600;color:var(--ink3);
+  text-transform:uppercase;letter-spacing:.06em;
+  margin-bottom:12px;margin-top:26px;display:flex;align-items:center;gap:10px;
 }
 .sl:first-child{margin-top:0}
 .sl-line{flex:1;height:1px;background:linear-gradient(90deg,var(--bd),transparent)}
 
 /* ═══ KANBAN ═══ */
 .kanban-wrap{overflow-x:auto;padding-bottom:8px;margin-bottom:14px}
-.kanban{display:flex;gap:5px;min-width:max-content;align-items:flex-start}
-.kcol{width:180px;flex-shrink:0}
+.kanban{display:flex;gap:14px;min-width:max-content;align-items:flex-start}
+.kcol{width:230px;flex-shrink:0;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r2);padding:12px;display:flex;flex-direction:column}
 .kcolh{
   display:flex;align-items:center;justify-content:space-between;
-  padding:7px 9px 6px;
-  background:var(--s1);border:1px solid var(--bd);
-  border-radius:var(--r) var(--r) 0 0;border-bottom:none;
-  border-top:2px solid var(--bd2);
+  padding:2px 4px 12px;
 }
-.kcoln{font-family:var(--mono);font-size:9px;font-weight:500;color:var(--ink2);text-transform:uppercase;letter-spacing:.09em}
+.kcoln{font-size:12.5px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px}
+.kcoln::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--bd3);flex-shrink:0}
 .kcnt{
-  font-family:var(--mono);font-size:9.5px;padding:1px 6px;border-radius:3px;
-  background:var(--s3);border:1px solid var(--bd2);color:var(--ink3);
+  font-family:var(--mono);font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;
+  background:var(--s4);color:var(--ink3);
 }
 .kcards{
-  background:var(--s2);border:1px solid var(--bd);
-  border-top:none;min-height:56px;padding:4px;
-  display:flex;flex-direction:column;gap:3px;
-  border-radius:0 0 var(--r) var(--r);
+  min-height:56px;max-height:calc(100vh - 320px);overflow-y:auto;
+  display:flex;flex-direction:column;gap:9px;padding-right:2px;
 }
 .kcard{
   background:var(--s1);border:1px solid var(--bd);
-  border-radius:var(--r);padding:9px 10px;
+  border-radius:var(--r);padding:13px;
   cursor:pointer;transition:all .12s;user-select:none;
+  box-shadow:0 1px 2px rgba(0,0,0,.18);
 }
-.kcard:hover{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-dim);transform:translateY(-1px)}
+[data-theme="light"] .kcard{box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.kcard:hover{border-color:var(--bd3);transform:translateY(-1px)}
 .kcard.dragging{opacity:.25;cursor:grabbing}
-.kcard-name{font-size:11.5px;font-weight:500;color:var(--ink);margin-bottom:2px}
-.kcard-meta{font-family:var(--mono);font-size:9.5px;color:var(--ink3)}
-.kcard-phone{font-family:var(--mono);font-size:8.5px;color:var(--ink3);margin-top:1px}
-.kcard-val{font-family:var(--mono);font-size:9.5px;color:var(--acc);margin-top:3px}
+.kcard-name{font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:2px}
+.kcard-meta{font-size:12px;color:var(--ink2)}
+.kcard-phone{font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:3px}
+.kcard-val{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--grn);margin-top:3px}
 .kcard-contact-row{display:flex;align-items:center;gap:4px;margin-top:4px}
 .kcard-cpill{font-family:var(--mono);font-size:7.5px;font-weight:500;padding:1px 5px;border-radius:3px;letter-spacing:.03em}
 .kcard-cpill.cp-yes{color:var(--grn);background:rgba(var(--grn-rgb,52,199,89),.1);border:1px solid rgba(var(--grn-rgb,52,199,89),.2)}
@@ -412,14 +396,14 @@ body::after {
 .kcard-ctoggle:hover{border-color:var(--acc);color:var(--acc)}
 .kcards.drag-over{background:var(--acc-dim);border-color:rgba(79,143,255,.22)}
 
-.kcol[data-s="new_lead"] .kcolh,.kcol[data-s="lead"] .kcolh{border-top-color:var(--acc);}
-.kcol[data-s="no_answer"] .kcolh,.kcol[data-s="paused"] .kcolh{border-top-color:var(--ink3);}
-.kcol[data-s="call_back"] .kcolh,.kcol[data-s="qualified"] .kcolh,.kcol[data-s="onboarding"] .kcolh{border-top-color:rgba(79,143,255,.5);}
-.kcol[data-s="proposal"] .kcolh,.kcol[data-s="proposal_sent"] .kcolh{border-top-color:var(--amb);}
-.kcol[data-s="closed_won"] .kcolh,.kcol[data-s="active"] .kcolh,.kcol[data-s="active_client"] .kcolh{border-top-color:var(--grn);}
-.kcol[data-s="closed_lost"] .kcolh,.kcol[data-s="churned"] .kcolh{border-top-color:var(--red);}
-.kcol[data-s="appointment_booked"] .kcolh{border-top-color:var(--grn);}
-.kcol[data-s="disputed"] .kcolh{border-top-color:var(--red);}
+.kcol[data-s="new_lead"] .kcoln::before,.kcol[data-s="lead"] .kcoln::before{background:var(--acc);}
+.kcol[data-s="no_answer"] .kcoln::before,.kcol[data-s="paused"] .kcoln::before{background:var(--ink3);}
+.kcol[data-s="call_back"] .kcoln::before,.kcol[data-s="qualified"] .kcoln::before,.kcol[data-s="onboarding"] .kcoln::before{background:rgba(79,143,255,.6);}
+.kcol[data-s="proposal"] .kcoln::before,.kcol[data-s="proposal_sent"] .kcoln::before{background:var(--amb);}
+.kcol[data-s="closed_won"] .kcoln::before,.kcol[data-s="active"] .kcoln::before,.kcol[data-s="active_client"] .kcoln::before{background:var(--grn);}
+.kcol[data-s="closed_lost"] .kcoln::before,.kcol[data-s="churned"] .kcoln::before{background:var(--red);}
+.kcol[data-s="appointment_booked"] .kcoln::before{background:var(--grn);}
+.kcol[data-s="disputed"] .kcoln::before{background:var(--red);}
 
 /* ═══ TASKS ═══ */
 .task-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -478,9 +462,9 @@ body::after {
 
 /* ═══ TABLES ═══ */
 .twrap{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);overflow-x:auto;-webkit-overflow-scrolling:touch}
-table{width:max-content;min-width:100%;border-collapse:collapse;font-size:12px}
-thead th{text-align:left;padding:8px 12px;font-family:var(--mono);font-size:9px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.09em;background:var(--s2);border-bottom:1px solid var(--bd);white-space:nowrap}
-tbody td{padding:9px 12px;border-bottom:1px solid var(--bd);color:var(--ink);vertical-align:middle}
+table{width:max-content;min-width:100%;border-collapse:collapse;font-size:13px}
+thead th{text-align:left;padding:11px 16px;font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em;background:var(--s2);border-bottom:1px solid var(--bd);white-space:nowrap}
+tbody td{padding:12px 16px;border-bottom:1px solid var(--bd);color:var(--ink);vertical-align:middle}
 tbody tr:last-child td{border-bottom:none}
 tbody tr:hover td{background:var(--s2)}
 td strong{font-weight:500}
@@ -490,7 +474,7 @@ td strong{font-weight:500}
 .chart-title{font-family:var(--mono);font-size:9px;color:var(--ink3);font-weight:500;margin-bottom:12px;text-transform:uppercase;letter-spacing:.09em}
 
 /* ═══ BADGES ═══ */
-.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:3px;font-family:var(--mono);font-size:9px;font-weight:500;white-space:nowrap}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
 .bg-grn{background:var(--grn-dim);color:var(--grn);border:1px solid rgba(46,204,138,.18)}
 .bg-red{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,69,96,.18)}
 .bg-blu{background:var(--acc-dim);color:var(--acc);border:1px solid rgba(79,143,255,.15)}
@@ -606,7 +590,8 @@ td strong{font-weight:500}
 }
 .bnbtn{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:6px 2px;border:none;background:transparent;color:var(--ink3);transition:color .12s;font-family:var(--font)}
 .bnbtn.active{color:var(--acc)}
-.bnbtn-icon{font-size:14px;line-height:1}
+.bnbtn-icon{font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center}
+.bnbtn-icon svg{width:19px;height:19px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .bnbtn-lbl{font-family:var(--mono);font-size:8px;font-weight:500;letter-spacing:.05em;max-width:48px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ═══ TOAST ═══ */
@@ -712,7 +697,7 @@ td strong{font-weight:500}
         <div class="sb-group">
           <span class="sb-group-label">Workspace</span>
           <button class="navbtn active" data-panel="tasks" onclick="nav('tasks',this)">
-            <span class="ni">✦</span>Tasks
+            <span class="ni"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>Tasks
           </button>
         </div>
 
@@ -721,13 +706,13 @@ td strong{font-weight:500}
         <div class="sb-group">
           <span class="sb-group-label">Sales &amp; Clients</span>
           <button class="navbtn" data-panel="crm" onclick="nav('crm',this)">
-            <span class="ni">◎</span>Sales Pipeline<span id="crm-followup-badge" style="display:none;background:var(--amb);color:#1c1416;border-radius:10px;font-size:9px;padding:1px 6px;margin-left:5px;font-family:var(--mono);font-weight:700;line-height:1.5">0</span>
+            <span class="ni"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span>Sales Pipeline<span id="crm-followup-badge" style="display:none;background:var(--amb);color:#1c1416;border-radius:10px;font-size:9px;padding:1px 6px;margin-left:5px;font-family:var(--mono);font-weight:700;line-height:1.5">0</span>
           </button>
           <button class="navbtn" data-panel="ppl" onclick="nav('ppl',this)">
-            <span class="ni">◈</span>PPL Clients
+            <span class="ni"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></span>PPL Clients
           </button>
           <button class="navbtn" data-panel="managed" onclick="nav('managed',this)">
-            <span class="ni">▣</span>Managed Ads
+            <span class="ni"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 9l-5 5-2-2-4 4"/></svg></span>Managed Ads
           </button>
         </div>
 
@@ -736,19 +721,19 @@ td strong{font-weight:500}
         <div class="sb-group">
           <span class="sb-group-label">Advertising</span>
           <button class="navbtn" data-panel="pcal" onclick="nav('pcal',this)">
-            <span class="ni">▦</span>PCAL
+            <span class="ni"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></span>PCAL
           </button>
           <button class="navbtn" data-panel="campaigns" onclick="nav('campaigns',this)">
-            <span class="ni">▶</span>Meta Campaigns
+            <span class="ni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 010 8.49M7.76 16.24a6 6 0 010-8.49M19.07 4.93a10 10 0 010 14.14M4.93 19.07a10 10 0 010-14.14"/></svg></span>Meta Campaigns
           </button>
           <button class="navbtn" data-panel="leads" onclick="nav('leads',this)">
-            <span class="ni">⚡</span>Lead Distribution
+            <span class="ni"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>Lead Distribution
           </button>
           <button class="navbtn" data-panel="conversations" onclick="nav('conversations',this)">
-            <span class="ni">💬</span>PPL Conversations<span id="conv-unread-badge" style="display:none;background:var(--acc);color:#fff;border-radius:10px;font-size:9px;padding:1px 6px;margin-left:5px;font-family:var(--mono);font-weight:700;line-height:1.5">0</span>
+            <span class="ni"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 01-11.7 7.7L3 21l1.9-6.1A8.5 8.5 0 1121 11.5z"/></svg></span>PPL Conversations<span id="conv-unread-badge" style="display:none;background:var(--acc);color:#fff;border-radius:10px;font-size:9px;padding:1px 6px;margin-left:5px;font-family:var(--mono);font-weight:700;line-height:1.5">0</span>
           </button>
           <button class="navbtn" data-panel="sales-conv" onclick="nav('sales-conv',this)">
-            <span class="ni">💬</span>Sales Conversations
+            <span class="ni"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 01-11.7 7.7L3 21l1.9-6.1A8.5 8.5 0 1121 11.5z"/><path d="M8 10.5h8M8 13.5h5"/></svg></span>Sales Conversations
           </button>
         </div>
 
@@ -757,13 +742,13 @@ td strong{font-weight:500}
         <div class="sb-group">
           <span class="sb-group-label">Finance</span>
           <button class="navbtn" data-panel="invoices" onclick="nav('invoices',this)">
-            <span class="ni">⊞</span>Invoices
+            <span class="ni"><svg viewBox="0 0 24 24"><path d="M5 2v20l2.5-1.5L10 22l2-1.5L14 22l2.5-1.5L19 22V2l-2.5 1.5L14 2l-2 1.5L10 2 7.5 3.5 5 2z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span>Invoices
           </button>
           <button class="navbtn" data-panel="finance" onclick="nav('finance',this)">
-            <span class="ni">$</span>Financials
+            <span class="ni"><svg viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></span>Financials
           </button>
           <button class="navbtn" data-panel="goals" onclick="nav('goals',this)">
-            <span class="ni">◎</span>Goal Board
+            <span class="ni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg></span>Goal Board
           </button>
         </div>
 
@@ -772,7 +757,7 @@ td strong{font-weight:500}
         <div class="sb-group">
           <span class="sb-group-label">Intelligence</span>
           <button class="navbtn" data-panel="files" onclick="nav('files',this)">
-            <span class="ni">📄</span>Files
+            <span class="ni"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg></span>Files
           </button>
         </div>
 
@@ -781,10 +766,10 @@ td strong{font-weight:500}
         <div class="sb-group" id="rep-admin-nav" style="display:none">
           <span class="sb-group-label">Admin</span>
           <button class="navbtn" data-panel="salesreps" onclick="nav('salesreps',this)">
-            <span class="ni">◐</span>Sales Reps
+            <span class="ni"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0M16 4a3.5 3.5 0 010 7M18 20a6.5 6.5 0 00-3-5.5"/></svg></span>Sales Reps
           </button>
           <button class="navbtn" data-panel="payrates" onclick="nav('payrates',this)">
-            <span class="ni">₵</span>Pay Rates
+            <span class="ni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9.5A3 3 0 0012 8c-1.7 0-3 1-3 2.3s1.2 1.9 3 2.4 3 1 3 2.4S13.7 17 12 17a3 3 0 01-3-1.5M12 6.5v11"/></svg></span>Pay Rates
           </button>
         </div>
 
@@ -792,7 +777,7 @@ td strong{font-weight:500}
 
       <div class="sb-bottom">
         <button class="navbtn" onclick="doLogout()">
-          <span class="ni">⎋</span>Sign out
+          <span class="ni"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></span>Sign out
         </button>
       </div>
     </div>
@@ -1517,14 +1502,14 @@ td strong{font-weight:500}
   </div><!-- /layout -->
 
   <div class="bnav" style="flex-wrap:wrap;height:auto;padding:4px 2px;">
-    <button class="bnbtn active" data-panel="tasks" onclick="nav('tasks',this)"><span class="bnbtn-icon">✦</span><span class="bnbtn-lbl">Tasks</span></button>
-    <button class="bnbtn" data-panel="crm" onclick="nav('crm',this)"><span class="bnbtn-icon">◎</span><span class="bnbtn-lbl">Sales</span></button>
-    <button class="bnbtn" data-panel="invoices" onclick="nav('invoices',this)"><span class="bnbtn-icon">⊞</span><span class="bnbtn-lbl">Invoices</span></button>
-    <button class="bnbtn" data-panel="sales-conv" onclick="nav('sales-conv',this)"><span class="bnbtn-icon">💬</span><span class="bnbtn-lbl">Convos</span></button>
-    <button class="bnbtn" data-panel="ppl" onclick="nav('ppl',this)"><span class="bnbtn-icon">◈</span><span class="bnbtn-lbl">PPL</span></button>
-    <button class="bnbtn" data-panel="managed" onclick="nav('managed',this)"><span class="bnbtn-icon">▣</span><span class="bnbtn-lbl">Managed</span></button>
-    <button class="bnbtn" data-panel="finance" onclick="nav('finance',this)"><span class="bnbtn-icon">$</span><span class="bnbtn-lbl">Finance</span></button>
-    <button class="bnbtn" data-panel="files" onclick="nav('files',this)"><span class="bnbtn-icon">📄</span><span class="bnbtn-lbl">Files</span></button>
+    <button class="bnbtn active" data-panel="tasks" onclick="nav('tasks',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span><span class="bnbtn-lbl">Tasks</span></button>
+    <button class="bnbtn" data-panel="crm" onclick="nav('crm',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span><span class="bnbtn-lbl">Sales</span></button>
+    <button class="bnbtn" data-panel="invoices" onclick="nav('invoices',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M5 2v20l2.5-1.5L10 22l2-1.5L14 22l2.5-1.5L19 22V2l-2.5 1.5L14 2l-2 1.5L10 2 7.5 3.5 5 2z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span><span class="bnbtn-lbl">Invoices</span></button>
+    <button class="bnbtn" data-panel="sales-conv" onclick="nav('sales-conv',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 01-11.7 7.7L3 21l1.9-6.1A8.5 8.5 0 1121 11.5z"/><path d="M8 10.5h8M8 13.5h5"/></svg></span><span class="bnbtn-lbl">Convos</span></button>
+    <button class="bnbtn" data-panel="ppl" onclick="nav('ppl',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></span><span class="bnbtn-lbl">PPL</span></button>
+    <button class="bnbtn" data-panel="managed" onclick="nav('managed',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 9l-5 5-2-2-4 4"/></svg></span><span class="bnbtn-lbl">Managed</span></button>
+    <button class="bnbtn" data-panel="finance" onclick="nav('finance',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></span><span class="bnbtn-lbl">Finance</span></button>
+    <button class="bnbtn" data-panel="files" onclick="nav('files',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg></span><span class="bnbtn-lbl">Files</span></button>
   </div>
 </div><!-- /app -->
 
