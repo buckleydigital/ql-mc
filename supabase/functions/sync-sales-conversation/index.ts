@@ -58,6 +58,7 @@ Deno.serve(async (req: Request) => {
       inbound_message,
       inbound_sid,
       outbound_message,
+      outbound_sent_by,
       source,
     } = body as Record<string, string | null | undefined>
 
@@ -134,7 +135,7 @@ Deno.serve(async (req: Request) => {
         lead_id:    leadId,
         to_number:  normPhone,               // reply goes to the lead
         message:    outbound_message.trim(),
-        sent_by:    'AI (Don)',
+        sent_by:    (outbound_sent_by && outbound_sent_by.trim()) || 'AI (Don)',
         twilio_sid: null,
         status:     'delivered',
         direction:  'outbound',
