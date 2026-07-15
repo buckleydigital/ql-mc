@@ -7197,7 +7197,11 @@ async function loadConversations() {
 
     if (error) throw error;
 
-    const rows = data || [];
+    // Only real PPL conversations (rows tied to a ppl_lead). Rows with a null
+    // lead_id are stray inbound messages from numbers that are not PPL leads
+    // (e.g. an agency reply that was mis-delivered here instead of ql-hq); they
+    // must not be grouped/opened or the thread view passes "" as a uuid and errors.
+    const rows = (data || []).filter(r => r.lead_id);
 
     // Group by lead_id
     const byLead = {};
@@ -7404,6 +7408,7 @@ async function openSalesConvThread(leadId, leadName, leadPhone) {
 }
 
 async function openConvThread(leadId, leadName, leadPhone) {
+  if (!leadId) { toast('This message is not linked to a PPL lead, so it has no thread.'); return; }
   $('conv-thread-lead-id').value  = leadId;
   $('conv-thread-phone').value    = leadPhone;
   $('conv-thread-name').value     = leadName;
