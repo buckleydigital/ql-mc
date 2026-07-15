@@ -2220,7 +2220,7 @@ td strong{font-weight:500}
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Twilio Webhook Setup</div>
     <p style="font-size:11px;color:var(--ink3);margin-bottom:8px;line-height:1.6">In <strong style="color:var(--ink2)">Twilio Console → Phone Numbers → [your number] → Messaging</strong>, set <em>"When a message comes in"</em> to:</p>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
-      <code class="twilio-wh-url" style="font-family:var(--mono);font-size:10.5px;color:var(--acc);background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);padding:5px 10px;flex:1;word-break:break-all"></code>
+      <input id="ts-webhook-url" class="fi" placeholder="https://...supabase.co/functions/v1/twilio-inbound-sms" style="font-family:var(--mono);font-size:10.5px;flex:1;word-break:break-all">
       <button class="btn btn-xs" onclick="copyTwilioWebhook()">Copy</button>
     </div>
     <p style="font-size:10.5px;color:var(--ink3);margin-top:4px">Method: <strong style="color:var(--ink2)">HTTP POST</strong></p>
@@ -2442,10 +2442,14 @@ document.addEventListener('DOMContentLoaded',()=>{ setTimeout(updateBnavPadding,
 'use strict';
 const _ep = 'https://wmegoygrancfwxagqskh.supabase.co';
 const _ak = 'sb_publishable_UHQNxVCjHJnFjssYwTiwcQ_3FYovX8I';
-const _twilioWebhookUrl = _ep + '/functions/v1/twilio-inbound-sms';
-// Populate all webhook URL display elements (script runs at end of body, DOM is ready)
-document.querySelectorAll('.twilio-wh-url').forEach(el => { el.textContent = _twilioWebhookUrl; });
-function copyTwilioWebhook() { navigator.clipboard.writeText(_twilioWebhookUrl).then(() => toast('Copied ✓')); }
+// Twilio inbound webhook URL is stored in business_settings.twilio_webhook_url
+// (DB-only, editable in Twilio Settings) - never hardcoded here, so the app can
+// never silently point a number at the wrong project.
+function copyTwilioWebhook() {
+  const v = (document.getElementById('ts-webhook-url')?.value || '').trim();
+  if (!v) { toast('No webhook URL set', true); return; }
+  navigator.clipboard.writeText(v).then(() => toast('Copied ✓'));
+}
 const AVG_WEEKS_PER_MONTH = 4.33; // average weeks in a month (52/12)
 const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 
@@ -7471,6 +7475,7 @@ async function sendConvReply() {
 async function openTwilioSettings() {
   const s = await loadBizSettings();
   setVal('ts-from-number', s.twilio_from_number || '');
+  setVal('ts-webhook-url', s.twilio_webhook_url || '');
   openModal('m-twilio-settings');
 }
 
@@ -7480,7 +7485,7 @@ async function saveTwilioSettings() {
   btn.textContent = 'Saving…';
   try {
     const fromNum = $('ts-from-number').value.trim() || null;
-    const webhookUrl = _twilioWebhookUrl;
+    const webhookUrl = $('ts-webhook-url').value.trim() || null;
     const existing = await db.from('business_settings').select('id').limit(1).single();
     let error;
     if (existing.data) {
