@@ -965,6 +965,9 @@ td strong{font-weight:500}
             <textarea class="fta" id="bc-message" rows="4" placeholder="Hi {{first_name}}, quick one from the team..." oninput="updateBroadcastPreview()"></textarea>
             <div style="font-size:10px;color:var(--ink3);margin-top:4px">"Reply STOP to opt out" is appended automatically to every message.</div>
           </div>
+          <div class="frow"><label class="flabel">Preview as</label>
+            <select class="fs" id="bc-preview-lead" onchange="updateBroadcastPreview()"><option value="">First recipient</option></select>
+          </div>
           <div class="frow"><label class="flabel">Preview</label>
             <div id="bc-preview" style="background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);padding:12px 14px;font-size:12.5px;white-space:pre-wrap;color:var(--ink2);min-height:44px">Type a message to see a preview…</div>
           </div>
@@ -3958,13 +3961,21 @@ async function updateBroadcastCount(){
   setText('bc-count', _bcLeads.length);
   const exEl=$('bc-excluded');
   if(exEl){ const parts=[]; if(noPhone)parts.push(noPhone+' no phone'); if(optedOut)parts.push(optedOut+' opted out'); exEl.textContent=parts.length?'('+parts.join(', ')+' excluded)':''; }
+  const psel=$('bc-preview-lead');
+  if(psel){
+    const prev=psel.value;
+    psel.innerHTML='<option value="">First recipient</option>'+_bcLeads.map(l=>`<option value="${esc(String(l.id))}">${esc(l.name||l.phone||'—')}</option>`).join('');
+    if(prev && _bcLeads.some(l=>String(l.id)===prev)) psel.value=prev;
+  }
   updateBroadcastPreview();
 }
 function updateBroadcastPreview(){
   const raw=$('bc-message')?.value||'';
   const pv=$('bc-preview'); const btn=$('bc-send');
   if(!raw.trim()){ if(pv)pv.textContent='Type a message to see a preview…'; if(btn)btn.disabled=true; return; }
-  const name=_bcLeads[0]?bcFirstName(_bcLeads[0]):'there';
+  const selId=$('bc-preview-lead')?.value;
+  const sample=(selId && _bcLeads.find(l=>String(l.id)===selId)) || _bcLeads[0];
+  const name=sample?bcFirstName(sample):'there';
   if(pv)pv.textContent=raw.replace(/\{\{\s*first_name\s*\}\}/gi,name)+'\n\nReply STOP to opt out';
   if(btn)btn.disabled=_bcLeads.length===0;
 }
