@@ -708,6 +708,9 @@ td strong{font-weight:500}
           <button class="navbtn" data-panel="crm" onclick="nav('crm',this)">
             <span class="ni"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span>Sales Pipeline<span id="crm-followup-badge" style="display:none;background:var(--amb);color:#1c1416;border-radius:10px;font-size:9px;padding:1px 6px;margin-left:5px;font-family:var(--mono);font-weight:700;line-height:1.5">0</span>
           </button>
+          <button class="navbtn admin-only-field" data-panel="broadcast" onclick="nav('broadcast',this)">
+            <span class="ni"><svg viewBox="0 0 24 24"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg></span>Bulk SMS
+          </button>
           <button class="navbtn" data-panel="ppl" onclick="nav('ppl',this)">
             <span class="ni"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></span>PPL Clients
           </button>
@@ -945,6 +948,31 @@ td strong{font-weight:500}
               <div class="area-list" id="pricing-area-list"></div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- ══ BULK SMS / BROADCAST ══ -->
+      <div class="panel" id="panel-broadcast">
+        <div class="ph">
+          <div class="ph-left"><h1>Bulk SMS</h1><p>Broadcast a personalised SMS to sales-pipeline leads by stage. Replies land in Sales Conversations. Opted-out leads (replied STOP) are always excluded.</p></div>
+          <div class="ph-right"><button class="btn btn-sm" onclick="loadBroadcast()">↻ Refresh</button></div>
+        </div>
+        <div style="max-width:560px">
+          <div class="frow"><label class="flabel">Stage</label>
+            <select class="fs" id="bc-stage" onchange="updateBroadcastCount()"><option value="all">All stages</option></select>
+          </div>
+          <div class="frow"><label class="flabel">Message <span style="font-size:9.5px;color:var(--ink3);font-weight:300">use {{first_name}} to personalise</span></label>
+            <textarea class="fta" id="bc-message" rows="4" placeholder="Hi {{first_name}}, quick one from the team..." oninput="updateBroadcastPreview()"></textarea>
+            <div style="font-size:10px;color:var(--ink3);margin-top:4px">"Reply STOP to opt out" is appended automatically to every message.</div>
+          </div>
+          <div class="frow"><label class="flabel">Preview</label>
+            <div id="bc-preview" style="background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);padding:12px 14px;font-size:12.5px;white-space:pre-wrap;color:var(--ink2);min-height:44px">Type a message to see a preview…</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin:12px 0">
+            <div style="font-size:13px"><strong id="bc-count" style="font-size:18px;color:var(--acc)">0</strong> recipients <span id="bc-excluded" style="color:var(--ink3);font-size:11px"></span></div>
+          </div>
+          <div id="bc-progress" style="display:none;font-size:12px;color:var(--ink2);margin-bottom:8px;font-family:var(--mono)"></div>
+          <button class="btn btn-p" id="bc-send" onclick="sendBroadcast()" disabled>Send Bulk SMS</button>
         </div>
       </div>
 
@@ -2669,6 +2697,7 @@ function nav(panel, el) {
   if (panel === 'files') { loadFileContent(); loadTemplateClientDropdown(); }
   if (panel === 'ppl') { populateMapClientDropdown(); }
   if (panel === 'cpl') loadCplEditorPanel();
+  if (panel === 'broadcast') loadBroadcast();
   if (panel === 'pcal') loadPcal();
   if (panel === 'campaigns') { loadCampaigns(); renderMetaTokenBanner(); }
   if (panel === 'leads') loadLeads();
@@ -3899,6 +3928,73 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
   tb.querySelectorAll('.action-log-btn').forEach(btn=>{
     btn.addEventListener('click',e=>{ e.stopPropagation(); openActionLog(btn.dataset.clientId, btn.dataset.clientName); });
   });
+}
+
+// ── Bulk SMS / Broadcast ────────────────────────────────────────────────────
+// Personalised SMS to sales-pipeline leads by stage. Excludes no-phone AND
+// opted-out leads. Appends "Reply STOP to opt out". Sends via send-sms (which
+// also hard-blocks opted-out), logging each into sales_sms_log so replies thread
+// into Sales Conversations.
+let _bcLeads = [];
+function bcFirstName(l){ return ((l.name||'').trim().split(/\s+/)[0]) || 'there'; }
+function loadBroadcast(){
+  const sel=$('bc-stage');
+  if(sel && sel.options.length<=1){
+    CRM_STAGES.forEach(s=>{ const o=document.createElement('option'); o.value=s.id; o.textContent=s.label; sel.appendChild(o); });
+  }
+  updateBroadcastCount();
+}
+async function updateBroadcastCount(){
+  const stage=$('bc-stage')?.value||'all';
+  let q=db.from('leads').select('id,name,phone,stage,sms_opted_out');
+  if(stage!=='all') q=q.eq('stage',stage);
+  const {data,error}=await q;
+  if(error){ toast('Failed to load leads',true); return; }
+  const all=data||[];
+  const withPhone=all.filter(l=>l.phone&&String(l.phone).trim());
+  _bcLeads=withPhone.filter(l=>!l.sms_opted_out);
+  const noPhone=all.length-withPhone.length;
+  const optedOut=withPhone.length-_bcLeads.length;
+  setText('bc-count', _bcLeads.length);
+  const exEl=$('bc-excluded');
+  if(exEl){ const parts=[]; if(noPhone)parts.push(noPhone+' no phone'); if(optedOut)parts.push(optedOut+' opted out'); exEl.textContent=parts.length?'('+parts.join(', ')+' excluded)':''; }
+  updateBroadcastPreview();
+}
+function updateBroadcastPreview(){
+  const raw=$('bc-message')?.value||'';
+  const pv=$('bc-preview'); const btn=$('bc-send');
+  if(!raw.trim()){ if(pv)pv.textContent='Type a message to see a preview…'; if(btn)btn.disabled=true; return; }
+  const name=_bcLeads[0]?bcFirstName(_bcLeads[0]):'there';
+  if(pv)pv.textContent=raw.replace(/\{\{\s*first_name\s*\}\}/gi,name)+'\n\nReply STOP to opt out';
+  if(btn)btn.disabled=_bcLeads.length===0;
+}
+async function sendBroadcast(){
+  const raw=($('bc-message')?.value||'').trim();
+  if(!raw){ toast('Enter a message first',true); return; }
+  if(!_bcLeads.length){ toast('No recipients',true); return; }
+  if(!confirm(`Send this SMS to ${_bcLeads.length} lead(s)?\n\nOpted-out and no-phone leads are excluded automatically.`)) return;
+  const btn=$('bc-send'); btn.disabled=true;
+  const prog=$('bc-progress'); if(prog) prog.style.display='';
+  const {data:{session}}=await db.auth.getSession();
+  if(!session){ toast('Not logged in',true); btn.disabled=false; return; }
+  const leads=[..._bcLeads];
+  let sent=0,failed=0,skipped=0;
+  for(let i=0;i<leads.length;i++){
+    const l=leads[i];
+    const msg=raw.replace(/\{\{\s*first_name\s*\}\}/gi,bcFirstName(l))+'\n\nReply STOP to opt out';
+    if(prog) prog.textContent=`Sending ${i+1} / ${leads.length}…  (${sent} sent, ${failed} failed${skipped?', '+skipped+' opted out':''})`;
+    try{
+      const res=await fetch(`${_ep}/functions/v1/send-sms`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({to:l.phone,message:msg,lead_id:l.id,source:'sales'})});
+      const d=await res.json().catch(()=>({}));
+      if(res.status===409){ skipped++; }
+      else if(res.ok&&d.success){ sent++; } else { failed++; }
+    }catch{ failed++; }
+    await new Promise(r=>setTimeout(r,350));
+  }
+  if(prog) prog.textContent=`Done — ${sent} sent, ${failed} failed${skipped?', '+skipped+' opted out (skipped)':''}.`;
+  btn.disabled=false;
+  toast(`Bulk SMS complete: ${sent} sent, ${failed} failed`);
+  updateBroadcastCount();
 }
 
 // ── Lead Gen & CPL editor ──────────────────────────────────────────────────
@@ -7409,7 +7505,7 @@ async function loadSalesConversations() {
   try {
     const { data, error } = await db
       .from('sales_sms_log')
-      .select('*, leads(name, phone)')
+      .select('*, leads(name, phone, sms_opted_out)')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -7423,6 +7519,7 @@ async function loadSalesConversations() {
           lead_id: r.lead_id,
           name: r.leads?.name || '—',
           phone: r.leads?.phone || r.to_number || '—',
+          optedOut: r.leads?.sms_opted_out === true,
           messages: [],
         };
       }
@@ -7450,8 +7547,9 @@ async function loadSalesConversations() {
         const inCount  = t.messages.filter(m => (m.direction || 'outbound') === 'inbound').length;
         const outCount = t.messages.filter(m => (m.direction || 'outbound') === 'outbound').length;
         const dirBadge = inCount > 0 ? `<span class="badge bg-blu" style="font-size:9px">${inCount} in</span> ` : '';
-        return `<tr>
-          <td><strong>${esc(t.name)}</strong></td>
+        const stopBadge = t.optedOut ? ' <span class="badge bg-red" style="font-size:9px" title="Replied STOP - do not SMS">STOP</span>' : '';
+        return `<tr${t.optedOut ? ' style="opacity:.72"' : ''}>
+          <td><strong>${esc(t.name)}</strong>${stopBadge}</td>
           <td style="font-family:var(--mono);font-size:11px">${esc(t.phone)}</td>
           <td style="font-family:var(--mono);font-size:11px">${dirBadge}<span style="color:var(--ink3)">${outCount} out</span></td>
           <td style="font-size:11px;color:var(--ink2);max-width:220px;white-space:pre-wrap;word-break:break-word">${esc(lastBody)}</td>

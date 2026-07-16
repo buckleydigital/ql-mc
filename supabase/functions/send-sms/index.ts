@@ -69,13 +69,20 @@ Deno.serve(async (req: Request) => {
     // Validate lead_id exists in the correct table
     const { data: lead } = await supabaseAdmin
       .from(isSales ? "leads" : "ppl_leads")
-      .select("id")
+      .select(isSales ? "id, sms_opted_out" : "id")
       .eq("id", lead_id)
       .single();
 
     if (!lead) {
       return new Response(JSON.stringify({ error: "Lead not found" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Never message a lead who has opted out (replied STOP) - legal requirement.
+    if (isSales && (lead as { sms_opted_out?: boolean }).sms_opted_out) {
+      return new Response(JSON.stringify({ error: "Lead has opted out of SMS (replied STOP). Message not sent.", opted_out: true }), {
+        status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 

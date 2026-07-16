@@ -74,6 +74,42 @@ Deno.serve(async (req: Request) => {
     // Supabase filter-string issues with the leading '+' that .or() can trip on.
     const candidates = [...new Set([from, normFrom])].filter(Boolean);
 
+    // Opt-out / opt-in keyword detection (carrier-standard).
+    const kw = body.trim().toUpperCase().replace(/[.!,?]/g, "").replace(/\s+/g, " ").trim();
+    const STOP_WORDS = new Set(["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT", "OPTOUT", "OPT-OUT", "OPT OUT"]);
+    const START_WORDS = new Set(["START", "UNSTOP", "RESUBSCRIBE", "OPTIN", "OPT-IN", "OPT IN"]);
+    const isStop = STOP_WORDS.has(kw);
+    const isStart = START_WORDS.has(kw);
+
+    // ── Sales-pipeline lead first (bulk SMS + Sales Conversations) ──────────────
+    const { data: salesLeads } = await db
+      .from("leads")
+      .select("id, name, phone, sms_opted_out")
+      .in("phone", candidates)
+      .limit(1);
+    const salesLead = salesLeads?.[0] ?? null;
+
+    if (salesLead) {
+      await db.from("sales_sms_log").insert({
+        lead_id: salesLead.id,
+        to_number: to,
+        message: body,
+        sent_by: from,
+        twilio_sid: messageSid,
+        status: "received",
+        direction: "inbound",
+      });
+      if (isStop && !salesLead.sms_opted_out) {
+        await db.from("leads").update({ sms_opted_out: true, sms_opted_out_at: new Date().toISOString() }).eq("id", salesLead.id);
+        return twimlResponse("You have been unsubscribed and won't receive further messages. Reply START to opt back in.");
+      }
+      if (isStart && salesLead.sms_opted_out) {
+        await db.from("leads").update({ sms_opted_out: false, sms_opted_out_at: null }).eq("id", salesLead.id);
+        return twimlResponse("You're resubscribed. Reply STOP at any time to opt out.");
+      }
+      return twimlResponse();
+    }
+
     // Find the lead by their phone number in ppl_leads
     const { data: leads } = await db
       .from("ppl_leads")
