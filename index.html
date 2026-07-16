@@ -895,6 +895,13 @@ td strong{font-weight:500}
             <tbody id="ppl-tbody"><tr><td colspan="13" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
+        <div class="sl">Lead Gen &amp; CPL <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px">edit leads generated + Meta CPL here, then Save — no more per-order popups</span><div class="sl-line"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Client</th><th>Sold (Purchased)</th><th>Leads Generated</th><th>Meta CPL</th><th>% Sold</th><th>True CPL</th><th>Price/Lead</th><th>Margin</th><th></th></tr></thead>
+            <tbody id="cpl-editor-tbody"><tr><td colspan="9" class="empty">Loading...</td></tr></tbody>
+          </table>
+        </div>
         <div class="map-section">
           <div class="sl" style="margin-top:0;cursor:pointer;user-select:none" onclick="toggleMap()">
             Lead Generation Areas
@@ -1476,7 +1483,7 @@ td strong{font-weight:500}
 <!-- ═══ MODALS ═══ -->
 <div class="overlay" id="m-expense">
   <div class="modal">
-    <h2>Add Expense</h2><div class="msub">Manual expense entry</div>
+    <h2 id="exp-modal-title">Add Expense</h2><div class="msub">Manual expense entry</div>
     <div class="frow"><label class="flabel">Category</label><input class="fi" id="exp-category" placeholder="e.g. Software, Advertising, Staff"></div>
     <div class="frow"><label class="flabel">Description</label><input class="fi" id="exp-description" placeholder="e.g. Supabase Pro plan"></div>
     <div class="frow"><label class="flabel">Amount (AUD)</label><input class="fi" id="exp-amount" type="number" step="0.01" placeholder="e.g. 299.00"></div>
@@ -3872,6 +3879,73 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
   tb.querySelectorAll('.action-log-btn').forEach(btn=>{
     btn.addEventListener('click',e=>{ e.stopPropagation(); openActionLog(btn.dataset.clientId, btn.dataset.clientName); });
   });
+  renderCplEditor(clients);
+}
+
+// ── Lead Gen & CPL editor ──────────────────────────────────────────────────
+// One row per active PPL client. Edit Leads Generated + Meta CPL, hit Save.
+// True CPL = Meta CPL / (Sold / Generated). Same maths as the old per-order
+// popup, just done on one page. Sold = leads the client purchased.
+function renderCplEditor(clients){
+  const tb=$('cpl-editor-tbody');
+  if(!tb) return;
+  const rows=(clients||[]).filter(c=>c.type!=='managed'&&c.stage==='active_client');
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="9" class="empty">No active PPL clients.</td></tr>'; return; }
+  tb.innerHTML=rows.map(c=>{
+    const id=esc(String(c.id));
+    const sold=Number(c.total_leads_purchased)||0;
+    const price=Number(c.lead_price)||0;
+    const gen=c.total_leads_generated!=null?c.total_leads_generated:'';
+    const mcpl=c.meta_cpl!=null?c.meta_cpl:'';
+    return `<tr id="cpl-row-${id}" data-sold="${sold}" data-price="${price}">
+      <td><strong>${esc(c.company_name)}</strong></td>
+      <td style="font-family:var(--mono)">${sold}</td>
+      <td><input class="fi cpl-gen" type="number" min="0" step="1" value="${gen}" oninput="recalcCplRow('${id}')" style="width:88px;padding:3px 6px"></td>
+      <td><input class="fi cpl-mcpl" type="number" min="0" step="0.01" value="${mcpl}" oninput="recalcCplRow('${id}')" style="width:88px;padding:3px 6px"></td>
+      <td class="cpl-pct" style="font-family:var(--mono)">—</td>
+      <td class="cpl-true" style="font-family:var(--mono);color:var(--blu)">—</td>
+      <td style="font-family:var(--mono)">${fmtCpl(c.lead_price)}</td>
+      <td class="cpl-margin" style="font-family:var(--mono)">—</td>
+      <td><button class="btn btn-xs btn-p" onclick="saveCplRow('${id}',this)">Save</button></td>
+    </tr>`;
+  }).join('');
+  rows.forEach(c=>recalcCplRow(String(c.id)));
+}
+function recalcCplRow(id){
+  const row=document.getElementById('cpl-row-'+id);
+  if(!row) return;
+  const sold=Number(row.dataset.sold)||0;
+  const price=Number(row.dataset.price)||0;
+  const gen=parseFloat(row.querySelector('.cpl-gen').value)||0;
+  const mcpl=parseFloat(row.querySelector('.cpl-mcpl').value)||0;
+  const pct=gen>0?(sold/gen*100):null;
+  const trueCpl=(pct&&mcpl)?(mcpl/(pct/100)):null;
+  const margin=(trueCpl!=null&&price)?(price-trueCpl):null;
+  row.querySelector('.cpl-pct').textContent=pct!=null?pct.toFixed(1)+'%':'—';
+  row.querySelector('.cpl-true').textContent=trueCpl!=null?'$'+trueCpl.toFixed(2):'—';
+  const mEl=row.querySelector('.cpl-margin');
+  if(margin!=null){ mEl.textContent='$'+margin.toFixed(2); mEl.style.color=margin>=0?'var(--grn)':'var(--red)'; }
+  else { mEl.textContent='—'; mEl.style.color=''; }
+}
+async function saveCplRow(id, btn){
+  const row=document.getElementById('cpl-row-'+id);
+  if(!row) return;
+  const sold=Number(row.dataset.sold)||0;
+  const genRaw=row.querySelector('.cpl-gen').value.trim();
+  const mcplRaw=row.querySelector('.cpl-mcpl').value.trim();
+  const gen=genRaw===''?null:parseInt(genRaw,10);
+  const mcpl=mcplRaw===''?null:parseFloat(mcplRaw);
+  if(gen!=null&&(isNaN(gen)||gen<0)){ toast('Leads generated must be a whole number',true); return; }
+  if(mcpl!=null&&(isNaN(mcpl)||mcpl<0)){ toast('Meta CPL must be a valid number',true); return; }
+  const pct=(gen&&gen>0)?(sold/gen*100):null;
+  const trueCpl=(pct&&mcpl)?(mcpl/(pct/100)):null;
+  const upd={total_leads_generated:gen,meta_cpl:mcpl,pct_sold:pct!=null?Number(pct.toFixed(1)):null,true_cpl:trueCpl!=null?Number(trueCpl.toFixed(2)):null,updated_at:now()};
+  btn.disabled=true; const orig=btn.textContent; btn.textContent='Saving…';
+  const {error}=await db.from('clients').update(upd).eq('id',id);
+  btn.disabled=false; btn.textContent=orig;
+  if(error){ toast('Error: '+error.message,true); return; }
+  if(CLIENT_CACHE[id]){ CLIENT_CACHE[id].total_leads_generated=gen; CLIENT_CACHE[id].meta_cpl=mcpl; CLIENT_CACHE[id].pct_sold=upd.pct_sold; CLIENT_CACHE[id].true_cpl=upd.true_cpl; }
+  toast('CPL updated ✓');
 }
 
 function calcActiveMonths(startDate) {
@@ -5212,7 +5286,7 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   }
   const tb=$('exp-tbody');
   if (!expenses.length) { tb.innerHTML='<tr><td colspan="6" class="empty">No expenses for this period.</td></tr>'; }
-  else { tb.innerHTML=expenses.map(e=>`<tr><td>${esc(e.category||'—')}</td><td>${esc(e.description||'—')}</td><td>${fmt(e.amount)}</td><td><span class="badge ${e.type==='fixed'?'bg-blu':'bg-amb'}">${e.type||'variable'}</span></td><td style="font-family:var(--mono);font-size:10px">${e.date||'—'}</td><td><button class="btn btn-xs" style="color:var(--red)" onclick="deleteExpense('${esc(String(e.id))}')">Delete</button></td></tr>`).join(''); }
+  else { tb.innerHTML=expenses.map(e=>`<tr><td>${esc(e.category||'—')}</td><td>${esc(e.description||'—')}</td><td>${fmt(e.amount)}</td><td><span class="badge ${e.type==='fixed'?'bg-blu':'bg-amb'}">${e.type||'variable'}</span></td><td style="font-family:var(--mono);font-size:10px">${e.date||'—'}</td><td style="white-space:nowrap"><button class="btn btn-xs" onclick="editExpense('${esc(String(e.id))}')">Edit</button> <button class="btn btn-xs" style="color:var(--red)" onclick="deleteExpense('${esc(String(e.id))}')">Delete</button></td></tr>`).join(''); }
   renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses,pplSp,agSp);renderCplChart(spendLog);
 }
 function renderSubscriptionsTable(subs) {
@@ -5250,8 +5324,25 @@ async function deleteSub(id) {
   toast('Subscription deleted');
   loadFinance();
 }
+let _editingExpenseId=null;
 function openExpenseModal() {
-  if (!$('exp-date').value) $('exp-date').value=new Date().toISOString().split('T')[0];
+  _editingExpenseId=null;
+  const t=$('exp-modal-title'); if (t) t.textContent='Add Expense';
+  ['exp-category','exp-description','exp-amount'].forEach(id=>{$(id).value='';});
+  $('exp-type').value='fixed';
+  $('exp-date').value=new Date().toISOString().split('T')[0];
+  openModal('m-expense');
+}
+async function editExpense(id) {
+  const {data,error}=await db.from('expenses').select('*').eq('id',id).maybeSingle();
+  if (error||!data) { toast('Could not load expense',true); return; }
+  _editingExpenseId=id;
+  const t=$('exp-modal-title'); if (t) t.textContent='Edit Expense';
+  $('exp-category').value=data.category||'';
+  $('exp-description').value=data.description||'';
+  $('exp-amount').value=data.amount!=null?data.amount:'';
+  $('exp-type').value=data.type||'fixed';
+  $('exp-date').value=data.date||new Date().toISOString().split('T')[0];
   openModal('m-expense');
 }
 async function saveExpense() {
@@ -5263,8 +5354,14 @@ async function saveExpense() {
   if (!category) { toast('Category required',true); return; }
   if (isNaN(amount)||amount<=0) { toast('Valid amount required',true); return; }
   if (!date) { toast('Date required',true); return; }
-  const {error}=await db.from('expenses').insert([{category,description:description||null,amount,type,date,created_at:now()}]);
+  let error;
+  if (_editingExpenseId) {
+    ({error}=await db.from('expenses').update({category,description:description||null,amount,type,date}).eq('id',_editingExpenseId));
+  } else {
+    ({error}=await db.from('expenses').insert([{category,description:description||null,amount,type,date,created_at:now()}]));
+  }
   if (error) { toast('Error: '+error.message,true); return; }
+  _editingExpenseId=null;
   ['exp-category','exp-description','exp-amount','exp-date'].forEach(id=>{$(id).value='';});
   closeModal('m-expense');
   toast('Expense saved ✓');
