@@ -956,8 +956,8 @@ td strong{font-weight:500}
         </div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Client</th><th>Sold (Purchased)</th><th>Leads Generated</th><th>Meta CPL</th><th>% Sold</th><th>True CPL</th><th>Price/Lead</th><th>Margin</th><th></th></tr></thead>
-            <tbody id="cpl-editor-tbody"><tr><td colspan="9" class="empty">Loading...</td></tr></tbody>
+            <thead><tr><th>Client</th><th>Stage</th><th>Sold (Purchased)</th><th>Leads Generated</th><th>Meta CPL</th><th>% Sold</th><th>True CPL</th><th>Price/Lead</th><th>Margin</th><th></th></tr></thead>
+            <tbody id="cpl-editor-tbody"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -3898,17 +3898,17 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
 // popup, just done on one page. Sold = leads the client purchased.
 async function loadCplEditorPanel(){
   const tb=$('cpl-editor-tbody');
-  if(tb) tb.innerHTML='<tr><td colspan="9" class="empty">Loading…</td></tr>';
-  const {data,error}=await db.from('clients').select('*').eq('type','ppl').eq('stage','active_client').order('company_name');
-  if(error){ if(tb) tb.innerHTML='<tr><td colspan="9" class="empty">Failed to load.</td></tr>'; return; }
+  if(tb) tb.innerHTML='<tr><td colspan="10" class="empty">Loading…</td></tr>';
+  const {data,error}=await db.from('clients').select('*').eq('type','ppl').in('stage',['active_client','paused','churned']).order('company_name');
+  if(error){ if(tb) tb.innerHTML='<tr><td colspan="10" class="empty">Failed to load.</td></tr>'; return; }
   (data||[]).forEach(c=>{ CLIENT_CACHE[c.id]=c; });
   renderCplEditor(data||[]);
 }
 function renderCplEditor(clients){
   const tb=$('cpl-editor-tbody');
   if(!tb) return;
-  const rows=(clients||[]).filter(c=>c.type!=='managed'&&c.stage==='active_client');
-  if(!rows.length){ tb.innerHTML='<tr><td colspan="9" class="empty">No active PPL clients.</td></tr>'; return; }
+  const rows=(clients||[]).filter(c=>c.type!=='managed'&&['active_client','paused','churned'].includes(c.stage));
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="10" class="empty">No PPL clients.</td></tr>'; return; }
   tb.innerHTML=rows.map(c=>{
     const id=esc(String(c.id));
     const sold=Number(c.total_leads_purchased)||0;
@@ -3917,6 +3917,7 @@ function renderCplEditor(clients){
     const mcpl=c.meta_cpl!=null?c.meta_cpl:'';
     return `<tr id="cpl-row-${id}" data-sold="${sold}" data-price="${price}">
       <td><strong>${esc(c.company_name)}</strong></td>
+      <td><span class="badge ${stageBadge(c.stage)}">${stageLabel(c.stage)}</span></td>
       <td style="font-family:var(--mono)">${sold}</td>
       <td><input class="fi cpl-gen" type="number" min="0" step="1" value="${gen}" oninput="recalcCplRow('${id}')" style="width:88px;padding:3px 6px"></td>
       <td><input class="fi cpl-mcpl" type="number" min="0" step="0.01" value="${mcpl}" oninput="recalcCplRow('${id}')" style="width:88px;padding:3px 6px"></td>
