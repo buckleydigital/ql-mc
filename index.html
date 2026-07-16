@@ -971,6 +971,9 @@ td strong{font-weight:500}
           <div class="frow"><label class="flabel">Preview</label>
             <div id="bc-preview" style="background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);padding:12px 14px;font-size:12.5px;white-space:pre-wrap;color:var(--ink2);min-height:44px">Type a message to see a preview…</div>
           </div>
+          <div class="frow"><label class="flabel">Exclude specific leads <span style="font-size:9.5px;color:var(--ink3);font-weight:300">Ctrl / Cmd-click to pick anyone to leave out of this send</span></label>
+            <select class="fs" id="bc-exclude" multiple size="6" onchange="updateExcluded()" style="height:auto;min-height:120px"></select>
+          </div>
           <div style="display:flex;align-items:center;gap:12px;margin:12px 0">
             <div style="font-size:13px"><strong id="bc-count" style="font-size:18px;color:var(--acc)">0</strong> recipients <span id="bc-excluded" style="color:var(--ink3);font-size:11px"></span></div>
           </div>
@@ -3938,8 +3941,11 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
 // opted-out leads. Appends "Reply STOP to opt out". Sends via send-sms (which
 // also hard-blocks opted-out), logging each into sales_sms_log so replies thread
 // into Sales Conversations.
-let _bcLeads = [];
+let _bcLeads = [];            // eligible pool (stage + has phone + not opted out)
+let _bcExcluded = new Set();  // ids manually excluded
+let _bcNoPhone = 0, _bcAutoOptedOut = 0;
 function bcFirstName(l){ return ((l.name||'').trim().split(/\s+/)[0]) || 'there'; }
+function bcEffective(){ return _bcLeads.filter(l=>!_bcExcluded.has(String(l.id))); }
 function loadBroadcast(){
   const sel=$('bc-stage');
   if(sel && sel.options.length<=1){
@@ -3956,39 +3962,57 @@ async function updateBroadcastCount(){
   const all=data||[];
   const withPhone=all.filter(l=>l.phone&&String(l.phone).trim());
   _bcLeads=withPhone.filter(l=>!l.sms_opted_out);
-  const noPhone=all.length-withPhone.length;
-  const optedOut=withPhone.length-_bcLeads.length;
-  setText('bc-count', _bcLeads.length);
-  const exEl=$('bc-excluded');
-  if(exEl){ const parts=[]; if(noPhone)parts.push(noPhone+' no phone'); if(optedOut)parts.push(optedOut+' opted out'); exEl.textContent=parts.length?'('+parts.join(', ')+' excluded)':''; }
+  _bcNoPhone=all.length-withPhone.length;
+  _bcAutoOptedOut=withPhone.length-_bcLeads.length;
+  // Preview-as selector
   const psel=$('bc-preview-lead');
   if(psel){
     const prev=psel.value;
     psel.innerHTML='<option value="">First recipient</option>'+_bcLeads.map(l=>`<option value="${esc(String(l.id))}">${esc(l.name||l.phone||'—')}</option>`).join('');
     if(prev && _bcLeads.some(l=>String(l.id)===prev)) psel.value=prev;
   }
+  // Exclude selector - keep only still-eligible manual excludes
+  const xsel=$('bc-exclude');
+  if(xsel){
+    const keep=new Set([..._bcExcluded].filter(id=>_bcLeads.some(l=>String(l.id)===id)));
+    xsel.innerHTML=_bcLeads.map(l=>`<option value="${esc(String(l.id))}"${keep.has(String(l.id))?' selected':''}>${esc(l.name||l.phone||'—')}</option>`).join('');
+    _bcExcluded=keep;
+  }
+  renderBcCount();
+}
+function updateExcluded(){
+  const xsel=$('bc-exclude');
+  _bcExcluded=new Set(xsel?[...xsel.selectedOptions].map(o=>o.value):[]);
+  renderBcCount();
+}
+function renderBcCount(){
+  const eff=bcEffective();
+  setText('bc-count', eff.length);
+  const exEl=$('bc-excluded');
+  if(exEl){ const parts=[]; if(_bcNoPhone)parts.push(_bcNoPhone+' no phone'); if(_bcAutoOptedOut)parts.push(_bcAutoOptedOut+' opted out'); if(_bcExcluded.size)parts.push(_bcExcluded.size+' manually excluded'); exEl.textContent=parts.length?'('+parts.join(', ')+' excluded)':''; }
   updateBroadcastPreview();
 }
 function updateBroadcastPreview(){
   const raw=$('bc-message')?.value||'';
   const pv=$('bc-preview'); const btn=$('bc-send');
+  const eff=bcEffective();
   if(!raw.trim()){ if(pv)pv.textContent='Type a message to see a preview…'; if(btn)btn.disabled=true; return; }
   const selId=$('bc-preview-lead')?.value;
-  const sample=(selId && _bcLeads.find(l=>String(l.id)===selId)) || _bcLeads[0];
+  const sample=(selId && _bcLeads.find(l=>String(l.id)===selId)) || eff[0] || _bcLeads[0];
   const name=sample?bcFirstName(sample):'there';
   if(pv)pv.textContent=raw.replace(/\{\{\s*first_name\s*\}\}/gi,name)+'\n\nReply STOP to opt out';
-  if(btn)btn.disabled=_bcLeads.length===0;
+  if(btn)btn.disabled=eff.length===0;
 }
 async function sendBroadcast(){
   const raw=($('bc-message')?.value||'').trim();
   if(!raw){ toast('Enter a message first',true); return; }
-  if(!_bcLeads.length){ toast('No recipients',true); return; }
-  if(!confirm(`Send this SMS to ${_bcLeads.length} lead(s)?\n\nOpted-out and no-phone leads are excluded automatically.`)) return;
+  const leads=bcEffective();
+  if(!leads.length){ toast('No recipients',true); return; }
+  if(!confirm(`Send this SMS to ${leads.length} lead(s)?\n\nOpted-out, no-phone, and manually excluded leads are not included.`)) return;
   const btn=$('bc-send'); btn.disabled=true;
   const prog=$('bc-progress'); if(prog) prog.style.display='';
   const {data:{session}}=await db.auth.getSession();
   if(!session){ toast('Not logged in',true); btn.disabled=false; return; }
-  const leads=[..._bcLeads];
   let sent=0,failed=0,skipped=0;
   for(let i=0;i<leads.length;i++){
     const l=leads[i];
