@@ -711,6 +711,9 @@ td strong{font-weight:500}
           <button class="navbtn" data-panel="ppl" onclick="nav('ppl',this)">
             <span class="ni"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></span>PPL Clients
           </button>
+          <button class="navbtn admin-only-field" data-panel="cpl" onclick="nav('cpl',this)">
+            <span class="ni"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l3-4 3 3 5-7"/></svg></span>Lead Gen &amp; CPL
+          </button>
           <button class="navbtn" data-panel="managed" onclick="nav('managed',this)">
             <span class="ni"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 9l-5 5-2-2-4 4"/></svg></span>Managed Ads
           </button>
@@ -895,13 +898,6 @@ td strong{font-weight:500}
             <tbody id="ppl-tbody"><tr><td colspan="13" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
-        <div class="sl">Lead Gen &amp; CPL <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px">edit leads generated + Meta CPL here, then Save — no more per-order popups</span><div class="sl-line"></div></div>
-        <div class="twrap">
-          <table>
-            <thead><tr><th>Client</th><th>Sold (Purchased)</th><th>Leads Generated</th><th>Meta CPL</th><th>% Sold</th><th>True CPL</th><th>Price/Lead</th><th>Margin</th><th></th></tr></thead>
-            <tbody id="cpl-editor-tbody"><tr><td colspan="9" class="empty">Loading...</td></tr></tbody>
-          </table>
-        </div>
         <div class="map-section">
           <div class="sl" style="margin-top:0;cursor:pointer;user-select:none" onclick="toggleMap()">
             Lead Generation Areas
@@ -949,6 +945,20 @@ td strong{font-weight:500}
               <div class="area-list" id="pricing-area-list"></div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- ══ LEAD GEN & CPL ══ -->
+      <div class="panel" id="panel-cpl">
+        <div class="ph">
+          <div class="ph-left"><h1>Lead Gen &amp; CPL</h1><p>Edit leads generated + Meta CPL per active PPL client, then Save. True CPL = Meta CPL / (Sold / Generated).</p></div>
+          <div class="ph-right"><button class="btn btn-sm" onclick="loadCplEditorPanel()">↻ Refresh</button></div>
+        </div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Client</th><th>Sold (Purchased)</th><th>Leads Generated</th><th>Meta CPL</th><th>% Sold</th><th>True CPL</th><th>Price/Lead</th><th>Margin</th><th></th></tr></thead>
+            <tbody id="cpl-editor-tbody"><tr><td colspan="9" class="empty">Loading...</td></tr></tbody>
+          </table>
         </div>
       </div>
 
@@ -2649,6 +2659,7 @@ function nav(panel, el) {
   document.querySelectorAll(`[data-panel="${panel}"]`).forEach(b => b.classList.add('active'));
   if (panel === 'files') { loadFileContent(); loadTemplateClientDropdown(); }
   if (panel === 'ppl') { populateMapClientDropdown(); }
+  if (panel === 'cpl') loadCplEditorPanel();
   if (panel === 'pcal') loadPcal();
   if (panel === 'campaigns') { loadCampaigns(); renderMetaTokenBanner(); }
   if (panel === 'leads') loadLeads();
@@ -3879,13 +3890,20 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
   tb.querySelectorAll('.action-log-btn').forEach(btn=>{
     btn.addEventListener('click',e=>{ e.stopPropagation(); openActionLog(btn.dataset.clientId, btn.dataset.clientName); });
   });
-  renderCplEditor(clients);
 }
 
 // ── Lead Gen & CPL editor ──────────────────────────────────────────────────
 // One row per active PPL client. Edit Leads Generated + Meta CPL, hit Save.
 // True CPL = Meta CPL / (Sold / Generated). Same maths as the old per-order
 // popup, just done on one page. Sold = leads the client purchased.
+async function loadCplEditorPanel(){
+  const tb=$('cpl-editor-tbody');
+  if(tb) tb.innerHTML='<tr><td colspan="9" class="empty">Loading…</td></tr>';
+  const {data,error}=await db.from('clients').select('*').eq('type','ppl').eq('stage','active_client').order('company_name');
+  if(error){ if(tb) tb.innerHTML='<tr><td colspan="9" class="empty">Failed to load.</td></tr>'; return; }
+  (data||[]).forEach(c=>{ CLIENT_CACHE[c.id]=c; });
+  renderCplEditor(data||[]);
+}
 function renderCplEditor(clients){
   const tb=$('cpl-editor-tbody');
   if(!tb) return;
