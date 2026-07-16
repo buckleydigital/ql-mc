@@ -960,6 +960,15 @@ td strong{font-weight:500}
             <tbody id="cpl-editor-tbody"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
+        <div class="sl">Summary <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px">live — updates as you type, across the clients shown</span><div class="sl-line"></div></div>
+        <div class="kg c6 mb4">
+          <div class="kpi"><div class="klabel">Avg Meta CPL</div><div class="kval" id="cpl-avg-meta">—</div></div>
+          <div class="kpi"><div class="klabel">Avg True CPL</div><div class="kval blu" id="cpl-avg-true">—</div><div class="ksub">after % sold</div></div>
+          <div class="kpi"><div class="klabel">Avg Margin</div><div class="kval" id="cpl-avg-margin">—</div><div class="ksub">price − true CPL</div></div>
+          <div class="kpi"><div class="klabel">Avg % Sold</div><div class="kval" id="cpl-avg-pct">—</div></div>
+          <div class="kpi"><div class="klabel">Total Generated</div><div class="kval" id="cpl-total-gen">—</div></div>
+          <div class="kpi"><div class="klabel">Total Sold</div><div class="kval" id="cpl-total-sold">—</div></div>
+        </div>
       </div>
 
       <!-- ══ META CAMPAIGNS ══ -->
@@ -3908,7 +3917,7 @@ function renderCplEditor(clients){
   const tb=$('cpl-editor-tbody');
   if(!tb) return;
   const rows=(clients||[]).filter(c=>c.type!=='managed'&&['active_client','paused','churned'].includes(c.stage));
-  if(!rows.length){ tb.innerHTML='<tr><td colspan="10" class="empty">No PPL clients.</td></tr>'; return; }
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="10" class="empty">No PPL clients.</td></tr>'; renderCplStats(); return; }
   tb.innerHTML=rows.map(c=>{
     const id=esc(String(c.id));
     const sold=Number(c.total_leads_purchased)||0;
@@ -3945,6 +3954,33 @@ function recalcCplRow(id){
   const mEl=row.querySelector('.cpl-margin');
   if(margin!=null){ mEl.textContent='$'+margin.toFixed(2); mEl.style.color=margin>=0?'var(--grn)':'var(--red)'; }
   else { mEl.textContent='—'; mEl.style.color=''; }
+  renderCplStats();
+}
+// Aggregate KPIs under the CPL table — computed live from the current row values.
+function renderCplStats(){
+  const rows=document.querySelectorAll('#cpl-editor-tbody tr[id^="cpl-row-"]');
+  let mcplSum=0,mcplN=0,trueSum=0,trueN=0,marginSum=0,marginN=0,pctSum=0,pctN=0,genTot=0,soldTot=0;
+  rows.forEach(row=>{
+    const sold=Number(row.dataset.sold)||0;
+    const price=Number(row.dataset.price)||0;
+    const gen=parseFloat(row.querySelector('.cpl-gen').value)||0;
+    const mcpl=parseFloat(row.querySelector('.cpl-mcpl').value)||0;
+    genTot+=gen; soldTot+=sold;
+    if(mcpl>0){ mcplSum+=mcpl; mcplN++; }
+    const pct=gen>0?(sold/gen*100):null;
+    if(pct!=null){ pctSum+=pct; pctN++; }
+    const trueCpl=(pct&&mcpl)?(mcpl/(pct/100)):null;
+    if(trueCpl!=null){ trueSum+=trueCpl; trueN++; }
+    const margin=(trueCpl!=null&&price)?(price-trueCpl):null;
+    if(margin!=null){ marginSum+=margin; marginN++; }
+  });
+  setText('cpl-avg-meta', mcplN?'$'+(mcplSum/mcplN).toFixed(2):'—');
+  setText('cpl-avg-true', trueN?'$'+(trueSum/trueN).toFixed(2):'—');
+  const me=$('cpl-avg-margin');
+  if(me){ if(marginN){ const am=marginSum/marginN; me.textContent='$'+am.toFixed(2); me.style.color=am>=0?'var(--grn)':'var(--red)'; } else { me.textContent='—'; me.style.color=''; } }
+  setText('cpl-avg-pct', pctN?(pctSum/pctN).toFixed(1)+'%':'—');
+  setText('cpl-total-gen', genTot?genTot.toLocaleString():'—');
+  setText('cpl-total-sold', soldTot?soldTot.toLocaleString():'—');
 }
 async function saveCplRow(id, btn){
   const row=document.getElementById('cpl-row-'+id);
