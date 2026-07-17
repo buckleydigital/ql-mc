@@ -1229,6 +1229,7 @@ td strong{font-weight:500}
         <div class="ph">
           <div class="ph-left"><h1>Sales Conversations</h1><p>Inbound &amp; outbound SMS threads with sales pipeline leads</p></div>
           <div class="ph-right">
+            <select id="tz-select" class="btn btn-sm" title="Display timezone" onchange="setTimezone(this.value)" style="cursor:pointer"></select>
             <button class="btn btn-sm" onclick="loadSalesConversations()">↻ Refresh</button>
             <button class="btn btn-sm admin-only-field" onclick="openTwilioSettings()">⚙ Twilio Settings</button>
           </div>
@@ -2558,11 +2559,38 @@ const now  = () => new Date().toISOString();
 const esc  = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const fmt  = n => (!n && n !== 0) ? '—' : '$' + Number(n).toLocaleString('en-AU', {minimumFractionDigits:0,maximumFractionDigits:0});
 const fmtCpl = n => n ? '$' + Number(n).toFixed(2) : '—';
+// Australian timezones (IANA). Live/DST-aware; default is AEST (Brisbane).
+const AU_TIMEZONES = [
+  ['Australia/Brisbane',  'AEST — Brisbane (QLD)'],
+  ['Australia/Sydney',    'AEST/AEDT — Sydney (NSW)'],
+  ['Australia/Melbourne', 'AEST/AEDT — Melbourne (VIC)'],
+  ['Australia/Hobart',    'AEST/AEDT — Hobart (TAS)'],
+  ['Australia/Adelaide',  'ACST/ACDT — Adelaide (SA)'],
+  ['Australia/Darwin',    'ACST — Darwin (NT)'],
+  ['Australia/Perth',     'AWST — Perth (WA)'],
+];
+let _tz = localStorage.getItem('ql_tz') || 'Australia/Brisbane';
+// NOTE: toLocaleString (not toLocaleDateString) so hour/minute options actually
+// render — toLocaleDateString silently drops any time fields.
 const fmtDate = (d, time) => {
   if (!d) return '—';
-  const opts = time ? {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'} : {day:'numeric',month:'short'};
-  return new Date(d).toLocaleDateString('en-AU', opts);
+  const opts = time
+    ? {day:'numeric',month:'short',hour:'numeric',minute:'2-digit',hour12:true,timeZone:_tz}
+    : {day:'numeric',month:'short',timeZone:_tz};
+  return new Date(d).toLocaleString('en-AU', opts);
 };
+function setTimezone(tz) {
+  _tz = tz;
+  localStorage.setItem('ql_tz', tz);
+  // Re-render whatever's on screen so the new zone applies immediately.
+  try { if (typeof loadSalesConversations === 'function') loadSalesConversations(); } catch (e) {}
+}
+function initTimezoneSelect() {
+  const sel = document.getElementById('tz-select');
+  if (!sel) return;
+  sel.innerHTML = AU_TIMEZONES.map(([v, l]) => `<option value="${v}"${v === _tz ? ' selected' : ''}>${l}</option>`).join('');
+}
+document.addEventListener('DOMContentLoaded', initTimezoneSelect);
 
 function toast(msg, err = false) {
   const old = $('ql-toast'); if (old) old.remove();
@@ -7491,7 +7519,7 @@ async function loadConversations() {
       tbody.innerHTML = threads.map(t => {
         const lastMsg = t.messages[0];
         const lastBody = lastMsg ? (lastMsg.message || '').substring(0, 60) + (lastMsg.message?.length > 60 ? '…' : '') : '—';
-        const lastTime = lastMsg ? fmtDate(lastMsg.created_at, false) : '—';
+        const lastTime = lastMsg ? fmtDate(lastMsg.created_at, true) : '—';
         const inCount  = t.messages.filter(m => (m.direction || 'outbound') === 'inbound').length;
         const outCount = t.messages.filter(m => (m.direction || 'outbound') === 'outbound').length;
         const dirBadge = inCount > 0
@@ -7578,7 +7606,7 @@ async function loadSalesConversations() {
       tbody.innerHTML = threads.map(t => {
         const lastMsg = t.messages[0];
         const lastBody = lastMsg ? (lastMsg.message || '').substring(0, 60) + (lastMsg.message?.length > 60 ? '…' : '') : '—';
-        const lastTime = lastMsg ? fmtDate(lastMsg.created_at, false) : '—';
+        const lastTime = lastMsg ? fmtDate(lastMsg.created_at, true) : '—';
         const inCount  = t.messages.filter(m => (m.direction || 'outbound') === 'inbound').length;
         const outCount = t.messages.filter(m => (m.direction || 'outbound') === 'outbound').length;
         const dirBadge = inCount > 0 ? `<span class="badge bg-blu" style="font-size:9px">${inCount} in</span> ` : '';
@@ -7645,7 +7673,7 @@ async function openSalesConvThread(leadId, leadName, leadPhone) {
           const isIn = (m.direction || 'outbound') === 'inbound';
           return `<div style="display:flex;flex-direction:column;align-items:${isIn ? 'flex-start' : 'flex-end'}">
             <div style="max-width:80%;background:${isIn ? 'var(--s2)' : 'var(--acc)'};color:${isIn ? 'var(--ink)' : '#fff'};border-radius:10px;padding:8px 12px;font-size:12px">${esc(m.message || '')}</div>
-            <div style="font-size:9.5px;color:var(--ink3);margin-top:2px">${isIn ? 'Inbound' : 'Outbound'} · ${fmtDate(m.created_at, false)}</div>
+            <div style="font-size:9.5px;color:var(--ink3);margin-top:2px">${isIn ? 'Inbound' : 'Outbound'} · ${fmtDate(m.created_at, true)}</div>
           </div>`;
         }).join('')
       : '<div class="empty">No messages yet.</div>';
@@ -7696,7 +7724,7 @@ async function openConvThread(leadId, leadName, leadPhone) {
     const bubbleBg = isInbound ? 'var(--s3)' : 'var(--acc)';
     const bubbleClr= isInbound ? 'var(--ink)' : '#fff';
     const label    = isInbound ? 'Lead' : (m.sent_by || 'You');
-    const time     = fmtDate(m.created_at, false);
+    const time     = fmtDate(m.created_at, true);
     return `<div style="display:flex;flex-direction:column;align-items:${align};gap:2px;max-width:100%">
       <div style="font-family:var(--mono);font-size:9px;color:var(--ink3);padding:0 4px">${esc(label)} · ${time}</div>
       <div style="background:${bubbleBg};color:${bubbleClr};border-radius:10px;padding:8px 12px;max-width:82%;font-size:12.5px;line-height:1.5;word-break:break-word">${esc(m.message || '')}</div>
