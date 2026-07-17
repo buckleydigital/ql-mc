@@ -12,7 +12,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-<!-- Google Maps script tag — loaded dynamically at runtime via Edge Function -->
+<!-- Google Maps script tag - loaded dynamically at runtime via Edge Function -->
 <script id="gmaps-script"></script>
 <style>
 
@@ -842,16 +842,16 @@ td strong{font-weight:500}
           <span id="crm-repview-stats" style="font-size:11px;color:var(--acc);font-family:var(--mono)"></span>
         </div>
         <div class="kg c4 mb4 rep-stat-strip" style="display:none">
-          <div class="kpi"><div class="klabel">Calls Taken</div><div class="kval blu" id="rep-calls">—</div></div>
-          <div class="kpi"><div class="klabel">Pickup Rate</div><div class="kval" id="rep-pickup">—</div></div>
-          <div class="kpi"><div class="klabel">Close Rate</div><div class="kval grn" id="rep-close">—</div><div class="ksub" id="rep-close-sub"></div></div>
-          <div class="kpi"><div class="klabel">My Open Leads</div><div class="kval" id="rep-open">—</div></div>
+          <div class="kpi"><div class="klabel">Calls Taken</div><div class="kval blu" id="rep-calls">-</div></div>
+          <div class="kpi"><div class="klabel">Pickup Rate</div><div class="kval" id="rep-pickup">-</div></div>
+          <div class="kpi"><div class="klabel">Close Rate</div><div class="kval grn" id="rep-close">-</div><div class="ksub" id="rep-close-sub"></div></div>
+          <div class="kpi"><div class="klabel">My Open Leads</div><div class="kval" id="rep-open">-</div></div>
         </div>
         <div class="kg c4 mb4">
-          <div class="kpi"><div class="klabel">Total Leads</div><div class="kval blu" id="crm-total">—</div></div>
-          <div class="kpi"><div class="klabel">In Progress</div><div class="kval" id="crm-active">—</div></div>
-          <div class="kpi"><div class="klabel">Closed Won</div><div class="kval grn" id="crm-won">—</div></div>
-          <div class="kpi"><div class="klabel">Win Rate</div><div class="kval" id="crm-rate">—</div><div class="ksub" id="crm-rate-sub"></div></div>
+          <div class="kpi"><div class="klabel">Total Leads</div><div class="kval blu" id="crm-total">-</div></div>
+          <div class="kpi"><div class="klabel">In Progress</div><div class="kval" id="crm-active">-</div></div>
+          <div class="kpi"><div class="klabel">Closed Won</div><div class="kval grn" id="crm-won">-</div></div>
+          <div class="kpi"><div class="klabel">Win Rate</div><div class="kval" id="crm-rate">-</div><div class="ksub" id="crm-rate-sub"></div></div>
         </div>
         <div class="sl">Pipeline <div class="sl-line"></div></div>
         <div class="kanban-wrap"><div class="kanban" id="crm-kanban"></div></div>
@@ -875,14 +875,14 @@ td strong{font-weight:500}
           </div>
         </div>
         <div class="kg c4 mb4">
-          <div class="kpi"><div class="klabel">Active Clients</div><div class="kval blu" id="ppl-active">—</div></div>
-          <div class="kpi"><div class="klabel">Leads Sold This Year</div><div class="kval" id="ppl-leads">—</div><div class="ksub">Jan 2026 – now</div></div>
-          <div class="kpi"><div class="klabel">Avg Meta CPL</div><div class="kval" id="ppl-meta-cpl">—</div></div>
-          <div class="kpi"><div class="klabel">Avg True CPL</div><div class="kval blu" id="ppl-true-cpl">—</div><div class="ksub">after % sold</div></div>
-          <div class="kpi"><div class="klabel">Due for Reorder</div><div class="kval amb" id="ppl-reorder-count">—</div><div class="ksub">≥75% delivered</div></div>
-          <div class="kpi"><div class="klabel">Total Clients</div><div class="kval" id="ppl-total">—</div><div class="ksub">all-time</div></div>
-          <div class="kpi"><div class="klabel">Churn Rate</div><div class="kval red" id="ppl-churn-rate">—</div><div class="ksub">churned ÷ total</div></div>
-          <div class="kpi"><div class="klabel">Retention Rate</div><div class="kval grn" id="ppl-retention-rate">—</div><div class="ksub">active + paused ÷ total</div></div>
+          <div class="kpi"><div class="klabel">Active Clients</div><div class="kval blu" id="ppl-active">-</div></div>
+          <div class="kpi"><div class="klabel">Leads Sold This Year</div><div class="kval" id="ppl-leads">-</div><div class="ksub">Jan 2026 – now</div></div>
+          <div class="kpi"><div class="klabel">Avg Meta CPL</div><div class="kval" id="ppl-meta-cpl">-</div></div>
+          <div class="kpi"><div class="klabel">Avg True CPL</div><div class="kval blu" id="ppl-true-cpl">-</div><div class="ksub">after % sold</div></div>
+          <div class="kpi"><div class="klabel">Due for Reorder</div><div class="kval amb" id="ppl-reorder-count">-</div><div class="ksub">≥75% delivered</div></div>
+          <div class="kpi"><div class="klabel">Total Clients</div><div class="kval" id="ppl-total">-</div><div class="ksub">all-time</div></div>
+          <div class="kpi"><div class="klabel">Churn Rate</div><div class="kval red" id="ppl-churn-rate">-</div><div class="ksub">churned ÷ total</div></div>
+          <div class="kpi"><div class="klabel">Retention Rate</div><div class="kval grn" id="ppl-retention-rate">-</div><div class="ksub">active + paused ÷ total</div></div>
         </div>
         <div class="sl">Churn Overview <div class="sl-line"></div></div>
         <div style="display:flex;gap:14px;margin-bottom:16px;align-items:flex-start;flex-wrap:wrap">
@@ -910,7 +910,7 @@ td strong{font-weight:500}
           <div id="map-body" style="display:none">
             <div class="map-controls">
               <select id="map-client-select" onchange="loadMapAreas()">
-                <option value="">— Select PPL Client —</option>
+                <option value="">- Select PPL Client -</option>
               </select>
               <input type="text" id="map-area-label" placeholder="Area label (e.g. Gold Coast South)">
               <input type="number" id="map-area-volume" placeholder="Volume (leads/mo)">
@@ -994,14 +994,14 @@ td strong{font-weight:500}
             <tbody id="cpl-editor-tbody"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
-        <div class="sl">Summary <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px">live — updates as you type, across the clients shown</span><div class="sl-line"></div></div>
+        <div class="sl">Summary <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px">live - updates as you type, across the clients shown</span><div class="sl-line"></div></div>
         <div class="kg c6 mb4">
-          <div class="kpi"><div class="klabel">Avg Meta CPL</div><div class="kval" id="cpl-avg-meta">—</div></div>
-          <div class="kpi"><div class="klabel">Avg True CPL</div><div class="kval blu" id="cpl-avg-true">—</div><div class="ksub">after % sold</div></div>
-          <div class="kpi"><div class="klabel">Avg Margin</div><div class="kval" id="cpl-avg-margin">—</div><div class="ksub">price − true CPL</div></div>
-          <div class="kpi"><div class="klabel">Avg % Sold</div><div class="kval" id="cpl-avg-pct">—</div></div>
-          <div class="kpi"><div class="klabel">Total Generated</div><div class="kval" id="cpl-total-gen">—</div><div class="ksub">lifetime, all shown</div></div>
-          <div class="kpi"><div class="klabel">Total Purchased</div><div class="kval" id="cpl-total-sold">—</div><div class="ksub">lifetime, all shown</div></div>
+          <div class="kpi"><div class="klabel">Avg Meta CPL</div><div class="kval" id="cpl-avg-meta">-</div></div>
+          <div class="kpi"><div class="klabel">Avg True CPL</div><div class="kval blu" id="cpl-avg-true">-</div><div class="ksub">after % sold</div></div>
+          <div class="kpi"><div class="klabel">Avg Margin</div><div class="kval" id="cpl-avg-margin">-</div><div class="ksub">price − true CPL</div></div>
+          <div class="kpi"><div class="klabel">Avg % Sold</div><div class="kval" id="cpl-avg-pct">-</div></div>
+          <div class="kpi"><div class="klabel">Total Generated</div><div class="kval" id="cpl-total-gen">-</div><div class="ksub">lifetime, all shown</div></div>
+          <div class="kpi"><div class="klabel">Total Purchased</div><div class="kval" id="cpl-total-sold">-</div><div class="ksub">lifetime, all shown</div></div>
         </div>
       </div>
 
@@ -1016,15 +1016,15 @@ td strong{font-weight:500}
           </div>
         </div>
         <div class="kg c3 mb4">
-          <div class="kpi"><div class="klabel">Total Campaigns</div><div class="kval blu" id="mc-total">—</div></div>
-          <div class="kpi"><div class="klabel">Active</div><div class="kval grn" id="mc-active">—</div></div>
-          <div class="kpi"><div class="klabel">Paused</div><div class="kval" id="mc-paused" style="color:var(--red)">—</div></div>
+          <div class="kpi"><div class="klabel">Total Campaigns</div><div class="kval blu" id="mc-total">-</div></div>
+          <div class="kpi"><div class="klabel">Active</div><div class="kval grn" id="mc-active">-</div></div>
+          <div class="kpi"><div class="klabel">Paused</div><div class="kval" id="mc-paused" style="color:var(--red)">-</div></div>
         </div>
         <!-- Meta Token Refresh Tracker -->
         <div id="meta-token-banner" style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;margin-bottom:14px;font-size:12px;flex-wrap:wrap">
           <span style="color:var(--ink3);font-size:11px;font-family:var(--mono)">META TOKEN</span>
           <span style="color:var(--ink3)">Refresh in:</span>
-          <strong id="meta-token-days" style="font-family:var(--mono);font-size:15px">—</strong>
+          <strong id="meta-token-days" style="font-family:var(--mono);font-size:15px">-</strong>
           <span id="meta-token-unit" style="color:var(--ink3);font-size:11px">days</span>
           <span id="meta-token-last" style="color:var(--ink3);font-size:10px;font-family:var(--mono)"></span>
           <button class="btn btn-xs btn-p" onclick="markMetaTokenRefreshed()" style="margin-left:auto;font-size:10px">✓ I've Refreshed the Token</button>
@@ -1073,9 +1073,9 @@ td strong{font-weight:500}
           <div class="ph-right"><button class="btn btn-p btn-sm" onclick="openModal('m-add-ppl-campaign')">+ New Campaign</button></div>
         </div>
         <div class="kg c3 mb4">
-          <div class="kpi"><div class="klabel">Total Campaigns</div><div class="kval blu" id="pcal-total">—</div></div>
-          <div class="kpi"><div class="klabel">Active</div><div class="kval grn" id="pcal-active">—</div></div>
-          <div class="kpi"><div class="klabel">Paused</div><div class="kval" id="pcal-paused" style="color:var(--amb)">—</div></div>
+          <div class="kpi"><div class="klabel">Total Campaigns</div><div class="kval blu" id="pcal-total">-</div></div>
+          <div class="kpi"><div class="klabel">Active</div><div class="kval grn" id="pcal-active">-</div></div>
+          <div class="kpi"><div class="klabel">Paused</div><div class="kval" id="pcal-paused" style="color:var(--amb)">-</div></div>
         </div>
         <div style="display:flex;gap:6px;margin-bottom:12px;align-items:center">
           <span style="font-size:10px;color:var(--ink3);margin-right:4px">Filter:</span>
@@ -1107,13 +1107,13 @@ td strong{font-weight:500}
           <div class="ph-right"><button class="btn btn-p btn-sm" onclick="openModal('m-managed')">+ Add client</button></div>
         </div>
         <div class="kg c4 mb4">
-          <div class="kpi"><div class="klabel">Active Clients</div><div class="kval blu" id="mg-active">—</div></div>
-          <div class="kpi"><div class="klabel">Client Spend MTD</div><div class="kval" id="mg-spend">—</div></div>
-          <div class="kpi"><div class="klabel">Mgmt Fee Revenue</div><div class="kval grn" id="mg-fees">—</div></div>
-          <div class="kpi"><div class="klabel">Avg CPL (All)</div><div class="kval" id="mg-cpl">—</div></div>
-          <div class="kpi"><div class="klabel">Total Clients</div><div class="kval" id="mg-total">—</div><div class="ksub">all-time</div></div>
-          <div class="kpi"><div class="klabel">Churn Rate</div><div class="kval red" id="mg-churn-rate">—</div><div class="ksub">churned ÷ total</div></div>
-          <div class="kpi"><div class="klabel">Retention Rate</div><div class="kval grn" id="mg-retention-rate">—</div><div class="ksub">active + paused ÷ total</div></div>
+          <div class="kpi"><div class="klabel">Active Clients</div><div class="kval blu" id="mg-active">-</div></div>
+          <div class="kpi"><div class="klabel">Client Spend MTD</div><div class="kval" id="mg-spend">-</div></div>
+          <div class="kpi"><div class="klabel">Mgmt Fee Revenue</div><div class="kval grn" id="mg-fees">-</div></div>
+          <div class="kpi"><div class="klabel">Avg CPL (All)</div><div class="kval" id="mg-cpl">-</div></div>
+          <div class="kpi"><div class="klabel">Total Clients</div><div class="kval" id="mg-total">-</div><div class="ksub">all-time</div></div>
+          <div class="kpi"><div class="klabel">Churn Rate</div><div class="kval red" id="mg-churn-rate">-</div><div class="ksub">churned ÷ total</div></div>
+          <div class="kpi"><div class="klabel">Retention Rate</div><div class="kval grn" id="mg-retention-rate">-</div><div class="ksub">active + paused ÷ total</div></div>
         </div>
         <div class="sl">Churn Overview <div class="sl-line"></div></div>
         <div style="display:flex;gap:14px;margin-bottom:16px;align-items:flex-start;flex-wrap:wrap">
@@ -1165,12 +1165,12 @@ td strong{font-weight:500}
           </div>
         </div>
         <div class="kg c6 mb4">
-          <div class="kpi"><div class="klabel">Total Received</div><div class="kval blu" id="ld-total">—</div></div>
-          <div class="kpi"><div class="klabel">Pending</div><div class="kval amb" id="ld-pending">—</div></div>
-          <div class="kpi"><div class="klabel">Assigned</div><div class="kval ink" id="ld-assigned">—</div></div>
-          <div class="kpi"><div class="klabel">Delivered</div><div class="kval grn" id="ld-delivered">—</div></div>
-          <div class="kpi"><div class="klabel">Failed / Scrubbed</div><div class="kval red" id="ld-failed">—</div></div>
-          <div class="kpi"><div class="klabel">Total Outstanding Leads</div><div class="kval amb" id="ld-outstanding">—</div><div class="ksub">active clients · purchased − delivered</div></div>
+          <div class="kpi"><div class="klabel">Total Received</div><div class="kval blu" id="ld-total">-</div></div>
+          <div class="kpi"><div class="klabel">Pending</div><div class="kval amb" id="ld-pending">-</div></div>
+          <div class="kpi"><div class="klabel">Assigned</div><div class="kval ink" id="ld-assigned">-</div></div>
+          <div class="kpi"><div class="klabel">Delivered</div><div class="kval grn" id="ld-delivered">-</div></div>
+          <div class="kpi"><div class="klabel">Failed / Scrubbed</div><div class="kval red" id="ld-failed">-</div></div>
+          <div class="kpi"><div class="klabel">Total Outstanding Leads</div><div class="kval amb" id="ld-outstanding">-</div><div class="ksub">active clients · purchased − delivered</div></div>
         </div>
         <div class="sl" style="cursor:pointer;user-select:none" onclick="toggleClientBreakdown()" id="ld-client-toggle">
           By Client <span id="ld-client-chevron" style="font-size:10px;margin-left:6px;color:var(--ink3)">▶</span>
@@ -1235,16 +1235,16 @@ td strong{font-weight:500}
           </div>
         </div>
         <div class="admin-only-field" style="background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r2);padding:12px 16px;margin-bottom:20px;font-size:11.5px">
-          <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3);margin-bottom:6px">Twilio Webhook URL — paste in Twilio Console → Phone Numbers → [your number] → Messaging → "A message comes in" → HTTP POST</div>
+          <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3);margin-bottom:6px">Twilio Webhook URL - paste in Twilio Console → Phone Numbers → [your number] → Messaging → "A message comes in" → HTTP POST</div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <code id="sales-conv-webhook-display" style="font-family:var(--mono);font-size:11px;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r);padding:5px 10px;flex:1;word-break:break-all;color:var(--ink3)">Loading…</code>
             <button class="btn btn-xs" onclick="copySalesConvWebhook()">Copy</button>
           </div>
         </div>
         <div class="kg c3 mb4">
-          <div class="kpi"><div class="klabel">Lead Threads</div><div class="kval" id="sales-conv-threads">—</div></div>
-          <div class="kpi"><div class="klabel">Inbound Received</div><div class="kval blu" id="sales-conv-inbound-count">—</div></div>
-          <div class="kpi"><div class="klabel">Outbound Sent</div><div class="kval grn" id="sales-conv-outbound-count">—</div></div>
+          <div class="kpi"><div class="klabel">Lead Threads</div><div class="kval" id="sales-conv-threads">-</div></div>
+          <div class="kpi"><div class="klabel">Inbound Received</div><div class="kval blu" id="sales-conv-inbound-count">-</div></div>
+          <div class="kpi"><div class="klabel">Outbound Sent</div><div class="kval grn" id="sales-conv-outbound-count">-</div></div>
         </div>
         <div class="twrap">
           <table>
@@ -1273,10 +1273,10 @@ td strong{font-weight:500}
           </div>
         </div>
         <div class="kg c4 mb4">
-          <div class="kpi"><div class="klabel">Total Invoices</div><div class="kval" id="inv-total">—</div></div>
-          <div class="kpi"><div class="klabel">Draft</div><div class="kval amb" id="inv-draft">—</div></div>
-          <div class="kpi"><div class="klabel">Sent / Overdue</div><div class="kval blu" id="inv-sent">—</div></div>
-          <div class="kpi"><div class="klabel">Paid</div><div class="kval grn" id="inv-paid">—</div></div>
+          <div class="kpi"><div class="klabel">Total Invoices</div><div class="kval" id="inv-total">-</div></div>
+          <div class="kpi"><div class="klabel">Draft</div><div class="kval amb" id="inv-draft">-</div></div>
+          <div class="kpi"><div class="klabel">Sent / Overdue</div><div class="kval blu" id="inv-sent">-</div></div>
+          <div class="kpi"><div class="klabel">Paid</div><div class="kval grn" id="inv-paid">-</div></div>
         </div>
         <div class="twrap">
           <table>
@@ -1289,14 +1289,14 @@ td strong{font-weight:500}
       <!-- ══ SALES REPS (admin only) ══ -->
       <div class="panel" id="panel-salesreps">
         <div class="ph">
-          <div class="ph-left"><h1>Sales Reps</h1><p>Restricted accounts — pipeline &amp; their own invoices only</p></div>
+          <div class="ph-left"><h1>Sales Reps</h1><p>Restricted accounts - pipeline &amp; their own invoices only</p></div>
           <div class="ph-right"><button class="btn btn-p btn-sm" onclick="openCreateRepModal()">+ New Rep</button></div>
         </div>
         <div class="kg c4 mb4">
-          <div class="kpi"><div class="klabel">Total Reps</div><div class="kval blu" id="rep-kpi-total">—</div></div>
-          <div class="kpi"><div class="klabel">Active</div><div class="kval grn" id="rep-kpi-active">—</div></div>
-          <div class="kpi"><div class="klabel">Assigned Leads</div><div class="kval" id="rep-kpi-assigned">—</div></div>
-          <div class="kpi"><div class="klabel">Unassigned</div><div class="kval amb" id="rep-kpi-unassigned">—</div></div>
+          <div class="kpi"><div class="klabel">Total Reps</div><div class="kval blu" id="rep-kpi-total">-</div></div>
+          <div class="kpi"><div class="klabel">Active</div><div class="kval grn" id="rep-kpi-active">-</div></div>
+          <div class="kpi"><div class="klabel">Assigned Leads</div><div class="kval" id="rep-kpi-assigned">-</div></div>
+          <div class="kpi"><div class="klabel">Unassigned</div><div class="kval amb" id="rep-kpi-unassigned">-</div></div>
         </div>
 
         <div class="sl">Lead Assignment <div class="sl-line"></div></div>
@@ -1326,7 +1326,7 @@ td strong{font-weight:500}
       <!-- ══ PAY RATES ══ -->
       <div class="panel" id="panel-payrates">
         <div class="ph">
-          <div class="ph-left"><h1>Pay Rates</h1><p>Role pay definitions — fixed salary or commission. Internal only.</p></div>
+          <div class="ph-left"><h1>Pay Rates</h1><p>Role pay definitions - fixed salary or commission. Internal only.</p></div>
         </div>
         <div class="sl">Add Pay Rate <div class="sl-line"></div></div>
         <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;padding:14px;border:1px solid var(--bd);border-radius:var(--r);background:var(--s1);margin-bottom:18px">
@@ -1358,57 +1358,57 @@ td strong{font-weight:500}
           </div>
         </div>
         <div class="kg c4 mb4">
-          <div class="kpi"><div class="klabel">Total Revenue</div><div class="kval blu" id="fin-rev">—</div><div class="ksub" id="fin-rev-trend"></div></div>
-          <div class="kpi"><div class="klabel">Total Expenses</div><div class="kval red" id="fin-exp">—</div><div class="ksub" id="fin-exp-trend"></div></div>
-          <div class="kpi"><div class="klabel">Net Profit</div><div class="kval" id="fin-profit">—</div><div class="ksub" id="fin-margin"></div></div>
-          <div class="kpi"><div class="klabel">After GST (10%)</div><div class="kval" id="fin-profit-gst">—</div><div class="ksub" id="fin-gst-detail"></div></div>
-          <div class="kpi"><div class="klabel">Monthly Subscriptions</div><div class="kval" id="fin-subs">—</div><div class="ksub">from DB only</div></div>
+          <div class="kpi"><div class="klabel">Total Revenue</div><div class="kval blu" id="fin-rev">-</div><div class="ksub" id="fin-rev-trend"></div></div>
+          <div class="kpi"><div class="klabel">Total Expenses</div><div class="kval red" id="fin-exp">-</div><div class="ksub" id="fin-exp-trend"></div></div>
+          <div class="kpi"><div class="klabel">Net Profit</div><div class="kval" id="fin-profit">-</div><div class="ksub" id="fin-margin"></div></div>
+          <div class="kpi"><div class="klabel">After GST (10%)</div><div class="kval" id="fin-profit-gst">-</div><div class="ksub" id="fin-gst-detail"></div></div>
+          <div class="kpi"><div class="klabel">Monthly Subscriptions</div><div class="kval" id="fin-subs">-</div><div class="ksub">from DB only</div></div>
         </div>
         <div class="sl">Run Rate &amp; Recurring Revenue <div class="sl-line"></div></div>
         <div class="kg c4 mb4">
-          <div class="kpi"><div class="klabel">MRR</div><div class="kval blu" id="fin-mrr">—</div><div class="ksub">management fee revenue</div></div>
-          <div class="kpi"><div class="klabel">ARR</div><div class="kval blu" id="fin-arr">—</div><div class="ksub">MRR × 12</div></div>
-          <div class="kpi"><div class="klabel">Monthly Run Rate</div><div class="kval" id="fin-run-rate">—</div><div class="ksub" id="fin-run-rate-sub"></div></div>
-          <div class="kpi"><div class="klabel">MTD Revenue</div><div class="kval grn" id="fin-mtd-rev">—</div><div class="ksub" id="fin-mtd-sub"></div></div>
+          <div class="kpi"><div class="klabel">MRR</div><div class="kval blu" id="fin-mrr">-</div><div class="ksub">management fee revenue</div></div>
+          <div class="kpi"><div class="klabel">ARR</div><div class="kval blu" id="fin-arr">-</div><div class="ksub">MRR × 12</div></div>
+          <div class="kpi"><div class="klabel">Monthly Run Rate</div><div class="kval" id="fin-run-rate">-</div><div class="ksub" id="fin-run-rate-sub"></div></div>
+          <div class="kpi"><div class="klabel">MTD Revenue</div><div class="kval grn" id="fin-mtd-rev">-</div><div class="ksub" id="fin-mtd-sub"></div></div>
         </div>
         <div class="sl">Clients <div class="sl-line"></div></div>
         <div class="kg c4 mb4">
-          <div class="kpi"><div class="klabel">PPL Active</div><div class="kval blu" id="fin-ppl-active">—</div><div class="ksub">PPL clients</div></div>
-          <div class="kpi"><div class="klabel">Managed Active</div><div class="kval grn" id="fin-mg-active-cnt">—</div><div class="ksub">managed clients</div></div>
-          <div class="kpi"><div class="klabel">Overdue Payments</div><div class="kval red" id="fin-overdue-payments">—</div><div class="ksub">managed retainer</div></div>
-          <div class="kpi"><div class="klabel">PPL Reorder Due</div><div class="kval amb" id="fin-reorder-due">—</div><div class="ksub">≥75% delivered</div></div>
+          <div class="kpi"><div class="klabel">PPL Active</div><div class="kval blu" id="fin-ppl-active">-</div><div class="ksub">PPL clients</div></div>
+          <div class="kpi"><div class="klabel">Managed Active</div><div class="kval grn" id="fin-mg-active-cnt">-</div><div class="ksub">managed clients</div></div>
+          <div class="kpi"><div class="klabel">Overdue Payments</div><div class="kval red" id="fin-overdue-payments">-</div><div class="ksub">managed retainer</div></div>
+          <div class="kpi"><div class="klabel">PPL Reorder Due</div><div class="kval amb" id="fin-reorder-due">-</div><div class="ksub">≥75% delivered</div></div>
         </div>
         <div class="sl">Lead SLA <div class="sl-line"></div></div>
         <div class="kg c3 mb4">
-          <div class="kpi"><div class="klabel">Overdue SLA Orders</div><div class="kval red" id="fin-sla-overdue">—</div><div class="ksub">in-progress past due date</div></div>
-          <div class="kpi"><div class="klabel">Active Orders</div><div class="kval" id="fin-orders-active">—</div><div class="ksub">in progress</div></div>
-          <div class="kpi"><div class="klabel">Due This Week</div><div class="kval amb" id="fin-sla-week">—</div><div class="ksub">SLA due in 7 days</div></div>
+          <div class="kpi"><div class="klabel">Overdue SLA Orders</div><div class="kval red" id="fin-sla-overdue">-</div><div class="ksub">in-progress past due date</div></div>
+          <div class="kpi"><div class="klabel">Active Orders</div><div class="kval" id="fin-orders-active">-</div><div class="ksub">in progress</div></div>
+          <div class="kpi"><div class="klabel">Due This Week</div><div class="kval amb" id="fin-sla-week">-</div><div class="ksub">SLA due in 7 days</div></div>
         </div>
         <div class="sl">Goals &amp; Pipeline <div class="sl-line"></div></div>
         <div class="kg c3 mb4">
-          <div class="kpi"><div class="klabel">MTD Goal Progress</div><div class="kval" id="fin-ytd-goal-pct">—</div><div class="ksub" id="fin-ytd-goal-sub"></div></div>
-          <div class="kpi"><div class="klabel">CRM Follow-ups</div><div class="kval amb" id="fin-followups">—</div><div class="ksub">leads needing action</div></div>
-          <div class="kpi"><div class="klabel">Pending Leads</div><div class="kval" id="fin-pending-leads">—</div><div class="ksub">lead distribution queue</div></div>
+          <div class="kpi"><div class="klabel">MTD Goal Progress</div><div class="kval" id="fin-ytd-goal-pct">-</div><div class="ksub" id="fin-ytd-goal-sub"></div></div>
+          <div class="kpi"><div class="klabel">CRM Follow-ups</div><div class="kval amb" id="fin-followups">-</div><div class="ksub">leads needing action</div></div>
+          <div class="kpi"><div class="klabel">Pending Leads</div><div class="kval" id="fin-pending-leads">-</div><div class="ksub">lead distribution queue</div></div>
         </div>
         <div id="fin-overdue-sla-list" style="margin-bottom:16px"></div>
         <div class="sl">Ad Spend <div class="sl-line"></div></div>
         <div class="kg c3 mb4">
-          <div class="kpi"><div class="klabel">Campaign Ad Spend</div><div class="kval blu" id="fin-ppl-spend">—</div><div class="ksub">from spend log (synced + manual)</div></div>
-          <div class="kpi"><div class="klabel">Agency Acquisition</div><div class="kval blu" id="fin-ag-spend">—</div><div class="ksub">agency account spend</div></div>
-          <div class="kpi"><div class="klabel">Managed Client Revenue</div><div class="kval grn" id="fin-mg-spend">—</div><div class="ksub">retainer + custom orders</div></div>
+          <div class="kpi"><div class="klabel">Campaign Ad Spend</div><div class="kval blu" id="fin-ppl-spend">-</div><div class="ksub">from spend log (synced + manual)</div></div>
+          <div class="kpi"><div class="klabel">Agency Acquisition</div><div class="kval blu" id="fin-ag-spend">-</div><div class="ksub">agency account spend</div></div>
+          <div class="kpi"><div class="klabel">Managed Client Revenue</div><div class="kval grn" id="fin-mg-spend">-</div><div class="ksub">retainer + custom orders</div></div>
         </div>
         <div class="sl">PPL CPL Analysis <div class="sl-line"></div></div>
         <div class="kg c4 mb4">
-          <div class="kpi"><div class="klabel">Meta CPL</div><div class="kval" id="fin-meta-cpl">—</div></div>
-          <div class="kpi"><div class="klabel">True CPL</div><div class="kval blu" id="fin-true-cpl">—</div><div class="ksub">after sold %</div></div>
-          <div class="kpi"><div class="klabel">PPL Revenue</div><div class="kval grn" id="fin-ppl-rev">—</div></div>
-          <div class="kpi"><div class="klabel">PPL Margin</div><div class="kval" id="fin-ppl-margin">—</div></div>
+          <div class="kpi"><div class="klabel">Meta CPL</div><div class="kval" id="fin-meta-cpl">-</div></div>
+          <div class="kpi"><div class="klabel">True CPL</div><div class="kval blu" id="fin-true-cpl">-</div><div class="ksub">after sold %</div></div>
+          <div class="kpi"><div class="klabel">PPL Revenue</div><div class="kval grn" id="fin-ppl-rev">-</div></div>
+          <div class="kpi"><div class="klabel">PPL Margin</div><div class="kval" id="fin-ppl-margin">-</div></div>
         </div>
         <div class="sl">Managed Advertising Revenue <div class="sl-line"></div></div>
         <div class="kg c3 mb4">
-          <div class="kpi"><div class="klabel">Retainer Revenue</div><div class="kval grn" id="fin-mg-retainer">—</div><div class="ksub">active months × fee</div></div>
-          <div class="kpi"><div class="klabel">Custom Orders</div><div class="kval grn" id="fin-mg-custom">—</div><div class="ksub">one-off & extras</div></div>
-          <div class="kpi"><div class="klabel">Total Managed Rev</div><div class="kval blu" id="fin-mg-rev">—</div><div class="ksub">retainer + custom</div></div>
+          <div class="kpi"><div class="klabel">Retainer Revenue</div><div class="kval grn" id="fin-mg-retainer">-</div><div class="ksub">active months × fee</div></div>
+          <div class="kpi"><div class="klabel">Custom Orders</div><div class="kval grn" id="fin-mg-custom">-</div><div class="ksub">one-off & extras</div></div>
+          <div class="kpi"><div class="klabel">Total Managed Rev</div><div class="kval blu" id="fin-mg-rev">-</div><div class="ksub">retainer + custom</div></div>
         </div>
         <div class="g2 mb4">
           <div class="chart-card"><div class="chart-title">Revenue vs Expenses</div><canvas id="chart-rev" height="160"></canvas></div>
@@ -1439,10 +1439,10 @@ td strong{font-weight:500}
           </div>
         </div>
         <div class="kg c3 mb4">
-          <div class="kpi"><div class="klabel">YTD Revenue</div><div class="kval blu" id="goal-ytd-rev">—</div><div class="ksub" id="goal-ytd-rev-sub"></div></div>
-          <div class="kpi"><div class="klabel">YTD Avg Margin</div><div class="kval" id="goal-ytd-margin">—</div><div class="ksub" id="goal-ytd-margin-sub"></div></div>
-          <div class="kpi"><div class="klabel">YTD Net Profit</div><div class="kval grn" id="goal-ytd-profit">—</div><div class="ksub" id="goal-ytd-profit-sub"></div></div>
-          <div class="kpi"><div class="klabel">YoY Revenue Growth</div><div class="kval" id="goal-yoy-rev">—</div><div class="ksub" id="goal-yoy-rev-sub"></div></div>
+          <div class="kpi"><div class="klabel">YTD Revenue</div><div class="kval blu" id="goal-ytd-rev">-</div><div class="ksub" id="goal-ytd-rev-sub"></div></div>
+          <div class="kpi"><div class="klabel">YTD Avg Margin</div><div class="kval" id="goal-ytd-margin">-</div><div class="ksub" id="goal-ytd-margin-sub"></div></div>
+          <div class="kpi"><div class="klabel">YTD Net Profit</div><div class="kval grn" id="goal-ytd-profit">-</div><div class="ksub" id="goal-ytd-profit-sub"></div></div>
+          <div class="kpi"><div class="klabel">YoY Revenue Growth</div><div class="kval" id="goal-yoy-rev">-</div><div class="ksub" id="goal-yoy-rev-sub"></div></div>
         </div>
         <div class="sl">Monthly Goals vs Actuals <div class="sl-line"></div></div>
         <div class="twrap">
@@ -1460,7 +1460,7 @@ td strong{font-weight:500}
       <!-- ══ FILES ══ -->
       <div class="panel" id="panel-files">
         <div class="ph">
-          <div class="ph-left"><h1>Files</h1><p>Email templates &amp; scripts — editable markdown</p></div>
+          <div class="ph-left"><h1>Files</h1><p>Email templates &amp; scripts - editable markdown</p></div>
           <div class="ph-right">
             <button class="btn btn-sm" onclick="loadFileContent()">↻ Reload</button>
             <button class="btn btn-p btn-sm" onclick="saveFileContent()">Save file</button>
@@ -1508,7 +1508,7 @@ td strong{font-weight:500}
             <div class="file-editor-head">
               <span class="file-editor-name" id="file-editor-name">post-call-email</span>
               <span style="font-family:var(--mono);font-size:9px;color:var(--ink3)">Supabase · agent_files (docs)</span>
-              <select id="tmpl-client-sel" style="margin-left:auto;font-family:var(--mono);font-size:10px;padding:3px 7px;background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);color:var(--ink);outline:none;max-width:180px" onchange="updateTemplatePreview()"><option value="">— Preview with client —</option></select>
+              <select id="tmpl-client-sel" style="margin-left:auto;font-family:var(--mono);font-size:10px;padding:3px 7px;background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);color:var(--ink);outline:none;max-width:180px" onchange="updateTemplatePreview()"><option value="">- Preview with client -</option></select>
               <button class="btn btn-xs" id="tmpl-preview-btn" onclick="toggleTemplatePreview()" style="flex-shrink:0">Preview</button>
             </div>
             <textarea class="file-editor-ta" id="file-editor-ta" placeholder="Loading..."></textarea>
@@ -1565,7 +1565,7 @@ td strong{font-weight:500}
     </div>
     <div class="frow"><label class="flabel">Link to Lead / Client</label>
       <select class="fs" id="t-linked-lead">
-        <option value="">— No link —</option>
+        <option value="">- No link -</option>
       </select>
     </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="t-notes" placeholder="Additional context..."></textarea></div>
@@ -1629,7 +1629,7 @@ td strong{font-weight:500}
 <!-- Reset a sales rep's password -->
 <div class="overlay" id="m-rep-pass">
   <div class="modal">
-    <h2>Set Password</h2><div class="msub" id="rep-pass-sub">—</div>
+    <h2>Set Password</h2><div class="msub" id="rep-pass-sub">-</div>
     <input type="hidden" id="rep-pass-uid">
     <div class="frow"><label class="flabel">New Password</label><input class="fi" id="rep-pass-new" type="text" placeholder="min 8 characters"></div>
     <div class="macts">
@@ -1644,7 +1644,7 @@ td strong{font-weight:500}
     <h2>Add Meta Campaign</h2><div class="msub">Link a Meta Ads campaign for cap management</div>
     <div class="frow"><label class="flabel">Campaign Name <span style="font-size:9.5px;color:var(--ink3);font-weight:300">your label, e.g. "Solar Gold Coast"</span></label><input class="fi" id="mc-name" placeholder="e.g. Solar Gold Coast"></div>
     <div class="frow"><label class="flabel">Ad Account</label>
-      <select class="fs" id="mc-ad-account"><option value="">— Select —</option></select>
+      <select class="fs" id="mc-ad-account"><option value="">- Select -</option></select>
     </div>
     <div class="frow"><label class="flabel">Meta Campaign ID <span style="font-size:9.5px;color:var(--ink3);font-weight:300">from Ads Manager</span></label><input class="fi" id="mc-meta-id" placeholder="e.g. 23851234567890"></div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="mc-notes" placeholder="e.g. covers 2000-2020, budget $50/day"></textarea></div>
@@ -1661,7 +1661,7 @@ td strong{font-weight:500}
     <input type="hidden" id="emc-id">
     <div class="frow"><label class="flabel">Campaign Name</label><input class="fi" id="emc-name"></div>
     <div class="frow"><label class="flabel">Ad Account</label>
-      <select class="fs" id="emc-ad-account"><option value="">— Select —</option></select>
+      <select class="fs" id="emc-ad-account"><option value="">- Select -</option></select>
     </div>
     <div class="frow"><label class="flabel">Meta Campaign ID</label><input class="fi" id="emc-meta-id"></div>
     <div class="frow"><label class="flabel">Status</label>
@@ -1729,11 +1729,11 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Email</label><input class="fi" id="ppl-em" type="email" placeholder="john@example.com"></div>
     <div class="frow"><label class="flabel">Niche</label>
       <select class="fs" id="ppl-niche">
-        <option>Solar Residential</option><option>Solar Commercial</option><option>Battery Storage</option><option>Battery Retrofit</option><option>EV Charger</option><option>HVAC</option><option>Roofing — Restorations</option><option>Roofing — Replacements</option><option>Renovation — Kitchens</option><option>Renovation — Bathrooms</option><option>Renovation — Decks</option><option>Renovation — Fencing</option><option>Carpentry</option><option>Other</option>
+        <option>Solar Residential</option><option>Solar Commercial</option><option>Battery Storage</option><option>Battery Retrofit</option><option>EV Charger</option><option>HVAC</option><option>Roofing - Restorations</option><option>Roofing - Replacements</option><option>Renovation - Kitchens</option><option>Renovation - Bathrooms</option><option>Renovation - Decks</option><option>Renovation - Fencing</option><option>Carpentry</option><option>Other</option>
       </select>
     </div>
     <div class="frow"><label class="flabel">Lead Price (AUD)</label><input class="fi" id="ppl-price" type="number" placeholder="e.g. 85"></div>
-    <div class="frow"><label class="flabel">Meta CPL (AUD) <span style="font-size:9.5px;color:var(--ink3);font-weight:300">optional — overrides global avg</span></label><input class="fi" id="ppl-meta-cpl" type="number" placeholder="e.g. 28.50"></div>
+    <div class="frow"><label class="flabel">Meta CPL (AUD) <span style="font-size:9.5px;color:var(--ink3);font-weight:300">optional - overrides global avg</span></label><input class="fi" id="ppl-meta-cpl" type="number" placeholder="e.g. 28.50"></div>
     <div class="frow"><label class="flabel">Leads Delivered</label><input class="fi" id="ppl-ld" type="number" placeholder="0"></div>
     <div class="frow"><label class="flabel">Total Leads Purchased</label><input class="fi" id="ppl-tlp" type="number" placeholder="0"></div>
     <div class="frow"><label class="flabel">Leads Scrubbed <span style="font-size:9.5px;color:var(--ink3);font-weight:300">invalid leads to replace</span></label><input class="fi" id="ppl-scrubbed" type="number" placeholder="0"></div>
@@ -1742,7 +1742,7 @@ td strong{font-weight:500}
         <option value="active_client">Active</option><option value="paused">Paused</option><option value="churned">Churned</option>
       </select>
     </div>
-    <div class="frow"><label class="flabel">CX Score <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10 — client experience rating</span></label><input class="fi" id="ppl-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
+    <div class="frow"><label class="flabel">CX Score <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10 - client experience rating</span></label><input class="fi" id="ppl-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Lead Delivery</div>
     <div class="frow"><label class="flabel">Postcodes Covered <span style="font-size:9.5px;color:var(--ink3);font-weight:300">comma-separated</span></label><textarea class="fta" id="ppl-postcodes" placeholder="e.g. 2000, 2010, 2020" style="min-height:52px"></textarea></div>
     <div class="frow" style="gap:8px">
@@ -1760,7 +1760,7 @@ td strong{font-weight:500}
     <div class="frow" id="ppl-dm-email-row"><label class="flabel">Delivery Email</label><input class="fi" id="ppl-delivery-email" type="email" placeholder="leads@client.com"></div>
     <div class="frow" id="ppl-dm-phone-row" style="display:none"><label class="flabel">Delivery Phone <span style="font-size:9.5px;color:var(--ink3);font-weight:300">for SMS</span></label><input class="fi" id="ppl-delivery-phone" placeholder="+61400000000"></div>
     <div id="ppl-dm-crm-row" style="display:none">
-      <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px"><label class="flabel">Custom Notes <span style="font-size:9.5px;color:var(--ink3);font-weight:300">any text — passed as custom_fields to your integration</span></label><textarea class="fta" id="ppl-custom-fields" placeholder="e.g. webhook URL, API key, notes…"></textarea></div>
+      <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px"><label class="flabel">Custom Notes <span style="font-size:9.5px;color:var(--ink3);font-weight:300">any text - passed as custom_fields to your integration</span></label><textarea class="fta" id="ppl-custom-fields" placeholder="e.g. webhook URL, API key, notes…"></textarea></div>
     </div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Meta Ads Integration</div>
     <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px">
@@ -1799,7 +1799,7 @@ td strong{font-weight:500}
         <option value="paused">Paused</option><option value="churned">Churned</option>
       </select>
     </div>
-    <div class="frow"><label class="flabel">CX Score <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10 — client experience rating</span></label><input class="fi" id="mg-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
+    <div class="frow"><label class="flabel">CX Score <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10 - client experience rating</span></label><input class="fi" id="mg-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
     <div class="frow"><label class="flabel">Start Date</label><input class="fi" id="mg-start" type="date"></div>
     <div class="frow"><label class="flabel">Ads First Live Date</label><input class="fi" id="mg-ads-live" type="date" oninput="calcNextPaymentNew()"></div>
     <div class="frow"><label class="flabel">Last Payment Date</label><input class="fi" id="mg-last-pay" type="date" oninput="calcNextPaymentNew()"></div>
@@ -1837,7 +1837,7 @@ td strong{font-weight:500}
     </div>
     <div class="frow"><label class="flabel">Contact Status</label>
       <select class="fs" id="el-contactable">
-        <option value="">— Not set</option>
+        <option value="">- Not set</option>
         <option value="true">✓ Contactable</option>
         <option value="false">✗ Uncontactable</option>
       </select>
@@ -1851,7 +1851,7 @@ td strong{font-weight:500}
         <span>🎉</span> Convert to active client
       </div>
       <div style="font-size:11.5px;color:var(--ink2);margin-bottom:10px;font-weight:300;line-height:1.5">
-        Mark as closed — create this client directly in PPL or Managed Ads.
+        Mark as closed - create this client directly in PPL or Managed Ads.
       </div>
       <div class="convert-banner-btns">
         <button class="btn btn-grn btn-sm" onclick="convertLead('ppl')">→ PPL Client</button>
@@ -1866,7 +1866,7 @@ td strong{font-weight:500}
       </select>
     </div>
     <div class="frow admin-only-field" id="el-owner-row"><label class="flabel">Owner (Sales Rep)</label>
-      <select class="fs" id="el-owner"><option value="">— Unassigned</option></select>
+      <select class="fs" id="el-owner"><option value="">- Unassigned</option></select>
     </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="el-notes"></textarea></div>
     <div class="macts">
@@ -1888,22 +1888,22 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Phone</label><input class="fi" id="ep-ph"></div>
     <div class="frow"><label class="flabel">Niche</label>
       <select class="fs" id="ep-niche">
-        <option>Solar Residential</option><option>Solar Commercial</option><option>Battery Storage</option><option>Battery Retrofit</option><option>EV Charger</option><option>HVAC</option><option>Roofing — Restorations</option><option>Roofing — Replacements</option><option>Renovation — Kitchens</option><option>Renovation — Bathrooms</option><option>Renovation — Decks</option><option>Renovation — Fencing</option><option>Carpentry</option><option>Other</option>
+        <option>Solar Residential</option><option>Solar Commercial</option><option>Battery Storage</option><option>Battery Retrofit</option><option>EV Charger</option><option>HVAC</option><option>Roofing - Restorations</option><option>Roofing - Replacements</option><option>Renovation - Kitchens</option><option>Renovation - Bathrooms</option><option>Renovation - Decks</option><option>Renovation - Fencing</option><option>Carpentry</option><option>Other</option>
       </select>
     </div>
     <div class="frow"><label class="flabel">Active Niches <span style="font-size:9.5px;color:var(--ink3);font-weight:300">all niches this client accepts</span></label><input class="fi" id="ep-active-niches" placeholder="solar, hvac, roofing"></div>
     <div class="frow"><label class="flabel">Price Per Lead Sold (AUD)</label><input class="fi" id="ep-price" type="number" oninput="updatePplCalc()"></div>
-    <div class="frow"><label class="flabel">Meta CPL (AUD) <span style="font-size:9.5px;color:var(--ink3);font-weight:300">optional — overrides global avg</span></label><input class="fi" id="ep-meta-cpl" type="number" placeholder="e.g. 28.50"></div>
+    <div class="frow"><label class="flabel">Meta CPL (AUD) <span style="font-size:9.5px;color:var(--ink3);font-weight:300">optional - overrides global avg</span></label><input class="fi" id="ep-meta-cpl" type="number" placeholder="e.g. 28.50"></div>
     <div class="frow"><label class="flabel">% Sold</label><input class="fi" id="ep-pct" type="number" placeholder="e.g. 70"></div>
     <div class="frow"><label class="flabel">Leads Delivered</label><input class="fi" id="ep-ld" type="number" placeholder="0" oninput="updatePplCalc()"></div>
     <div class="frow"><label class="flabel">Total Leads Purchased</label><input class="fi" id="ep-tlp" type="number" placeholder="0" oninput="updatePplCalc()"></div>
     <div class="frow"><label class="flabel">Leads Scrubbed <span style="font-size:9.5px;color:var(--ink3);font-weight:300">invalid leads to replace</span></label><input class="fi" id="ep-scrubbed" type="number" placeholder="0" oninput="updatePplCalc()"></div>
-    <div class="frow"><label class="flabel">Leads Generated <span style="font-size:9.5px;color:var(--ink3);font-weight:300">total generated by ads — auto from order log</span></label><input class="fi" id="ep-total-gen" type="number" placeholder="0" readonly style="opacity:.65;cursor:default"></div>
+    <div class="frow"><label class="flabel">Leads Generated <span style="font-size:9.5px;color:var(--ink3);font-weight:300">total generated by ads - auto from order log</span></label><input class="fi" id="ep-total-gen" type="number" placeholder="0" readonly style="opacity:.65;cursor:default"></div>
     <div class="frow" style="background:var(--acc-dim);border:1px solid rgba(79,143,255,.12);border-radius:var(--r);padding:10px 12px">
       <div style="font-family:var(--mono);font-size:9px;color:var(--acc);font-weight:500;text-transform:uppercase;letter-spacing:.09em;margin-bottom:7px">Auto-Calculated Balance</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <div><div style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-bottom:2px">LEADS STILL NEEDED</div><div id="ep-leads-rem" style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--ink)">—</div><div id="ep-scrub-note" style="font-size:9px;font-family:var(--mono);color:var(--amb);margin-top:2px"></div></div>
-        <div><div style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-bottom:2px">$ BALANCE REMAINING</div><div id="ep-bal-rem" style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--grn)">—</div></div>
+        <div><div style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-bottom:2px">LEADS STILL NEEDED</div><div id="ep-leads-rem" style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--ink)">-</div><div id="ep-scrub-note" style="font-size:9px;font-family:var(--mono);color:var(--amb);margin-top:2px"></div></div>
+        <div><div style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-bottom:2px">$ BALANCE REMAINING</div><div id="ep-bal-rem" style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--grn)">-</div></div>
       </div>
     </div>
     <div class="frow"><label class="flabel">Status</label>
@@ -1911,7 +1911,7 @@ td strong{font-weight:500}
         <option value="active_client">Active</option><option value="paused">Paused</option><option value="churned">Churned</option>
       </select>
     </div>
-    <div class="frow"><label class="flabel">CX Score <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10 — client experience rating</span></label><input class="fi" id="ep-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
+    <div class="frow"><label class="flabel">CX Score <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10 - client experience rating</span></label><input class="fi" id="ep-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="ep-notes"></textarea></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Lead Delivery</div>
     <div class="frow"><label class="flabel">Postcodes Covered <span style="font-size:9.5px;color:var(--ink3);font-weight:300">comma-separated</span></label><textarea class="fta" id="ep-postcodes" placeholder="e.g. 2000, 2010, 2020" style="min-height:52px"></textarea></div>
@@ -1930,7 +1930,7 @@ td strong{font-weight:500}
     <div class="frow" id="ep-dm-email-row"><label class="flabel">Delivery Email</label><input class="fi" id="ep-delivery-email" type="email" placeholder="leads@client.com"></div>
     <div class="frow" id="ep-dm-phone-row" style="display:none"><label class="flabel">Delivery Phone <span style="font-size:9.5px;color:var(--ink3);font-weight:300">for SMS</span></label><input class="fi" id="ep-delivery-phone" placeholder="+61400000000"></div>
     <div id="ep-dm-crm-row" style="display:none">
-      <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px"><label class="flabel">Custom Notes <span style="font-size:9.5px;color:var(--ink3);font-weight:300">any text — passed as custom_fields to your integration</span></label><textarea class="fta" id="ep-custom-fields" placeholder="e.g. webhook URL, API key, notes…"></textarea></div>
+      <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px"><label class="flabel">Custom Notes <span style="font-size:9.5px;color:var(--ink3);font-weight:300">any text - passed as custom_fields to your integration</span></label><textarea class="fta" id="ep-custom-fields" placeholder="e.g. webhook URL, API key, notes…"></textarea></div>
     </div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Meta Ads Integration</div>
     <div class="frow" style="flex-direction:column;align-items:flex-start;gap:4px">
@@ -2024,7 +2024,7 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Management Fee (AUD/mo)</label><input class="fi" id="em-fee" type="number" oninput="updateMgMonthSummary()"></div>
     <div class="frow" id="em-onboarding-sub-row" style="display:none"><label class="flabel">Onboarding Stage</label>
       <select class="fs" id="em-onboarding-sub-stage">
-        <option value="">— Select stage —</option>
+        <option value="">- Select stage -</option>
         <option value="Paid &amp; Signed">Paid &amp; Signed</option>
         <option value="Form Filled">Form Filled</option>
         <option value="Meta/Google Access Granted">Meta/Google Access Granted</option>
@@ -2034,7 +2034,7 @@ td strong{font-weight:500}
     </div>
     <div class="frow" id="em-active-status-row" style="display:none"><label class="flabel">Ad Status</label>
       <select class="fs" id="em-active-status">
-        <option value="">— Select status —</option>
+        <option value="">- Select status -</option>
         <option value="Ads Live">Ads Live</option>
         <option value="Ads Paused (Self Paused)">Ads Paused (Self Paused)</option>
         <option value="Ads Paused (Billing Issue)">Ads Paused (Billing Issue)</option>
@@ -2049,16 +2049,16 @@ td strong{font-weight:500}
         <option value="paused">Paused</option><option value="churned">Churned</option>
       </select>
     </div>
-    <div class="frow"><label class="flabel">CX Score <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10 — client experience rating</span></label><input class="fi" id="em-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
+    <div class="frow"><label class="flabel">CX Score <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10 - client experience rating</span></label><input class="fi" id="em-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
     <div class="frow"><label class="flabel">Start Date</label><input class="fi" id="em-start" type="date"></div>
     <div class="frow"><label class="flabel">Ads First Live Date</label><input class="fi" id="em-ads-live" type="date" oninput="calcNextPayment()"></div>
     <div class="frow"><label class="flabel">Last Payment Date</label><input class="fi" id="em-last-pay" type="date" oninput="calcNextPayment()"></div>
     <div class="frow"><label class="flabel">Next Payment Due</label><input class="fi" id="em-next-pay" type="date"></div>
     <input type="hidden" id="em-payments-made">
     <div class="frow" style="flex-direction:column;gap:6px;align-items:flex-start">
-      <label class="flabel">Active Retainer Months — 2026 <span style="font-weight:400;color:var(--ink3)">(tap to toggle)</span></label>
+      <label class="flabel">Active Retainer Months - 2026 <span style="font-weight:400;color:var(--ink3)">(tap to toggle)</span></label>
       <div id="em-month-picker" style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;width:100%"></div>
-      <div id="em-month-summary" style="font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:1px">—</div>
+      <div id="em-month-summary" style="font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:1px">-</div>
     </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="em-notes"></textarea></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Integrations</div>
@@ -2122,7 +2122,7 @@ td strong{font-weight:500}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div class="frow"><label class="flabel">Client / Lead</label>
         <select class="fs" id="inv-client" onchange="onInvClientChange()">
-          <option value="">— Select client or lead —</option>
+          <option value="">- Select client or lead -</option>
         </select>
       </div>
       <div class="frow"><label class="flabel">Offer Type</label>
@@ -2175,7 +2175,7 @@ td strong{font-weight:500}
     </div>
     <div class="frow"><label class="flabel">Link to Lead / Client</label>
       <select class="fs" id="et-linked-lead">
-        <option value="">— No link —</option>
+        <option value="">- No link -</option>
       </select>
     </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="et-notes"></textarea></div>
@@ -2239,7 +2239,7 @@ td strong{font-weight:500}
     <div class="frow" style="align-items:flex-start">
       <label class="flabel" style="padding-top:6px">Custom Fields</label>
       <div style="flex:1">
-        <textarea class="fi" id="tl-custom" rows="2" placeholder="Any text — sent as custom_data" style="resize:vertical"></textarea>
+        <textarea class="fi" id="tl-custom" rows="2" placeholder="Any text - sent as custom_data" style="resize:vertical"></textarea>
       </div>
     </div>
     <div id="tl-status" style="display:none;padding:8px 10px;border-radius:6px;font-size:13px;margin-bottom:8px"></div>
@@ -2277,7 +2277,7 @@ td strong{font-weight:500}
     <div class="msub">Configure your SMS number</div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">SMS Number</div>
     <div class="frow"><label class="flabel">From / Receive Number</label><input class="fi" id="ts-from-number" placeholder="+61400000000" type="tel"></div>
-    <p style="font-size:11px;color:var(--ink3);margin:4px 0 14px;line-height:1.6">This is the Twilio number all SMS messages are sent from and received to. Keep your Account SID and Auth Token in Supabase Edge Function secrets (<code style="font-family:var(--mono)">TWILIO_ACCOUNT_SID</code>, <code style="font-family:var(--mono)">TWILIO_AUTH_TOKEN</code>) — never paste them here.</p>
+    <p style="font-size:11px;color:var(--ink3);margin:4px 0 14px;line-height:1.6">This is the Twilio number all SMS messages are sent from and received to. Keep your Account SID and Auth Token in Supabase Edge Function secrets (<code style="font-family:var(--mono)">TWILIO_ACCOUNT_SID</code>, <code style="font-family:var(--mono)">TWILIO_AUTH_TOKEN</code>) - never paste them here.</p>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Twilio Webhook Setup</div>
     <p style="font-size:11px;color:var(--ink3);margin-bottom:8px;line-height:1.6">In <strong style="color:var(--ink2)">Twilio Console → Phone Numbers → [your number] → Messaging</strong>, set <em>"When a message comes in"</em> to:</p>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
@@ -2412,7 +2412,7 @@ td strong{font-weight:500}
       </select>
     </div>
     <div class="frow"><label class="flabel">Link to Meta Campaign <span style="font-size:9.5px;color:var(--ink3);font-weight:300">optional</span></label>
-      <select class="fs" id="pc-meta-link"><option value="">— None —</option></select>
+      <select class="fs" id="pc-meta-link"><option value="">- None -</option></select>
     </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="pc-notes" placeholder="Initial notes about this campaign…"></textarea></div>
     <div class="macts">
@@ -2437,7 +2437,7 @@ td strong{font-weight:500}
       </select>
     </div>
     <div class="frow"><label class="flabel">Link to Meta Campaign</label>
-      <select class="fs" id="epc-meta-link"><option value="">— None —</option></select>
+      <select class="fs" id="epc-meta-link"><option value="">- None -</option></select>
     </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="epc-notes"></textarea></div>
     <div class="macts">
@@ -2557,23 +2557,23 @@ const setText = (id, v) => { const e = $(id); if (e) e.textContent = v; };
 const setVal  = (id, v) => { const e = $(id); if (e) e.value = v ?? ''; };
 const now  = () => new Date().toISOString();
 const esc  = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const fmt  = n => (!n && n !== 0) ? '—' : '$' + Number(n).toLocaleString('en-AU', {minimumFractionDigits:0,maximumFractionDigits:0});
-const fmtCpl = n => n ? '$' + Number(n).toFixed(2) : '—';
+const fmt  = n => (!n && n !== 0) ? '-' : '$' + Number(n).toLocaleString('en-AU', {minimumFractionDigits:0,maximumFractionDigits:0});
+const fmtCpl = n => n ? '$' + Number(n).toFixed(2) : '-';
 // Australian timezones (IANA). Live/DST-aware; default is AEST (Brisbane).
 const AU_TIMEZONES = [
-  ['Australia/Brisbane',  'AEST — Brisbane (QLD)'],
-  ['Australia/Sydney',    'AEST/AEDT — Sydney (NSW)'],
-  ['Australia/Melbourne', 'AEST/AEDT — Melbourne (VIC)'],
-  ['Australia/Hobart',    'AEST/AEDT — Hobart (TAS)'],
-  ['Australia/Adelaide',  'ACST/ACDT — Adelaide (SA)'],
-  ['Australia/Darwin',    'ACST — Darwin (NT)'],
-  ['Australia/Perth',     'AWST — Perth (WA)'],
+  ['Australia/Brisbane',  'AEST - Brisbane (QLD)'],
+  ['Australia/Sydney',    'AEST/AEDT - Sydney (NSW)'],
+  ['Australia/Melbourne', 'AEST/AEDT - Melbourne (VIC)'],
+  ['Australia/Hobart',    'AEST/AEDT - Hobart (TAS)'],
+  ['Australia/Adelaide',  'ACST/ACDT - Adelaide (SA)'],
+  ['Australia/Darwin',    'ACST - Darwin (NT)'],
+  ['Australia/Perth',     'AWST - Perth (WA)'],
 ];
 let _tz = localStorage.getItem('ql_tz') || 'Australia/Brisbane';
 // NOTE: toLocaleString (not toLocaleDateString) so hour/minute options actually
-// render — toLocaleDateString silently drops any time fields.
+// render - toLocaleDateString silently drops any time fields.
 const fmtDate = (d, time) => {
-  if (!d) return '—';
+  if (!d) return '-';
   const opts = time
     ? {day:'numeric',month:'short',hour:'numeric',minute:'2-digit',hour12:true,timeZone:_tz}
     : {day:'numeric',month:'short',timeZone:_tz};
@@ -2799,7 +2799,7 @@ async function populateTestLeadNiches() {
   // Default niches shown when DB has no data yet
   const defaultNiches = ['solar', 'roofing', 'hvac', 'renovations', 'battery_retrofit'];
   try {
-    // ppl_leads is the dedicated distribution-leads table — no filter needed.
+    // ppl_leads is the dedicated distribution-leads table - no filter needed.
     const { data } = await db.from('ppl_leads')
       .select('lead_type')
       .not('lead_type', 'is', null)
@@ -2928,14 +2928,14 @@ async function loadLeads(resetPage) {
   const typeFilter = $('ld-type-filter')?.value || 'all';
   const clientFilter = $('ld-client-filter')?.value || 'all';
 
-  // ppl_leads is the dedicated distribution-leads table — no filter needed.
+  // ppl_leads is the dedicated distribution-leads table - no filter needed.
   // Pull lead_type + assigned client to build the niche & client filter dropdowns.
   const nicheQ = db.from('ppl_leads').select('lead_type, assigned_client_id, clients(company_name)').limit(500);
-  // Stats query — lightweight, all PPL rows, just status + lead_type + client info
+  // Stats query - lightweight, all PPL rows, just status + lead_type + client info
   const statsQ = db.from('ppl_leads').select('status, lead_type, assigned_client_id, clients(company_name)');
   if (typeFilter !== 'all') statsQ.eq('lead_type', typeFilter);
   if (clientFilter !== 'all') statsQ.eq('assigned_client_id', clientFilter);
-  // Table query — paginated, with server-side filter
+  // Table query - paginated, with server-side filter
   const tableQ = db.from('ppl_leads').select('*, clients(company_name)', {count:'exact'}).order('created_at', {ascending: false});
   if (filter !== 'all') tableQ.eq('status', filter);
   if (typeFilter !== 'all') tableQ.eq('lead_type', typeFilter);
@@ -2950,12 +2950,12 @@ async function loadLeads(resetPage) {
 
   const [nicheR, statsR, tableR, outstandingR] = await Promise.all([nicheQ, statsQ, tableQ, outstandingQ]);
 
-  // Sum positive remaining balances only — over-delivered clients (✓ in the table) don't offset.
+  // Sum positive remaining balances only - over-delivered clients (✓ in the table) don't offset.
   const totalOutstanding = (outstandingR.data || []).reduce((sum, c) => {
     const rem = (c.total_leads_purchased || 0) - (c.leads_delivered || 0) + (c.leads_scrubbed || 0);
     return sum + Math.max(0, rem);
   }, 0);
-  setText('ld-outstanding', outstandingR.error ? '—' : totalOutstanding);
+  setText('ld-outstanding', outstandingR.error ? '-' : totalOutstanding);
 
   // Rebuild niche filter options
   if (nicheR.data) {
@@ -3033,23 +3033,23 @@ async function loadLeads(resetPage) {
     return `<span class="badge ${cls[s]||'bg-gray'}">${esc(s||'unknown')}</span>`;
   };
   const nicheBadge = n => {
-    if (!n) return '<span class="badge bg-gray">—</span>';
+    if (!n) return '<span class="badge bg-gray">-</span>';
     return `<span class="badge bg-sky">${esc(n.charAt(0).toUpperCase()+n.slice(1))}</span>`;
   };
   $('ld-tbody').innerHTML = rows.map(l => `
     <tr>
       <td style="white-space:nowrap;font-family:var(--mono);font-size:10px;color:var(--ink3)">${fmtDate(l.created_at, true)}</td>
       <td>${nicheBadge(l.lead_type)}</td>
-      <td><strong>${esc(l.name||'—')}</strong><br><span style="font-family:var(--mono);font-size:9.5px;color:var(--ink3)">${esc(l.email||'')}</span></td>
-      <td style="font-family:var(--mono);font-size:11px">${esc(l.phone||'—')}</td>
-      <td style="font-family:var(--mono);font-size:11px">${esc(l.postcode||'—')}</td>
-      <td>${l.interested_in ? `<span class="badge bg-blu">${esc(l.interested_in.replace(/_/g,' '))}</span>` : '<span style="color:var(--ink3)">—</span>'}</td>
-      <td style="font-family:var(--mono);font-size:11px">${l.avg_quarterly_bill ? esc(String(l.avg_quarterly_bill)) : '—'}</td>
-      <td style="font-size:11px;color:var(--ink2);white-space:nowrap">${esc(l.purchase_timeline||'—')}</td>
+      <td><strong>${esc(l.name||'-')}</strong><br><span style="font-family:var(--mono);font-size:9.5px;color:var(--ink3)">${esc(l.email||'')}</span></td>
+      <td style="font-family:var(--mono);font-size:11px">${esc(l.phone||'-')}</td>
+      <td style="font-family:var(--mono);font-size:11px">${esc(l.postcode||'-')}</td>
+      <td>${l.interested_in ? `<span class="badge bg-blu">${esc(l.interested_in.replace(/_/g,' '))}</span>` : '<span style="color:var(--ink3)">-</span>'}</td>
+      <td style="font-family:var(--mono);font-size:11px">${l.avg_quarterly_bill ? esc(String(l.avg_quarterly_bill)) : '-'}</td>
+      <td style="font-size:11px;color:var(--ink2);white-space:nowrap">${esc(l.purchase_timeline||'-')}</td>
       <td>${statusBadge(l.status)}</td>
-      <td>${l.clients?.company_name ? `<strong>${esc(l.clients.company_name)}</strong>` : '<span style="color:var(--ink3)">—</span>'}</td>
+      <td>${l.clients?.company_name ? `<strong>${esc(l.clients.company_name)}</strong>` : '<span style="color:var(--ink3)">-</span>'}</td>
       <td style="font-family:var(--mono);font-size:10px;color:var(--ink3);white-space:nowrap">${fmtDate(l.delivered_at, false)}</td>
-      <td style="font-family:var(--mono);font-size:10px;color:var(--ink3)">${esc(l.delivery_method||'—')}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--ink3)">${esc(l.delivery_method||'-')}</td>
       <td><span class="badge bg-gray">${esc(l.source||'webhook')}</span></td>
       <td style="font-size:6px;color:var(--ink2);max-width:180px;white-space:pre-wrap;word-break:break-word">${esc(l.custom_fields||'')}</td>
       <td style="white-space:nowrap">
@@ -3093,7 +3093,7 @@ async function loadLeads(resetPage) {
       recheckLead(btn.dataset.leadId, btn);
     });
   });
-  // Attach deliver button listeners (2nd step — actually sends)
+  // Attach deliver button listeners (2nd step - actually sends)
   document.querySelectorAll('.deliver-lead-btn').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
@@ -3103,7 +3103,7 @@ async function loadLeads(resetPage) {
   loadDeliveryLogOverview();
 }
 
-// STEP 1 — Recheck = match + assign ONLY. Nothing is sent, no counts move,
+// STEP 1 - Recheck = match + assign ONLY. Nothing is sent, no counts move,
 // no HQ forward. The operator reviews the matched client, then clicks Deliver.
 async function recheckLead(leadId, btn) {
   btn.disabled = true;
@@ -3119,7 +3119,7 @@ async function recheckLead(leadId, btn) {
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Recheck failed');
     if (data.matched) {
-      toast(`Assigned to ${data.client_name} — review, then click Deliver to send`);
+      toast(`Assigned to ${data.client_name} - review, then click Deliver to send`);
     } else {
       toast('No matching client found for this postcode/niche yet', true);
       btn.disabled = false;
@@ -3134,7 +3134,7 @@ async function recheckLead(leadId, btn) {
   }
 }
 
-// STEP 2 — Deliver = actually send the assigned lead (email/SMS/webhook + HQ
+// STEP 2 - Deliver = actually send the assigned lead (email/SMS/webhook + HQ
 // forward + delivered-count increment). This is the only step that contacts
 // anyone, so a wrong match can be caught at the assign step before this runs.
 async function deliverLead(leadId, clientName, btn) {
@@ -3212,14 +3212,14 @@ async function openDeliveryLogs(leadId, leadName) {
     ? '<span class="badge bg-grn">delivered</span>'
     : `<span class="badge bg-red">${esc(s || 'failed')}</span>`;
   const fmtTs = ts => {
-    if (!ts) return '—';
+    if (!ts) return '-';
     return new Date(ts).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
   };
   $('dlogs-modal-body').innerHTML = data.map(entry => `
     <div style="border:1px solid var(--bd2);border-radius:var(--r2);padding:12px 14px;margin-bottom:8px;background:var(--s2)">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
         <span style="font-size:15px">${methodIcon(entry.method)}</span>
-        <strong style="font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em">${esc(entry.method || '—')}</strong>
+        <strong style="font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em">${esc(entry.method || '-')}</strong>
         ${statusBadge(entry.status)}
         <span style="font-family:var(--mono);font-size:9.5px;color:var(--ink3);margin-left:auto">${fmtTs(entry.delivered_at || entry.created_at)}</span>
       </div>
@@ -3253,14 +3253,14 @@ async function refreshActionLog(clientId) {
   }
   const typeIcon = t => ({ call: '📞', email: '✉️', meeting: '🤝', note: '📝', other: '📌' })[t] || '📌';
   const fmtTs = ts => {
-    if (!ts) return '—';
+    if (!ts) return '-';
     return new Date(ts).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
   };
   $('al-modal-body').innerHTML = data.map(entry => `
     <div style="border:1px solid var(--bd2);border-radius:var(--r2);padding:10px 14px;margin-bottom:8px;background:var(--s2)">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-size:14px">${typeIcon(entry.action_type)}</span>
-        <strong style="font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em">${esc(entry.action_type || '—')}</strong>
+        <strong style="font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em">${esc(entry.action_type || '-')}</strong>
         <span style="font-family:var(--mono);font-size:9.5px;color:var(--ink3);margin-left:auto">${fmtTs(entry.logged_at)}</span>
       </div>
       ${entry.notes ? `<div style="margin-top:6px;font-size:12px;color:var(--ink)">${esc(entry.notes)}</div>` : ''}
@@ -3303,17 +3303,17 @@ async function refreshContactLog(leadId) {
   const typeIcon = t => ({ call: '📞', email: '✉️', sms: '💬', meeting: '🤝', other: '📌' })[t] || '📌';
   const outcomeBadge = o => {
     const cls = { positive: 'bg-grn', neutral: 'bg-gray', negative: 'bg-red', no_answer: 'bg-amb' };
-    return `<span class="badge ${cls[o] || 'bg-gray'}">${esc(o ? o.replace('_', ' ') : '—')}</span>`;
+    return `<span class="badge ${cls[o] || 'bg-gray'}">${esc(o ? o.replace('_', ' ') : '-')}</span>`;
   };
   const fmtTs = ts => {
-    if (!ts) return '—';
+    if (!ts) return '-';
     return new Date(ts).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
   };
   $('cl-modal-body').innerHTML = data.map(entry => `
     <div style="border:1px solid var(--bd2);border-radius:var(--r2);padding:10px 14px;margin-bottom:8px;background:var(--s2)">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-size:14px">${typeIcon(entry.contact_type)}</span>
-        <strong style="font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em">${esc(entry.contact_type || '—')}</strong>
+        <strong style="font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em">${esc(entry.contact_type || '-')}</strong>
         ${outcomeBadge(entry.outcome)}
         <span style="font-family:var(--mono);font-size:9.5px;color:var(--ink3);margin-left:auto">${fmtTs(entry.contacted_at)}</span>
       </div>
@@ -3351,25 +3351,25 @@ async function loadDeliveryLogOverview() {
   }
   const methodBadge = m => {
     const cls = { email: 'bg-blu', sms: 'bg-sky', webhook: 'bg-gray', crm: 'bg-gray' };
-    return `<span class="badge ${cls[m] || 'bg-gray'}">${esc(m || '—')}</span>`;
+    return `<span class="badge ${cls[m] || 'bg-gray'}">${esc(m || '-')}</span>`;
   };
   const statusBadge = s => s === 'delivered'
     ? '<span class="badge bg-grn">✓ delivered</span>'
     : `<span class="badge bg-red">✗ ${esc(s || 'failed')}</span>`;
   const fmtTs = ts => {
-    if (!ts) return '—';
+    if (!ts) return '-';
     return new Date(ts).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
   };
   tbody.innerHTML = data.map(entry => `
     <tr>
       <td style="font-family:var(--mono);font-size:10px;color:var(--ink3);white-space:nowrap">${fmtTs(entry.delivered_at || entry.created_at)}</td>
-      <td><strong style="font-size:11.5px">${esc(entry.ppl_leads?.name || '—')}</strong></td>
-      <td style="font-size:11px;color:var(--ink2)">${esc(entry.clients?.company_name || '—')}</td>
+      <td><strong style="font-size:11.5px">${esc(entry.ppl_leads?.name || '-')}</strong></td>
+      <td style="font-size:11px;color:var(--ink2)">${esc(entry.clients?.company_name || '-')}</td>
       <td>${methodBadge(entry.method)}</td>
       <td>${statusBadge(entry.status)}</td>
-      <td style="font-family:var(--mono);font-size:10px;color:var(--ink2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(entry.destination || '')}">${esc(entry.destination || '—')}</td>
-      <td style="font-family:var(--mono);font-size:10px;color:var(--ink);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(entry.message_preview || '')}">${esc(entry.message_preview ? (entry.message_preview.length > 80 ? entry.message_preview.slice(0, 77) + '…' : entry.message_preview) : '—')}</td>
-      <td style="font-family:var(--mono);font-size:10px;color:${entry.status === 'delivered' ? 'var(--grn)' : 'var(--red)'}">${entry.response_code != null ? entry.response_code : '—'}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--ink2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(entry.destination || '')}">${esc(entry.destination || '-')}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--ink);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(entry.message_preview || '')}">${esc(entry.message_preview ? (entry.message_preview.length > 80 ? entry.message_preview.slice(0, 77) + '…' : entry.message_preview) : '-')}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:${entry.status === 'delivered' ? 'var(--grn)' : 'var(--red)'}">${entry.response_code != null ? entry.response_code : '-'}</td>
     </tr>`).join('');
 }
 
@@ -3378,7 +3378,7 @@ async function loadTaskLeadDropdowns() {
     db.from('leads').select('id,name,company,stage').or('stage.is.null,stage.not.in.(closed_won,closed_lost)').order('name'),
     db.from('clients').select('id,company_name,type,stage').in('stage',['active_client','active']).order('company_name')
   ]);
-  const opts = ['<option value="">— No link —</option>'];
+  const opts = ['<option value="">- No link -</option>'];
   if (leadsR.data?.length) {
     opts.push('<optgroup label="Sales Pipeline">');
     leadsR.data.forEach(l=>opts.push(`<option value="lead:${esc(l.id)}">[Sales] ${esc(l.name||l.company||'Lead')}</option>`));
@@ -3549,7 +3549,7 @@ const CRM_STAGES=[{id:'new_lead',label:'New Lead'},{id:'no_answer',label:'No Ans
 async function loadCRM(resetPage) {
   if (resetPage) crmPage = 0;
 
-  // Always fetch the full pipeline for the kanban — no date filter, all stages.
+  // Always fetch the full pipeline for the kanban - no date filter, all stages.
   // Date-filtered leads go to the table/KPIs so users can report on a period
   // without losing visibility of deals created before that window.
   const pipelineQ = db.from('leads').select('*')
@@ -3584,7 +3584,7 @@ async function loadRepStats() {
   const open = leads.filter(l => !CLOSED.includes(l.stage || '')).length;
   const total = leads.length;
   const decided = won + lost;
-  setText('rep-close', total ? Math.round(won / total * 100) + '%' : '—');
+  setText('rep-close', total ? Math.round(won / total * 100) + '%' : '-');
   setText('rep-close-sub', decided ? Math.round(won / decided * 100) + '% of decided' : '');
   setText('rep-open', open);
 
@@ -3592,7 +3592,7 @@ async function loadRepStats() {
   const calls = (logs || []).filter(l => l.contact_type === 'call');
   const answered = calls.filter(l => l.outcome !== 'no_answer').length;
   setText('rep-calls', calls.length);
-  setText('rep-pickup', calls.length ? Math.round(answered / calls.length * 100) + '%' : '—');
+  setText('rep-pickup', calls.length ? Math.round(answered / calls.length * 100) + '%' : '-');
 }
 function renderCRM() {
   let allLeads = crmAllLeads;           // table + KPIs (date-filtered)
@@ -3610,8 +3610,8 @@ function renderCRM() {
       const lo = pipeline.filter(l => l.stage === 'closed_lost' || l.stage === 'churned').length;
       const op = pipeline.filter(l => !['closed_won','closed_lost','churned'].includes(l.stage || '')).length;
       const dec = w + lo;
-      const allPct = total ? Math.round(w/total*100)+'%' : '—';
-      const decPct = dec ? Math.round(w/dec*100)+'%' : '—';
+      const allPct = total ? Math.round(w/total*100)+'%' : '-';
+      const decPct = dec ? Math.round(w/dec*100)+'%' : '-';
       rvStats.textContent = `Close rate ${allPct} (all) · ${decPct} (decided) · Won ${w} · Lost ${lo} · Open ${op} · ${total} leads`;
     } else { rvStats.textContent = ''; }
   }
@@ -3621,7 +3621,7 @@ function renderCRM() {
   setText('crm-total',allLeads.length);
   setText('crm-active',allLeads.filter(l=>!['closed_won','closed_lost'].includes(l.stage)).length);
   setText('crm-won',won);
-  setText('crm-rate',allLeads.length>0?Math.round(won/allLeads.length*100)+'%':'—');
+  setText('crm-rate',allLeads.length>0?Math.round(won/allLeads.length*100)+'%':'-');
   setText('crm-rate-sub',decidedAll>0?Math.round(won/decidedAll*100)+'% of decided':'');
   const staleLeads=pipeline.filter(l=>{
     if (['closed_won','closed_lost'].includes(l.stage)) return false;
@@ -3665,8 +3665,8 @@ function renderCRM() {
           :`<button class="kcard-ctoggle" onclick="toggleContactable(event,'${esc(String(l.id))}',false)" title="Mark uncontactable">✗</button>`;
         return `
         <div class="kcard" id="kc-crm-${esc(String(l.id))}" data-lead-id="${esc(String(l.id))}">
-          <div class="kcard-name">${esc(l.name||'—')}</div>
-          <div class="kcard-meta">${esc(l.company||'—')}</div>
+          <div class="kcard-name">${esc(l.name||'-')}</div>
+          <div class="kcard-meta">${esc(l.company||'-')}</div>
           ${l.phone?`<div class="kcard-phone">${esc(l.phone)}</div>`:''}
           <div style="display:flex;gap:4px;margin-top:3px;align-items:center">
             ${l.lead_type?`<span class="badge ${typeBadge(l.lead_type)}" style="font-size:8.5px">${typeLabel(l.lead_type)}</span>`:''}
@@ -3694,17 +3694,17 @@ function renderCRM() {
     const isStale=staleIds.has(String(l.id));
     const contactCell=l.last_contact
       ?`<span style="color:${isStale?'var(--amb)':'inherit'}">${new Date(l.last_contact).toLocaleDateString('en-AU')}${isStale?` <span style="font-size:9px;font-family:var(--mono)">(${ds}d)</span>`:''}</span>`
-      :`<span style="color:${isStale?'var(--amb)':'var(--ink3)'}">—${isStale?' ⚠':''}</span>`;
+      :`<span style="color:${isStale?'var(--amb)':'var(--ink3)'}">-${isStale?' ⚠':''}</span>`;
     return `
     <tr style="cursor:pointer" data-lead-id="${esc(l.id)}" class="lead-row">
-      <td><strong>${esc(l.name||'—')}</strong></td>
-      <td>${esc(l.company||'—')}</td>
+      <td><strong>${esc(l.name||'-')}</strong></td>
+      <td>${esc(l.company||'-')}</td>
       <td><span class="badge ${typeBadge(l.lead_type)}">${typeLabel(l.lead_type)}</span></td>
       <td><span class="badge ${stageBadge(l.stage)}">${stageLabel(l.stage)}</span></td>
-      <td>${l.value?'$'+Number(l.value).toLocaleString()+'/mo':'—'}</td>
-      <td>${esc(l.source||'—')}</td>
+      <td>${l.value?'$'+Number(l.value).toLocaleString()+'/mo':'-'}</td>
+      <td>${esc(l.source||'-')}</td>
       <td>${contactCell}</td>
-      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink2)">${esc(l.notes||'—')}</td>
+      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink2)">${esc(l.notes||'-')}</td>
       <td style="white-space:nowrap"><button class="btn btn-xs contact-log-btn" data-lead-id="${esc(l.id)}" data-lead-name="${esc(l.name||l.company||'Lead')}" style="margin-right:4px">Log</button><button class="btn btn-xs edit-lead-btn" data-lead-id="${esc(l.id)}" style="margin-right:4px">Edit</button>${l.phone?`<button class="btn btn-xs sales-sms-btn" data-lead-id="${esc(l.id)}" data-phone="${esc(l.phone)}" data-name="${esc(l.name||l.company||'')}">SMS</button>`:''}</td>
     </tr>`}).join('');
   tb.querySelectorAll('.lead-row').forEach(row => {
@@ -3730,7 +3730,7 @@ function renderCRM() {
   renderPager('crm-pager', crmPage, allLeads.length, p => { crmPage = p; renderCRM(); });
 }
 function checkConvertBanner() {
-  // Converting a lead spins up a PPL/Managed client — out of scope for reps.
+  // Converting a lead spins up a PPL/Managed client - out of scope for reps.
   const stage = $('el-stage').value;
   $('convert-banner').style.display = (!IS_REP && stage === 'closed_won') ? 'block' : 'none';
 }
@@ -3747,7 +3747,7 @@ function openEditLead(l) {
   setVal('el-next-followup', l.next_followup || '');
   setText('edit-lead-sub',(l.name||'')+(l.company?' · '+l.company:''));
   if (!IS_REP) ensureRepOptions().then(() => setVal('el-owner', l.owner_id || ''));
-  // Reps view lead details read-only — they change stage via drag, nothing else.
+  // Reps view lead details read-only - they change stage via drag, nothing else.
   ['el-name','el-company','el-email','el-phone','el-stage','el-type','el-source','el-notes','el-contactable','el-last-contact','el-next-followup'].forEach(id => {
     const e = $(id); if (e) e.disabled = IS_REP;
   });
@@ -3763,7 +3763,7 @@ async function ensureRepOptions() {
     try { const r = await callRepEdge('list_reps'); _reps = r.reps || []; } catch (e) { /* leave unassigned-only */ }
   }
   const cur = sel.value;
-  sel.innerHTML = '<option value="">— Unassigned</option>' +
+  sel.innerHTML = '<option value="">- Unassigned</option>' +
     _reps.map(r => `<option value="${r.user_id}">${esc(r.name || r.email)}${r.active ? '' : ' (inactive)'}</option>`).join('');
   sel.value = cur;
 }
@@ -3863,19 +3863,19 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
   // CPL = campaign spend / campaign leads (both from Meta)
   const totalCampSpend=campaigns.reduce((s,c)=>s+(c.spend_mtd||0),0);
   const totalCampLeads=campaigns.reduce((s,c)=>s+(c.leads_mtd||0),0);
-  setText('ppl-meta-cpl',totalCampSpend>0&&totalCampLeads>0?'$'+(totalCampSpend/totalCampLeads).toFixed(2):'—');
+  setText('ppl-meta-cpl',totalCampSpend>0&&totalCampLeads>0?'$'+(totalCampSpend/totalCampLeads).toFixed(2):'-');
   const ac=clients.filter(c=>c.stage==='active_client'&&(c.true_cpl||0)>0);
-  setText('ppl-true-cpl',ac.length?'$'+(ac.reduce((s,c)=>s+(c.true_cpl||0),0)/ac.length).toFixed(2):'—');
+  setText('ppl-true-cpl',ac.length?'$'+(ac.reduce((s,c)=>s+(c.true_cpl||0),0)/ac.length).toFixed(2):'-');
   const dueClients=clients.filter(c=>c.stage==='active_client'&&c.total_leads_purchased>0&&(c.leads_delivered||0)/c.total_leads_purchased>=0.75);
-  setText('ppl-reorder-count',dueClients.length||'—');
+  setText('ppl-reorder-count',dueClients.length||'-');
   // Churn metrics
   const pplActive=clients.filter(c=>c.stage==='active_client').length;
   const pplPaused=clients.filter(c=>c.stage==='paused').length;
   const pplChurned=clients.filter(c=>c.stage==='churned').length;
   const pplTotal=clients.length;
-  setText('ppl-total',pplTotal||'—');
-  setText('ppl-churn-rate',pplTotal>0?(pplChurned/pplTotal*100).toFixed(1)+'%':'—');
-  setText('ppl-retention-rate',pplTotal>0?((pplActive+pplPaused)/pplTotal*100).toFixed(1)+'%':'—');
+  setText('ppl-total',pplTotal||'-');
+  setText('ppl-churn-rate',pplTotal>0?(pplChurned/pplTotal*100).toFixed(1)+'%':'-');
+  setText('ppl-retention-rate',pplTotal>0?((pplActive+pplPaused)/pplTotal*100).toFixed(1)+'%':'-');
   pplChurnChart=renderChurnChart('chart-ppl-churn',pplActive,pplPaused,pplChurned,pplChurnChart);
   renderChurnBreakdown('ppl-churn-breakdown',pplActive,pplPaused,pplChurned);
   PPL_STAGES.forEach(s=>{
@@ -3896,7 +3896,7 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
           ${c.meta_cpl?`<div class="kcard-val">CPL $${Number(c.meta_cpl).toFixed(2)}</div>`:''}
           ${c.weekly_cap||c.monthly_cap?`<div style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-top:2px">${c.weekly_cap?'W: '+c.weekly_cap+'/wk':''}${c.weekly_cap&&c.monthly_cap?' · ':''}${c.monthly_cap?'M: '+c.monthly_cap+'/mo':''}</div>`:''}
           ${c.meta_cap_paused?'<div style="font-size:9px;color:var(--red);font-family:var(--mono);margin-top:2px">⏸ Meta campaigns paused (cap hit)</div>':''}
-          ${cplAlert==='danger'?'<div style="font-size:9px;color:var(--red);font-family:var(--mono);margin-top:3px">⚠ margin lost — true CPL exceeds sell price</div>':cplAlert==='warning'?'<div style="font-size:9px;color:var(--amb);font-family:var(--mono);margin-top:3px">⚠ low margin — true CPL near sell price</div>':''}
+          ${cplAlert==='danger'?'<div style="font-size:9px;color:var(--red);font-family:var(--mono);margin-top:3px">⚠ margin lost - true CPL exceeds sell price</div>':cplAlert==='warning'?'<div style="font-size:9px;color:var(--amb);font-family:var(--mono);margin-top:3px">⚠ low margin - true CPL near sell price</div>':''}
           ${dueReorder?'<div style="font-size:9px;color:var(--amb);font-family:var(--mono);margin-top:2px">↻ due for reorder</div>':''}
         </div>`}).join('');
       col.querySelectorAll('.kcard').forEach(card=>{
@@ -3925,15 +3925,15 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
     <tr data-client-id="${esc(String(c.id))}" data-client-type="ppl" class="client-row" style="cursor:pointer">
       <td><strong>${esc(c.company_name)}</strong></td>
       <td><span class="badge ${stageBadge(c.stage)}">${stageLabel(c.stage)}</span></td>
-      <td style="font-family:var(--mono);font-size:11px;color:${c.cx_score!=null?(c.cx_score>=8?'var(--grn)':c.cx_score>=5?'var(--amb)':'var(--red)'):'var(--ink3)'}">${c.cx_score!=null?c.cx_score+'/10':'—'}</td>
-      <td>${esc(c.niche||'—')}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:${c.cx_score!=null?(c.cx_score>=8?'var(--grn)':c.cx_score>=5?'var(--amb)':'var(--red)'):'var(--ink3)'}">${c.cx_score!=null?c.cx_score+'/10':'-'}</td>
+      <td>${esc(c.niche||'-')}</td>
       <td>${c.leads_mtd||0}</td>
       <td style="color:var(--grn);font-weight:500">${c.leads_delivered||0}</td>
       <td>${c.total_leads_purchased||0}</td>
       <td style="color:${leadsRem>0?'var(--amb)':'var(--ink3)'};font-weight:500">${remHtml}</td>
       <td>${fmtCpl(c.lead_price)}${marginBadge}</td>
-      <td style="color:${balRem>0?'var(--red)':'var(--grn)'};font-weight:500">${balRem>0?fmt(balRem):'—'}</td>
-      <td>${c.pct_sold?Number(c.pct_sold).toFixed(1)+'%':'—'}</td>
+      <td style="color:${balRem>0?'var(--red)':'var(--grn)'};font-weight:500">${balRem>0?fmt(balRem):'-'}</td>
+      <td>${c.pct_sold?Number(c.pct_sold).toFixed(1)+'%':'-'}</td>
       <td>${reordBadge}</td>
       <td style="white-space:nowrap"><button class="btn btn-xs action-log-btn" data-client-id="${esc(String(c.id))}" data-client-name="${esc(c.company_name)}" style="margin-right:4px">Log</button><button class="btn btn-xs client-edit-btn" data-client-id="${esc(String(c.id))}" data-client-type="ppl">Edit</button></td>
     </tr>
@@ -3996,14 +3996,14 @@ async function updateBroadcastCount(){
   const psel=$('bc-preview-lead');
   if(psel){
     const prev=psel.value;
-    psel.innerHTML='<option value="">First recipient</option>'+_bcLeads.map(l=>`<option value="${esc(String(l.id))}">${esc(l.name||l.phone||'—')}</option>`).join('');
+    psel.innerHTML='<option value="">First recipient</option>'+_bcLeads.map(l=>`<option value="${esc(String(l.id))}">${esc(l.name||l.phone||'-')}</option>`).join('');
     if(prev && _bcLeads.some(l=>String(l.id)===prev)) psel.value=prev;
   }
   // Exclude selector - keep only still-eligible manual excludes
   const xsel=$('bc-exclude');
   if(xsel){
     const keep=new Set([..._bcExcluded].filter(id=>_bcLeads.some(l=>String(l.id)===id)));
-    xsel.innerHTML=_bcLeads.map(l=>`<option value="${esc(String(l.id))}"${keep.has(String(l.id))?' selected':''}>${esc(l.name||l.phone||'—')}</option>`).join('');
+    xsel.innerHTML=_bcLeads.map(l=>`<option value="${esc(String(l.id))}"${keep.has(String(l.id))?' selected':''}>${esc(l.name||l.phone||'-')}</option>`).join('');
     _bcExcluded=keep;
   }
   renderBcCount();
@@ -4054,7 +4054,7 @@ async function sendBroadcast(){
     }catch{ failed++; }
     await new Promise(r=>setTimeout(r,350));
   }
-  if(prog) prog.textContent=`Done — ${sent} sent, ${failed} failed${skipped?', '+skipped+' opted out (skipped)':''}.`;
+  if(prog) prog.textContent=`Done - ${sent} sent, ${failed} failed${skipped?', '+skipped+' opted out (skipped)':''}.`;
   btn.disabled=false;
   toast(`Bulk SMS complete: ${sent} sent, ${failed} failed`);
   updateBroadcastCount();
@@ -4089,10 +4089,10 @@ function renderCplEditor(clients){
       <td style="font-family:var(--mono)">${sold}</td>
       <td><input class="fi cpl-gen" type="number" min="0" step="1" value="${gen}" oninput="recalcCplRow('${id}')" style="width:88px;padding:3px 6px"></td>
       <td><input class="fi cpl-mcpl" type="number" min="0" step="0.01" value="${mcpl}" oninput="recalcCplRow('${id}')" style="width:88px;padding:3px 6px"></td>
-      <td class="cpl-pct" style="font-family:var(--mono)">—</td>
-      <td class="cpl-true" style="font-family:var(--mono);color:var(--blu)">—</td>
+      <td class="cpl-pct" style="font-family:var(--mono)">-</td>
+      <td class="cpl-true" style="font-family:var(--mono);color:var(--blu)">-</td>
       <td style="font-family:var(--mono)">${fmtCpl(c.lead_price)}</td>
-      <td class="cpl-margin" style="font-family:var(--mono)">—</td>
+      <td class="cpl-margin" style="font-family:var(--mono)">-</td>
       <td><button class="btn btn-xs btn-p" onclick="saveCplRow('${id}',this)">Save</button></td>
     </tr>`;
   }).join('');
@@ -4108,14 +4108,14 @@ function recalcCplRow(id){
   const pct=gen>0?(sold/gen*100):null;
   const trueCpl=(pct&&mcpl)?(mcpl/(pct/100)):null;
   const margin=(trueCpl!=null&&price)?(price-trueCpl):null;
-  row.querySelector('.cpl-pct').textContent=pct!=null?pct.toFixed(1)+'%':'—';
-  row.querySelector('.cpl-true').textContent=trueCpl!=null?'$'+trueCpl.toFixed(2):'—';
+  row.querySelector('.cpl-pct').textContent=pct!=null?pct.toFixed(1)+'%':'-';
+  row.querySelector('.cpl-true').textContent=trueCpl!=null?'$'+trueCpl.toFixed(2):'-';
   const mEl=row.querySelector('.cpl-margin');
   if(margin!=null){ mEl.textContent='$'+margin.toFixed(2); mEl.style.color=margin>=0?'var(--grn)':'var(--red)'; }
-  else { mEl.textContent='—'; mEl.style.color=''; }
+  else { mEl.textContent='-'; mEl.style.color=''; }
   renderCplStats();
 }
-// Aggregate KPIs under the CPL table — computed live from the current row values.
+// Aggregate KPIs under the CPL table - computed live from the current row values.
 function renderCplStats(){
   const rows=document.querySelectorAll('#cpl-editor-tbody tr[id^="cpl-row-"]');
   let mcplSum=0,mcplN=0,trueSum=0,trueN=0,marginSum=0,marginN=0,pctSum=0,pctN=0,genTot=0,soldTot=0;
@@ -4133,13 +4133,13 @@ function renderCplStats(){
     const margin=(trueCpl!=null&&price)?(price-trueCpl):null;
     if(margin!=null){ marginSum+=margin; marginN++; }
   });
-  setText('cpl-avg-meta', mcplN?'$'+(mcplSum/mcplN).toFixed(2):'—');
-  setText('cpl-avg-true', trueN?'$'+(trueSum/trueN).toFixed(2):'—');
+  setText('cpl-avg-meta', mcplN?'$'+(mcplSum/mcplN).toFixed(2):'-');
+  setText('cpl-avg-true', trueN?'$'+(trueSum/trueN).toFixed(2):'-');
   const me=$('cpl-avg-margin');
-  if(me){ if(marginN){ const am=marginSum/marginN; me.textContent='$'+am.toFixed(2); me.style.color=am>=0?'var(--grn)':'var(--red)'; } else { me.textContent='—'; me.style.color=''; } }
-  setText('cpl-avg-pct', pctN?(pctSum/pctN).toFixed(1)+'%':'—');
-  setText('cpl-total-gen', genTot?genTot.toLocaleString():'—');
-  setText('cpl-total-sold', soldTot?soldTot.toLocaleString():'—');
+  if(me){ if(marginN){ const am=marginSum/marginN; me.textContent='$'+am.toFixed(2); me.style.color=am>=0?'var(--grn)':'var(--red)'; } else { me.textContent='-'; me.style.color=''; } }
+  setText('cpl-avg-pct', pctN?(pctSum/pctN).toFixed(1)+'%':'-');
+  setText('cpl-total-gen', genTot?genTot.toLocaleString():'-');
+  setText('cpl-total-sold', soldTot?soldTot.toLocaleString():'-');
 }
 async function saveCplRow(id, btn){
   const row=document.getElementById('cpl-row-'+id);
@@ -4163,7 +4163,7 @@ async function saveCplRow(id, btn){
 }
 
 function calcActiveMonths(startDate) {
-  if (!startDate) return '—';
+  if (!startDate) return '-';
   const start = new Date(startDate + 'T00:00:00');
   const now = new Date();
   const months = (now.getFullYear()-start.getFullYear())*12+(now.getMonth()-start.getMonth());
@@ -4240,14 +4240,14 @@ function renderManagedPayments(clients, orderLog=[]) {
     const lifetime = retainerTotal + customOrders;
     return `<tr style="cursor:pointer" data-client-id="${esc(String(c.id))}" data-client-type="managed" class="client-row">
       <td><strong>${esc(c.company_name)}</strong></td>
-      <td style="font-family:var(--mono);font-size:10.5px">${c.start_date||'—'}</td>
+      <td style="font-family:var(--mono);font-size:10.5px">${c.start_date||'-'}</td>
       <td style="font-family:var(--mono);font-weight:600;color:var(--acc)">${paysMade}</td>
-      <td style="font-family:var(--mono)">${fee>0?fmt(fee):'—'}</td>
-      <td style="font-family:var(--mono);color:var(--grn)">${retainerTotal>0?fmt(retainerTotal):'—'}</td>
-      <td style="font-family:var(--mono);color:var(--acc)">${customOrders>0?fmt(customOrders):'—'}</td>
-      <td style="font-family:var(--mono);font-weight:700;color:var(--grn)">${lifetime>0?fmt(lifetime):'—'}</td>
-      <td style="font-family:var(--mono);font-size:10.5px">${c.last_payment_date||'—'}</td>
-      <td style="font-family:var(--mono);font-size:10.5px;font-weight:${overdue?'600':'400'};color:${overdue?'var(--red)':np?'var(--grn)':'var(--ink3)'}">${np?(np+(overdue?' ⚠ Overdue':'')):'—'}</td>
+      <td style="font-family:var(--mono)">${fee>0?fmt(fee):'-'}</td>
+      <td style="font-family:var(--mono);color:var(--grn)">${retainerTotal>0?fmt(retainerTotal):'-'}</td>
+      <td style="font-family:var(--mono);color:var(--acc)">${customOrders>0?fmt(customOrders):'-'}</td>
+      <td style="font-family:var(--mono);font-weight:700;color:var(--grn)">${lifetime>0?fmt(lifetime):'-'}</td>
+      <td style="font-family:var(--mono);font-size:10.5px">${c.last_payment_date||'-'}</td>
+      <td style="font-family:var(--mono);font-size:10.5px;font-weight:${overdue?'600':'400'};color:${overdue?'var(--red)':np?'var(--grn)':'var(--ink3)'}">${np?(np+(overdue?' ⚠ Overdue':'')):'-'}</td>
       <td><button class="btn btn-xs" onclick="logRetainerPayment(${c.id})">+ Payment</button></td>
     </tr>`;
   }).join('');
@@ -4276,9 +4276,9 @@ function renderManagedOrderLogTable(data, clientId) {
       <th></th>
     </tr></thead>
     <tbody>${data.map(o=>`<tr style="border-top:1px solid var(--bd)">
-      <td style="padding:4px 6px;color:var(--ink2)">${o.order_date||'—'}</td>
-      <td style="padding:4px 6px;color:var(--ink)">${esc(o.description||'—')}</td>
-      <td style="padding:4px 6px;color:var(--grn);font-weight:600">${o.amount?fmt(o.amount):'—'}</td>
+      <td style="padding:4px 6px;color:var(--ink2)">${o.order_date||'-'}</td>
+      <td style="padding:4px 6px;color:var(--ink)">${esc(o.description||'-')}</td>
+      <td style="padding:4px 6px;color:var(--grn);font-weight:600">${o.amount?fmt(o.amount):'-'}</td>
       <td style="padding:4px 6px"><button class="btn btn-xs btn-red" onclick="deleteManagedOrder('${esc(o.id)}','${esc(clientId)}')">✕</button></td>
     </tr>`).join('')}</tbody>
   </table>`;
@@ -4352,27 +4352,27 @@ function renderOrderLogTable(data, clientId) {
       <th></th>
     </tr></thead>
     <tbody>${data.map(o=>{
-      const pct = (o.leads_generated&&o.leads_qty) ? (o.leads_qty/o.leads_generated*100).toFixed(0)+'%' : '—';
+      const pct = (o.leads_generated&&o.leads_qty) ? (o.leads_qty/o.leads_generated*100).toFixed(0)+'%' : '-';
       const delivered = o.status==='delivered';
       const statusBadge = delivered
         ? `<span style="font-family:var(--mono);font-size:9px;color:var(--grn);background:rgba(46,204,138,.1);padding:1px 6px;border-radius:3px">Delivered</span>`
         : `<span style="font-family:var(--mono);font-size:9px;color:var(--amb);background:rgba(245,166,35,.1);padding:1px 6px;border-radius:3px">In Progress</span>`;
       const action = delivered ? '' : `<button class="btn btn-xs" onclick="markOrderDelivered('${esc(o.id)}','${esc(clientId||o.client_id)}')">Mark Delivered</button>`;
       const slaOverdue = !delivered && o.sla_due_date && o.sla_due_date < today;
-      const slaBadge = !o.sla_due_date ? '—'
+      const slaBadge = !o.sla_due_date ? '-'
         : delivered ? `<span style="font-family:var(--mono);font-size:9px;color:var(--ink3)">${o.sla_due_date}</span>`
         : slaOverdue ? `<span style="font-family:var(--mono);font-size:9px;color:var(--red);font-weight:600">⚠ ${o.sla_due_date}</span>`
         : `<span style="font-family:var(--mono);font-size:9px;color:var(--grn)">${o.sla_due_date}</span>`;
       return `<tr style="border-top:1px solid var(--bd)${slaOverdue?' background:rgba(255,69,96,.04)':''}">
-        <td style="padding:4px 6px;color:var(--ink2)">${o.order_date||'—'}</td>
+        <td style="padding:4px 6px;color:var(--ink2)">${o.order_date||'-'}</td>
         <td style="padding:4px 6px;font-weight:600;color:var(--ink)">${o.leads_qty}</td>
-        <td style="padding:4px 6px;color:var(--ink2)">${o.leads_generated||'—'}</td>
+        <td style="padding:4px 6px;color:var(--ink2)">${o.leads_generated||'-'}</td>
         <td style="padding:4px 6px;color:${delivered?'var(--acc)':'var(--ink3)'}">${pct}</td>
-        <td style="padding:4px 6px;color:var(--grn)">${o.lead_price?'$'+Number(o.lead_price).toFixed(0):'—'}</td>
-        <td style="padding:4px 6px;color:var(--ink3);font-family:var(--mono)">${o.meta_cpl?'$'+Number(o.meta_cpl).toFixed(2):'—'}</td>
+        <td style="padding:4px 6px;color:var(--grn)">${o.lead_price?'$'+Number(o.lead_price).toFixed(0):'-'}</td>
+        <td style="padding:4px 6px;color:var(--ink3);font-family:var(--mono)">${o.meta_cpl?'$'+Number(o.meta_cpl).toFixed(2):'-'}</td>
         <td style="padding:4px 6px">${slaBadge}</td>
         <td style="padding:4px 6px">${statusBadge}</td>
-        <td style="padding:4px 6px;color:var(--ink3)">${esc(o.notes||'—')}</td>
+        <td style="padding:4px 6px;color:var(--ink3)">${esc(o.notes||'-')}</td>
         <td style="padding:4px 6px;display:flex;gap:4px">${action}<button class="btn btn-xs" onclick="editPplOrder('${esc(o.id)}','${esc(clientId||o.client_id)}')">Edit</button><button class="btn btn-xs btn-red" onclick="deletePplOrder('${esc(o.id)}','${esc(clientId||o.client_id)}')">✕</button></td>
       </tr>`;
     }).join('')}</tbody>
@@ -4477,7 +4477,7 @@ async function markOrderDelivered(orderId, clientId) {
   const {error}=await db.from('ppl_order_log').update({status:'delivered',leads_generated:leadsGenerated}).eq('id',orderId);
   if (error) { toast('Error: '+error.message,true); return; }
   await recalcPplClient(clientId);
-  toast('Delivered — % sold & True CPL updated ✓');
+  toast('Delivered - % sold & True CPL updated ✓');
   loadPplOrderLog(clientId);
   const cell=$('ol-cell-'+clientId);
   if (cell&&$('ol-row-'+clientId)?.style.display!=='none') {
@@ -4535,16 +4535,16 @@ function renderManaged(clients, orderLog=[]) {
     clients.filter(c=>c.stage==='active'||c.stage==='onboarding').reduce((s,c)=>s+(c.management_fee||0),0)
   ));
   const ac=clients.filter(c=>c.cpl_7d_avg>0);
-  setText('mg-cpl',ac.length?'$'+(ac.reduce((s,c)=>s+c.cpl_7d_avg,0)/ac.length).toFixed(2):'—');
+  setText('mg-cpl',ac.length?'$'+(ac.reduce((s,c)=>s+c.cpl_7d_avg,0)/ac.length).toFixed(2):'-');
   // Churn metrics
   const mgOnboarding=clients.filter(c=>c.stage==='onboarding').length;
   const mgActive=clients.filter(c=>c.stage==='active').length;
   const mgPaused=clients.filter(c=>c.stage==='paused').length;
   const mgChurned=clients.filter(c=>c.stage==='churned').length;
   const mgTotal=clients.length;
-  setText('mg-total',mgTotal||'—');
-  setText('mg-churn-rate',mgTotal>0?(mgChurned/mgTotal*100).toFixed(1)+'%':'—');
-  setText('mg-retention-rate',mgTotal>0?((mgOnboarding+mgActive+mgPaused)/mgTotal*100).toFixed(1)+'%':'—');
+  setText('mg-total',mgTotal||'-');
+  setText('mg-churn-rate',mgTotal>0?(mgChurned/mgTotal*100).toFixed(1)+'%':'-');
+  setText('mg-retention-rate',mgTotal>0?((mgOnboarding+mgActive+mgPaused)/mgTotal*100).toFixed(1)+'%':'-');
   mgChurnChart=renderChurnChart('chart-mg-churn',mgActive,mgPaused,mgChurned,mgChurnChart);
   renderChurnBreakdown('mg-churn-breakdown',mgActive,mgPaused,mgChurned);
   MG_STAGES.forEach(s=>{
@@ -4577,8 +4577,8 @@ function renderManaged(clients, orderLog=[]) {
     <tr style="cursor:pointer" data-client-id="${esc(String(c.id))}" data-client-type="managed" class="client-row">
       <td><strong>${esc(c.company_name)}</strong></td>
       <td><span class="badge ${stageBadge(c.stage)}">${stageLabel(c.stage)}</span></td>
-      <td style="font-family:var(--mono);font-size:11px;color:${c.cx_score!=null?(c.cx_score>=8?'var(--grn)':c.cx_score>=5?'var(--amb)':'var(--red)'):'var(--ink3)'}">${c.cx_score!=null?c.cx_score+'/10':'—'}</td>
-      <td style="font-family:var(--mono);font-size:10px;color:var(--ink2)">${esc(c.ad_account_id||'—')}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:${c.cx_score!=null?(c.cx_score>=8?'var(--grn)':c.cx_score>=5?'var(--amb)':'var(--red)'):'var(--ink3)'}">${c.cx_score!=null?c.cx_score+'/10':'-'}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--ink2)">${esc(c.ad_account_id||'-')}</td>
       <td>${fmt(c.spend_mtd||0)}</td>
       <td>${fmtCpl(c.cpl_today)}</td>
       <td>${fmtCpl(c.cpl_7d_avg)}</td>
@@ -4619,7 +4619,7 @@ async function openEditClient(type,c) {
     setVal('ep-monthly-cap',c.monthly_cap!=null?c.monthly_cap:'');
     await refreshCampaignDropdowns();setCheckedCampaigns('ep-campaign-picker',c.meta_campaign_ids||[]);
     const capStatusEl=$('ep-meta-cap-status');
-    if(capStatusEl){if(c.meta_cap_paused){capStatusEl.innerHTML=`<div style="background:var(--red-dim);border:1px solid var(--red);border-radius:var(--r);padding:8px 10px;margin:6px 0;font-family:var(--mono);font-size:10px;color:var(--red)">⚠ Campaigns paused — ${esc(c.meta_cap_pause_reason||'cap hit')}<br><span style="color:var(--ink3);font-size:9px">${c.meta_cap_paused_at?'at '+new Date(c.meta_cap_paused_at).toLocaleString():''}</span><br><button class="btn btn-xs" style="margin-top:6px" onclick="metaUnpauseClient('${c.id}')">Unpause campaigns</button></div>`;}else{capStatusEl.innerHTML='';}}
+    if(capStatusEl){if(c.meta_cap_paused){capStatusEl.innerHTML=`<div style="background:var(--red-dim);border:1px solid var(--red);border-radius:var(--r);padding:8px 10px;margin:6px 0;font-family:var(--mono);font-size:10px;color:var(--red)">⚠ Campaigns paused - ${esc(c.meta_cap_pause_reason||'cap hit')}<br><span style="color:var(--ink3);font-size:9px">${c.meta_cap_paused_at?'at '+new Date(c.meta_cap_paused_at).toLocaleString():''}</span><br><button class="btn btn-xs" style="margin-top:6px" onclick="metaUnpauseClient('${c.id}')">Unpause campaigns</button></div>`;}else{capStatusEl.innerHTML='';}}
     setVal('ep-delivery-method',c.delivery_method||'email');
     setVal('ep-delivery-email',c.delivery_email||'');
     setVal('ep-delivery-phone',c.delivery_phone||'');
@@ -4697,7 +4697,7 @@ let _prevScrubbed=0;function updatePplCalc() {
   const remEl=$('ep-leads-rem');const balEl=$('ep-bal-rem');const scrubNote=$('ep-scrub-note');
   if (remEl) remEl.textContent=rem>=0?rem:'0';
   if (scrubNote) scrubNote.textContent=scrubbed>0?` (${scrubbed} scrubbed)`:'';
-  if (balEl) balEl.textContent=bal>0?'$'+Number(bal).toLocaleString('en-AU',{minimumFractionDigits:0,maximumFractionDigits:0}):(rem<=0?'Delivered ✓':'—');
+  if (balEl) balEl.textContent=bal>0?'$'+Number(bal).toLocaleString('en-AU',{minimumFractionDigits:0,maximumFractionDigits:0}):(rem<=0?'Delivered ✓':'-');
   if (balEl) balEl.style.color=bal>0?'var(--red)':'var(--grn)';
 }
 async function updateClient(type) {
@@ -4778,7 +4778,7 @@ async function saveClient(type) {
   type==='ppl'?loadPPL():loadManaged();
 }
 
-/* ═══ META GRAPH API — CAP CHECK & CAMPAIGN TOGGLE ═══ */
+/* ═══ META GRAPH API - CAP CHECK & CAMPAIGN TOGGLE ═══ */
 async function metaCapCheck() {
   const btns=[$('meta-cap-check-btn'),$('meta-cap-check-btn2')].filter(Boolean);
   btns.forEach(b=>{b.disabled=true;b.textContent='Checking…';});
@@ -4791,7 +4791,7 @@ async function metaCapCheck() {
     if(data.paused&&data.paused>0){
       toast(`Cap check: ${data.paused} campaign(s) paused, ${data.kept_active} kept active`);
     } else {
-      toast(`Cap check done — ${data.checked_clients||0} clients, ${data.checked_campaigns||0} campaigns checked, all under cap`);
+      toast(`Cap check done - ${data.checked_clients||0} clients, ${data.checked_campaigns||0} campaigns checked, all under cap`);
     }
     loadPPL();loadCampaigns();
   } catch(e){toast('Cap check error: '+e.message,true);}
@@ -4878,7 +4878,7 @@ async function inlineToggleCampaign(id, metaCampaignId, newAction) {
     toast(`Campaign ${newAction==='PAUSED'?'paused':'resumed'} on Meta`);
     loadCampaigns();
   } else {
-    toast('Toggle failed — '+(results?.[0]?.error||'unknown error'),true);
+    toast('Toggle failed - '+(results?.[0]?.error||'unknown error'),true);
     if(btn){btn.disabled=false;btn.textContent=newAction==='PAUSED'?'Pause':'Resume';}
   }
 }
@@ -4913,7 +4913,7 @@ function renderMetaTokenBanner() {
 
   if (daysRemaining <= 0) {
     daysEl.style.color = 'var(--red)';
-    unitEl.textContent = 'days — OVERDUE';
+    unitEl.textContent = 'days - OVERDUE';
     banner.style.borderColor = 'var(--red)';
     banner.style.background = 'rgba(239,68,68,0.06)';
   } else if (daysRemaining <= 7) {
@@ -4935,7 +4935,7 @@ function markMetaTokenRefreshed() {
   const today = new Date().toISOString().split('T')[0];
   localStorage.setItem('meta_token_refreshed_at', today);
   renderMetaTokenBanner();
-  toast('Meta token refresh recorded — next refresh in ' + META_TOKEN_RENEWAL_DAYS + ' days ✓');
+  toast('Meta token refresh recorded - next refresh in ' + META_TOKEN_RENEWAL_DAYS + ' days ✓');
 }
 
 /* ═══ META AD ACCOUNTS + CAMPAIGNS MANAGEMENT ═══ */
@@ -4949,7 +4949,7 @@ async function loadAdAccounts(){
 }
 function renderAdAccountsList(){
   const el=$('ad-accounts-list');if(!el)return;
-  if(!_adAccountsCache.length){el.innerHTML='<span style="font-size:11px;color:var(--ink3)">No ad accounts yet — add one below</span>';return;}
+  if(!_adAccountsCache.length){el.innerHTML='<span style="font-size:11px;color:var(--ink3)">No ad accounts yet - add one below</span>';return;}
   el.innerHTML=_adAccountsCache.map(a=>`<div style="display:inline-flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--br);border-radius:6px;padding:5px 10px;font-size:11px">
     <strong>${esc(a.label)}</strong> <span style="font-family:var(--mono);font-size:9px;color:var(--ink3)">${esc(a.account_id)}</span>
     <button class="btn btn-xs" style="color:var(--red);padding:0 4px" onclick="removeAdAccount('${a.id}')" title="Remove">×</button>
@@ -4975,13 +4975,13 @@ function populateAdAccountDropdowns(){
   ['mc-ad-account','emc-ad-account'].forEach(selId=>{
     const sel=$(selId);if(!sel)return;
     const cur=sel.value;
-    sel.innerHTML='<option value="">— Select —</option>'+_adAccountsCache.map(a=>`<option value="${esc(a.account_id)}">${esc(a.label)} (${esc(a.account_id)})</option>`).join('');
+    sel.innerHTML='<option value="">- Select -</option>'+_adAccountsCache.map(a=>`<option value="${esc(a.account_id)}">${esc(a.label)} (${esc(a.account_id)})</option>`).join('');
     if(cur) sel.value=cur;
   });
 }
 function adAccountLabel(accId){
   const a=_adAccountsCache.find(x=>x.account_id===accId);
-  return a?a.label:accId||'—';
+  return a?a.label:accId||'-';
 }
 
 let _campaignsCache=[];
@@ -5015,7 +5015,7 @@ async function loadCampaigns() {
   }
 
   // KPIs
-  setText('mc-total',campaigns.length||'—');
+  setText('mc-total',campaigns.length||'-');
   setText('mc-active',campaigns.filter(c=>c.status==='ACTIVE').length||'0');
   setText('mc-paused',campaigns.filter(c=>c.status==='PAUSED').length||'0');
 
@@ -5024,8 +5024,8 @@ async function loadCampaigns() {
   if(!campaigns.length){
     tb.innerHTML='<tr><td colspan="10" class="empty">No campaigns yet</td></tr>';
   } else {
-  const fmt$=v=>v?'$'+Number(v).toLocaleString('en-AU',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
-  const fmtN=v=>v?Number(v).toLocaleString('en-AU'):'—';
+  const fmt$=v=>v?'$'+Number(v).toLocaleString('en-AU',{minimumFractionDigits:2,maximumFractionDigits:2}):'-';
+  const fmtN=v=>v?Number(v).toLocaleString('en-AU'):'-';
   const synced=campaigns.some(c=>c.last_synced_at);
   tb.innerHTML=campaigns.map(c=>{
     const linked=(cidToClients[c.meta_campaign_id]||[]).join(', ')||'<span style="color:var(--ink3)">none</span>';
@@ -5042,14 +5042,14 @@ async function loadCampaigns() {
       </td>
       <td style="font-family:var(--mono);font-size:11px">${fmt$(c.spend_mtd)}</td>
       <td style="font-family:var(--mono);font-size:11px">${fmtN(c.leads_mtd)}</td>
-      <td style="font-family:var(--mono);font-size:11px">${(c.leads_mtd||0)>0?fmt$((c.spend_mtd||0)/(c.leads_mtd||1)):'—'}</td>
+      <td style="font-family:var(--mono);font-size:11px">${(c.leads_mtd||0)>0?fmt$((c.spend_mtd||0)/(c.leads_mtd||1)):'-'}</td>
       <td style="font-family:var(--mono);font-size:11px">${fmtN(c.clicks_mtd)}</td>
       <td style="font-size:11px">${linked}</td>
-      <td style="font-size:10px">${(c.area_ids||[]).map(aid=>esc(areaMap[aid]||'?')).join(', ')||'<span style="color:var(--ink3)">—</span>'}</td>
+      <td style="font-size:10px">${(c.area_ids||[]).map(aid=>esc(areaMap[aid]||'?')).join(', ')||'<span style="color:var(--ink3)">-</span>'}</td>
       <td><button class="btn btn-xs" onclick="editCampaign('${c.id}')">Edit</button></td>
     </tr>`;
   }).join('');
-  if(!synced){$('mc-tbody').insertAdjacentHTML('afterbegin','<tr><td colspan="10" style="text-align:center;font-size:11px;color:var(--ink3);padding:8px">Stats not synced yet — click <strong>Sync Stats</strong> to pull live data from Meta</td></tr>');}
+  if(!synced){$('mc-tbody').insertAdjacentHTML('afterbegin','<tr><td colspan="10" style="text-align:center;font-size:11px;color:var(--ink3);padding:8px">Stats not synced yet - click <strong>Sync Stats</strong> to pull live data from Meta</td></tr>');}
   }
 
   // API log table
@@ -5059,9 +5059,9 @@ async function loadCampaigns() {
   } else {
   ltb.innerHTML=logs.map(l=>{
     const t=new Date(l.created_at).toLocaleString('en-AU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-    const cids=(l.campaign_ids||[]).join(', ')||'—';
+    const cids=(l.campaign_ids||[]).join(', ')||'-';
     const by=l.triggered_by==='cron'?'Cron':'Manual';
-    const det=typeof l.results==='object'?JSON.stringify(l.results).slice(0,80)+'…':'—';
+    const det=typeof l.results==='object'?JSON.stringify(l.results).slice(0,80)+'…':'-';
     return `<tr>
       <td style="font-family:var(--mono);font-size:10px">${t}</td>
       <td><span class="badge ${l.action==='CAP_CHECK'?'badge-blue':l.action==='PAUSED'?'badge-red':'badge-green'}">${esc(l.action)}</span></td>
@@ -5071,7 +5071,7 @@ async function loadCampaigns() {
     </tr>`;
   }).join('');
   }
-  // Manual Spend Log renders independently — always load it, even when there are
+  // Manual Spend Log renders independently - always load it, even when there are
   // no campaigns or no API log entries, so it never stays stuck on "Loading…".
   loadSpendLog();
 }
@@ -5122,7 +5122,7 @@ async function editCampaign(id) {
         <input type="checkbox" value="${esc(String(a.id))}" ${selSet.has(a.id)?'checked':''} style="margin:0">
         ${esc(a.label)}${cName?' <span style="font-size:9px;color:var(--ink3)">('+esc(cName)+')</span>':''}
       </label>`;
-    }).join('')||'<span style="font-size:10px;color:var(--ink3)">No areas yet — draw on the PPL map first</span>';
+    }).join('')||'<span style="font-size:10px;color:var(--ink3)">No areas yet - draw on the PPL map first</span>';
   }
   openModal('m-edit-campaign');
 }
@@ -5170,7 +5170,7 @@ async function updateCampaign() {
 }
 
 async function deleteCampaign() {
-  if(!confirm('Delete this campaign? This will not affect Meta — it only removes it from this dashboard.')) return;
+  if(!confirm('Delete this campaign? This will not affect Meta - it only removes it from this dashboard.')) return;
   const id=$('emc-id').value;
   const {error}=await db.from('meta_campaigns').delete().eq('id',id);
   if(error){toast('Error: '+error.message,true);return;}
@@ -5191,7 +5191,7 @@ async function toggleCampaignFromModal() {
     toast(`Campaign ${newAction==='PAUSED'?'paused':'resumed'} on Meta ✓`);
     if(btn){btn.textContent=newAction==='ACTIVE'?'Pause on Meta':'Resume on Meta';}
   } else {
-    toast('Failed — '+(results?.[0]?.error||'unknown error'),true);
+    toast('Failed - '+(results?.[0]?.error||'unknown error'),true);
   }
   if(btn) btn.disabled=false;
   loadCampaigns();
@@ -5214,7 +5214,7 @@ async function refreshCampaignDropdowns() {
     const el=$(pickerId);
     if(!el) return;
     const checked=getCheckedCampaigns(pickerId);
-    if(!campaigns.length){el.innerHTML='<span style="font-size:10px;color:var(--ink3)">No campaigns yet — add one in Meta Campaigns</span>';return;}
+    if(!campaigns.length){el.innerHTML='<span style="font-size:10px;color:var(--ink3)">No campaigns yet - add one in Meta Campaigns</span>';return;}
     let html='';
     for(const [accId,cmpList] of Object.entries(grouped)){
       html+=`<div style="font-family:var(--mono);font-size:9px;font-weight:600;color:var(--ink3);margin:6px 0 3px;text-transform:uppercase;letter-spacing:.05em">${esc(adAccountLabel(accId))}</div>`;
@@ -5371,7 +5371,7 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   // agSp is pre-computed in loadFinance as a period delta of the cumulative YTD ad_spend_daily rows
   const pplSp=campSpend;
   const pplLeadsTotal=campLeads;
-  const metaCpl=(pplSp>0&&pplLeadsTotal>0)?'$'+(pplSp/pplLeadsTotal).toFixed(2):'—';
+  const metaCpl=(pplSp>0&&pplLeadsTotal>0)?'$'+(pplSp/pplLeadsTotal).toFixed(2):'-';
   const pplRevLog=pplOrders.reduce((s,o)=>s+((o.leads_qty||0)*(o.lead_price||0)),0);
   const pplRevClients=pplClients.reduce((s,c)=>s+((c.leads_delivered||0)*(c.lead_price||0)),0);
   const pplRev=pplRevLog>0?pplRevLog:pplRevClients;
@@ -5385,7 +5385,7 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
     const cnt=c.active_months!=null?inRange.length:(c.payments_made||0);
     return s+(cnt*(c.management_fee||0));
   },0);
-  // Period-bound retainer (jan-to-today for YTD) — used only for the
+  // Period-bound retainer (jan-to-today for YTD) - used only for the
   // run-rate annualisation so future-booked months don't artificially
   // inflate the projection.
   const mgRetainerRevPeriod=mgClients.reduce((s,c)=>{
@@ -5397,7 +5397,7 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const mgTotalRev=mgRetainerRev+mgCustomRev;
   const tr=pplRev+mgTotalRev;
   const acTrue=pplClients.filter(c=>c.stage==='active_client'&&c.true_cpl>0);
-  const trueCpl=acTrue.length?'$'+(acTrue.reduce((s,c)=>s+c.true_cpl,0)/acTrue.length).toFixed(2):'—';
+  const trueCpl=acTrue.length?'$'+(acTrue.reduce((s,c)=>s+c.true_cpl,0)/acTrue.length).toFixed(2):'-';
   const totalExp=te+pplSp+agSp;
   const np=tr-totalExp,margin=tr>0?((np/tr)*100).toFixed(1):0;
   const gst=tr>0?tr/11:0;
@@ -5405,18 +5405,18 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const marginAfterGst=tr>0?((profitAfterGst/tr)*100).toFixed(1):0;
   setText('fin-rev',fmt(tr));setText('fin-exp',fmt(totalExp));setText('fin-profit',fmt(np));
   $('fin-profit').className=`kval ${np>=0?'grn':'red'}`;
-  setText('fin-margin',`${margin}% margin`);setText('fin-subs',ts!==null?fmt(ts):'—');
+  setText('fin-margin',`${margin}% margin`);setText('fin-subs',ts!==null?fmt(ts):'-');
   if($('fin-profit-gst')){
     $('fin-profit-gst').className=`kval ${profitAfterGst>=0?'grn':'red'}`;
     setText('fin-profit-gst',fmt(profitAfterGst));
     setText('fin-gst-detail',`GST on rev ${fmt(gst)} · ${marginAfterGst}% margin`);
   }
-  setText('fin-ppl-spend',fmt(pplSp));setText('fin-ag-spend',fmt(agSp));setText('fin-mg-spend',mgTotalRev>0?fmt(mgTotalRev):'—');
+  setText('fin-ppl-spend',fmt(pplSp));setText('fin-ag-spend',fmt(agSp));setText('fin-mg-spend',mgTotalRev>0?fmt(mgTotalRev):'-');
   setText('fin-meta-cpl',metaCpl);setText('fin-true-cpl',trueCpl);
-  setText('fin-ppl-rev',pplRev>0?fmt(pplRev):'—');setText('fin-ppl-margin',pplRev>0?fmt(pplRev-pplSp):'—');
-  if ($('fin-mg-rev')) setText('fin-mg-rev',mgTotalRev>0?fmt(mgTotalRev):'—');
-  if ($('fin-mg-retainer')) setText('fin-mg-retainer',mgRetainerRev>0?fmt(mgRetainerRev):'—');
-  if ($('fin-mg-custom')) setText('fin-mg-custom',mgCustomRev>0?fmt(mgCustomRev):'—');
+  setText('fin-ppl-rev',pplRev>0?fmt(pplRev):'-');setText('fin-ppl-margin',pplRev>0?fmt(pplRev-pplSp):'-');
+  if ($('fin-mg-rev')) setText('fin-mg-rev',mgTotalRev>0?fmt(mgTotalRev):'-');
+  if ($('fin-mg-retainer')) setText('fin-mg-retainer',mgRetainerRev>0?fmt(mgRetainerRev):'-');
+  if ($('fin-mg-custom')) setText('fin-mg-custom',mgCustomRev>0?fmt(mgCustomRev):'-');
   // Trend arrows vs prior period
   function trendArrow(cur,prev,higherIsBetter=true) {
     if (prev === 0 || prev == null) return '';
@@ -5439,13 +5439,13 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const trPeriod = pplRev + mgRetainerRevPeriod + mgCustomRev;
   const periodDays = (new Date(next)-new Date(from))/(1000*60*60*24);
   const runRate = periodDays > 0 ? (trPeriod/periodDays)*30 : 0;
-  if($('fin-mrr')) setText('fin-mrr', mrr>0?fmt(mrr):'—');
-  if($('fin-arr')) setText('fin-arr', arr>0?fmt(arr):'—');
-  if($('fin-run-rate')) setText('fin-run-rate', runRate>0?fmt(runRate):'—');
+  if($('fin-mrr')) setText('fin-mrr', mrr>0?fmt(mrr):'-');
+  if($('fin-arr')) setText('fin-arr', arr>0?fmt(arr):'-');
+  if($('fin-run-rate')) setText('fin-run-rate', runRate>0?fmt(runRate):'-');
   if($('fin-run-rate-sub')) setText('fin-run-rate-sub', periodDays>0?`annualised from ${Math.round(periodDays)}d period`:'');
   // MTD Revenue
   const {mtdRev=0,activeOrders=[],overdueOrders=[],dueSoon=0,ytdGoalRev=0,crmFollowups=0,pendingLeads=0,today:_today=''} = extras;
-  if($('fin-mtd-rev')) setText('fin-mtd-rev', mtdRev>0?fmt(mtdRev):'—');
+  if($('fin-mtd-rev')) setText('fin-mtd-rev', mtdRev>0?fmt(mtdRev):'-');
   if($('fin-mtd-sub')) setText('fin-mtd-sub', (new Date().toISOString().slice(0,7))+' so far');
   // Clients section
   const activePpl = pplClients.filter(c=>c.stage==='active_client').length;
@@ -5453,20 +5453,20 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const curTodayStr = _today || new Date().toISOString().split('T')[0];
   const overduePayments = mgClients.filter(c=>(c.stage==='active'||c.stage==='onboarding')&&c.next_payment_date&&c.next_payment_date<curTodayStr).length;
   const reorderDue = pplClients.filter(c=>c.stage==='active_client'&&(c.total_leads_purchased||0)>0&&(c.leads_delivered||0)>0&&((c.leads_delivered/c.total_leads_purchased)>=0.75)).length;
-  if($('fin-ppl-active')) setText('fin-ppl-active', activePpl||'—');
-  if($('fin-mg-active-cnt')) setText('fin-mg-active-cnt', activeMg||'—');
+  if($('fin-ppl-active')) setText('fin-ppl-active', activePpl||'-');
+  if($('fin-mg-active-cnt')) setText('fin-mg-active-cnt', activeMg||'-');
   if($('fin-overdue-payments')) {
-    setText('fin-overdue-payments', overduePayments||'—');
+    setText('fin-overdue-payments', overduePayments||'-');
     $('fin-overdue-payments').className=`kval ${overduePayments>0?'red':'grn'}`;
   }
-  if($('fin-reorder-due')) setText('fin-reorder-due', reorderDue||'—');
+  if($('fin-reorder-due')) setText('fin-reorder-due', reorderDue||'-');
   // Lead SLA section
   if($('fin-sla-overdue')) {
-    setText('fin-sla-overdue', overdueOrders.length||'—');
+    setText('fin-sla-overdue', overdueOrders.length||'-');
     $('fin-sla-overdue').className=`kval ${overdueOrders.length>0?'red':'grn'}`;
   }
-  if($('fin-orders-active')) setText('fin-orders-active', activeOrders.length||'—');
-  if($('fin-sla-week')) setText('fin-sla-week', dueSoon||'—');
+  if($('fin-orders-active')) setText('fin-orders-active', activeOrders.length||'-');
+  if($('fin-sla-week')) setText('fin-sla-week', dueSoon||'-');
   // Goals & Pipeline section
   if($('fin-ytd-goal-pct')) {
     if (ytdGoalRev > 0) {
@@ -5475,15 +5475,15 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
       $('fin-ytd-goal-pct').className=`kval ${+pct>=100?'grn':+pct>=75?'':'red'}`;
       if($('fin-ytd-goal-sub')) setText('fin-ytd-goal-sub', `MTD ${fmt(mtdRev)} of ${fmt(ytdGoalRev)} goal`);
     } else {
-      setText('fin-ytd-goal-pct','—');
+      setText('fin-ytd-goal-pct','-');
       if($('fin-ytd-goal-sub')) setText('fin-ytd-goal-sub','no goals set');
     }
   }
   if($('fin-followups')) {
-    setText('fin-followups', crmFollowups||'—');
+    setText('fin-followups', crmFollowups||'-');
     $('fin-followups').className=`kval ${crmFollowups>0?'amb':''}`;
   }
-  if($('fin-pending-leads')) setText('fin-pending-leads', pendingLeads||'—');
+  if($('fin-pending-leads')) setText('fin-pending-leads', pendingLeads||'-');
   // Overdue SLA detail list
   const slaListEl = $('fin-overdue-sla-list');
   if (slaListEl) {
@@ -5492,7 +5492,7 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
         `<div class="twrap"><table><thead><tr><th>Client</th><th>Order Date</th><th>Qty</th><th>SLA Due</th><th>Days Overdue</th></tr></thead><tbody>` +
         overdueOrders.map(o=>{
           const days=Math.ceil((new Date(curTodayStr)-new Date(o.sla_due_date))/(1000*60*60*24));
-          return `<tr><td><strong>${esc(o.clients?.company_name||'—')}</strong></td><td style="font-family:var(--mono);font-size:11px">${o.order_date||'—'}</td><td style="font-family:var(--mono)">${o.leads_qty}</td><td style="font-family:var(--mono);color:var(--red);font-weight:600">${o.sla_due_date}</td><td style="font-family:var(--mono);color:var(--red)">${days}d</td></tr>`;
+          return `<tr><td><strong>${esc(o.clients?.company_name||'-')}</strong></td><td style="font-family:var(--mono);font-size:11px">${o.order_date||'-'}</td><td style="font-family:var(--mono)">${o.leads_qty}</td><td style="font-family:var(--mono);color:var(--red);font-weight:600">${o.sla_due_date}</td><td style="font-family:var(--mono);color:var(--red)">${days}d</td></tr>`;
         }).join('') + `</tbody></table></div>`;
     } else {
       slaListEl.innerHTML = '';
@@ -5500,16 +5500,16 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   }
   const tb=$('exp-tbody');
   if (!expenses.length) { tb.innerHTML='<tr><td colspan="6" class="empty">No expenses for this period.</td></tr>'; }
-  else { tb.innerHTML=expenses.map(e=>`<tr><td>${esc(e.category||'—')}</td><td>${esc(e.description||'—')}</td><td>${fmt(e.amount)}</td><td><span class="badge ${e.type==='fixed'?'bg-blu':'bg-amb'}">${e.type||'variable'}</span></td><td style="font-family:var(--mono);font-size:10px">${e.date||'—'}</td><td style="white-space:nowrap"><button class="btn btn-xs" onclick="editExpense('${esc(String(e.id))}')">Edit</button> <button class="btn btn-xs" style="color:var(--red)" onclick="deleteExpense('${esc(String(e.id))}')">Delete</button></td></tr>`).join(''); }
+  else { tb.innerHTML=expenses.map(e=>`<tr><td>${esc(e.category||'-')}</td><td>${esc(e.description||'-')}</td><td>${fmt(e.amount)}</td><td><span class="badge ${e.type==='fixed'?'bg-blu':'bg-amb'}">${e.type||'variable'}</span></td><td style="font-family:var(--mono);font-size:10px">${e.date||'-'}</td><td style="white-space:nowrap"><button class="btn btn-xs" onclick="editExpense('${esc(String(e.id))}')">Edit</button> <button class="btn btn-xs" style="color:var(--red)" onclick="deleteExpense('${esc(String(e.id))}')">Delete</button></td></tr>`).join(''); }
   renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses,pplSp,agSp);renderCplChart(spendLog);
 }
 function renderSubscriptionsTable(subs) {
   const tb = $('subs-tbody');
   if (!tb) return;
-  if (!subs.length) { tb.innerHTML = '<tr><td colspan="4" class="empty">No subscriptions yet — add your tools & software costs.</td></tr>'; return; }
+  if (!subs.length) { tb.innerHTML = '<tr><td colspan="4" class="empty">No subscriptions yet - add your tools & software costs.</td></tr>'; return; }
   tb.innerHTML = subs.map(s => `
     <tr>
-      <td><strong>${esc(s.name||'—')}</strong></td>
+      <td><strong>${esc(s.name||'-')}</strong></td>
       <td style="font-family:var(--mono)">${fmt(s.monthly_cost||0)}/mo</td>
       <td><button onclick="toggleSubActive('${esc(String(s.id))}',${!!s.active})" style="border:none;cursor:pointer;border-radius:3px;font-size:10px;padding:2px 8px;font-family:var(--mono);background:${s.active?'rgba(46,204,138,.12)':'rgba(255,69,96,.08)'};color:${s.active?'var(--grn)':'var(--red)'}">${s.active?'Active':'Inactive'}</button></td>
       <td><button class="btn btn-xs" style="color:var(--red)" onclick="deleteSub('${esc(String(s.id))}')">Delete</button></td>
@@ -5628,24 +5628,24 @@ async function loadSpendLog() {
     .order('campaign_name');
   if (error) { tb.innerHTML=`<tr><td colspan="8" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
   const rows = data || [];
-  if (!rows.length) { tb.innerHTML='<tr><td colspan="8" class="empty">No spend logged yet — run Sync Stats or add a manual entry.</td></tr>'; return; }
-  const fmt$ = v => v ? '$'+Number(v).toLocaleString('en-AU',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+  if (!rows.length) { tb.innerHTML='<tr><td colspan="8" class="empty">No spend logged yet - run Sync Stats or add a manual entry.</td></tr>'; return; }
+  const fmt$ = v => v ? '$'+Number(v).toLocaleString('en-AU',{minimumFractionDigits:2,maximumFractionDigits:2}) : '-';
   tb.innerHTML = rows.map(r => {
-    const cpl = (r.leads||0) > 0 ? fmt$((r.spend||0)/r.leads) : '—';
+    const cpl = (r.leads||0) > 0 ? fmt$((r.spend||0)/r.leads) : '-';
     const srcBadge = r.source === 'sync'
       ? `<span style="font-family:var(--mono);font-size:9px;color:var(--grn)">sync</span>`
       : `<span style="font-family:var(--mono);font-size:9px;color:var(--amb)">manual</span>`;
     const delBtn = r.source === 'manual'
       ? `<button class="btn btn-xs" style="color:var(--red)" onclick="deleteSpendLogEntry('${esc(String(r.id))}')">Delete</button>`
-      : `<span style="font-size:10px;color:var(--ink3)">—</span>`;
+      : `<span style="font-size:10px;color:var(--ink3)">-</span>`;
     return `<tr>
-      <td><strong>${esc(r.campaign_name||'—')}</strong></td>
-      <td style="font-family:var(--mono);font-size:10px">${esc(r.period||'—')}</td>
+      <td><strong>${esc(r.campaign_name||'-')}</strong></td>
+      <td style="font-family:var(--mono);font-size:10px">${esc(r.period||'-')}</td>
       <td style="font-family:var(--mono)">${fmt$(r.spend)}</td>
-      <td style="font-family:var(--mono)">${r.leads||'—'}</td>
+      <td style="font-family:var(--mono)">${r.leads||'-'}</td>
       <td style="font-family:var(--mono)">${cpl}</td>
       <td>${srcBadge}</td>
-      <td style="font-size:10px;color:var(--ink3)">${esc(r.notes||'—')}</td>
+      <td style="font-size:10px;color:var(--ink3)">${esc(r.notes||'-')}</td>
       <td>${delBtn}</td>
     </tr>`;
   }).join('');
@@ -5779,7 +5779,7 @@ async function loadGoals() {
       .filter(e => e.date >= from && e.date < next)
       .reduce((s, e) => s + (e.amount || 0), 0);
 
-    // Ad spend from campaign_spend_log — now available for all historical months
+    // Ad spend from campaign_spend_log - now available for all historical months
     const adSpend = spendByMonth[key] || 0;
 
     const rev = pplRev + mgRetainer + mgCustom;
@@ -5821,7 +5821,7 @@ async function loadGoals() {
       yoyEl.className = `kval ${yoyPct >= 0 ? 'grn' : 'red'}`;
       yoySub.textContent = `vs ${priorYear} (${fmt(ytdPriorRev)})`;
     } else {
-      yoyEl.textContent = '—';
+      yoyEl.textContent = '-';
       yoyEl.className = 'kval';
       yoySub.textContent = `no ${priorYear} data`;
     }
@@ -5831,23 +5831,23 @@ async function loadGoals() {
   const tb = $('goal-tbody');
   tb.innerHTML = rows.map(r => {
     const revPctNum = r.goal.revenue_goal > 0 ? (r.rev / r.goal.revenue_goal) * 100 : null;
-    const revPct = revPctNum !== null ? revPctNum.toFixed(0) : '—';
+    const revPct = revPctNum !== null ? revPctNum.toFixed(0) : '-';
     const revPctColor = revPctNum === null ? 'var(--ink3)' : revPctNum >= 100 ? 'var(--grn)' : revPctNum >= 75 ? 'var(--amb)' : 'var(--red)';
     const marginColor = r.goal.margin_goal > 0 ? (r.margin >= r.goal.margin_goal ? 'var(--grn)' : r.margin >= r.goal.margin_goal * 0.75 ? 'var(--amb)' : 'var(--red)') : 'var(--ink3)';
     const yoyNum = r.priorRev > 0 ? ((r.rev - r.priorRev) / r.priorRev * 100) : null;
     const yoyCell = yoyNum !== null
       ? `<span style="font-family:var(--mono);font-size:11px;font-weight:500;color:${yoyNum>=0?'var(--grn)':'var(--red)'}">${yoyNum>=0?'↑ +':'↓ '}${yoyNum.toFixed(1)}%</span>`
-      : '<span style="color:var(--ink3)">—</span>';
+      : '<span style="color:var(--ink3)">-</span>';
     return `<tr>
       <td style="font-family:var(--mono);font-size:11px;font-weight:500">${r.label}</td>
-      <td><input class="fi goal-input" data-month="${r.month}" data-field="revenue_goal" type="number" value="${r.goal.revenue_goal||''}" placeholder="—" style="width:90px;font-size:11px;padding:3px 6px;text-align:right"></td>
+      <td><input class="fi goal-input" data-month="${r.month}" data-field="revenue_goal" type="number" value="${r.goal.revenue_goal||''}" placeholder="-" style="width:90px;font-size:11px;padding:3px 6px;text-align:right"></td>
       <td style="font-family:var(--mono);font-size:11px;font-weight:500">${fmt(r.rev)}</td>
-      <td style="font-family:var(--mono);font-size:11px;font-weight:500;color:${revPctColor}">${revPct === '—' ? '—' : revPct + '%'}</td>
+      <td style="font-family:var(--mono);font-size:11px;font-weight:500;color:${revPctColor}">${revPct === '-' ? '-' : revPct + '%'}</td>
       <td>${yoyCell}</td>
-      <td><input class="fi goal-input" data-month="${r.month}" data-field="margin_goal" type="number" value="${r.goal.margin_goal||''}" placeholder="—" style="width:70px;font-size:11px;padding:3px 6px;text-align:right" step="1" min="0" max="100">%</td>
+      <td><input class="fi goal-input" data-month="${r.month}" data-field="margin_goal" type="number" value="${r.goal.margin_goal||''}" placeholder="-" style="width:70px;font-size:11px;padding:3px 6px;text-align:right" step="1" min="0" max="100">%</td>
       <td style="font-family:var(--mono);font-size:11px;font-weight:500;color:${marginColor}">${r.margin.toFixed(1)}%</td>
       <td style="font-family:var(--mono);font-size:11px;font-weight:500;color:${r.profit>=0?'var(--grn)':'var(--red)'}">${fmt(r.profit)}</td>
-      <td><input class="fi goal-input" data-month="${r.month}" data-field="notes" type="text" value="${esc(r.goal.notes||'')}" placeholder="—" style="width:120px;font-size:11px;padding:3px 6px"></td>
+      <td><input class="fi goal-input" data-month="${r.month}" data-field="notes" type="text" value="${esc(r.goal.notes||'')}" placeholder="-" style="width:120px;font-size:11px;padding:3px 6px"></td>
       <td><button class="btn btn-xs" onclick="saveGoal('${r.month}')">Save</button></td>
     </tr>`;
   }).join('');
@@ -6017,7 +6017,7 @@ async function saveFileContent() {
   const content = ta.value;
   const {error} = await db.from('agent_files').upsert({agent:'docs',filename:curFile,content,updated_at:now()},{onConflict:'agent,filename'});
   if (error) { toast('Save failed: '+error.message, true); return; }
-  toast('Saved ✓ — '+curFile);
+  toast('Saved ✓ - '+curFile);
 }
 
 let _tmplClients = [], _tmplPreviewOn = false;
@@ -6027,7 +6027,7 @@ async function loadTemplateClientDropdown() {
   _tmplClients = data || [];
   const sel = $('tmpl-client-sel');
   if (!sel) return;
-  sel.innerHTML = '<option value="">— Preview with client —</option>' +
+  sel.innerHTML = '<option value="">- Preview with client -</option>' +
     _tmplClients.map(c=>`<option value="${esc(String(c.id))}">${esc(c.company_name)} [${c.type==='ppl'?'PPL':c.type==='ppl_managed'?'PPL+M':'Managed'}]</option>`).join('');
 }
 function applyTemplateVars(text, client) {
@@ -6131,7 +6131,7 @@ function onGoogleMapsReady() {
     if (drawnOverlay) drawnOverlay.setMap(null);
     drawnOverlay = e.overlay;
     drawingManager.setDrawingMode(null);
-    toast('Area drawn — enter label & volume then Save Area');
+    toast('Area drawn - enter label & volume then Save Area');
   });
   loadMapAreas();
   if (window._pricingMapPending) { window._pricingMapPending = false; onPricingMapsReady(); }
@@ -6245,7 +6245,7 @@ async function loadMapAreas() {
 function renderMapAreas() {
   const el = $('map-area-list');
   if (!el) return;
-  if (!mapAreas.length) { el.innerHTML='<div style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);padding:6px">No areas saved yet — draw on the map.</div>'; return; }
+  if (!mapAreas.length) { el.innerHTML='<div style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);padding:6px">No areas saved yet - draw on the map.</div>'; return; }
   el.innerHTML = mapAreas.map(a=>{
     const ac=(a.meta_campaign_ids||[]).map(mid=>{const c=_campaignsCache.find(x=>x.meta_campaign_id===mid);return c?c.name:mid;});
     const aClients=(a.client_ids&&a.client_ids.length?a.client_ids:[a.client_id].filter(Boolean)).map(cid=>mapClientDataMap[String(cid)]?.company_name).filter(Boolean);
@@ -6357,7 +6357,7 @@ function getCheckedIds(pickerId){
 
 function refreshMapCampaignPicker(){
   const el=$('map-campaign-picker');if(!el)return;
-  if(!_campaignsCache.length){el.innerHTML='<span style="font-size:10px;color:var(--ink3)">No campaigns — add in Meta Campaigns first</span>';return;}
+  if(!_campaignsCache.length){el.innerHTML='<span style="font-size:10px;color:var(--ink3)">No campaigns - add in Meta Campaigns first</span>';return;}
   el.innerHTML=_campaignsCache.map(c=>{
     const dot=c.status==='ACTIVE'?'color:var(--grn)':'color:var(--red)';
     return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer">
@@ -6477,7 +6477,7 @@ function onPricingMapsReady() {
     if (pricingDrawnOverlay) pricingDrawnOverlay.setMap(null);
     pricingDrawnOverlay = e.overlay;
     pricingDrawingMgr.setDrawingMode(null);
-    toast('Area drawn — enter label & CPL then Save Area');
+    toast('Area drawn - enter label & CPL then Save Area');
   });
   loadPricingAreas();
 }
@@ -6515,7 +6515,7 @@ function renderPricingAreas() {
   const el = $('pricing-area-list');
   if (!el) return;
   if (!pricingAreas.length) {
-    el.innerHTML = '<div style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);padding:6px">No pricing areas saved yet — draw on the map.</div>';
+    el.innerHTML = '<div style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);padding:6px">No pricing areas saved yet - draw on the map.</div>';
     return;
   }
   el.innerHTML = pricingAreas.map((a,i)=>{
@@ -6593,8 +6593,8 @@ async function populateMapClientDropdown() {
   if (data && data.length) {
     mapClientDataMap = {};
     data.forEach(c => { mapClientDataMap[String(c.id)] = c; });
-    sel.innerHTML = '<option value="">— Select PPL Client —</option>' +
-      '<option value="all">— All Clients —</option>' +
+    sel.innerHTML = '<option value="">- Select PPL Client -</option>' +
+      '<option value="all">- All Clients -</option>' +
       data.map(c=>`<option value="${esc(String(c.id))}">${esc(c.company_name)}</option>`).join('');
     const saved = localStorage.getItem('ppl_selected_client');
     const match = saved && (saved === 'all' || data.find(c => String(c.id) === saved));
@@ -6608,7 +6608,7 @@ async function populateMapClientDropdown() {
 
 // Logo for invoices is loaded from business_settings.logo_url (if set) by
 // loadBizSettings(). The deployed HTML no longer fetches assets from any
-// external repo — set business_settings.logo_url to a Supabase Storage URL
+// external repo - set business_settings.logo_url to a Supabase Storage URL
 // (or any CSP-allowed URL) to render a logo on PDF invoices.
 let QL_LOGO_B64 = null;
 fetch('./quoteleads-logo-white.png').then(r=>r.blob()).then(b=>{
@@ -6736,7 +6736,7 @@ async function openInvoiceModal(clientId, offerType) {
   const sel = $('inv-client');
   const pplClients = (clients||[]).filter(c => c.type === 'ppl');
   const mgClients  = (clients||[]).filter(c => c.type === 'managed');
-  let html = '<option value="">— Select client or lead —</option>';
+  let html = '<option value="">- Select client or lead -</option>';
   if (pplClients.length) {
     html += '<optgroup label="PPL Clients">' +
       pplClients.map(c => `<option value="${esc(String(c.id))}" data-source="client" data-type="${esc(c.type||'')}" data-niche="${esc(c.niche||'')}" data-lead-price="${c.lead_price||0}" data-fee="${c.management_fee||0}" data-contact="${esc(c.contact_name||'')}" data-email="${esc(c.email||'')}">${esc(c.company_name)}</option>`).join('') +
@@ -6750,7 +6750,7 @@ async function openInvoiceModal(clientId, offerType) {
   if ((pipelineLeads||[]).length) {
     html += '<optgroup label="Sales Pipeline Leads">' +
       pipelineLeads.map(l => {
-        const display = l.company ? `${esc(l.name||'')} — ${esc(l.company)}` : esc(l.name||'Lead');
+        const display = l.company ? `${esc(l.name||'')} - ${esc(l.company)}` : esc(l.name||'Lead');
         return `<option value="lead:${esc(String(l.id))}" data-source="lead" data-type="${esc(l.type||'ppl')}" data-niche="" data-lead-price="0" data-fee="${l.deal_value||0}" data-contact="${esc(l.name||'')}" data-email="${esc(l.email||'')}" data-company="${esc(l.company||'')}">${display}</option>`;
       }).join('') +
       '</optgroup>';
@@ -6775,7 +6775,7 @@ function onInvClientChange() {
   setVal('inv-offer-type', type === 'managed' ? 'managed' : 'ppl');
   setVal('inv-vertical', opt.dataset.niche || '');
   const displayName = isLead
-    ? (opt.dataset.company ? `${opt.dataset.contact} — ${opt.dataset.company}` : opt.dataset.contact)
+    ? (opt.dataset.company ? `${opt.dataset.contact} - ${opt.dataset.company}` : opt.dataset.contact)
     : opt.textContent;
   $('inv-modal-sub').textContent = displayName;
 
@@ -6783,7 +6783,7 @@ function onInvClientChange() {
   invLineCount = 0;
   $('inv-lines').innerHTML = '';
   if (type === 'managed') {
-    addInvLine('Managed Advertising — Monthly Retainer', 1, parseFloat(opt.dataset.fee) || 0);
+    addInvLine('Managed Advertising - Monthly Retainer', 1, parseFloat(opt.dataset.fee) || 0);
   } else if (isLead) {
     // Pipeline lead: pre-fill based on deal value if available
     const dealVal = parseFloat(opt.dataset.fee) || 0;
@@ -6828,7 +6828,7 @@ async function saveInvoice(andDownload) {
 
   // Derive display name: for leads use contact + company; for clients use option text
   const clientName = isLead
-    ? (opt.dataset.company ? `${opt.dataset.contact} — ${opt.dataset.company}` : opt.dataset.contact || opt.textContent.trim())
+    ? (opt.dataset.company ? `${opt.dataset.contact} - ${opt.dataset.company}` : opt.dataset.contact || opt.textContent.trim())
     : opt.textContent.trim();
 
   const payload = {
@@ -6877,11 +6877,11 @@ async function loadInvoices() {
   const statusCls = {draft:'bg-gray',sent:'bg-blu',overdue:'bg-red',paid:'bg-grn'};
   $('inv-tbody').innerHTML = all.map(inv => `
     <tr>
-      <td style="font-family:var(--mono);font-size:11px">${esc(inv.invoice_number||'—')}</td>
-      <td><strong>${esc(inv.client_name||'—')}</strong></td>
+      <td style="font-family:var(--mono);font-size:11px">${esc(inv.invoice_number||'-')}</td>
+      <td><strong>${esc(inv.client_name||'-')}</strong></td>
       <td><span class="badge ${inv.offer_type==='managed'?'bg-amb':'bg-blu'}">${inv.offer_type==='managed'?'Managed':'PPL'}</span></td>
-      <td style="font-family:var(--mono);font-size:10.5px">${inv.invoice_date||'—'}</td>
-      <td style="font-family:var(--mono);font-size:10.5px">${inv.due_date||'—'}</td>
+      <td style="font-family:var(--mono);font-size:10.5px">${inv.invoice_date||'-'}</td>
+      <td style="font-family:var(--mono);font-size:10.5px">${inv.due_date||'-'}</td>
       <td style="font-family:var(--mono);font-weight:600">$${Number(inv.total||0).toLocaleString('en-AU',{minimumFractionDigits:2})}</td>
       <td><span class="badge ${statusCls[inv.status]||'bg-gray'}">${esc(inv.status||'draft')}</span></td>
       <td style="white-space:nowrap">
@@ -7175,12 +7175,12 @@ function buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoonOr
   const items = [];
   if (overdueOrders.length > 0) {
     const names = overdueOrders.map(o => o.clients?.company_name || 'Unknown').join(', ');
-    items.push({type:'error', msg: `${overdueOrders.length} PPL order${overdueOrders.length>1?'s':''} past SLA due date — ${names}`, panel:'ppl'});
+    items.push({type:'error', msg: `${overdueOrders.length} PPL order${overdueOrders.length>1?'s':''} past SLA due date - ${names}`, panel:'ppl'});
   }
   if (overduePayments > 0) items.push({type:'error', msg: `${overduePayments} managed client${overduePayments>1?'s':''} with overdue payment`, panel:'managed'});
   if (dueSoonOrders.length > 0) {
     const names = dueSoonOrders.map(o => o.clients?.company_name || 'Unknown').join(', ');
-    items.push({type:'warn', msg: `${dueSoonOrders.length} PPL order${dueSoonOrders.length>1?'s':''} SLA due within 7 days — ${names}`, panel:'ppl'});
+    items.push({type:'warn', msg: `${dueSoonOrders.length} PPL order${dueSoonOrders.length>1?'s':''} SLA due within 7 days - ${names}`, panel:'ppl'});
   }
   if (crmFollowups > 0) items.push({type:'warn', msg: `${crmFollowups} CRM lead${crmFollowups>1?'s':''} need follow-up`, panel:'crm'});
   return items;
@@ -7202,7 +7202,7 @@ function toggleAlertTray() {
 function renderAlertTray() {
   const body = $('alert-tray-body'); if (!body) return;
   if (!_lastAlerts.length) {
-    body.innerHTML='<div style="color:var(--grn);font-size:12px">✓ All clear — no active alerts.</div>';
+    body.innerHTML='<div style="color:var(--grn);font-size:12px">✓ All clear - no active alerts.</div>';
     return;
   }
   body.innerHTML = _lastAlerts.map(a=>`<div style="margin-bottom:8px;padding:8px 10px;background:${a.type==='error'?'rgba(255,69,96,.08)':'rgba(245,166,35,.07)'};border:1px solid ${a.type==='error'?'rgba(255,69,96,.25)':'rgba(245,166,35,.25)'};border-radius:var(--r);font-size:11px;display:flex;align-items:center;gap:8px"><span style="color:${a.type==='error'?'var(--red)':'var(--amb)'}">⚠</span><span style="flex:1">${esc(a.msg)}</span><button class="btn btn-xs" onclick="nav('${a.panel}',document.querySelector('[data-panel=\\'${a.panel}\\']'));toggleAlertTray()" style="font-size:10px">→</button></div>`).join('');
@@ -7227,7 +7227,7 @@ async function loadAlerts() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// SALES REPS — admin panel (full users only; reps never reach this code path)
+// SALES REPS - admin panel (full users only; reps never reach this code path)
 // ════════════════════════════════════════════════════════════════════════════
 let _reps = [];
 
@@ -7338,11 +7338,11 @@ function renderReps(reps, unassigned) {
   if (!reps.length) { $('rep-tbody').innerHTML = '<tr><td colspan="10" class="empty">No sales reps yet. Click “New Rep” to create one.</td></tr>'; return; }
   $('rep-tbody').innerHTML = reps.map(r => {
     const status = r.active ? '<span class="badge bg-grn">Active</span>' : '<span class="badge bg-gray">Inactive</span>';
-    const pickup = r.pickup_rate == null ? '—' : r.pickup_rate + '%';
-    const close  = r.close_rate  == null ? '—' : r.close_rate  + '%';
+    const pickup = r.pickup_rate == null ? '-' : r.pickup_rate + '%';
+    const close  = r.close_rate  == null ? '-' : r.close_rate  + '%';
     return `<tr>
-      <td>${esc(r.name || '—')}</td>
-      <td style="font-family:var(--mono);font-size:11px">${esc(r.email || '—')}</td>
+      <td>${esc(r.name || '-')}</td>
+      <td style="font-family:var(--mono);font-size:11px">${esc(r.email || '-')}</td>
       <td>${status}</td>
       <td>${r.assigned || 0}</td>
       <td>${r.open || 0}</td>
@@ -7395,7 +7395,7 @@ async function saveRepPassword() {
 async function toggleRepActive(uid, active) {
   try {
     await callRepEdge('set_active', { user_id: uid, active });
-    toast(active ? 'Rep enabled' : 'Rep disabled — open leads returned to pool');
+    toast(active ? 'Rep enabled' : 'Rep disabled - open leads returned to pool');
     loadReps();
   } catch (e) { toast('Error: ' + e.message, true); }
 }
@@ -7439,7 +7439,7 @@ async function autoAssignNow() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// CONVERSATIONS — SMS inbox (inbound + outbound) grouped by lead
+// CONVERSATIONS - SMS inbox (inbound + outbound) grouped by lead
 // ══════════════════════════════════════════════════════════════════════════════
 
 let _convWebhookUrl = '';
@@ -7457,7 +7457,7 @@ async function loadConversations() {
     _convWebhookUrl = biz?.twilio_webhook_url || '';
     const display = $('conv-webhook-display');
     if (display) {
-      display.textContent = _convWebhookUrl || 'Not set — save via ⚙ Twilio Settings';
+      display.textContent = _convWebhookUrl || 'Not set - save via ⚙ Twilio Settings';
       display.style.color = _convWebhookUrl ? 'var(--acc)' : 'var(--ink3)';
     }
   } catch (_) {}
@@ -7483,8 +7483,8 @@ async function loadConversations() {
       if (!byLead[r.lead_id]) {
         byLead[r.lead_id] = {
           lead_id: r.lead_id,
-          name: r.ppl_leads?.name || '—',
-          phone: r.ppl_leads?.phone || r.to_number || '—',
+          name: r.ppl_leads?.name || '-',
+          phone: r.ppl_leads?.phone || r.to_number || '-',
           messages: [],
         };
       }
@@ -7518,8 +7518,8 @@ async function loadConversations() {
     if (tbody) {
       tbody.innerHTML = threads.map(t => {
         const lastMsg = t.messages[0];
-        const lastBody = lastMsg ? (lastMsg.message || '').substring(0, 60) + (lastMsg.message?.length > 60 ? '…' : '') : '—';
-        const lastTime = lastMsg ? fmtDate(lastMsg.created_at, true) : '—';
+        const lastBody = lastMsg ? (lastMsg.message || '').substring(0, 60) + (lastMsg.message?.length > 60 ? '…' : '') : '-';
+        const lastTime = lastMsg ? fmtDate(lastMsg.created_at, true) : '-';
         const inCount  = t.messages.filter(m => (m.direction || 'outbound') === 'inbound').length;
         const outCount = t.messages.filter(m => (m.direction || 'outbound') === 'outbound').length;
         const dirBadge = inCount > 0
@@ -7560,7 +7560,7 @@ async function loadSalesConversations() {
     const webhookUrl = biz?.twilio_webhook_url || '';
     const display = $('sales-conv-webhook-display');
     if (display) {
-      display.textContent = webhookUrl || 'Not set — save via ⚙ Twilio Settings';
+      display.textContent = webhookUrl || 'Not set - save via ⚙ Twilio Settings';
       display.style.color = webhookUrl ? 'var(--acc)' : 'var(--ink3)';
     }
   } catch (_) {}
@@ -7580,8 +7580,8 @@ async function loadSalesConversations() {
       if (!byLead[r.lead_id]) {
         byLead[r.lead_id] = {
           lead_id: r.lead_id,
-          name: r.leads?.name || '—',
-          phone: r.leads?.phone || r.to_number || '—',
+          name: r.leads?.name || '-',
+          phone: r.leads?.phone || r.to_number || '-',
           optedOut: r.leads?.sms_opted_out === true,
           messages: [],
         };
@@ -7605,8 +7605,8 @@ async function loadSalesConversations() {
     if (tbody) {
       tbody.innerHTML = threads.map(t => {
         const lastMsg = t.messages[0];
-        const lastBody = lastMsg ? (lastMsg.message || '').substring(0, 60) + (lastMsg.message?.length > 60 ? '…' : '') : '—';
-        const lastTime = lastMsg ? fmtDate(lastMsg.created_at, true) : '—';
+        const lastBody = lastMsg ? (lastMsg.message || '').substring(0, 60) + (lastMsg.message?.length > 60 ? '…' : '') : '-';
+        const lastTime = lastMsg ? fmtDate(lastMsg.created_at, true) : '-';
         const inCount  = t.messages.filter(m => (m.direction || 'outbound') === 'inbound').length;
         const outCount = t.messages.filter(m => (m.direction || 'outbound') === 'outbound').length;
         const dirBadge = inCount > 0 ? `<span class="badge bg-blu" style="font-size:9px">${inCount} in</span> ` : '';
@@ -7639,7 +7639,7 @@ async function deleteSalesConversation(leadId, name) {
 
 function copySalesConvWebhook() {
   const url = $('sales-conv-webhook-display')?.textContent || '';
-  if (!url || url === 'Not set — save via ⚙ Twilio Settings') { toast('No webhook URL set', true); return; }
+  if (!url || url === 'Not set - save via ⚙ Twilio Settings') { toast('No webhook URL set', true); return; }
   navigator.clipboard.writeText(url).then(() => toast('Webhook URL copied')).catch(() => toast('Copy failed', true));
 }
 
@@ -7859,14 +7859,14 @@ function renderPcalTable() {
   const tbody = $('pcal-tbody');
   if (!filtered.length) { tbody.innerHTML = `<tr><td colspan="8" class="empty">No ${_pcalFilter === 'all' ? '' : _pcalFilter + ' '}campaigns.</td></tr>`; return; }
   tbody.innerHTML = filtered.map(c => {
-    const metaName = c.meta_campaigns?.name || '—';
+    const metaName = c.meta_campaigns?.name || '-';
     return `<tr>
       <td><strong>${esc(c.name)}</strong></td>
-      <td>${esc(c.niche || '—')}</td>
-      <td>${esc(c.area || '—')}</td>
+      <td>${esc(c.niche || '-')}</td>
+      <td>${esc(c.area || '-')}</td>
       <td>${pcalStatusBadge(c.status)}</td>
       <td style="font-size:11px">${esc(metaName)}</td>
-      <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(c.notes || '')}">${esc(c.notes || '—')}</td>
+      <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(c.notes || '')}">${esc(c.notes || '-')}</td>
       <td style="font-size:11px;color:var(--ink3)">${fmtDate(c.updated_at)}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-xs" onclick="openPcalLog('${c.id}','${esc(c.name)}')">Log</button>
@@ -7881,9 +7881,9 @@ function renderPcalLog(logs) {
   if (!logs.length) { tbody.innerHTML = '<tr><td colspan="4" class="empty">No actions logged yet.</td></tr>'; return; }
   tbody.innerHTML = logs.map(l => `<tr>
     <td style="font-size:11px;color:var(--ink3);white-space:nowrap">${fmtDate(l.logged_at, true)}</td>
-    <td style="font-size:11px">${esc(l.ppl_campaigns?.name || '—')}</td>
+    <td style="font-size:11px">${esc(l.ppl_campaigns?.name || '-')}</td>
     <td><span style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--ink3)">${esc(l.action_type)}</span></td>
-    <td style="font-size:12px">${esc(l.details || '—')}</td>
+    <td style="font-size:12px">${esc(l.details || '-')}</td>
   </tr>`).join('');
 }
 
@@ -7892,7 +7892,7 @@ function renderPcalLog(logs) {
 function populatePcalMetaDropdown(selectId) {
   const sel = $(selectId);
   const current = sel.value;
-  sel.innerHTML = '<option value="">— None —</option>' + _pcalMetaCampaigns.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('');
+  sel.innerHTML = '<option value="">- None -</option>' + _pcalMetaCampaigns.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('');
   if (current) sel.value = current;
 }
 
@@ -7984,7 +7984,7 @@ async function refreshPcalLog(campaignId) {
         <span style="font-weight:600;text-transform:uppercase;font-size:10px;color:var(--ink3)">${esc(l.action_type)}</span>
         <span style="font-size:10px;color:var(--ink3)">${fmtDate(l.logged_at, true)}</span>
       </div>
-      <div style="margin-top:4px">${esc(l.details || '—')}</div>
+      <div style="margin-top:4px">${esc(l.details || '-')}</div>
     </div>`).join('') + '</div>';
 }
 
