@@ -654,6 +654,11 @@ td strong{font-weight:500}
 
 <!-- ═══ APP ═══ -->
 <div id="app">
+  <!-- REP-VIEW PREVIEW BAR (admin previewing what a sales rep sees) -->
+  <div id="rep-preview-bar" style="display:none;position:sticky;top:0;z-index:999;background:var(--amb);color:#1a1205;font-size:12px;font-weight:600;padding:8px 14px;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap">
+    <span>👁 Previewing the sales-rep view - this is exactly the interface &amp; permissions a rep gets (a real rep only sees their own assigned leads).</span>
+    <button class="btn btn-xs" style="background:#1a1205;color:#fff;border-color:#1a1205" onclick="exitRepPreview()">← Back to my account</button>
+  </div>
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="tb-mark">QL</div>
@@ -1290,7 +1295,10 @@ td strong{font-weight:500}
       <div class="panel" id="panel-salesreps">
         <div class="ph">
           <div class="ph-left"><h1>Sales Reps</h1><p>Restricted accounts - pipeline &amp; their own invoices only</p></div>
-          <div class="ph-right"><button class="btn btn-p btn-sm" onclick="openCreateRepModal()">+ New Rep</button></div>
+          <div class="ph-right" style="display:flex;gap:8px">
+            <button class="btn btn-sm" onclick="enterRepPreview()" title="See exactly what a sales rep sees, then switch back">👁 Preview rep view</button>
+            <button class="btn btn-p btn-sm" onclick="openCreateRepModal()">+ New Rep</button>
+          </div>
         </div>
         <div class="kg c4 mb4">
           <div class="kpi"><div class="klabel">Total Reps</div><div class="kval blu" id="rep-kpi-total">-</div></div>
@@ -2516,6 +2524,11 @@ const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 
 let db, currentUser;
 let IS_REP = false;   // true when the logged-in account_type is 'sales_rep'
+let IS_REP_PREVIEW = false;   // admin temporarily previewing the rep view
+// Enter/exit the rep-view preview (admin only). Uses a session flag + reload so
+// the exact same rep UI code path runs, then cleanly restores the admin view.
+function enterRepPreview() { try { sessionStorage.setItem('ql_rep_preview', '1'); } catch (e) {} location.reload(); }
+function exitRepPreview()  { try { sessionStorage.removeItem('ql_rep_preview'); } catch (e) {} location.reload(); }
 let revChart = null, cplChart = null, goalRevChart = null, goalMarginChart = null;
 let pplChurnChart = null, mgChurnChart = null;
 let curCrmRange = '';   // '' = no date filter → full pipeline visible by default
@@ -2679,12 +2692,19 @@ function initSupabase() {
           return;
         }
         currentUser = session.user;
-        IS_REP = session.user.app_metadata?.account_type === 'sales_rep';
+        const realIsRep = session.user.app_metadata?.account_type === 'sales_rep';
+        // Admins can preview the rep view via a session flag; real reps can't escape it.
+        IS_REP_PREVIEW = !realIsRep && sessionStorage.getItem('ql_rep_preview') === '1';
+        IS_REP = realIsRep || IS_REP_PREVIEW;
         setText('uname', currentUser.email.split('@')[0]);
         $('login-screen').style.display = 'none';
         $('app').classList.add('visible');
 
         applyRoleUI();
+        if (IS_REP_PREVIEW) {
+          const bar = $('rep-preview-bar');
+          if (bar) bar.style.display = 'flex';
+        }
         if (IS_REP) loadRepView(); else loadRepCache().then(loadAll);
         setTimeout(updateBnavPadding, 300);
       } else {
