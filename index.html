@@ -654,10 +654,10 @@ td strong{font-weight:500}
 
 <!-- ═══ APP ═══ -->
 <div id="app">
-  <!-- REP-VIEW PREVIEW BAR (admin previewing what a sales rep sees) -->
+  <!-- IMPERSONATION BAR (admin viewing the dashboard as a specific rep) -->
   <div id="rep-preview-bar" style="display:none;position:sticky;top:0;z-index:999;background:var(--amb);color:#1a1205;font-size:12px;font-weight:600;padding:8px 14px;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap">
-    <span>👁 Previewing the sales-rep view - this is exactly the interface &amp; permissions a rep gets (a real rep only sees their own assigned leads).</span>
-    <button class="btn btn-xs" style="background:#1a1205;color:#fff;border-color:#1a1205" onclick="exitRepPreview()">← Back to my account</button>
+    <span>👁 Viewing as <span id="imp-rep-name">rep</span> - you're seeing their real dashboard and data. Nothing here is your admin account.</span>
+    <button class="btn btn-xs" id="imp-exit-btn" style="background:#1a1205;color:#fff;border-color:#1a1205" onclick="exitImpersonation()">← Back to my account</button>
   </div>
   <!-- TOPBAR -->
   <div class="topbar">
@@ -1295,10 +1295,7 @@ td strong{font-weight:500}
       <div class="panel" id="panel-salesreps">
         <div class="ph">
           <div class="ph-left"><h1>Sales Reps</h1><p>Restricted accounts - pipeline &amp; their own invoices only</p></div>
-          <div class="ph-right" style="display:flex;gap:8px">
-            <button class="btn btn-sm" onclick="enterRepPreview()" title="See exactly what a sales rep sees, then switch back">👁 Preview rep view</button>
-            <button class="btn btn-p btn-sm" onclick="openCreateRepModal()">+ New Rep</button>
-          </div>
+          <div class="ph-right"><button class="btn btn-p btn-sm" onclick="openCreateRepModal()">+ New Rep</button></div>
         </div>
         <div class="kg c4 mb4">
           <div class="kpi"><div class="klabel">Total Reps</div><div class="kval blu" id="rep-kpi-total">-</div></div>
@@ -2524,11 +2521,47 @@ const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 
 let db, currentUser;
 let IS_REP = false;   // true when the logged-in account_type is 'sales_rep'
-let IS_REP_PREVIEW = false;   // admin temporarily previewing the rep view
-// Enter/exit the rep-view preview (admin only). Uses a session flag + reload so
-// the exact same rep UI code path runs, then cleanly restores the admin view.
-function enterRepPreview() { try { sessionStorage.setItem('ql_rep_preview', '1'); } catch (e) {} location.reload(); }
-function exitRepPreview()  { try { sessionStorage.removeItem('ql_rep_preview'); } catch (e) {} location.reload(); }
+
+// ── Impersonation: admin views the dashboard AS a rep, with real RLS-scoped
+// data, then switches back. The admin session is stashed so we can restore it.
+async function impersonateRep(repUserId, repName, btn) {
+  if (!confirm(`View the dashboard exactly as ${repName || 'this rep'}?\n\nYou'll see their real, RLS-scoped data (only their own leads). You can switch back to your account anytime.`)) return;
+  const old = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
+  try {
+    const { data: { session: adminSession } } = await db.auth.getSession();
+    if (!adminSession) throw new Error('No admin session');
+    const res = await fetch(`${_ep}/functions/v1/impersonate-rep`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminSession.access_token}`, 'apikey': _ak },
+      body: JSON.stringify({ rep_user_id: repUserId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.session) throw new Error(data.error || `HTTP ${res.status}`);
+    // Stash the admin session so we can come back, and flag who we're viewing as.
+    sessionStorage.setItem('ql_admin_sess', JSON.stringify({ access_token: adminSession.access_token, refresh_token: adminSession.refresh_token }));
+    sessionStorage.setItem('ql_imp_rep', repName || (data.rep && data.rep.email) || 'rep');
+    const setErr = (await db.auth.setSession({ access_token: data.session.access_token, refresh_token: data.session.refresh_token })).error;
+    if (setErr) throw new Error(setErr.message);
+    location.reload();
+  } catch (e) {
+    toast('Could not view as rep: ' + e.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = old; }
+  }
+}
+
+async function exitImpersonation() {
+  const btn = $('imp-exit-btn'); if (btn) { btn.disabled = true; btn.textContent = 'Switching…'; }
+  try {
+    const saved = JSON.parse(sessionStorage.getItem('ql_admin_sess') || 'null');
+    sessionStorage.removeItem('ql_admin_sess');
+    sessionStorage.removeItem('ql_imp_rep');
+    if (saved && saved.refresh_token) {
+      await db.auth.setSession({ access_token: saved.access_token, refresh_token: saved.refresh_token });
+    }
+  } catch (e) {}
+  location.reload();
+}
 let revChart = null, cplChart = null, goalRevChart = null, goalMarginChart = null;
 let pplChurnChart = null, mgChurnChart = null;
 let curCrmRange = '';   // '' = no date filter → full pipeline visible by default
@@ -2692,19 +2725,21 @@ function initSupabase() {
           return;
         }
         currentUser = session.user;
-        const realIsRep = session.user.app_metadata?.account_type === 'sales_rep';
-        // Admins can preview the rep view via a session flag; real reps can't escape it.
-        IS_REP_PREVIEW = !realIsRep && sessionStorage.getItem('ql_rep_preview') === '1';
-        IS_REP = realIsRep || IS_REP_PREVIEW;
+        IS_REP = session.user.app_metadata?.account_type === 'sales_rep';
         setText('uname', currentUser.email.split('@')[0]);
         $('login-screen').style.display = 'none';
         $('app').classList.add('visible');
 
-        applyRoleUI();
-        if (IS_REP_PREVIEW) {
+        // If we're impersonating a rep (session was swapped), surface the banner.
+        const impName = sessionStorage.getItem('ql_imp_rep');
+        if (impName && sessionStorage.getItem('ql_admin_sess')) {
           const bar = $('rep-preview-bar');
+          const lbl = $('imp-rep-name');
+          if (lbl) lbl.textContent = impName;
           if (bar) bar.style.display = 'flex';
         }
+
+        applyRoleUI();
         if (IS_REP) loadRepView(); else loadRepCache().then(loadAll);
         setTimeout(updateBnavPadding, 300);
       } else {
@@ -7360,6 +7395,8 @@ function renderReps(reps, unassigned) {
     const status = r.active ? '<span class="badge bg-grn">Active</span>' : '<span class="badge bg-gray">Inactive</span>';
     const pickup = r.pickup_rate == null ? '-' : r.pickup_rate + '%';
     const close  = r.close_rate  == null ? '-' : r.close_rate  + '%';
+    // JS-string + HTML-attribute safe (esc doesn't cover the apostrophe).
+    const safeName = esc(String(r.name || r.email || 'rep').replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
     return `<tr>
       <td>${esc(r.name || '-')}</td>
       <td style="font-family:var(--mono);font-size:11px">${esc(r.email || '-')}</td>
@@ -7371,6 +7408,7 @@ function renderReps(reps, unassigned) {
       <td>${pickup}</td>
       <td>${close}</td>
       <td style="white-space:nowrap">
+        <button class="btn btn-xs" onclick="impersonateRep('${r.user_id}','${safeName}',this)" title="View the dashboard exactly as this rep, then switch back">👁 View as</button>
         <button class="btn btn-xs" onclick="openRepPassword('${r.user_id}')">Password</button>
         <button class="btn btn-xs" onclick="toggleRepActive('${r.user_id}',${!r.active})">${r.active ? 'Disable' : 'Enable'}</button>
         <button class="btn btn-xs" style="color:var(--red)" onclick="deleteRep('${r.user_id}')">Delete</button>
