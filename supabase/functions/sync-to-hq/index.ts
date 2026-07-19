@@ -74,6 +74,28 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true })
     }
 
+    // ── action: disable_ai ────────────────────────────────────────────────────
+    // Forward a bulk-SMS recipient list to ql-hq so the AI SMS agent is switched
+    // OFF for each of them (they went through the bulk SMS flow). ql-hq resolves
+    // the agency super-admin company server-side, so no ql_hq_company_id needed.
+    if (action === 'disable_ai') {
+      const leads = Array.isArray(body.leads) ? body.leads : []
+      if (!leads.length) return json({ ok: true, note: 'no leads to disable' })
+
+      const res = await fetch(`${QL_HQ_API_URL}/sync-from-mc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-secret': QL_MC_API_SECRET },
+        body: JSON.stringify({ action: 'disable_ai', leads }),
+      })
+
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`ql-hq returned ${res.status}: ${text}`)
+      }
+
+      return json(await res.json().catch(() => ({ ok: true })))
+    }
+
     // ── default action: sync delivery config + postcodes ─────────────────────
     const { ql_hq_company_id, email, sms_number, webhook_url, postcodes } = body
 

@@ -4109,6 +4109,12 @@ async function sendBroadcast(){
     }catch{ failed++; }
     await new Promise(r=>setTimeout(r,350));
   }
+  // Switch the AI SMS agent OFF for every lead we just bulk-messaged, so it
+  // never auto-replies to their responses (the toggle lives in ql-hq). Fire-and-
+  // forget: the bulk send itself already succeeded, so a failure here is non-fatal.
+  try{
+    await fetch(`${_ep}/functions/v1/sync-to-hq`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({action:'disable_ai',leads:leads.map(l=>({phone:l.phone,name:l.name||''}))})});
+  }catch(e){ /* non-fatal */ }
   if(prog) prog.textContent=`Done - ${sent} sent, ${failed} failed${skipped?', '+skipped+' opted out (skipped)':''}.`;
   btn.disabled=false;
   toast(`Bulk SMS complete: ${sent} sent, ${failed} failed`);
