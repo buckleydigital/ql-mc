@@ -37,15 +37,17 @@ Deno.serve(async (req: Request) => {
 
     // ── action: scrub ─────────────────────────────────────────────────────────
     // Looks up the lead → client → ql_hq_company_id, then notifies ql-hq to
-    // decrement delivered_leads on the matching ppl_order.
+    // decrement delivered_leads on the matching ppl_order AND flag the exact
+    // lead as scrubbed over there (matched by phone + name + company), so the
+    // client can't dispute a lead that's already been credited.
     if (action === 'scrub') {
       const { lead_id } = body as { lead_id?: string }
       if (!lead_id) return json({ error: 'lead_id is required for scrub action' }, 400)
 
-      // Get the lead's assigned client
+      // Get the lead's assigned client + identity (name/phone travel to ql-hq)
       const { data: lead } = await supabase
         .from('ppl_leads')
-        .select('assigned_client_id')
+        .select('assigned_client_id, name, phone')
         .eq('id', lead_id)
         .maybeSingle()
 
@@ -63,7 +65,11 @@ Deno.serve(async (req: Request) => {
       const res = await fetch(`${QL_HQ_API_URL}/sync-from-mc`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-secret': QL_MC_API_SECRET },
-        body: JSON.stringify({ action: 'scrub', ql_hq_company_id: client.ql_hq_company_id }),
+        body: JSON.stringify({
+          action: 'scrub',
+          ql_hq_company_id: client.ql_hq_company_id,
+          lead: { name: lead.name ?? null, phone: lead.phone ?? null },
+        }),
       })
 
       if (!res.ok) {

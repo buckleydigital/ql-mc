@@ -6,6 +6,14 @@
 // Actions:
 //   upsert_ppl_client — create (new signup) or update (reorder) a PPL client
 //                       and append a ppl_order_log row for the new order.
+//   scrub_lead        — a client's dispute was APPROVED in ql-hq. Find the
+//                       exact ppl_lead (phone + name + client via
+//                       ql_hq_company_id, all exact) and scrub it here.
+//                       ql-mc is the single source of truth for credits:
+//                       mark_lead_scrubbed() moves the counters (idempotent),
+//                       then we propagate the decrement + scrubbed flag back
+//                       to ql-hq via its sync-from-mc. ql-hq never decrements
+//                       itself on dispute approval, so nothing double-counts.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -43,6 +51,79 @@ Deno.serve(async (req: Request) => {
   try {
     const body = await req.json()
     const { action } = body
+
+    // ── action: scrub_lead (dispute approved in ql-hq) ───────────────────────
+    if (action === 'scrub_lead') {
+      const { ql_hq_company_id, phone, name } = body as {
+        ql_hq_company_id?: string; phone?: string; name?: string
+      }
+      if (!ql_hq_company_id || !phone || !name) {
+        return json({ error: 'ql_hq_company_id, phone and name are required' }, 400)
+      }
+
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      )
+
+      // 1) resolve the client by ql_hq_company_id (exact company match)
+      const { data: client } = await supabase
+        .from('clients')
+        .select('id, ql_hq_company_id')
+        .eq('ql_hq_company_id', ql_hq_company_id)
+        .maybeSingle()
+      if (!client) return json({ ok: false, note: 'no client with that ql_hq_company_id' }, 404)
+
+      // 2) find the exact lead: same client + exact phone (E.164-normalised on
+      //    both sides) + exact name (trimmed, case-insensitive). Most recent
+      //    non-scrubbed match wins; already-scrubbed leads are skipped so the
+      //    idempotent guard in the RPC is never even needed for re-sends.
+      const normPhone = normalisePhone(phone)
+      const wantName  = name.trim().toLowerCase()
+      const { data: candidates } = await supabase
+        .from('ppl_leads')
+        .select('id, name, phone, status')
+        .eq('assigned_client_id', client.id)
+        .neq('status', 'scrubbed')
+        .order('created_at', { ascending: false })
+        .limit(200)
+      const match = (candidates || []).find((l) =>
+        normalisePhone((l.phone as string) || '') === normPhone &&
+        ((l.name as string) || '').trim().toLowerCase() === wantName,
+      )
+      if (!match) return json({ ok: false, note: 'no matching non-scrubbed lead (phone+name+client)' }, 404)
+
+      // 3) scrub it — the RPC owns ALL counter movement and is idempotent
+      const { data: acted, error: scrubErr } = await supabase
+        .rpc('mark_lead_scrubbed', { p_lead_id: match.id })
+      if (scrubErr) return json({ ok: false, error: scrubErr.message }, 500)
+
+      // 4) propagate the credit to ql-hq (order decrement + flag the hq lead)
+      //    only when this call actually scrubbed it — never on a repeat.
+      let hqSynced = false
+      if (acted === true) {
+        const QL_HQ_API_URL = Deno.env.get('QL_HQ_API_URL')
+        if (QL_HQ_API_URL) {
+          try {
+            const res = await fetch(`${QL_HQ_API_URL}/sync-from-mc`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-api-secret': apiSecret },
+              body: JSON.stringify({
+                action: 'scrub',
+                ql_hq_company_id,
+                lead: { name: match.name ?? null, phone: match.phone ?? null },
+              }),
+            })
+            hqSynced = res.ok
+            if (!res.ok) console.error('scrub_lead: hq propagation failed:', res.status, await res.text())
+          } catch (e) {
+            console.error('scrub_lead: hq propagation error:', e instanceof Error ? e.message : e)
+          }
+        }
+      }
+
+      return json({ ok: true, lead_id: match.id, scrubbed_now: acted === true, hq_synced: hqSynced })
+    }
 
     if (action !== 'upsert_ppl_client') {
       return json({ error: `unknown action: ${action}` }, 400)
