@@ -29,6 +29,16 @@ function titleCase(str: string): string {
   return str.replace(/[_-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Normalise an AU number to E.164 (+61…) so two formats of the same number
+// (0412..., 61412..., +61412...) always compare equal in the duplicate gate.
+function normalisePhoneE164(raw: string): string | null {
+  let p = (raw || "").replace(/[\s\-().]/g, "");
+  if (p.startsWith("0") && p.length === 10) p = "+61" + p.slice(1);
+  else if (p.startsWith("614") && p.length === 11) p = "+" + p;
+  else if (p.startsWith("61") && !p.startsWith("+") && p.length === 11) p = "+" + p;
+  return p || null;
+}
+
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -307,6 +317,53 @@ Deno.serve(async (req: Request) => {
 
     const lead = leadR.data;
     const client = clientR.data;
+
+    // STEP 1.5 — HARD DUPLICATE GATE (per client / per ql-hq account)
+    // The same person must never be delivered to the same client twice. If ANY
+    // other lead assigned to this client shares this lead's phone (E.164-
+    // normalised) or email (case-insensitive), delivery is blocked here — this
+    // is the backstop that holds regardless of which path invoked delivery
+    // (submit-lead, recheck-lead, or a manual deliver from Mission Control).
+    // Only an OLDER lead blocks a newer one (id tiebreak on identical
+    // timestamps), so two simultaneous dupes can't block each other.
+    {
+      const thisPhone = normalisePhoneE164((lead.phone as string) || "");
+      const thisEmail = ((lead.email as string) || "").trim().toLowerCase();
+      const { data: siblings } = await supabaseAdmin
+        .from("ppl_leads")
+        .select("id, phone, email, status, created_at")
+        .eq("assigned_client_id", client_id)
+        .neq("id", lead_id)
+        .limit(2000);
+      const dupe = (siblings || []).find((s) => {
+        const sPhone = normalisePhoneE164((s.phone as string) || "");
+        const sEmail = ((s.email as string) || "").trim().toLowerCase();
+        const samePerson = (!!thisPhone && sPhone === thisPhone) ||
+                           (!!thisEmail && sEmail === thisEmail);
+        if (!samePerson) return false;
+        const sT = new Date(s.created_at as string).getTime();
+        const lT = new Date(lead.created_at as string).getTime();
+        return sT < lT || (sT === lT && (s.id as string) < (lead_id as string));
+      });
+      if (dupe) {
+        const reason = `duplicate blocked: lead ${lead_id} matches existing lead ${dupe.id} ` +
+          `(status ${dupe.status}) for client ${client_id} on ` +
+          `${thisPhone && normalisePhoneE164((dupe.phone as string) || "") === thisPhone ? "phone" : "email"}`;
+        await supabaseAdmin.from("ppl_leads").update({
+          status: "failed",
+          delivery_error: reason,
+          updated_at: new Date().toISOString(),
+        }).eq("id", lead_id);
+        await supabaseAdmin.from("lead_delivery_log").insert([{
+          lead_id,
+          client_id,
+          method: "dedup",
+          status: "blocked",
+          response_body: reason,
+        }]);
+        return jsonResponse({ success: false, blocked: true, duplicate_of: dupe.id, reason });
+      }
+    }
 
     // STEP 2 — BUILD EMAIL
     const subject = `New ${lead.lead_type ? titleCase(lead.lead_type as string) : "PPL"} Lead — ${lead.name} · ${lead.postcode}${lead.suburb ? " " + lead.suburb : ""}`;
