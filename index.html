@@ -1096,7 +1096,7 @@ td strong{font-weight:500}
             <tbody id="pcal-tbody"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
-        <div class="sl" style="margin-top:16px">Action Log <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px">recent actions across all campaigns</span><div class="sl-line"></div></div>
+        <div class="sl" style="margin-top:16px">Action Log <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px">recent actions across all campaigns</span><div class="sl-line"></div><button class="btn btn-xs btn-red" onclick="clearAllPcalActions()">Clear All Actions</button></div>
         <div class="twrap">
           <table>
             <thead><tr><th>Time</th><th>Campaign</th><th>Action</th><th>Details</th></tr></thead>
@@ -7935,6 +7935,7 @@ function renderPcalTable() {
       <td style="white-space:nowrap">
         <button class="btn btn-xs" onclick="openPcalLog('${c.id}','${esc(c.name)}')">Log</button>
         <button class="btn btn-xs" onclick="editPplCampaign('${c.id}')">Edit</button>
+        <button class="btn btn-xs btn-red" onclick="deletePplCampaignRow('${c.id}')">Delete</button>
       </td>
     </tr>`;
   }).join('');
@@ -8025,6 +8026,24 @@ async function deletePplCampaign() {
   if (error) { toast('Error: ' + error.message, true); return; }
   closeModal('m-edit-ppl-campaign');
   toast('Campaign deleted');
+  loadPcal();
+}
+
+async function deletePplCampaignRow(id) {
+  const c = _pcalCampaigns.find(x => x.id === id);
+  const name = c ? c.name : 'this campaign';
+  if (!confirm(`Delete campaign "${name}"? This will also remove all action log entries.`)) return;
+  const { error } = await db.from('ppl_campaigns').delete().eq('id', id);
+  if (error) { toast('Error: ' + error.message, true); return; }
+  toast('Campaign deleted');
+  loadPcal();
+}
+
+async function clearAllPcalActions() {
+  if (!confirm('Clear all logged actions? This cannot be undone and does not delete the campaigns themselves.')) return;
+  const { error } = await db.from('ppl_campaign_action_log').delete().not('id', 'is', null);
+  if (error) { toast('Error: ' + error.message, true); return; }
+  toast('Action log cleared');
   loadPcal();
 }
 
