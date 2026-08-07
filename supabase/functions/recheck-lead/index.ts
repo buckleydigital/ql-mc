@@ -237,8 +237,14 @@ Deno.serve(async (req: Request) => {
         );
         if (delivErr) {
           deliveryError = delivErr.message;
-        } else if (delivRes && (delivRes as { success?: boolean }).success === false) {
-          deliveryError = "delivery failed — check the client's delivery settings";
+        } else if (!delivRes || (delivRes as { success?: boolean }).success !== true) {
+          // Treat anything that is not an explicit success as a failure. A
+          // missing body used to fall through to delivered = true, which let
+          // undelivered leads reach ql-hq.
+          const blocked = (delivRes as { blocked?: boolean } | null)?.blocked === true;
+          deliveryError = blocked
+            ? "delivery blocked: duplicate lead for this client"
+            : "delivery failed — check the client's delivery settings";
         } else {
           delivered = true;
         }
@@ -247,7 +253,18 @@ Deno.serve(async (req: Request) => {
       }
       if (deliveryError) console.error("deliver-webhook failed:", deliveryError);
 
-      if (client && (client.ql_hq_company_id || (client.has_quoteleads_platform_account && client.hq_bearer_token))) {
+      // Only mirror the lead into ql-hq when ql-mc actually delivered it.
+      // deliver-webhook returns success:false when the lead was blocked as a
+      // duplicate or when every channel failed. Forwarding regardless would
+      // create the lead in ql-hq and fire its delivered-count trigger, so the
+      // client's account and /admin would climb for leads ql-mc never delivered.
+      if (!delivered) {
+        console.warn(
+          `skipping ql-hq forward: lead_id=${lead_id} client_id=${deliverClientId} was not delivered (${deliveryError ?? "delivery reported failure"})`,
+        );
+      }
+
+      if (delivered && client && (client.ql_hq_company_id || (client.has_quoteleads_platform_account && client.hq_bearer_token))) {
         try {
           await forwardToQuoteLeadsHQ(
             supabaseAdmin,

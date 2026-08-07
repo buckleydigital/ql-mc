@@ -428,27 +428,57 @@ Deno.serve(async (req: Request) => {
       throw new Error(insertError?.message || "Failed to insert lead");
     }
 
-    // Fire-and-forget delivery — log but don't block
+    // Fire-and-forget delivery — log but don't block.
+    // The ql-hq forward is CHAINED off the delivery result, never run beside it.
+    // deliver-webhook is the single authority on whether a lead was delivered:
+    // it returns success:false when the lead is blocked as a duplicate or when
+    // every channel fails, and only increments ql-mc's own counter on success.
+    // Creating the lead in ql-hq fires its delivered-count trigger, so pushing
+    // regardless would inflate the client's account and /admin for leads ql-mc
+    // never delivered.
     if (matchedClient) {
-      supabaseAdmin.functions.invoke("deliver-webhook", {
-        body: { lead_id: inserted.id, client_id: matchedClient.id },
-      }).catch((err: Error) => {
-        console.error("deliver-webhook invocation failed:", err.message);
-      });
+      const wantsHqForward = !!(
+        matchedClient.ql_hq_company_id ||
+        (matchedClient.has_quoteleads_platform_account && matchedClient.hq_bearer_token)
+      );
 
-      // Forward to QuoteLeads HQ if the client has a ql_hq_company_id or a platform bearer token
-      if (matchedClient.ql_hq_company_id || (matchedClient.has_quoteleads_platform_account && matchedClient.hq_bearer_token)) {
-        forwardToQuoteLeadsHQ(
-          {
-            id: inserted.id, name, email, phone: normalisedPhone, postcode, lead_type, source, custom_fields,
-            avg_quarterly_bill: pickBillText(body), purchase_timeline: purchase_timeline || null,
-            is_homeowner: is_homeowner != null ? is_homeowner : null, interested_in: interested_in || null,
-          },
-          matchedClient,
-        ).catch((err: Error) => {
-          console.error("forwardToQuoteLeadsHQ unhandled error:", err.message);
+      const deliveryChain = supabaseAdmin.functions
+        .invoke("deliver-webhook", {
+          body: { lead_id: inserted.id, client_id: matchedClient.id },
+        })
+        .then(async ({ data, error }: { data: unknown; error: Error | null }) => {
+          if (error) {
+            console.error("deliver-webhook invocation failed:", error.message);
+            return;
+          }
+          const result = data as { success?: boolean; blocked?: boolean; reason?: string } | null;
+          if (!result || result.success !== true) {
+            console.warn(
+              `skipping ql-hq forward: lead_id=${inserted.id} client_id=${matchedClient.id} not delivered` +
+                (result?.blocked ? ` (blocked: ${result.reason ?? "duplicate"})` : ""),
+            );
+            return;
+          }
+          if (!wantsHqForward) return;
+          await forwardToQuoteLeadsHQ(
+            {
+              id: inserted.id, name, email, phone: normalisedPhone, postcode, lead_type, source, custom_fields,
+              avg_quarterly_bill: pickBillText(body), purchase_timeline: purchase_timeline || null,
+              is_homeowner: is_homeowner != null ? is_homeowner : null, interested_in: interested_in || null,
+            },
+            matchedClient,
+          );
+        })
+        .catch((err: Error) => {
+          console.error("delivery/ql-hq forward chain failed:", err.message);
         });
-      }
+
+      // Keep the chain alive past the response where the runtime supports it,
+      // otherwise the isolate can be torn down before the forward completes.
+      const runtime = (globalThis as Record<string, unknown>).EdgeRuntime as
+        | { waitUntil?: (p: Promise<unknown>) => void }
+        | undefined;
+      if (runtime?.waitUntil) runtime.waitUntil(deliveryChain);
     }
 
     // STEP 8 — RETURN
