@@ -447,18 +447,6 @@ body::after {
 }
 .qinput:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-dim)}
 
-/* ═══ EMAILS ═══ */
-.email-card{
-  background:var(--s1);border:1px solid var(--bd);
-  border-radius:var(--r2);padding:12px 14px;margin-bottom:7px;
-}
-.email-from{font-family:var(--mono);font-size:9.5px;color:var(--acc);margin-bottom:3px;letter-spacing:.04em}
-.email-subject{font-size:13px;font-weight:500;margin-bottom:5px}
-.email-preview{font-size:11.5px;color:var(--ink2);line-height:1.6;margin-bottom:9px;font-weight:300}
-.ai-draft{background:var(--acc-dim);border:1px solid rgba(79,143,255,.1);border-radius:var(--r);padding:9px 11px;margin-bottom:9px}
-.ai-draft-lbl{font-family:var(--mono);font-size:9px;font-weight:500;color:var(--acc);margin-bottom:4px;text-transform:uppercase;letter-spacing:.09em}
-.ai-draft-txt{font-size:11.5px;line-height:1.6;font-weight:300}
-.email-acts{display:flex;gap:4px;flex-wrap:wrap}
 
 /* ═══ TABLES ═══ */
 .twrap{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -814,8 +802,6 @@ td strong{font-weight:500}
             <button class="btn btn-sm" onclick="quickAdd()">+</button>
           </div>
         </div>
-        <div class="sl" style="margin-top:18px">Flagged Emails <div class="sl-line"></div></div>
-        <div id="email-list"><div class="empty">No flagged emails pending.</div></div>
       </div>
 
       <!-- ══ SALES CRM ══ -->
@@ -2841,7 +2827,7 @@ function closeModal(id) { $(id).classList.remove('open'); }
 document.addEventListener('click', e => { if (e.target.classList.contains('overlay')) e.target.classList.remove('open'); });
 
 async function loadAll() {
-  await Promise.all([loadTasks(), loadEmails(), loadCRM(), loadPPL(), loadManaged(), loadFinance()]);
+  await Promise.all([loadTasks(), loadCRM(), loadPPL(), loadManaged(), loadFinance()]);
   await loadTaskLeadDropdowns();
   loadFileContent();
   populateMapClientDropdown();
@@ -3526,35 +3512,6 @@ async function addTask() {
   closeModal('m-task'); loadTasks(); toast('Task created ✓');
 }
 
-async function loadEmails() {
-  const {data,error} = await db.from('flagged_emails').select('*').eq('status','pending').order('created_at',{ascending:false});
-  if (error) { $('email-list').innerHTML='<div class="empty">Could not load emails.</div>'; return; }
-  renderEmails(data||[]);
-}
-function renderEmails(emails) {
-  const el=$('email-list');
-  if (!emails.length) { el.innerHTML='<div class="empty">No flagged emails pending.</div>'; return; }
-  el.innerHTML=emails.map(e=>`
-    <div class="email-card" id="em-${e.id}">
-      <div class="email-from">${esc(e.from_email||'')}</div>
-      <div class="email-subject">${esc(e.subject||'(no subject)')}</div>
-      <div class="email-preview">${esc((e.body_preview||'').substring(0,200))}…</div>
-      ${e.ai_draft_reply?`<div class="ai-draft"><div class="ai-draft-lbl">AI Draft Reply</div><div class="ai-draft-txt">${esc(e.ai_draft_reply)}</div></div>`:''}
-      <div class="email-acts">
-        <button class="btn btn-xs" style="border-color:rgba(79,143,255,.22);color:var(--acc)" data-email-id="${e.id}" data-action="approved">Approve</button>
-        <button class="btn btn-xs" data-email-id="${e.id}" data-action="edit">Edit</button>
-        <button class="btn btn-red btn-xs" data-email-id="${e.id}" data-action="discarded">Discard</button>
-      </div>
-    </div>`).join('');
-  el.querySelectorAll('button[data-email-id]').forEach(btn => {
-    btn.addEventListener('click', () => actionEmail(btn.dataset.emailId, btn.dataset.action));
-  });
-}
-async function actionEmail(id,status) {
-  const {error}=await db.from('flagged_emails').update({status,actioned_at:now()}).eq('id',id);
-  if (error) { toast('Error: '+error.message,true); return; }
-  $('em-'+id)?.remove(); toast(status==='discarded'?'Discarded':'Approved ✓');
-}
 
 function buildKanban(containerId,stages,prefix) {
   $(containerId).innerHTML=stages.map(s=>`
