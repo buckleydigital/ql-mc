@@ -42,6 +42,14 @@
   --grn:       #2ecc8a;
   --grn-dim:   rgba(46,204,138,.07);
   --amb:       #f5a623;
+  /* Chart palette - validated against the #0f0f12 card surface.
+     Categorical slots are assigned in fixed order and never cycled;
+     status steps are reserved and always ship with a label. */
+  --c-cat1:    #4f8fff;
+  --c-cat2:    #e35d8c;
+  --c-good:    #1fa971;
+  --c-warn:    #c8841b;
+  --c-crit:    #e8455c;
   --font:      'DM Sans', -apple-system, sans-serif;
   --mono:      'DM Mono', monospace;
   --display:   'Syne', sans-serif;
@@ -458,8 +466,18 @@ tbody tr:hover td{background:var(--s2)}
 td strong{font-weight:500}
 
 /* ═══ FINANCE ═══ */
-.chart-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:16px}
-.chart-title{font-family:var(--mono);font-size:9px;color:var(--ink3);font-weight:500;margin-bottom:12px;text-transform:uppercase;letter-spacing:.09em}
+.chart-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:18px 18px 14px}
+.chart-title{font-family:var(--mono);font-size:10px;color:var(--ink3);font-weight:500;margin-bottom:14px;text-transform:uppercase;letter-spacing:.09em}
+/* Height lives on the container, and includes room for the axis labels. */
+.chart-body{position:relative;height:210px}
+.chart-body.tall{height:250px}
+.chart-body.donut{height:190px}
+/* Totals that belong beside a chart rather than inside it as extra bars. */
+.chart-stats{display:flex;gap:22px;flex-wrap:wrap;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--bd)}
+.chart-stat .klabel{margin-bottom:3px}
+.chart-stat .kval{font-size:17px}
+.kval.c-in{color:var(--c-cat1)}
+.kval.c-out{color:var(--c-cat2)}
 
 /* ═══ BADGES ═══ */
 .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
@@ -879,7 +897,7 @@ td strong{font-weight:500}
         <div style="display:flex;gap:14px;margin-bottom:16px;align-items:flex-start;flex-wrap:wrap">
           <div class="chart-card" style="flex:0 0 200px;min-width:160px">
             <div class="chart-title">Client Status Distribution</div>
-            <canvas id="chart-ppl-churn" height="200"></canvas>
+            <div class="chart-body donut"><canvas id="chart-ppl-churn"></canvas></div>
           </div>
           <div id="ppl-churn-breakdown" style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:8px;justify-content:center"></div>
         </div>
@@ -1110,7 +1128,7 @@ td strong{font-weight:500}
         <div style="display:flex;gap:14px;margin-bottom:16px;align-items:flex-start;flex-wrap:wrap">
           <div class="chart-card" style="flex:0 0 200px;min-width:160px">
             <div class="chart-title">Client Status Distribution</div>
-            <canvas id="chart-mg-churn" height="200"></canvas>
+            <div class="chart-body donut"><canvas id="chart-mg-churn"></canvas></div>
           </div>
           <div id="mg-churn-breakdown" style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:8px;justify-content:center"></div>
         </div>
@@ -1402,8 +1420,16 @@ td strong{font-weight:500}
           <div class="kpi"><div class="klabel">Total Managed Rev</div><div class="kval blu" id="fin-mg-rev">-</div><div class="ksub">retainer + custom</div></div>
         </div>
         <div class="g2 mb4">
-          <div class="chart-card"><div class="chart-title">Revenue vs Expenses</div><canvas id="chart-rev" height="160"></canvas></div>
-          <div class="chart-card"><div class="chart-title">CPL by Campaign (Spend Log)</div><canvas id="chart-cpl" height="160"></canvas></div>
+          <div class="chart-card">
+            <div class="chart-title">Money In vs Money Out</div>
+            <div class="chart-stats">
+              <div class="chart-stat"><div class="klabel">Total in</div><div class="kval c-in" id="rev-stat-in">-</div></div>
+              <div class="chart-stat"><div class="klabel">Total out</div><div class="kval c-out" id="rev-stat-out">-</div></div>
+              <div class="chart-stat"><div class="klabel">Net</div><div class="kval" id="rev-stat-net">-</div></div>
+            </div>
+            <div class="chart-body tall"><canvas id="chart-rev"></canvas></div>
+          </div>
+          <div class="chart-card"><div class="chart-title">CPL by Campaign (Spend Log)</div><div class="chart-body tall"><canvas id="chart-cpl"></canvas></div></div>
         </div>
         <div class="sl">Expense Breakdown <div class="sl-line"></div><button class="btn btn-xs btn-p" style="margin-left:8px" onclick="openExpenseModal()">+ Add</button></div>
         <div class="twrap">
@@ -1443,8 +1469,8 @@ td strong{font-weight:500}
           </table>
         </div>
         <div class="g2 mb4" style="margin-top:14px">
-          <div class="chart-card"><div class="chart-title">Revenue: Goal vs Actual</div><canvas id="chart-goal-rev" height="160"></canvas></div>
-          <div class="chart-card"><div class="chart-title">Margin: Goal vs Actual</div><canvas id="chart-goal-margin" height="160"></canvas></div>
+          <div class="chart-card"><div class="chart-title">Revenue: Goal vs Actual</div><div class="chart-body tall"><canvas id="chart-goal-rev"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">Margin: Goal vs Actual</div><div class="chart-body tall"><canvas id="chart-goal-margin"></canvas></div></div>
         </div>
       </div>
 
@@ -5885,63 +5911,115 @@ async function saveGoal(month) {
 }
 
 function renderGoalCharts(rows) {
-  const {grid, tick} = chartDefaults();
   const labels = rows.map(r => r.label);
-  const goalRevs = rows.map(r => r.goal.revenue_goal || 0);
-  const actualRevs = rows.map(r => r.rev);
-  const goalMargins = rows.map(r => r.goal.margin_goal || 0);
-  const actualMargins = rows.map(r => +r.margin.toFixed(1));
 
   if (goalRevChart) goalRevChart.destroy();
   goalRevChart = new Chart($('chart-goal-rev').getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Goal', data: goalRevs, backgroundColor: 'rgba(79,143,255,.1)', borderColor: 'rgba(79,143,255,.5)', borderWidth: 1.5, borderRadius: 3, borderDash: [4,2] },
-        { label: 'Actual', data: actualRevs, backgroundColor: 'rgba(46,204,138,.15)', borderColor: '#2ecc8a', borderWidth: 1.5, borderRadius: 3 }
-      ]
-    },
-    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: tick, font: { family: 'DM Mono', size: 9 } } } },
-      scales: { x: { ticks: { color: tick, font: { family: 'DM Mono', size: 9 } }, grid: { color: grid } }, y: { ticks: { color: tick, font: { family: 'DM Mono', size: 9 }, callback: v => '$' + v.toLocaleString() }, grid: { color: grid } } } }
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Goal',   data:rows.map(r=>r.goal.revenue_goal||0), backgroundColor:CHART.cat2, borderWidth:0, borderRadius:4, borderSkipped:false},
+      {label:'Actual', data:rows.map(r=>r.rev),                  backgroundColor:CHART.cat1,  borderWidth:0, borderRadius:4, borderSkipped:false}
+    ]},
+    options: chartBase({
+      plugins:{legend:chartLegend(),tooltip:{callbacks:{label:c=>' '+c.dataset.label+': $'+Math.round(c.parsed.y).toLocaleString()}}},
+      scales:{y:{beginAtZero:true,ticks:{callback:v=>'$'+v.toLocaleString()}}}
+    })
   });
 
   if (goalMarginChart) goalMarginChart.destroy();
   goalMarginChart = new Chart($('chart-goal-margin').getContext('2d'), {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Goal %', data: goalMargins, borderColor: 'rgba(79,143,255,.6)', borderWidth: 2, borderDash: [6,3], pointRadius: 3, fill: false },
-        { label: 'Actual %', data: actualMargins, borderColor: '#2ecc8a', borderWidth: 2, pointRadius: 4, fill: false }
-      ]
-    },
-    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: tick, font: { family: 'DM Mono', size: 9 } } } },
-      scales: { x: { ticks: { color: tick, font: { family: 'DM Mono', size: 9 } }, grid: { color: grid } }, y: { ticks: { color: tick, font: { family: 'DM Mono', size: 9 }, callback: v => v + '%' }, grid: { color: grid }, min: 0 } } }
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Goal %',   data:rows.map(r=>r.goal.margin_goal||0), borderColor:CHART.cat2, borderWidth:2, borderDash:[5,4], pointRadius:0, pointHoverRadius:5, fill:false, tension:.25},
+      {label:'Actual %', data:rows.map(r=>+r.margin.toFixed(1)),  borderColor:CHART.cat1, borderWidth:2, pointRadius:4, pointBackgroundColor:CHART.cat1, pointBorderColor:'#0f0f12', pointBorderWidth:2, fill:false, tension:.25}
+    ]},
+    options: chartBase({
+      plugins:{legend:chartLegend(),tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+c.parsed.y+'%'}}},
+      scales:{y:{beginAtZero:true,ticks:{callback:v=>v+'%'}}}
+    })
   });
 }
 
+const CHART = {
+  cat1:'#4f8fff', cat2:'#e35d8c',
+  good:'#1fa971', warn:'#c8841b', crit:'#e8455c',
+  // Marks use the solid validated steps. Alpha would composite them into a
+  // different colour than the one that passed the checks, so it is only used
+  // for hover, which carries no meaning.
+  hover: hex => hex + 'cc'
+};
+
 function chartDefaults() {
   const dark=document.documentElement.getAttribute('data-theme')==='dark';
-  return {grid:dark?'#1c1c22':'#dddde8',tick:dark?'#3e3e50':'#9494a8'};
+  return {grid:dark?'#1c1c22':'#e4e4ee',tick:dark?'#6b6b82':'#77778c'};
+}
+
+// Shared axis/legend/tooltip styling. Ticks were 9px and unreadable.
+// Callers pass partial overrides; these are merged into the base rather than
+// replacing whole branches, so an axis override cannot silently drop the
+// shared colours, fonts and tick limits.
+function deepMerge(base, over) {
+  const out = {...base};
+  for (const [k,v] of Object.entries(over||{})) {
+    out[k] = (v && typeof v === 'object' && !Array.isArray(v) && base[k] && typeof base[k] === 'object' && !Array.isArray(base[k]))
+      ? deepMerge(base[k], v) : v;
+  }
+  return out;
+}
+
+function chartBase(extra={}) {
+  const {grid,tick}=chartDefaults();
+  const font={family:'DM Mono',size:11};
+  return deepMerge({
+    responsive:true, maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        backgroundColor:'#141417', borderColor:'#262630', borderWidth:1,
+        titleColor:'#eeeef3', bodyColor:'#8a8aa0', padding:10,
+        titleFont:{family:'DM Mono',size:11}, bodyFont:font,
+        displayColors:true, boxWidth:8, boxHeight:8
+      }
+    },
+    scales:{
+      x:{ticks:{color:tick,font,maxTicksLimit:12},grid:{display:false},border:{color:grid}},
+      y:{ticks:{color:tick,font,maxTicksLimit:6},grid:{color:grid,drawTicks:false},border:{display:false}}
+    }
+  }, extra);
+}
+
+// A legend is required whenever more than one series is plotted.
+function chartLegend() {
+  const {tick}=chartDefaults();
+  return {display:true,position:'bottom',labels:{color:tick,font:{family:'DM Mono',size:11},boxWidth:8,boxHeight:8,usePointStyle:true,pointStyle:'circle',padding:14}};
 }
 function renderChurnChart(canvasId, active, paused, churned, currentChart) {
-  const {tick} = chartDefaults();
   const total = active + paused + churned;
   const canvas = $(canvasId); if (!canvas) return null;
   if (currentChart) currentChart.destroy();
   if (!total) return null;
   return new Chart(canvas.getContext('2d'), {
-    type: 'doughnut',
-    data: {
-      labels: ['Active', 'Paused', 'Churned'],
-      datasets: [{ data: [active, paused, churned],
-        backgroundColor: ['rgba(46,204,138,.5)', 'rgba(245,166,35,.4)', 'rgba(255,69,96,.4)'],
-        borderColor: ['#2ecc8a', '#f5a623', '#ff4560'],
-        borderWidth: 1.5, hoverOffset: 4 }]
+    type:'doughnut',
+    data:{
+      labels:['Active','Paused','Churned'],
+      datasets:[{
+        data:[active,paused,churned],
+        backgroundColor:[CHART.good,CHART.warn,CHART.crit],
+        borderColor:'#0f0f12', borderWidth:2, hoverOffset:6
+      }]
     },
-    options: { responsive: true, maintainAspectRatio: true, cutout: '62%',
-      plugins: { legend: { position: 'bottom', labels: { color: tick, font: { family: 'DM Mono', size: 9 }, padding: 10 } } } }
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'64%',
+      plugins:{
+        legend:{display:true,position:'bottom',labels:{color:chartDefaults().tick,font:{family:'DM Mono',size:11},boxWidth:8,boxHeight:8,usePointStyle:true,pointStyle:'circle',padding:12}},
+        tooltip:{
+          backgroundColor:'#141417',borderColor:'#262630',borderWidth:1,
+          titleColor:'#eeeef3',bodyColor:'#8a8aa0',padding:10,
+          callbacks:{label:c=>' '+c.label+': '+c.parsed+' ('+Math.round(c.parsed/total*100)+'%)'}
+        }
+      }
+    }
   });
 }
 function renderChurnBreakdown(elId, active, paused, churned) {
@@ -5971,24 +6049,77 @@ function renderChurnBreakdown(elId, active, paused, churned) {
     </div>` : '');
 }
 function renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses,pplAdSpend,agAdSpend) {
-  const {grid,tick}=chartDefaults();
-  const totalRev=(pplRev||0)+(mgRetainerRev||0)+(mgCustomRev||0);
-  const totalSpend=(pplAdSpend||0)+(agAdSpend||0)+expenses.reduce((s,e)=>s+(e.amount||0),0);
-  const labels=['PPL Revenue','Managed Retainers','Custom Orders','Ad Spend','Expenses','Total Revenue','Total Spend'];
-  const values=[pplRev,mgRetainerRev,mgCustomRev,(pplAdSpend||0)+(agAdSpend||0),expenses.reduce((s,e)=>s+(e.amount||0),0),totalRev,totalSpend];
-  const colors=['rgba(46,204,138,.15)','rgba(79,143,255,.15)','rgba(79,143,255,.08)','rgba(255,165,0,.12)','rgba(255,69,96,.07)','rgba(46,204,138,.35)','rgba(255,69,96,.2)'];
-  const borders=['#2ecc8a','#4f8fff','rgba(79,143,255,.6)','#ffa500','rgba(255,69,96,.45)','#2ecc8a','rgba(255,69,96,.8)'];
+  const expTotal = expenses.reduce((sum,e)=>sum+(e.amount||0),0);
+  const adTotal  = (pplAdSpend||0)+(agAdSpend||0);
+  const totalRev = (pplRev||0)+(mgRetainerRev||0)+(mgCustomRev||0);
+  const totalOut = adTotal+expTotal;
+
+  // Totals are single numbers, so they read as figures rather than bars.
+  const money = v => '$'+Math.round(v).toLocaleString();
+  const net = totalRev-totalOut;
+  const setTxt=(id,txt,cls)=>{const el=$(id); if(!el)return; el.textContent=txt; if(cls)el.className='kval '+cls;};
+  setTxt('rev-stat-in',  money(totalRev), 'c-in');
+  setTxt('rev-stat-out', money(totalOut), 'c-out');
+  setTxt('rev-stat-net', money(net), net>=0?'grn':'red');
+
+  const rows = [
+    {label:'PPL',      full:'PPL revenue',      value:pplRev||0,        inflow:true},
+    {label:'Retainer', full:'Managed retainer', value:mgRetainerRev||0, inflow:true},
+    {label:'Custom',   full:'Custom orders',    value:mgCustomRev||0,   inflow:true},
+    {label:'Ad spend', full:'Ad spend',         value:adTotal,          inflow:false},
+    {label:'Expenses', full:'Expenses',         value:expTotal,         inflow:false}
+  ];
+
   if (revChart) revChart.destroy();
-  revChart=new Chart($('chart-rev').getContext('2d'),{type:'bar',data:{labels,datasets:[{label:'Amount',data:values,backgroundColor:colors,borderColor:borders,borderWidth:1.5,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9},callback:v=>'$'+v.toLocaleString()},grid:{color:grid}}}}});
+  revChart = new Chart($('chart-rev').getContext('2d'), {
+    type:'bar',
+    data:{
+      labels: rows.map(r=>r.label),
+      datasets:[
+        {label:'Money in',  data:rows.map(r=>r.inflow?r.value:null),  backgroundColor:CHART.cat1, borderWidth:0, borderRadius:4, borderSkipped:false, categoryPercentage:.7, barPercentage:.82},
+        {label:'Money out', data:rows.map(r=>r.inflow?null:r.value),  backgroundColor:CHART.cat2, borderWidth:0, borderRadius:4, borderSkipped:false, categoryPercentage:.7, barPercentage:.82}
+      ]
+    },
+    options: chartBase({
+      plugins:{
+        legend:chartLegend(),
+        tooltip:{callbacks:{
+          title:c=>rows[c[0].dataIndex].full,
+          label:c=>c.parsed.y==null?null:' '+c.dataset.label+': $'+Math.round(c.parsed.y).toLocaleString()
+        }}
+      },
+      scales:{
+        x:{stacked:true,ticks:{maxRotation:0,autoSkip:false}},
+        y:{stacked:true,beginAtZero:true,ticks:{callback:v=>'$'+v.toLocaleString()}}
+      }
+    })
+  });
 }
 function renderCplChart(spendLog) {
-  const {grid,tick}=chartDefaults();
-  // Show CPL per campaign from spend log (spend / leads)
-  const withLeads=spendLog.filter(e=>(e.leads||0)>0).sort((a,b)=>(a.campaign_name||'').localeCompare(b.campaign_name||''));
-  const labels=withLeads.map(e=>(e.campaign_name||'?').slice(0,25));
-  const cpls=withLeads.map(e=>+((e.spend||0)/e.leads).toFixed(2));
+  const withLeads = spendLog.filter(e=>(e.leads||0)>0)
+    .map(e=>({name:(e.campaign_name||'?').slice(0,28), cpl:+((e.spend||0)/e.leads).toFixed(2)}))
+    .sort((a,b)=>b.cpl-a.cpl);
   if (cplChart) cplChart.destroy();
-  cplChart=new Chart($('chart-cpl').getContext('2d'),{type:'bar',data:{labels,datasets:[{label:'CPL by Campaign',data:cpls,backgroundColor:'rgba(79,143,255,.18)',borderColor:'#4f8fff',borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:true,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:tick,font:{family:'DM Mono',size:9},callback:v=>'$'+v},grid:{color:grid}},y:{ticks:{color:tick,font:{family:'DM Mono',size:9}},grid:{color:grid}}}}});
+  cplChart = new Chart($('chart-cpl').getContext('2d'), {
+    type:'bar',
+    data:{
+      labels: withLeads.map(e=>e.name),
+      datasets:[{
+        label:'CPL',
+        data: withLeads.map(e=>e.cpl),
+        backgroundColor: CHART.cat1,
+        borderWidth:0, borderRadius:4, borderSkipped:false, categoryPercentage:.62, barPercentage:.6
+      }]
+    },
+    options: chartBase({
+      indexAxis:'y',
+      plugins:{tooltip:{callbacks:{label:c=>' $'+c.parsed.x.toFixed(2)+' per lead'}}},
+      scales:{
+        x:{beginAtZero:true,ticks:{callback:v=>'$'+v}},
+        y:{grid:{display:false}}
+      }
+    })
+  });
 }
 
 function switchCrmFilter(range, el) {
