@@ -257,6 +257,19 @@ async function deliverSms(
 // internal columns (assigned_client_id, status, delivery_error, delivered_at,
 // delivery_audit_log) and meant any migration silently changed what every
 // client receives. Adding a column here is now a deliberate act.
+// Most CRMs store given and family name separately, and several (Zoho among
+// them) make the surname mandatory. Sending only a combined name forces every
+// integration to add a string-splitting step, so both forms go out.
+function splitName(full: unknown): { first: string; last: string } {
+  const parts = String(full ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { first: "", last: "" };
+  // A single token is treated as the surname, since that is the field CRMs
+  // tend to require.
+  if (parts.length === 1) return { first: "", last: parts[0] };
+  const last = parts.pop() as string;
+  return { first: parts.join(" "), last };
+}
+
 function buildWebhookPayload(lead: Record<string, unknown>): Record<string, unknown> {
   const custom: Record<string, string> = {};
   for (const [label, value] of parseCustomFields(lead.custom_fields)) custom[label] = value;
@@ -267,7 +280,10 @@ function buildWebhookPayload(lead: Record<string, unknown>): Record<string, unkn
     delivered_at: new Date().toISOString(),
     lead: {
       id: lead.id,
+      // `name` stays for anything already mapped against it.
       name: lead.name ?? null,
+      first_name: splitName(lead.name).first || null,
+      last_name: splitName(lead.name).last || null,
       phone: lead.phone ?? null,
       email: lead.email ?? null,
       postcode: lead.postcode ?? null,

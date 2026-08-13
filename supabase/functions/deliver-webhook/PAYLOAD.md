@@ -10,7 +10,9 @@
   "version": "1",
   "delivered_at": "2026-08-09T04:12:33.000Z",
   "lead": {
-    "id": "…", "name": "…", "phone": "…", "email": "…",
+    "id": "…", "name": "Sarah Mitchell",
+    "first_name": "Sarah", "last_name": "Mitchell",
+    "phone": "…", "email": "…",
     "postcode": "…", "suburb": "…", "state": "…", "address": "…",
     "lead_type": "…", "source": "…",
     "is_homeowner": true, "property_type": "…", "roof_type": "…",
@@ -20,6 +22,10 @@
   }
 }
 ```
+
+`name` is the combined form; `first_name` and `last_name` are split from it for
+CRMs that store them separately and often require a surname. A single-word name
+becomes the surname, since that is the field CRMs tend to make mandatory.
 
 Fields are an explicit allowlist. Adding one is a deliberate change to
 `buildWebhookPayload`, so a database migration can never alter what clients
