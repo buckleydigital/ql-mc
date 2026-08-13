@@ -27,7 +27,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { ql_hq_company_id, company_name, email, sms_number, webhook_url, postcodes } = body;
+    const { ql_hq_company_id, company_name, email, sms_number, webhook_url, webhook_auth_enabled, webhook_secret, postcodes } = body;
 
     if (!ql_hq_company_id || typeof ql_hq_company_id !== "string" || !ql_hq_company_id.trim()) {
       return json({ error: "ql_hq_company_id is required" }, 400);
@@ -51,6 +51,8 @@ Deno.serve(async (req: Request) => {
           email: email ?? null,
           sms_number: sms_number ?? null,
           webhook_url: webhook_url ?? null,
+          ...(webhook_auth_enabled !== undefined && { webhook_auth_enabled: webhook_auth_enabled === true }),
+          ...(webhook_secret !== undefined && { webhook_secret: webhook_secret || null }),
           updated_at: new Date().toISOString(),
         },
         { onConflict: "ql_hq_company_id" },

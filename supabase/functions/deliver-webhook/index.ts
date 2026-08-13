@@ -252,35 +252,113 @@ async function deliverSms(
   return { ok: res.ok, status: res.status, body: resBody };
 }
 
+// The payload sent to a client's CRM. This is an explicit allowlist, not the
+// database row: previously the whole ppl_leads record was POSTed, which leaked
+// internal columns (assigned_client_id, status, delivery_error, delivered_at,
+// delivery_audit_log) and meant any migration silently changed what every
+// client receives. Adding a column here is now a deliberate act.
+function buildWebhookPayload(lead: Record<string, unknown>): Record<string, unknown> {
+  const custom: Record<string, string> = {};
+  for (const [label, value] of parseCustomFields(lead.custom_fields)) custom[label] = value;
+
+  const out: Record<string, unknown> = {
+    event: "lead.delivered",
+    version: "1",
+    delivered_at: new Date().toISOString(),
+    lead: {
+      id: lead.id,
+      name: lead.name ?? null,
+      phone: lead.phone ?? null,
+      email: lead.email ?? null,
+      postcode: lead.postcode ?? null,
+      suburb: lead.suburb ?? null,
+      state: lead.state ?? null,
+      address: lead.address ?? null,
+      lead_type: lead.lead_type ?? null,
+      source: lead.source ?? null,
+      is_homeowner: lead.is_homeowner ?? null,
+      property_type: lead.property_type ?? null,
+      roof_type: lead.roof_type ?? null,
+      system_size: lead.system_size ?? null,
+      avg_quarterly_bill: lead.avg_quarterly_bill ?? null,
+      monthly_bill: lead.monthly_bill ?? null,
+      interested_in: lead.interested_in ?? null,
+      purchase_timeline: lead.purchase_timeline ? prettifyChoice(lead.purchase_timeline) : null,
+      // Parsed into labelled fields, matching what the email and SMS paths
+      // send. Previously this went out as a raw JSON string inside JSON.
+      custom_fields: custom,
+    },
+  };
+  return out;
+}
+
+/** Hex HMAC-SHA256 of `body` keyed by `secret`. */
+async function hmacHex(secret: string, body: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(body));
+  return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 async function deliverWebhook(
   supabase: ReturnType<typeof createClient>,
   lead: Record<string, unknown>,
   client: Record<string, unknown>,
 ): Promise<{ ok: boolean; status: number; body: string }> {
   const webhookUrl = client.client_webhook as string;
+  const body = JSON.stringify(buildWebhookPayload(lead));
 
-  const res = await fetch(webhookUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(lead),
-  });
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
 
-  const resBody = (await res.text()).slice(0, 500);
+  // Optional per-client authentication. The signature covers timestamp + body
+  // so a captured request cannot be replayed with different content; the raw
+  // secret is also sent for clients whose CRM cannot compute an HMAC.
+  const authEnabled = client.webhook_auth_enabled === true;
+  const secret = (client.webhook_secret as string | null) || "";
+  if (authEnabled && secret) {
+    const ts = Math.floor(Date.now() / 1000).toString();
+    headers["X-QuoteLeads-Timestamp"] = ts;
+    headers["X-QuoteLeads-Signature"] = "sha256=" + (await hmacHex(secret, ts + "." + body));
+    headers["X-QuoteLeads-Secret"] = secret;
+  }
+
+  // Without a timeout a hung client endpoint holds the function open until the
+  // platform kills it, taking the rest of the delivery with it.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+
+  let ok = false, status = 0, resBody = "";
+  try {
+    const res = await fetch(webhookUrl, { method: "POST", headers, body, signal: controller.signal });
+    ok = res.ok;
+    status = res.status;
+    resBody = (await res.text()).slice(0, 500);
+  } catch (err) {
+    resBody = err instanceof Error
+      ? (err.name === "AbortError" ? "timeout after 15s" : err.message)
+      : "request failed";
+  } finally {
+    clearTimeout(timer);
+  }
 
   await supabase.from("lead_delivery_log").insert([{
     lead_id: lead.id,
     client_id: client.id,
     method: "webhook",
     destination: webhookUrl,
-    message_preview: `POST ${webhookUrl} — full lead JSON payload`,
-    response_code: res.status,
+    // The signed flag is recorded; the secret itself never is.
+    message_preview: `POST ${webhookUrl} - lead.delivered v1${authEnabled && secret ? " (signed)" : ""}`,
+    response_code: status || null,
     response_body: resBody,
-    status: res.ok ? "delivered" : "failed",
-    delivered_at: res.ok ? new Date().toISOString() : null,
+    status: ok ? "delivered" : "failed",
+    delivered_at: ok ? new Date().toISOString() : null,
   }]);
 
-  return { ok: res.ok, status: res.status, body: resBody };
+  return { ok, status, body: resBody };
 }
+
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -383,7 +461,7 @@ Deno.serve(async (req: Request) => {
     if (client.ql_hq_company_id) {
       const { data: dc } = await supabaseAdmin
         .from("delivery_configs")
-        .select("email, sms_number, webhook_url")
+        .select("email, sms_number, webhook_url, webhook_auth_enabled, webhook_secret")
         .eq("ql_hq_company_id", client.ql_hq_company_id as string)
         .maybeSingle();
 
@@ -397,7 +475,17 @@ Deno.serve(async (req: Request) => {
           channelJobs.push(["sms", deliverSms(supabaseAdmin, lead, { ...client, delivery_phone: dc.sms_number }, smsBody)]);
         }
         if (dc.webhook_url) {
-          channelJobs.push(["webhook", deliverWebhook(supabaseAdmin, lead, { ...client, client_webhook: dc.webhook_url })]);
+          channelJobs.push(["webhook", deliverWebhook(supabaseAdmin, lead, {
+            ...client,
+            client_webhook: dc.webhook_url,
+            // A secret set explicitly on the delivery config wins; otherwise
+            // fall back to the one configured on the client in Mission
+            // Control, so setting it there works for linked clients too.
+            webhook_auth_enabled: dc.webhook_secret
+              ? dc.webhook_auth_enabled === true
+              : client.webhook_auth_enabled === true,
+            webhook_secret: dc.webhook_secret || client.webhook_secret,
+          })]);
         }
         const settled = await Promise.allSettled(channelJobs.map(([, p]) => p));
         settled.forEach((r, i) => {

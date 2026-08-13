@@ -1948,6 +1948,20 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">HQ Bearer Token</label><input class="fi" id="ep-hq-bearer-token" type="text" placeholder="Bearer token for QuoteLeads HQ API"></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Integrations</div>
     <div class="frow"><label class="flabel">Client Webhook URL</label><input class="fi" id="ep-client-webhook" type="url" placeholder="https://your-webhook-url/…"></div>
+    <div class="frow"><label class="flabel">Webhook Authentication</label>
+      <select class="fs" id="ep-webhook-auth" onchange="toggleWebhookSecret('ep')">
+        <option value="false">No</option>
+        <option value="true">Yes - sign every request</option>
+      </select>
+    </div>
+    <div class="frow" id="ep-webhook-secret-row" style="display:none">
+      <label class="flabel">Webhook Secret</label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input class="fi" id="ep-webhook-secret" type="text" placeholder="whsec_…" style="flex:1;font-family:var(--mono);font-size:11px">
+        <button type="button" class="btn btn-xs" onclick="genWebhookSecret('ep')">Generate</button>
+      </div>
+      <div style="font-size:10px;color:var(--ink3);line-height:1.6;margin-top:5px">Sent as <span style="font-family:var(--mono)">X-QuoteLeads-Secret</span>, plus an HMAC-SHA256 of <span style="font-family:var(--mono)">timestamp + "." + body</span> as <span style="font-family:var(--mono)">X-QuoteLeads-Signature</span>. Give this value to the client so they can verify the request came from us.</div>
+    </div>
     <div class="frow"><label class="flabel">Has Custom Integration</label>
       <select class="fs" id="ep-has-custom-integration">
         <option value="false">No</option>
@@ -2062,6 +2076,20 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="em-notes"></textarea></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Integrations</div>
     <div class="frow"><label class="flabel">Client Webhook URL</label><input class="fi" id="em-client-webhook" type="url" placeholder="https://your-webhook-url/…"></div>
+    <div class="frow"><label class="flabel">Webhook Authentication</label>
+      <select class="fs" id="em-webhook-auth" onchange="toggleWebhookSecret('em')">
+        <option value="false">No</option>
+        <option value="true">Yes - sign every request</option>
+      </select>
+    </div>
+    <div class="frow" id="em-webhook-secret-row" style="display:none">
+      <label class="flabel">Webhook Secret</label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input class="fi" id="em-webhook-secret" type="text" placeholder="whsec_…" style="flex:1;font-family:var(--mono);font-size:11px">
+        <button type="button" class="btn btn-xs" onclick="genWebhookSecret('em')">Generate</button>
+      </div>
+      <div style="font-size:10px;color:var(--ink3);line-height:1.6;margin-top:5px">Sent as <span style="font-family:var(--mono)">X-QuoteLeads-Secret</span>, plus an HMAC-SHA256 of <span style="font-family:var(--mono)">timestamp + "." + body</span> as <span style="font-family:var(--mono)">X-QuoteLeads-Signature</span>. Give this value to the client so they can verify the request came from us.</div>
+    </div>
     <div class="frow"><label class="flabel">Has Custom Integration</label>
       <select class="fs" id="em-has-custom-integration">
         <option value="false">No</option>
@@ -2821,6 +2849,24 @@ function renderSubtabs(panel) {
   if (typeof IS_REP !== 'undefined' && IS_REP) {
     strip.querySelectorAll('.admin-only-field').forEach(e => e.style.display = 'none');
   }
+}
+
+// Webhook auth: the secret field only appears when authentication is on.
+function toggleWebhookSecret(prefix) {
+  const on = $(prefix + '-webhook-auth')?.value === 'true';
+  const row = $(prefix + '-webhook-secret-row');
+  if (row) row.style.display = on ? '' : 'none';
+  if (on && $(prefix + '-webhook-secret') && !$(prefix + '-webhook-secret').value.trim()) {
+    genWebhookSecret(prefix);
+  }
+}
+
+function genWebhookSecret(prefix) {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  const el = $(prefix + '-webhook-secret');
+  if (el) el.value = 'whsec_' + hex;
 }
 
 function nav(panel, el) {
@@ -4710,6 +4756,9 @@ async function openEditClient(type,c) {
     setVal('ep-has-ql-account',c.has_quoteleads_platform_account?'true':'false');
     setVal('ep-hq-bearer-token',c.hq_bearer_token||'');
     setVal('ep-client-webhook',c.client_webhook||'');
+    setVal('ep-webhook-auth',c.webhook_auth_enabled?'true':'false');
+    setVal('ep-webhook-secret',c.webhook_secret||'');
+    toggleWebhookSecret('ep');
     setVal('ep-has-custom-integration',c.has_custom_integration?'true':'false');
     toggleDeliveryFields('ep');
     setText('edit-ppl-sub',c.company_name||'');
@@ -4736,6 +4785,9 @@ async function openEditClient(type,c) {
     setVal('em-payments-made',c.payments_made||0);
     setVal('em-notes',c.notes);
     setVal('em-client-webhook',c.client_webhook||'');
+    setVal('em-webhook-auth',c.webhook_auth_enabled?'true':'false');
+    setVal('em-webhook-secret',c.webhook_secret||'');
+    toggleWebhookSecret('em');
     setVal('em-has-custom-integration',c.has_custom_integration?'true':'false');
     setVal('em-ord-date',new Date().toISOString().split('T')[0]);
     setText('edit-mg-sub',c.company_name||'');
@@ -4794,7 +4846,7 @@ async function updateClient(type) {
     const _monthlyCap=$('ep-monthly-cap').value!==''?parseInt($('ep-monthly-cap').value):null;
     const _epMetaCampaignIds=getCheckedCampaigns('ep-campaign-picker');
     const _activeNiches=$('ep-active-niches').value.split(',').map(s=>s.trim()).filter(Boolean);
-    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,active_niches:_activeNiches,lead_price:_price,meta_cpl:_metaCpl,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,leads_scrubbed:_scrubbed,stage:$('ep-stage').value,cx_score:$('ep-cx').value!==''?parseInt($('ep-cx').value):null,notes:$('ep-notes').value.trim(),postcodes:_postcodes,weekly_cap:_weeklyCap,monthly_cap:_monthlyCap,meta_campaign_ids:_epMetaCampaignIds.length?_epMetaCampaignIds:null,delivery_method:$('ep-delivery-method').value,delivery_email:$('ep-delivery-email').value.trim()||null,delivery_phone:$('ep-delivery-phone').value.trim()||null,custom_fields:_customFields,ql_hq_company_id:$('ep-ql-hq-id').value.trim()||null,has_quoteleads_platform_account:$('ep-has-ql-account').value==='true',hq_bearer_token:$('ep-hq-bearer-token').value.trim()||null,client_webhook:$('ep-client-webhook').value.trim()||null,has_custom_integration:$('ep-has-custom-integration').value==='true',meta_cap_paused:false,meta_cap_paused_at:null,meta_cap_pause_reason:null,updated_at:now()};
+    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,active_niches:_activeNiches,lead_price:_price,meta_cpl:_metaCpl,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,leads_scrubbed:_scrubbed,stage:$('ep-stage').value,cx_score:$('ep-cx').value!==''?parseInt($('ep-cx').value):null,notes:$('ep-notes').value.trim(),postcodes:_postcodes,weekly_cap:_weeklyCap,monthly_cap:_monthlyCap,meta_campaign_ids:_epMetaCampaignIds.length?_epMetaCampaignIds:null,delivery_method:$('ep-delivery-method').value,delivery_email:$('ep-delivery-email').value.trim()||null,delivery_phone:$('ep-delivery-phone').value.trim()||null,custom_fields:_customFields,ql_hq_company_id:$('ep-ql-hq-id').value.trim()||null,has_quoteleads_platform_account:$('ep-has-ql-account').value==='true',hq_bearer_token:$('ep-hq-bearer-token').value.trim()||null,client_webhook:$('ep-client-webhook').value.trim()||null,webhook_auth_enabled:$('ep-webhook-auth').value==='true'&&!!$('ep-webhook-secret').value.trim(),webhook_secret:$('ep-webhook-secret').value.trim()||null,has_custom_integration:$('ep-has-custom-integration').value==='true',meta_cap_paused:false,meta_cap_paused_at:null,meta_cap_pause_reason:null,updated_at:now()};
     const {count:deliveredCount}=await db.from('ppl_order_log').select('id',{count:'exact',head:true}).eq('client_id',id).eq('status','delivered');
     if (!(deliveredCount>0)) d.pct_sold=parseFloat($('ep-pct').value)||null;
     if (!d.company_name) { toast('Company name required',true); return; }
@@ -4807,7 +4859,7 @@ async function updateClient(type) {
     const _todayStr=new Date().toISOString().split('T')[0];
     const _payDates={};_activeMo.forEach(m=>{_payDates[m]=(_prevPayDates&&_prevPayDates[m])||_todayStr;});
     const _emStage=$('em-stage').value;
-    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),retainer_payment_dates:JSON.stringify(_payDates),stage:_emStage,onboarding_sub_stage:_emStage==='onboarding'?($('em-onboarding-sub-stage').value||null):null,active_status:_emStage==='active'?($('em-active-status').value||null):null,cx_score:$('em-cx').value!==''?parseInt($('em-cx').value):null,start_date:$('em-start').value||null,ads_first_live_date:$('em-ads-live').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),client_webhook:$('em-client-webhook').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
+    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),retainer_payment_dates:JSON.stringify(_payDates),stage:_emStage,onboarding_sub_stage:_emStage==='onboarding'?($('em-onboarding-sub-stage').value||null):null,active_status:_emStage==='active'?($('em-active-status').value||null):null,cx_score:$('em-cx').value!==''?parseInt($('em-cx').value):null,start_date:$('em-start').value||null,ads_first_live_date:$('em-ads-live').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),client_webhook:$('em-client-webhook').value.trim()||null,webhook_auth_enabled:$('em-webhook-auth').value==='true'&&!!$('em-webhook-secret').value.trim(),webhook_secret:$('em-webhook-secret').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   }
   const {error}=await db.from('clients').update(d).eq('id',id);
