@@ -27,7 +27,23 @@ receive. Bump `version` if the shape changes incompatibly.
 
 ## Authentication
 
-Off by default. When enabled for a client, three headers are added:
+Set per client in Mission Control. Three modes.
+
+**`none`** - no auth headers. Fine for Zapier/Make catch hooks and open endpoints.
+
+**`header`** - the credential the client's CRM issued us, sent verbatim under a
+header name they specify. This is the usual case, since most CRMs authenticate
+the caller.
+
+```
+Authorization: Bearer <their token>
+X-API-Key: <their key>
+```
+
+The header name is restricted to letters, numbers and hyphens; anything else is
+dropped rather than sent, so a value can never break the request framing.
+
+**`signature`** - for clients who want to verify the request came from us:
 
 | Header | Value |
 |---|---|
@@ -35,12 +51,8 @@ Off by default. When enabled for a client, three headers are added:
 | `X-QuoteLeads-Signature` | `sha256=` + HMAC-SHA256 of `timestamp + "." + rawBody`, keyed by the secret |
 | `X-QuoteLeads-Secret` | the raw secret |
 
-Clients that can compute an HMAC should verify the signature — it also proves
-the body was not modified in transit. Clients that cannot (most no-code tools)
-can compare `X-QuoteLeads-Secret` instead.
-
-Verify the signature against the **raw request body**, before any JSON parsing
-or re-serialisation.
+Verify against the **raw request body**, before any JSON parsing or
+re-serialisation.
 
 ```js
 const crypto = require('crypto');
@@ -54,6 +66,9 @@ function verify(rawBody, headers, secret) {
   return Math.abs(Date.now() / 1000 - Number(ts)) < 300;  // reject replays
 }
 ```
+
+Whichever mode is used, the credential itself is never written to
+`lead_delivery_log` - only which mode was applied.
 
 ## Behaviour
 

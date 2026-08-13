@@ -312,16 +312,32 @@ async function deliverWebhook(
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
 
-  // Optional per-client authentication. The signature covers timestamp + body
-  // so a captured request cannot be replayed with different content; the raw
-  // secret is also sent for clients whose CRM cannot compute an HMAC.
-  const authEnabled = client.webhook_auth_enabled === true;
+  // Per-client authentication.
+  //   header    - the credential the client's CRM issued us, sent verbatim
+  //               under whatever header name that CRM expects. This is the
+  //               common case: most CRMs authenticate the caller.
+  //   signature - our HMAC-SHA256 over timestamp + "." + body, so the client
+  //               can verify the request came from us and was not altered.
   const secret = (client.webhook_secret as string | null) || "";
-  if (authEnabled && secret) {
+  // Fall back to the old boolean for any row not yet migrated to a mode.
+  const mode = (client.webhook_auth_mode as string | null) ||
+    (client.webhook_auth_enabled === true ? "signature" : "none");
+  let authApplied = "none";
+
+  if (mode === "header" && secret) {
+    const headerName = ((client.webhook_auth_header as string | null) || "Authorization").trim();
+    // A header name with control characters or a colon would let a value break
+    // the request framing, so anything malformed is dropped rather than sent.
+    if (/^[A-Za-z0-9-]+$/.test(headerName)) {
+      headers[headerName] = secret;
+      authApplied = "header:" + headerName;
+    }
+  } else if (mode === "signature" && secret) {
     const ts = Math.floor(Date.now() / 1000).toString();
     headers["X-QuoteLeads-Timestamp"] = ts;
     headers["X-QuoteLeads-Signature"] = "sha256=" + (await hmacHex(secret, ts + "." + body));
     headers["X-QuoteLeads-Secret"] = secret;
+    authApplied = "signature";
   }
 
   // Without a timeout a hung client endpoint holds the function open until the
@@ -349,7 +365,8 @@ async function deliverWebhook(
     method: "webhook",
     destination: webhookUrl,
     // The signed flag is recorded; the secret itself never is.
-    message_preview: `POST ${webhookUrl} - lead.delivered v1${authEnabled && secret ? " (signed)" : ""}`,
+    // Records which auth was applied, never the credential itself.
+    message_preview: `POST ${webhookUrl} - lead.delivered v1 (auth: ${authApplied})`,
     response_code: status || null,
     response_body: resBody,
     status: ok ? "delivered" : "failed",
@@ -461,7 +478,7 @@ Deno.serve(async (req: Request) => {
     if (client.ql_hq_company_id) {
       const { data: dc } = await supabaseAdmin
         .from("delivery_configs")
-        .select("email, sms_number, webhook_url, webhook_auth_enabled, webhook_secret")
+        .select("email, sms_number, webhook_url, webhook_auth_mode, webhook_auth_header, webhook_secret")
         .eq("ql_hq_company_id", client.ql_hq_company_id as string)
         .maybeSingle();
 
@@ -481,10 +498,12 @@ Deno.serve(async (req: Request) => {
             // A secret set explicitly on the delivery config wins; otherwise
             // fall back to the one configured on the client in Mission
             // Control, so setting it there works for linked clients too.
-            webhook_auth_enabled: dc.webhook_secret
-              ? dc.webhook_auth_enabled === true
-              : client.webhook_auth_enabled === true,
-            webhook_secret: dc.webhook_secret || client.webhook_secret,
+            // A credential set on the delivery config wins; otherwise fall
+            // back to the client row so configuring it in Mission Control
+            // works for linked clients too.
+            ...(dc.webhook_secret
+              ? { webhook_auth_mode: dc.webhook_auth_mode, webhook_auth_header: dc.webhook_auth_header, webhook_secret: dc.webhook_secret }
+              : { webhook_auth_mode: client.webhook_auth_mode, webhook_auth_header: client.webhook_auth_header, webhook_secret: client.webhook_secret }),
           })]);
         }
         const settled = await Promise.allSettled(channelJobs.map(([, p]) => p));
