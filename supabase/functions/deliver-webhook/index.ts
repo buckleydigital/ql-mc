@@ -540,83 +540,82 @@ Deno.serve(async (req: Request) => {
     if (!usedDeliveryConfig) {
     const deliveryMethod = client.delivery_method || (client.delivery_email ? "email" : null);
 
-    switch (deliveryMethod) {
-      case "email": {
+    // Each stored delivery_method maps to a set of channels. Combinations
+    // exist so a client can receive a lead in their CRM and by email at the
+    // same time, which is the usual arrangement while a new CRM integration
+    // beds in. The four original values map to exactly what they always did.
+    const METHOD_CHANNELS: Record<string, string[]> = {
+      email:               ["email"],
+      phone:               ["sms"],
+      email_and_phone:     ["email", "sms"],
+      crm:                 ["webhook"],
+      email_and_crm:       ["email", "webhook"],
+      phone_and_crm:       ["sms", "webhook"],
+      email_phone_and_crm: ["email", "sms", "webhook"],
+    };
+
+    const channels = METHOD_CHANNELS[deliveryMethod as string];
+
+    if (!channels) {
+      // Unset or unrecognised: fall back to email when we hold an address,
+      // otherwise there is nowhere to send it.
+      if (client.delivery_email) {
         const r = await deliverEmail(supabaseAdmin, lead, client, subject, htmlBody, emailPreview);
         methods.push({ method: "email", status: r.ok ? "delivered" : "failed", ...(!r.ok && { error: r.body }) });
         if (r.ok) anySuccess = true;
         else firstError = firstError || r.body;
-        break;
+      } else {
+        await supabaseAdmin.from("lead_delivery_log").insert([{
+          lead_id,
+          client_id,
+          method: "none",
+          status: "failed",
+          response_body: "no delivery method configured",
+        }]);
+        methods.push({ method: "none", status: "failed", error: "no delivery method configured" });
+        firstError = "no delivery method configured";
+        return jsonResponse({ success: false, lead_id, methods }, 400);
       }
-      case "phone": {
-        const r = await deliverSms(supabaseAdmin, lead, client, smsBody);
-        methods.push({ method: "sms", status: r.ok ? "delivered" : "failed", ...(!r.ok && { error: r.body }) });
-        if (r.ok) anySuccess = true;
-        else firstError = firstError || r.body;
-        break;
-      }
-      case "email_and_phone": {
-        const [emailR, smsR] = await Promise.allSettled([
-          deliverEmail(supabaseAdmin, lead, client, subject, htmlBody, emailPreview),
-          deliverSms(supabaseAdmin, lead, client, smsBody),
-        ]);
-        if (emailR.status === "fulfilled") {
-          methods.push({ method: "email", status: emailR.value.ok ? "delivered" : "failed", ...(!emailR.value.ok && { error: emailR.value.body }) });
-          if (emailR.value.ok) anySuccess = true;
-          else firstError = firstError || emailR.value.body;
-        } else {
-          methods.push({ method: "email", status: "failed", error: emailR.reason?.message });
-          firstError = firstError || emailR.reason?.message;
-        }
-        if (smsR.status === "fulfilled") {
-          methods.push({ method: "sms", status: smsR.value.ok ? "delivered" : "failed", ...(!smsR.value.ok && { error: smsR.value.body }) });
-          if (smsR.value.ok) anySuccess = true;
-          else firstError = firstError || smsR.value.body;
-        } else {
-          methods.push({ method: "sms", status: "failed", error: smsR.reason?.message });
-          firstError = firstError || smsR.reason?.message;
-        }
-        break;
-      }
-      case "crm": {
-        if (!client.client_webhook) {
-          await supabaseAdmin.from("lead_delivery_log").insert([{
-            lead_id,
-            client_id,
-            method: "webhook",
-            status: "failed",
-            response_body: "no webhook URL configured",
-          }]);
-          methods.push({ method: "webhook", status: "failed", error: "no webhook URL configured" });
-          firstError = "no webhook URL configured";
-        } else {
-          const r = await deliverWebhook(supabaseAdmin, lead, client);
-          methods.push({ method: "webhook", status: r.ok ? "delivered" : "failed", ...(!r.ok && { error: r.body }) });
-          if (r.ok) anySuccess = true;
-          else firstError = firstError || r.body;
-        }
-        break;
-      }
-      default: {
-        if (client.delivery_email) {
-          const r = await deliverEmail(supabaseAdmin, lead, client, subject, htmlBody, emailPreview);
-          methods.push({ method: "email", status: r.ok ? "delivered" : "failed", ...(!r.ok && { error: r.body }) });
-          if (r.ok) anySuccess = true;
-          else firstError = firstError || r.body;
-        } else {
-          await supabaseAdmin.from("lead_delivery_log").insert([{
-            lead_id,
-            client_id,
-            method: "none",
-            status: "failed",
-            response_body: "no delivery method configured",
-          }]);
-          methods.push({ method: "none", status: "failed", error: "no delivery method configured" });
-          firstError = "no delivery method configured";
-          return jsonResponse({ success: false, lead_id, methods }, 400);
+    } else {
+      const jobs: Array<[string, Promise<{ ok: boolean; status: number; body: string }>]> = [];
+      for (const channel of channels) {
+        if (channel === "email") {
+          jobs.push(["email", deliverEmail(supabaseAdmin, lead, client, subject, htmlBody, emailPreview)]);
+        } else if (channel === "sms") {
+          jobs.push(["sms", deliverSms(supabaseAdmin, lead, client, smsBody)]);
+        } else if (channel === "webhook") {
+          // A CRM channel with no URL is logged as a failure rather than
+          // skipped silently, so it shows up when someone forgets to set it.
+          if (!client.client_webhook) {
+            await supabaseAdmin.from("lead_delivery_log").insert([{
+              lead_id,
+              client_id,
+              method: "webhook",
+              status: "failed",
+              response_body: "no webhook URL configured",
+            }]);
+            methods.push({ method: "webhook", status: "failed", error: "no webhook URL configured" });
+            firstError = firstError || "no webhook URL configured";
+          } else {
+            jobs.push(["webhook", deliverWebhook(supabaseAdmin, lead, client)]);
+          }
         }
       }
-    } // end switch
+
+      // Channels run concurrently; one failing must not stop the others.
+      const settled = await Promise.allSettled(jobs.map(([, promise]) => promise));
+      settled.forEach((result, i) => {
+        const [name] = jobs[i];
+        if (result.status === "fulfilled") {
+          methods.push({ method: name, status: result.value.ok ? "delivered" : "failed", ...(!result.value.ok && { error: result.value.body }) });
+          if (result.value.ok) anySuccess = true;
+          else firstError = firstError || result.value.body;
+        } else {
+          methods.push({ method: name, status: "failed", error: result.reason?.message });
+          firstError = firstError || result.reason?.message;
+        }
+      });
+    }
     } // end if (!usedDeliveryConfig)
 
     // STEP 5 — UPDATE PPL_LEADS TABLE

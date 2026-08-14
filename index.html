@@ -1754,6 +1754,9 @@ td strong{font-weight:500}
         <option value="phone">Phone (SMS)</option>
         <option value="email_and_phone">Email &amp; Phone</option>
         <option value="crm">CRM (Custom)</option>
+        <option value="email_and_crm">Email &amp; CRM</option>
+        <option value="phone_and_crm">Phone (SMS) &amp; CRM</option>
+        <option value="email_phone_and_crm">Email, Phone &amp; CRM</option>
       </select>
     </div>
     <div class="frow" id="ppl-dm-email-row"><label class="flabel">Delivery Email</label><input class="fi" id="ppl-delivery-email" type="email" placeholder="leads@client.com"></div>
@@ -1924,6 +1927,9 @@ td strong{font-weight:500}
         <option value="phone">Phone (SMS)</option>
         <option value="email_and_phone">Email &amp; Phone</option>
         <option value="crm">CRM (Custom)</option>
+        <option value="email_and_crm">Email &amp; CRM</option>
+        <option value="phone_and_crm">Phone (SMS) &amp; CRM</option>
+        <option value="email_phone_and_crm">Email, Phone &amp; CRM</option>
       </select>
     </div>
     <div class="frow" id="ep-dm-email-row"><label class="flabel">Delivery Email</label><input class="fi" id="ep-delivery-email" type="email" placeholder="leads@client.com"></div>
@@ -4912,9 +4918,11 @@ function updateMgSubStageVisibility() {
 }
 function toggleDeliveryFields(prefix) {
   const method = $(prefix === 'ep' ? 'ep-delivery-method' : 'ppl-delivery-method')?.value || 'email';
-  const showEmail = method === 'email' || method === 'email_and_phone';
-  const showPhone = method === 'phone' || method === 'email_and_phone';
-  const showCrm   = method === 'crm';
+  // Derived from the method name so a new combination cannot leave a field
+  // hidden, which would silently drop the address or number it needs.
+  const showEmail = method.startsWith('email');
+  const showPhone = method.includes('phone');
+  const showCrm   = method.includes('crm');
   const emailRow = $(prefix + '-dm-email-row');
   const phoneRow = $(prefix + '-dm-phone-row');
   const crmRow   = $(prefix + '-dm-crm-row');
