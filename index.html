@@ -2917,7 +2917,7 @@ async function sendTestLead(prefix) {
   show('', 'var(--ink3)');
   try {
     const { data: sess } = await db.auth.getSession();
-    const res = await fetch(`${_ep}/functions/v1/test-webhook`, {
+    const res = await fetch(`${_ep}/functions/v1/send-test-lead`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sess?.session?.access_token}` },
       body: JSON.stringify({

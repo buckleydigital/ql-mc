@@ -1,3 +1,5 @@
+// Named send-test-lead rather than test-webhook: the ql-mc project already has
+// a deployed test-webhook that predates this and is not in the repo.
 // Fires a realistic sample lead at a webhook URL so a client can capture the
 // payload shape in Zapier/Make before any real lead is delivered.
 //
