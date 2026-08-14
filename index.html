@@ -1969,6 +1969,19 @@ td strong{font-weight:500}
       </div>
       <div style="font-size:10px;color:var(--ink3);line-height:1.6;margin-top:5px" id="ep-webhook-hint"></div>
     </div>
+    <div class="frow">
+      <label class="flabel">Send Test Lead <span style="font-size:9.5px;color:var(--ink3);font-weight:300">fires a sample payload at the URL above so the client can map fields</span></label>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <select class="fs" id="ep-test-niche" style="flex:0 0 190px">
+          <option value="solar">Solar Residential</option>
+          <option value="battery-retrofit">Battery Retrofit</option>
+          <option value="roofing">Roofing</option>
+          <option value="hvac">HVAC</option>
+        </select>
+        <button type="button" class="btn btn-sm" id="ep-test-btn" onclick="sendTestLead('ep')">Send test lead</button>
+      </div>
+      <div id="ep-test-result" style="font-size:10.5px;line-height:1.6;margin-top:7px"></div>
+    </div>
     <div class="frow"><label class="flabel">Has Custom Integration</label>
       <select class="fs" id="ep-has-custom-integration">
         <option value="false">No</option>
@@ -2102,6 +2115,19 @@ td strong{font-weight:500}
         <button type="button" class="btn btn-xs" id="em-webhook-gen" onclick="genWebhookSecret('em')" style="display:none">Generate</button>
       </div>
       <div style="font-size:10px;color:var(--ink3);line-height:1.6;margin-top:5px" id="em-webhook-hint"></div>
+    </div>
+    <div class="frow">
+      <label class="flabel">Send Test Lead <span style="font-size:9.5px;color:var(--ink3);font-weight:300">fires a sample payload at the URL above so the client can map fields</span></label>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <select class="fs" id="em-test-niche" style="flex:0 0 190px">
+          <option value="solar">Solar Residential</option>
+          <option value="battery-retrofit">Battery Retrofit</option>
+          <option value="roofing">Roofing</option>
+          <option value="hvac">HVAC</option>
+        </select>
+        <button type="button" class="btn btn-sm" id="em-test-btn" onclick="sendTestLead('em')">Send test lead</button>
+      </div>
+      <div id="em-test-result" style="font-size:10.5px;line-height:1.6;margin-top:7px"></div>
     </div>
     <div class="frow"><label class="flabel">Has Custom Integration</label>
       <select class="fs" id="em-has-custom-integration">
@@ -2868,6 +2894,49 @@ function renderSubtabs(panel) {
 //   none      - nothing
 //   header    - the credential their CRM issued us, under a header they name
 //   signature - our own secret, which we generate and they verify
+// Fires a sample lead at whatever is currently typed in the webhook fields,
+// so a URL can be tested before the client record is saved.
+async function sendTestLead(prefix) {
+  const url = $(prefix + '-client-webhook')?.value.trim();
+  const out = $(prefix + '-test-result');
+  const btn = $(prefix + '-test-btn');
+  const show = (msg, colour) => { if (out) { out.innerHTML = msg; out.style.color = colour; } };
+
+  if (!url) { show('Enter a webhook URL above first.', 'var(--amb)'); return; }
+
+  const mode = $(prefix + '-webhook-auth')?.value || 'none';
+  const cred = $(prefix + '-webhook-secret')?.value.trim() || '';
+
+  btn.disabled = true; btn.textContent = 'Sending…';
+  show('', 'var(--ink3)');
+  try {
+    const { data: sess } = await db.auth.getSession();
+    const res = await fetch(`${_ep}/functions/v1/test-webhook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sess?.session?.access_token}` },
+      body: JSON.stringify({
+        url,
+        niche: $(prefix + '-test-niche')?.value || 'solar',
+        auth_mode: mode,
+        auth_header: $(prefix + '-webhook-header')?.value.trim() || 'Authorization',
+        secret: cred
+      })
+    });
+    const data = await res.json();
+    if (data.error) { show('✕ ' + esc(data.error), 'var(--red)'); return; }
+    if (data.ok) {
+      const hdrs = (data.sent_headers || []).length ? ' · sent ' + data.sent_headers.map(esc).join(', ') : ' · no auth headers';
+      show('✓ Delivered — HTTP ' + data.status + esc(hdrs) + '<br><span style="color:var(--ink3)">The client can now map the fields on their side.</span>', 'var(--grn)');
+    } else {
+      show('✕ Failed — ' + (data.status ? 'HTTP ' + data.status + ': ' : '') + esc(String(data.response || '').slice(0, 200)), 'var(--red)');
+    }
+  } catch (e) {
+    show('✕ ' + esc(e.message || 'Request failed'), 'var(--red)');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Send test lead';
+  }
+}
+
 function toggleWebhookSecret(prefix) {
   const mode = $(prefix + '-webhook-auth')?.value || 'none';
   const show = (id, on) => { const el = $(id); if (el) el.style.display = on ? '' : 'none'; };
