@@ -943,6 +943,36 @@ td strong{font-weight:500}
         </div>
       </div>
 
+      <!-- ══ TURNKEY LEAD ENGINES ══ -->
+      <div class="panel" id="panel-tle">
+        <div class="ph">
+          <div class="ph-left"><h1>Turnkey Lead Engines</h1><p>Done-for-you lead engines · build, run and hand over</p></div>
+          <div class="ph-right">
+            <button class="btn btn-sm" onclick="loadTLE()">↻ Refresh</button>
+            <button class="btn btn-p btn-sm" onclick="openModal('m-tle')">+ Add engine</button>
+          </div>
+        </div>
+        <div class="kg c4 mb4">
+          <div class="kpi"><div class="klabel">Live Engines</div><div class="kval blu" id="tle-active">-</div></div>
+          <div class="kpi"><div class="klabel">Onboarding</div><div class="kval" id="tle-onboarding">-</div><div class="ksub">build in progress</div></div>
+          <div class="kpi"><div class="klabel">Monthly Retainer</div><div class="kval grn" id="tle-mrr">-</div><div class="ksub">live engines</div></div>
+          <div class="kpi"><div class="klabel">Ad Budget / mo</div><div class="kval" id="tle-budget">-</div><div class="ksub">live engines</div></div>
+          <div class="kpi"><div class="klabel">Total Engines</div><div class="kval" id="tle-total">-</div><div class="ksub">all-time</div></div>
+          <div class="kpi"><div class="klabel">Churn Rate</div><div class="kval red" id="tle-churn-rate">-</div><div class="ksub">churned ÷ total</div></div>
+          <div class="kpi"><div class="klabel">Retention Rate</div><div class="kval grn" id="tle-retention-rate">-</div><div class="ksub">live + paused ÷ total</div></div>
+          <div class="kpi"><div class="klabel">Avg CX</div><div class="kval" id="tle-cx">-</div><div class="ksub">out of 10</div></div>
+        </div>
+        <div class="sl">Engine Pipeline <div class="sl-line"></div></div>
+        <div class="kanban-wrap"><div class="kanban" id="tle-kanban"></div></div>
+        <div class="sl">All Engines <div class="sl-line"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Client</th><th>Stage</th><th>CX</th><th>Niche</th><th>Retainer / mo</th><th>Ad Budget / mo</th><th>Target Leads / mo</th><th>Price / Lead</th><th>Live Since</th><th></th></tr></thead>
+            <tbody id="tle-tbody"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- ══ BULK SMS / BROADCAST ══ -->
       <div class="panel" id="panel-broadcast">
         <div class="ph">
@@ -1809,6 +1839,72 @@ td strong{font-weight:500}
     <div class="macts">
       <button class="btn" onclick="closeModal('m-managed')">Cancel</button>
       <button class="btn btn-p" onclick="saveClient('managed')">Save client</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="m-tle">
+  <div class="modal">
+    <h2>Add Turnkey Lead Engine</h2><div class="msub">Done-for-you lead engine client</div>
+    <div class="frow"><label class="flabel">Company Name</label><input class="fi" id="tle-co" placeholder="e.g. Apex Solar Group"></div>
+    <div class="frow"><label class="flabel">Contact Name</label><input class="fi" id="tle-cn" placeholder="e.g. Dana Reid"></div>
+    <div class="frow"><label class="flabel">Email</label><input class="fi" id="tle-em" type="email" placeholder="dana@example.com"></div>
+    <div class="frow"><label class="flabel">Phone</label><input class="fi" id="tle-ph" placeholder="04xx xxx xxx"></div>
+    <div class="frow"><label class="flabel">Niche</label>
+      <select class="fs" id="tle-niche">
+        <option>Solar Residential</option><option>Solar Commercial</option><option>Battery Storage</option><option>Battery Retrofit</option><option>EV Charger</option><option>HVAC</option><option>Roofing - Restorations</option><option>Roofing - Replacements</option><option>Renovation - Kitchens</option><option>Renovation - Bathrooms</option><option>Renovation - Decks</option><option>Renovation - Fencing</option><option>Carpentry</option><option>Other</option>
+      </select>
+    </div>
+    <div class="frow"><label class="flabel">Monthly Retainer (AUD)</label><input class="fi" id="tle-fee" type="number" placeholder="e.g. 2500"></div>
+    <div class="frow"><label class="flabel">Ad Budget (AUD/mo)</label><input class="fi" id="tle-budget" type="number" placeholder="e.g. 6000"></div>
+    <div class="frow"><label class="flabel">Target Leads / mo</label><input class="fi" id="tle-target" type="number" placeholder="e.g. 120"></div>
+    <div class="frow"><label class="flabel">Price / Lead (AUD) <span style="font-size:9.5px;color:var(--ink3);font-weight:300">optional - internal benchmark</span></label><input class="fi" id="tle-price" type="number" placeholder="e.g. 85"></div>
+    <div class="frow"><label class="flabel">Stage</label>
+      <select class="fs" id="tle-stage">
+        <option value="onboarding">Onboarding</option>
+        <option value="active">Live</option>
+        <option value="paused">Paused</option><option value="churned">Churned</option>
+      </select>
+    </div>
+    <div class="frow"><label class="flabel">CX Score <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10 - client experience rating</span></label><input class="fi" id="tle-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
+    <div class="frow"><label class="flabel">Live Since</label><input class="fi" id="tle-start" type="date"></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-tle')">Cancel</button>
+      <button class="btn btn-p" onclick="saveTleClient()">Save engine</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="m-edit-tle">
+  <div class="modal">
+    <h2>Edit Turnkey Lead Engine</h2><div class="msub" id="edit-tle-sub"></div>
+    <input type="hidden" id="etle-id">
+    <div class="frow"><label class="flabel">Company Name</label><input class="fi" id="etle-co"></div>
+    <div class="frow"><label class="flabel">Contact Name</label><input class="fi" id="etle-cn"></div>
+    <div class="frow"><label class="flabel">Email</label><input class="fi" id="etle-em" type="email"></div>
+    <div class="frow"><label class="flabel">Phone</label><input class="fi" id="etle-ph"></div>
+    <div class="frow"><label class="flabel">Niche</label>
+      <select class="fs" id="etle-niche">
+        <option>Solar Residential</option><option>Solar Commercial</option><option>Battery Storage</option><option>Battery Retrofit</option><option>EV Charger</option><option>HVAC</option><option>Roofing - Restorations</option><option>Roofing - Replacements</option><option>Renovation - Kitchens</option><option>Renovation - Bathrooms</option><option>Renovation - Decks</option><option>Renovation - Fencing</option><option>Carpentry</option><option>Other</option>
+      </select>
+    </div>
+    <div class="frow"><label class="flabel">Monthly Retainer (AUD)</label><input class="fi" id="etle-fee" type="number"></div>
+    <div class="frow"><label class="flabel">Ad Budget (AUD/mo)</label><input class="fi" id="etle-budget" type="number"></div>
+    <div class="frow"><label class="flabel">Target Leads / mo</label><input class="fi" id="etle-target" type="number"></div>
+    <div class="frow"><label class="flabel">Price / Lead (AUD)</label><input class="fi" id="etle-price" type="number"></div>
+    <div class="frow"><label class="flabel">Stage</label>
+      <select class="fs" id="etle-stage">
+        <option value="onboarding">Onboarding</option>
+        <option value="active">Live</option>
+        <option value="paused">Paused</option><option value="churned">Churned</option>
+      </select>
+    </div>
+    <div class="frow"><label class="flabel">CX Score</label><input class="fi" id="etle-cx" type="number" min="0" max="10" step="1"></div>
+    <div class="frow"><label class="flabel">Live Since</label><input class="fi" id="etle-start" type="date"></div>
+    <div class="macts">
+      <button class="btn btn-red" onclick="deleteTleClient()">Delete</button>
+      <button class="btn" onclick="closeModal('m-edit-tle')">Cancel</button>
+      <button class="btn btn-p" onclick="updateTleClient()">Save changes</button>
     </div>
   </div>
 </div>
@@ -2774,6 +2870,7 @@ window.addEventListener('load', () => {
   buildKanban('crm-kanban', CRM_STAGES, 'crm');
   buildKanban('ppl-kanban', PPL_STAGES, 'ppl');
   buildKanban('mg-kanban',  MG_STAGES,  'mg');
+  buildKanban('tle-kanban', TLE_STAGES, 'tle');
   // PS kanban built on login (after auth determines account type)
 });
 
@@ -2857,7 +2954,8 @@ const PANEL_GROUPS = {
   ]},
   ppl: {label:'Clients', members:[
     {panel:'ppl',     label:'PPL Clients'},
-    {panel:'managed', label:'Managed Ads'}
+    {panel:'managed', label:'Managed Ads'},
+    {panel:'tle',     label:'Turnkey Lead Engines'}
   ]},
   'sales-conv': {label:'Messaging', members:[
     {panel:'sales-conv', label:'Conversations'},
@@ -2992,6 +3090,7 @@ function nav(panel, el) {
   renderSubtabs(panel);
   if (panel === 'files') { loadFileContent(); loadTemplateClientDropdown(); }
   if (panel === 'ppl') { populateMapClientDropdown(); }
+  if (panel === 'tle') loadTLE();
   if (panel === 'cpl') loadCplEditorPanel();
   if (panel === 'broadcast') loadBroadcast();
   if (panel === 'pcal') loadPcal();
@@ -3048,7 +3147,7 @@ function closeModal(id) { $(id).classList.remove('open'); }
 document.addEventListener('click', e => { if (e.target.classList.contains('overlay')) e.target.classList.remove('open'); });
 
 async function loadAll() {
-  await Promise.all([loadTasks(), loadCRM(), loadPPL(), loadManaged(), loadFinance()]);
+  await Promise.all([loadTasks(), loadCRM(), loadPPL(), loadManaged(), loadTLE(), loadFinance()]);
   await loadTaskLeadDropdowns();
   loadFileContent();
   populateMapClientDropdown();
@@ -3775,7 +3874,7 @@ async function drop(e,prefix,newStage) {
   if (error) { toast('Move failed: '+error.message,true); return; }
   toast('→ ' + stageLabel(newStage));
   draggedId=null;draggedPrefix=null;
-  if (prefix==='crm') loadCRM(); else if (prefix==='ppl') loadPPL(); else loadManaged();
+  if (prefix==='crm') loadCRM(); else if (prefix==='ppl') loadPPL(); else if (prefix==='tle') loadTLE(); else loadManaged();
 }
 
 const CRM_STAGES=[{id:'new_lead',label:'New Lead'},{id:'no_answer',label:'No Answer'},{id:'call_back',label:'Call-Back/Booked'},{id:'proposal',label:'Proposal'},{id:'closed_won',label:'Closed Won'},{id:'closed_lost',label:'Closed Lost'}];
@@ -4755,6 +4854,145 @@ async function logPplOrder() {
   loadPPL();
 }
 
+
+/* ═══ TURNKEY LEAD ENGINES ═══
+   Done-for-you engines live in the same `clients` table under type='tle', so
+   they sit alongside PPL and Managed without a schema of their own. */
+const TLE_STAGES=[{id:'onboarding',label:'Onboarding'},{id:'active',label:'Live'},{id:'paused',label:'Paused'},{id:'churned',label:'Churned'}];
+let tleChurnChart=null;
+async function loadTLE() {
+  const {data,error}=await db.from('clients').select('*').eq('type','tle').order('created_at',{ascending:false});
+  if (error) { $('tle-tbody').innerHTML=`<tr><td colspan="10" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
+  renderTLE(data||[]);
+}
+function renderTLE(clients) {
+  const live=clients.filter(c=>c.stage==='active');
+  const onboarding=clients.filter(c=>c.stage==='onboarding');
+  const paused=clients.filter(c=>c.stage==='paused');
+  const churned=clients.filter(c=>c.stage==='churned');
+  const money=n=>'$'+Math.round(n).toLocaleString();
+  setText('tle-active',live.length||'-');
+  setText('tle-onboarding',onboarding.length||'-');
+  const mrr=live.reduce((s,c)=>s+(c.management_fee||0),0);
+  const budget=live.reduce((s,c)=>s+(c.monthly_budget||0),0);
+  setText('tle-mrr',mrr?money(mrr):'-');
+  setText('tle-budget',budget?money(budget):'-');
+  setText('tle-total',clients.length||'-');
+  setText('tle-churn-rate',clients.length?(churned.length/clients.length*100).toFixed(1)+'%':'-');
+  setText('tle-retention-rate',clients.length?((live.length+paused.length)/clients.length*100).toFixed(1)+'%':'-');
+  const scored=clients.filter(c=>c.cx_score!=null);
+  setText('tle-cx',scored.length?(scored.reduce((s,c)=>s+c.cx_score,0)/scored.length).toFixed(1):'-');
+
+  TLE_STAGES.forEach(s=>{
+    const col=$('tle-col-'+s.id),cnt=$('tlec-'+s.id);
+    const sl=clients.filter(c=>c.stage===s.id);
+    if (cnt) cnt.textContent=sl.length;
+    if (!col) return;
+    sl.forEach(c=>{ CLIENT_CACHE[c.id]=c; });
+    col.innerHTML=sl.map(c=>`
+      <div class="kcard" id="kc-tle-${esc(String(c.id))}" data-client-id="${esc(String(c.id))}" data-client-type="tle">
+        <div class="kcard-name">${esc(c.company_name)}</div>
+        <div class="kcard-meta">${esc(c.niche||'')}${c.target_leads_month?' · '+c.target_leads_month+' leads/mo target':''}</div>
+        ${c.cx_score!=null?`<div style="font-size:9px;font-family:var(--mono);margin-top:2px;color:${c.cx_score>=8?'var(--grn)':c.cx_score>=5?'var(--amb)':'var(--red)'}">CX ${c.cx_score}/10</div>`:''}
+        ${c.phone?`<div class="kcard-phone">${esc(c.phone)}</div>`:''}
+        ${c.management_fee?`<div class="kcard-val">${money(c.management_fee)}/mo</div>`:''}
+        ${c.monthly_budget?`<div style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-top:2px">Ad budget ${money(c.monthly_budget)}/mo</div>`:''}
+      </div>`).join('');
+    col.querySelectorAll('.kcard').forEach(card=>{
+      const id=card.dataset.clientId;
+      initCardDrag(card,id,'tle');
+      card.addEventListener('click',()=>{ if (CLIENT_CACHE[id]) openEditTle(CLIENT_CACHE[id]); });
+    });
+  });
+
+  const tb=$('tle-tbody');
+  if (!clients.length) { tb.innerHTML='<tr><td colspan="10" class="empty">No lead engines yet.</td></tr>'; return; }
+  const stageOrder=s=>s==='active'?0:s==='onboarding'?1:s==='paused'?2:3;
+  tb.innerHTML=[...clients].sort((a,b)=>stageOrder(a.stage)-stageOrder(b.stage)).map(c=>`
+    <tr data-client-id="${esc(String(c.id))}" data-client-type="tle" class="client-row" style="cursor:pointer">
+      <td><strong>${esc(c.company_name)}</strong>${c.contact_name?`<div style="font-size:10px;color:var(--ink3)">${esc(c.contact_name)}</div>`:''}</td>
+      <td><span class="badge ${stageBadge(c.stage)}">${c.stage==='active'?'Live':stageLabel(c.stage)}</span></td>
+      <td>${c.cx_score!=null?c.cx_score+'/10':'-'}</td>
+      <td>${esc(c.niche||'-')}</td>
+      <td>${c.management_fee?money(c.management_fee):'-'}</td>
+      <td>${c.monthly_budget?money(c.monthly_budget):'-'}</td>
+      <td>${c.target_leads_month||'-'}</td>
+      <td>${c.lead_price?'$'+Number(c.lead_price).toFixed(0):'-'}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--ink3)">${c.start_date||'-'}</td>
+      <td><button class="btn btn-xs" onclick="event.stopPropagation();openEditTle(CLIENT_CACHE['${esc(String(c.id))}'])">Edit</button></td>
+    </tr>`).join('');
+  clients.forEach(c=>{ CLIENT_CACHE[c.id]=c; });
+  tb.querySelectorAll('.client-row').forEach(row=>{
+    row.addEventListener('click',()=>{ const c=CLIENT_CACHE[row.dataset.clientId]; if (c) openEditTle(c); });
+  });
+}
+function tleForm(prefix) {
+  const num=id=>$(id).value!==''?parseFloat($(id).value):null;
+  const int=id=>$(id).value!==''?parseInt($(id).value):null;
+  return {
+    type:'tle',
+    company_name:$(prefix+'-co').value.trim(),
+    contact_name:$(prefix+'-cn').value.trim()||null,
+    email:$(prefix+'-em').value.trim()||null,
+    phone:$(prefix+'-ph').value.trim()||null,
+    niche:$(prefix+'-niche').value,
+    management_fee:num(prefix+'-fee')||0,
+    monthly_budget:num(prefix+'-budget')||0,
+    target_leads_month:int(prefix+'-target'),
+    lead_price:num(prefix+'-price'),
+    stage:$(prefix+'-stage').value,
+    cx_score:int(prefix+'-cx'),
+    start_date:$(prefix+'-start').value||null
+  };
+}
+async function saveTleClient() {
+  const d=tleForm('tle');
+  if (!d.company_name) { toast('Company name required',true); return; }
+  d.created_at=now();
+  const {error}=await db.from('clients').insert([d]);
+  if (error) { toast('DB error: '+error.message,true); return; }
+  ['tle-co','tle-cn','tle-em','tle-ph','tle-fee','tle-budget','tle-target','tle-price','tle-cx','tle-start'].forEach(id=>{ if($(id))$(id).value=''; });
+  closeModal('m-tle'); toast('Engine saved ✓');
+  loadTLE();
+}
+function openEditTle(c) {
+  if (!c) return;
+  setVal('etle-id',c.id);
+  setVal('etle-co',c.company_name||'');
+  setVal('etle-cn',c.contact_name||'');
+  setVal('etle-em',c.email||'');
+  setVal('etle-ph',c.phone||'');
+  setVal('etle-niche',c.niche||'Solar Residential');
+  setVal('etle-fee',c.management_fee??'');
+  setVal('etle-budget',c.monthly_budget??'');
+  setVal('etle-target',c.target_leads_month??'');
+  setVal('etle-price',c.lead_price??'');
+  setVal('etle-stage',c.stage||'onboarding');
+  setVal('etle-cx',c.cx_score??'');
+  setVal('etle-start',c.start_date||'');
+  const sub=$('edit-tle-sub'); if (sub) sub.textContent=c.company_name||'';
+  openModal('m-edit-tle');
+}
+async function updateTleClient() {
+  const id=$('etle-id').value;
+  const d=tleForm('etle');
+  if (!d.company_name) { toast('Company name required',true); return; }
+  delete d.type;
+  d.updated_at=now();
+  const {error}=await db.from('clients').update(d).eq('id',id);
+  if (error) { toast('DB error: '+error.message,true); return; }
+  closeModal('m-edit-tle'); toast('Engine updated ✓');
+  loadTLE();
+}
+async function deleteTleClient() {
+  const id=$('etle-id').value;
+  if (!confirm('Delete this lead engine? This cannot be undone.')) return;
+  const {error}=await db.from('clients').delete().eq('id',id);
+  if (error) { toast('DB error: '+error.message,true); return; }
+  closeModal('m-edit-tle'); toast('Engine deleted');
+  loadTLE();
+}
+
 const MG_STAGES=[{id:'onboarding',label:'Onboarding'},{id:'active',label:'Active'},{id:'paused',label:'Paused'},{id:'churned',label:'Churned'}];
 const MG_ONBOARDING_SUB_STAGES=['Paid & Signed','Form Filled','Meta/Google Access Granted','Assets Provided & Previews Pending','Previews Accepted'];
 const MG_ACTIVE_STATUSES=['Ads Live','Ads Paused (Self Paused)','Ads Paused (Billing Issue)','Ads Scaling (+20% every 3-5 days)','Churned'];
@@ -4763,7 +5001,7 @@ async function loadManaged() {
     db.from('clients').select('*').eq('type','managed').order('created_at',{ascending:false}),
     db.from('managed_order_log').select('*').order('order_date',{ascending:false})
   ]);
-  if (error) { $('mg-tbody').innerHTML=`<tr><td colspan="9" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
+  if (error) { $('mg-tbody').innerHTML=`<tr><td colspan="10" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
   renderManaged(data||[], orderData||[]);
 }
 function renderManaged(clients, orderLog=[]) {
