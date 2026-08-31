@@ -1971,7 +1971,7 @@ td strong{font-weight:500}
       <button class="btn btn-red btn-sm admin-only-field" onclick="deleteLead()">Delete</button>
       <div style="flex:1"></div>
       <button class="btn" onclick="closeModal('m-edit-lead')">Cancel</button>
-      <button class="btn btn-p admin-only-field" onclick="updateLead()">Save changes</button>
+      <button class="btn btn-p" id="el-save" onclick="updateLead()">Save changes</button>
     </div>
   </div>
 </div>
@@ -4073,7 +4073,21 @@ function checkConvertBanner() {
 }
 function openEditLead(l) {
   setVal('el-id',l.id);setVal('el-name',l.name);setVal('el-company',l.company);
-  setVal('el-email',l.email);setVal('el-phone',l.phone);setVal('el-stage',l.stage);
+  setVal('el-email',l.email);setVal('el-phone',l.phone);
+  // Legacy stages (qualified / onboarding / proposal_sent) predate the six
+  // kanban columns and are still on real rows. Setting a <select> to a value it
+  // has no option for leaves it blank, and saving would then write an empty
+  // stage - so carry the current value in as an option and let it round-trip.
+  const stageSel = $('el-stage');
+  if (stageSel) {
+    stageSel.querySelectorAll('option[data-legacy]').forEach(o => o.remove());
+    if (l.stage && !Array.from(stageSel.options).some(o => o.value === l.stage)) {
+      const o = document.createElement('option');
+      o.value = l.stage; o.textContent = stageLabel(l.stage); o.dataset.legacy = '1';
+      stageSel.appendChild(o);
+    }
+  }
+  setVal('el-stage',l.stage);
   setVal('el-type',l.lead_type||'ppl');setVal('el-value',l.value);
   setVal('el-source',l.source);setVal('el-notes',l.notes);
   setVal('el-contactable',l.contactable===true?'true':l.contactable===false?'false':'');
@@ -4084,10 +4098,14 @@ function openEditLead(l) {
   setVal('el-next-followup', l.next_followup || '');
   setText('edit-lead-sub',(l.name||'')+(l.company?' · '+l.company:''));
   if (!IS_REP) ensureRepOptions().then(() => setVal('el-owner', l.owner_id || ''));
-  // Reps view lead details read-only - they change stage via drag, nothing else.
-  ['el-name','el-company','el-email','el-phone','el-stage','el-type','el-source','el-notes','el-contactable','el-last-contact','el-next-followup'].forEach(id => {
+  // Reps view lead details read-only apart from Stage, which they may change
+  // here as well as by dragging the card (drag needs a mouse - on a phone the
+  // modal is the only way).
+  ['el-name','el-company','el-email','el-phone','el-type','el-source','el-notes','el-contactable','el-last-contact','el-next-followup'].forEach(id => {
     const e = $(id); if (e) e.disabled = IS_REP;
   });
+  const saveBtn = $('el-save');
+  if (saveBtn) saveBtn.textContent = IS_REP ? 'Save stage' : 'Save changes';
   checkConvertBanner();
   openModal('m-edit-lead');
 }
@@ -4138,9 +4156,17 @@ async function convertLead(targetType) {
   }, 800);
 }
 async function updateLead() {
-  if (IS_REP) { closeModal('m-edit-lead'); return; }   // reps are view-only
   const id=$('el-id').value;
   const stage=$('el-stage').value;
+  if (IS_REP) {
+    // Stage and nothing else. Enforced server-side, not here: the leads UPDATE
+    // policy blocks reps outright, so this guarded RPC is the only write they
+    // can make - it re-checks that the caller is a rep who owns the lead.
+    const {error}=await db.rpc('rep_update_lead_stage',{p_lead_id:id,p_stage:stage});
+    if (error) { toast('Error: '+error.message,true); return; }
+    closeModal('m-edit-lead'); loadCRM(); toast('→ '+stageLabel(stage));
+    return;
+  }
   const cRaw=$('el-contactable').value;
   const autoContactable=['call_back','proposal','closed_won'].includes(stage);
   const contactable=autoContactable?true:cRaw==='true'?true:cRaw==='false'?false:null;
