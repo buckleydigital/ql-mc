@@ -52,6 +52,87 @@ Deno.serve(async (req: Request) => {
     const body = await req.json()
     const { action } = body
 
+    // ── action: create_pipeline_lead (callback request on the public site) ───
+    // ql-hq's callback-request forwards the funnel enquiry here so it lands on
+    // the Sales Pipeline board immediately, instead of only emailing contact@.
+    // ql-hq still sends that email; this is the pipeline half only.
+    if (action === 'create_pipeline_lead') {
+      const name     = String(body.name ?? '').trim()
+      const company  = String(body.company ?? '').trim()
+      const email    = String(body.email ?? '').trim().toLowerCase()
+      const phoneRaw = String(body.phone ?? '').trim()
+      const postcode = String(body.postcode ?? '').trim()
+      const source   = String(body.source ?? 'quoteleads.com.au').trim()
+      const campaign = String(body.campaign ?? '').trim()
+      const phone    = normalisePhone(phoneRaw)
+
+      if (!name || (!email && !phone)) {
+        return json({ error: 'name and an email or phone are required' }, 400)
+      }
+
+      // The funnel's campaign choices onto ql-mc's niche vocabulary. The exact
+      // answer is kept in the notes, so nothing the visitor picked is lost.
+      const NICHE: Record<string, string> = {
+        solar: 'solar', solar_battery: 'solar',
+        battery_retrofit: 'battery_retrofit', commercial_solar: 'solar',
+      }
+      const niche = NICHE[campaign] ?? 'solar'
+      const today = new Date().toISOString().split('T')[0]
+
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      )
+
+      const notes = [
+        `Callback requested via ${source}.`,
+        campaign ? `Campaign wanted: ${campaign}.` : null,
+        postcode ? `Service area: ${postcode}.` : null,
+        '$2,500 one-off build + first 30 days management, then $600/mo optional.',
+      ].filter(Boolean).join('\n')
+
+      // A double-tap on the button, or a second try minutes later, should land
+      // on the existing card rather than give a rep the same lead twice.
+      let existingId: string | null = null
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      for (const [col, val] of [['email', email], ['phone', phone]] as const) {
+        if (!val || existingId) continue
+        const { data } = await supabase
+          .from('leads').select('id')
+          .eq(col, val)
+          .not('stage', 'in', '(closed_won,closed_lost)')
+          .gte('created_at', since)
+          .order('created_at', { ascending: false })
+          .limit(1)
+        existingId = data?.[0]?.id ?? null
+      }
+
+      if (existingId) {
+        await supabase.from('leads').update({
+          contactable: true, next_followup: today, updated_at: new Date().toISOString(),
+        }).eq('id', existingId)
+        return json({ ok: true, lead_id: existingId, duplicate: true })
+      }
+
+      const { data, error } = await supabase.from('leads').insert([{
+        name,
+        company:       company || null,
+        email:         email || null,
+        phone,
+        stage:         'new_lead',
+        lead_type:     'managed',
+        niche,
+        value:         600,
+        source:        'inbound',
+        notes,
+        contactable:   true,
+        next_followup: today,
+      }]).select('id').single()
+      if (error) return json({ error: error.message }, 500)
+
+      return json({ ok: true, lead_id: data.id, duplicate: false })
+    }
+
     // ── action: scrub_lead (dispute approved in ql-hq) ───────────────────────
     if (action === 'scrub_lead') {
       const { ql_hq_company_id, phone, name } = body as {

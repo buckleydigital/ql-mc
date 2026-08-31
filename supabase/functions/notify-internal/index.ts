@@ -25,27 +25,6 @@ function buildEmailHtml(title: string, rows: string, note?: string): string {
 </div></body></html>`;
 }
 
-function handleCallbackRequest(data: Record<string, unknown>): { subject: string; html: string } {
-  const who = String(data.company || data.name || "—");
-  const subject = `${data.repeat ? "↻ Repeat callback" : "☎ Callback requested"} — ${who}`;
-
-  let rows = "";
-  if (data.name) rows += row("Contact", esc(String(data.name)));
-  if (data.company) rows += row("Business", esc(String(data.company)));
-  if (data.phone) rows += row("Phone", `<a href="tel:${esc(String(data.phone))}" style="color:#4f8fff">${esc(String(data.phone))}</a>`);
-  if (data.email) rows += row("Email", `<a href="mailto:${esc(String(data.email))}" style="color:#4f8fff">${esc(String(data.email))}</a>`);
-  if (data.service_area) rows += row("Service Area", esc(String(data.service_area)));
-  if (data.campaign) rows += row("Campaign Wanted", esc(String(data.campaign)));
-  if (data.page) rows += row("Source Page", esc(String(data.page)));
-
-  const note = data.repeat
-    ? "This business already had an open lead — the existing pipeline card has been updated and re-flagged for a call today."
-    : "A new lead is on the Sales Pipeline board under New Lead, flagged for a call today.";
-
-  const html = buildEmailHtml("Callback Request", rows, note);
-  return { subject, html };
-}
-
 function handleOrderDelivered(data: Record<string, unknown>): { subject: string; html: string } {
   const subject = `✓ Order Complete — ${data.company_name} · ${data.leads_qty} leads`;
   const leadsQty = Number(data.leads_qty ?? 0);
@@ -109,8 +88,6 @@ Deno.serve(async (req: Request) => {
 
     if (type === "order_delivered") {
       ({ subject, html } = handleOrderDelivered(data));
-    } else if (type === "callback_request") {
-      ({ subject, html } = handleCallbackRequest(data));
     } else if (type === "payment_due") {
       ({ subject, html } = handlePaymentDue(data));
     } else {
