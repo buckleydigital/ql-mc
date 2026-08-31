@@ -21,3 +21,9 @@ verify_jwt = false
 verify_jwt = false
 # Called by ql-hq twilio-inbound-sms (super-admin company only) using x-api-secret
 # header authentication to mirror agency AI SMS threads into Sales Conversations.
+
+[functions.callback-request]
+verify_jwt = false
+# Public marketing-site callback form (ql-site branded-solar-lead-system) posts
+# here with no session. Writes the enquiry into the sales pipeline (public.leads)
+# using the service role key.
