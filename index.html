@@ -943,6 +943,38 @@ td strong{font-weight:500}
         </div>
       </div>
 
+      <!-- ══ SALES EMAIL TEMPLATES ══ -->
+      <div class="panel" id="panel-emailtpl">
+        <div class="ph">
+          <div class="ph-left"><h1>Email Templates</h1><p>The info and follow-up emails reps send from a lead</p></div>
+          <div class="ph-right"><button class="btn btn-sm" onclick="loadEmailTemplates()">↻ Refresh</button></div>
+        </div>
+        <div style="padding:12px 14px;border:1px solid var(--bd);border-radius:var(--r);background:var(--s1);margin-bottom:18px;font-size:12px;color:var(--ink2);line-height:1.7">
+          Placeholders are filled in when a rep opens the draft:
+          <span style="font-family:var(--mono);color:var(--acc)">{first_name}</span> (first word of the lead's name, so Jeff Jones becomes Jeff),
+          <span style="font-family:var(--mono);color:var(--acc)">{company_name}</span>,
+          <span style="font-family:var(--mono);color:var(--acc)">{rep_name}</span> and
+          <span style="font-family:var(--mono);color:var(--acc)">{rep_email}</span>.
+          Anything with no value is left out rather than printed as an empty gap.
+        </div>
+
+        <div class="sl">Info Email <div class="sl-line"></div></div>
+        <div class="frow"><label class="flabel">Subject</label><input class="fi" id="tpl-info-subject"></div>
+        <div class="frow"><label class="flabel">Body</label><textarea class="fta" id="tpl-info-body" style="min-height:300px;line-height:1.6"></textarea></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:22px">
+          <button class="btn btn-p btn-sm" onclick="saveEmailTemplate('info')">Save info template</button>
+          <span id="tpl-info-note" style="font-size:11px;color:var(--ink3)"></span>
+        </div>
+
+        <div class="sl">Follow-Up Email <div class="sl-line"></div></div>
+        <div class="frow"><label class="flabel">Subject</label><input class="fi" id="tpl-followup-subject"></div>
+        <div class="frow"><label class="flabel">Body</label><textarea class="fta" id="tpl-followup-body" style="min-height:240px;line-height:1.6"></textarea></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-p btn-sm" onclick="saveEmailTemplate('followup')">Save follow-up template</button>
+          <span id="tpl-followup-note" style="font-size:11px;color:var(--ink3)"></span>
+        </div>
+      </div>
+
       <!-- ══ HIRING PIPELINE ══ -->
       <div class="panel" id="panel-hiring">
         <div class="ph">
@@ -1339,8 +1371,8 @@ td strong{font-weight:500}
         <div class="sl">Team <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Rep</th><th>Email</th><th>Status</th><th>Assigned</th><th>Open</th><th>Won</th><th>Calls</th><th>Pickup</th><th>Close</th><th></th></tr></thead>
-            <tbody id="rep-tbody"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
+            <thead><tr><th>Rep</th><th>Email</th><th>Reply-To</th><th>Status</th><th>Assigned</th><th>Open</th><th>Won</th><th>Calls</th><th>Pickup</th><th>Close</th><th></th></tr></thead>
+            <tbody id="rep-tbody"><tr><td colspan="11" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1649,9 +1681,23 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Name</label><input class="fi" id="rep-name" placeholder="e.g. Jordan Lee"></div>
     <div class="frow"><label class="flabel">Email</label><input class="fi" id="rep-email" type="email" placeholder="jordan@quoteleads.com.au"></div>
     <div class="frow"><label class="flabel">Password</label><input class="fi" id="rep-pass" type="text" placeholder="min 8 characters"></div>
+    <div class="frow"><label class="flabel">Reply-To Email <span style="font-size:9.5px;color:var(--ink3);font-weight:300">optional - defaults to their login email</span></label><input class="fi" id="rep-replyto" type="email" placeholder="jordan@quoteleads.com.au"></div>
     <div class="macts">
       <button class="btn" onclick="closeModal('m-rep')">Cancel</button>
       <button class="btn btn-p" onclick="createRep()">Create rep</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="m-rep-edit">
+  <div class="modal">
+    <h2>Edit Rep</h2><div class="msub" id="rep-edit-sub">-</div>
+    <input type="hidden" id="rep-edit-uid">
+    <div class="frow"><label class="flabel">Name</label><input class="fi" id="rep-edit-name"></div>
+    <div class="frow"><label class="flabel">Reply-To Email <span style="font-size:9.5px;color:var(--ink3);font-weight:300">used on sales emails they send - blank falls back to their login email</span></label><input class="fi" id="rep-edit-replyto" type="email"></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-rep-edit')">Cancel</button>
+      <button class="btn btn-p" onclick="saveRepEdit()">Save changes</button>
     </div>
   </div>
 </div>
@@ -1926,6 +1972,22 @@ td strong{font-weight:500}
   </div>
 </div>
 
+<div class="overlay" id="m-send-email">
+  <div class="modal">
+    <h2 id="se-title">Send Info</h2><div class="msub" id="se-sub"></div>
+    <input type="hidden" id="se-lead-id">
+    <input type="hidden" id="se-kind">
+    <div class="frow"><label class="flabel">To</label><input class="fi" id="se-to" disabled></div>
+    <div class="frow"><label class="flabel">Reply-To <span style="font-size:9.5px;color:var(--ink3);font-weight:300">replies come back to you</span></label><input class="fi" id="se-replyto" disabled></div>
+    <div class="frow"><label class="flabel">Subject</label><input class="fi" id="se-subject"></div>
+    <div class="frow"><label class="flabel">Message <span style="font-size:9.5px;color:var(--ink3);font-weight:300">edit for this lead if you want - the template is unchanged</span></label><textarea class="fta" id="se-body" style="min-height:280px;font-family:var(--font);line-height:1.6"></textarea></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-send-email')">Cancel</button>
+      <button class="btn btn-p" id="se-send" onclick="sendSalesEmail()">Send email</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="m-edit-lead">
   <div class="modal">
     <h2>Edit Lead</h2><div class="msub" id="edit-lead-sub"></div>
@@ -1985,6 +2047,12 @@ td strong{font-weight:500}
       <select class="fs" id="el-owner"><option value="">- Unassigned</option></select>
     </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="el-notes"></textarea></div>
+    <div class="sl" style="margin-top:4px">Emails <div class="sl-line"></div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
+      <button class="btn btn-sm" id="el-send-info" onclick="openSendEmail('info')">Send Info</button>
+      <button class="btn btn-sm" id="el-send-followup" onclick="openSendEmail('followup')" style="display:none">Follow Up</button>
+      <span id="el-email-note" style="font-size:11px;color:var(--ink3)"></span>
+    </div>
     <div class="macts">
       <button class="btn btn-red btn-sm admin-only-field" onclick="deleteLead()">Delete</button>
       <div style="flex:1"></div>
@@ -2976,7 +3044,8 @@ const PANEL_GROUPS = {
   ]},
   'sales-conv': {label:'Messaging', members:[
     {panel:'sales-conv', label:'Conversations'},
-    {panel:'broadcast',  label:'Bulk SMS', adminOnly:true}
+    {panel:'broadcast',  label:'Bulk SMS', adminOnly:true},
+    {panel:'emailtpl',   label:'Email Templates', adminOnly:true}
   ]},
   salesreps: {label:'Team', members:[
     {panel:'salesreps', label:'Sales Reps'},
@@ -3116,6 +3185,7 @@ function nav(panel, el) {
   if (panel === 'sales-conv') loadSalesConversations();
   if (panel === 'invoices') loadInvoices();
   if (panel === 'goals') loadGoals();
+  if (panel === 'emailtpl') loadEmailTemplates();
   if (panel === 'hiring') loadHiring();
   if (panel === 'salesreps') loadReps();
   if (panel === 'payrates') loadPayRates();
@@ -4084,6 +4154,152 @@ function renderCRM() {
   });
   renderPager('crm-pager', crmPage, allLeads.length, p => { crmPage = p; renderCRM(); });
 }
+/* ═══ SALES EMAILS ═══
+   Two templates, shared across the team, merged against the lead when a rep
+   opens the draft. The rep can edit the draft for that one lead; the template
+   is untouched. send-sales-email does the sending, the ownership check, the
+   once-only guard and the stamp on the lead - none of which a browser should
+   be trusted with. */
+let _emailTpls = null;
+
+// Jeff Jones → Jeff. Anything that is only a company name stays whole, because
+// "Hi Apex Solar Group" reads better than "Hi Apex".
+function firstName(name) {
+  const n = String(name || '').trim();
+  if (!n) return '';
+  return n.split(/\s+/)[0];
+}
+// Placeholders with no value are dropped along with the space they leave, so a
+// missing company never shows up as "Following up - ".
+function mergeTemplate(text, vals) {
+  return String(text || '')
+    .replace(/\{(first_name|company_name|rep_name|rep_email)\}/g, (_, k) => vals[k] || '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/[ \t]+([,.;:!?])/g, '$1')
+    .replace(/ -\s*$/gm, '')
+    .trim();
+}
+async function ensureEmailTemplates() {
+  if (_emailTpls) return _emailTpls;
+  const { data, error } = await db.from('sales_email_templates').select('kind,subject,body');
+  if (error) { toast('Could not load templates: ' + error.message, true); return null; }
+  _emailTpls = {};
+  (data || []).forEach(t => { _emailTpls[t.kind] = t; });
+  return _emailTpls;
+}
+async function loadEmailTemplates() {
+  _emailTpls = null;
+  const tpls = await ensureEmailTemplates(); if (!tpls) return;
+  ['info','followup'].forEach(k => {
+    setVal('tpl-' + k + '-subject', tpls[k]?.subject || '');
+    setVal('tpl-' + k + '-body', tpls[k]?.body || '');
+    setText('tpl-' + k + '-note', tpls[k]?.updated_at ? 'Last saved ' + new Date(tpls[k].updated_at).toLocaleString('en-AU') : '');
+  });
+}
+async function saveEmailTemplate(kind) {
+  const subject = $('tpl-' + kind + '-subject').value.trim();
+  const body    = $('tpl-' + kind + '-body').value;
+  if (!subject || !body.trim()) { toast('Subject and body are required', true); return; }
+  const { data: { session } } = await db.auth.getSession();
+  const { error } = await db.from('sales_email_templates')
+    .update({ subject, body, updated_at: now(), updated_by: session?.user?.id || null })
+    .eq('kind', kind);
+  if (error) { toast('Error: ' + error.message, true); return; }
+  _emailTpls = null;
+  setText('tpl-' + kind + '-note', 'Last saved just now');
+  toast('Template saved ✓');
+}
+
+// Button state on the Edit Lead modal. Sent is sent - the greyed-out label is
+// driven by the lead row, so it survives a refresh and another rep's send.
+function renderLeadEmailButtons(l) {
+  const info = $('el-send-info'), fup = $('el-send-followup'), note = $('el-email-note');
+  if (!info) return;
+  const hasEmail = !!(l.email || '').trim();
+  const infoSent = !!l.info_sent_at, fupSent = !!l.followup_sent_at;
+
+  info.textContent = infoSent ? 'Info Sent' : 'Send Info';
+  info.disabled = infoSent || !hasEmail;
+  info.style.opacity = info.disabled ? '.5' : '';
+  info.style.cursor = info.disabled ? 'default' : '';
+
+  fup.style.display = infoSent ? '' : 'none';
+  fup.textContent = fupSent ? 'Follow Up Sent' : 'Follow Up';
+  fup.disabled = fupSent || !hasEmail;
+  fup.style.opacity = fup.disabled ? '.5' : '';
+  fup.style.cursor = fup.disabled ? 'default' : '';
+
+  const when = d => new Date(d).toLocaleDateString('en-AU');
+  note.textContent = !hasEmail ? 'No email address on this lead'
+    : fupSent ? 'Follow-up sent ' + when(l.followup_sent_at)
+    : infoSent ? 'Info sent ' + when(l.info_sent_at)
+    : '';
+}
+
+async function openSendEmail(kind) {
+  const id = $('el-id').value;
+  const lead = LEAD_CACHE[id];
+  if (!lead) { toast('Open the lead again', true); return; }
+  if (!(lead.email || '').trim()) { toast('This lead has no email address', true); return; }
+  const tpls = await ensureEmailTemplates(); if (!tpls) return;
+  const tpl = tpls[kind];
+  if (!tpl) { toast('No ' + kind + ' template saved yet', true); return; }
+
+  const { data: { session } } = await db.auth.getSession();
+  const me = _reps.find(r => r.user_id === session?.user?.id);
+  const vals = {
+    first_name:   firstName(lead.name),
+    company_name: (lead.company || '').trim(),
+    rep_name:     me?.name || session?.user?.user_metadata?.name || '',
+    rep_email:    me?.reply_to_email || me?.email || session?.user?.email || '',
+  };
+
+  setVal('se-lead-id', id);
+  setVal('se-kind', kind);
+  setVal('se-to', lead.email);
+  setVal('se-replyto', vals.rep_email || 'your login email');
+  setVal('se-subject', mergeTemplate(tpl.subject, vals));
+  setVal('se-body', mergeTemplate(tpl.body, vals));
+  setText('se-title', kind === 'info' ? 'Send Info / Proposal' : 'Send Follow-Up');
+  setText('se-sub', (lead.name || '') + (lead.company ? ' · ' + lead.company : ''));
+  const btn = $('se-send'); btn.disabled = false; btn.textContent = 'Send email';
+  openModal('m-send-email');
+}
+
+async function sendSalesEmail() {
+  const btn = $('se-send');
+  const id = $('se-lead-id').value, kind = $('se-kind').value;
+  const subject = $('se-subject').value.trim(), body = $('se-body').value.trim();
+  if (!subject || !body) { toast('Subject and message are required', true); return; }
+
+  btn.disabled = true; btn.textContent = 'Sending...';
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    const res = await fetch(`${_ep}/functions/v1/send-sales-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+      body: JSON.stringify({ lead_id: id, kind, subject, body }),
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) { toast(out.error || 'Could not send', true); btn.disabled = false; btn.textContent = 'Send email'; return; }
+
+    // Reflect the send locally so the buttons are right the moment the modal
+    // closes, rather than waiting on the reload behind it.
+    const l = LEAD_CACHE[id];
+    if (l) {
+      if (kind === 'info') l.info_sent_at = out.sent_at || now();
+      else l.followup_sent_at = out.sent_at || now();
+      renderLeadEmailButtons(l);
+    }
+    closeModal('m-send-email');
+    toast(kind === 'info' ? 'Info email sent ✓' : 'Follow-up sent ✓');
+    loadCRM();
+  } catch (e) {
+    toast('Could not send: ' + (e.message || e), true);
+    btn.disabled = false; btn.textContent = 'Send email';
+  }
+}
+
 function checkConvertBanner() {
   // Converting a lead spins up a PPL/Managed client - out of scope for reps.
   const stage = $('el-stage').value;
@@ -4181,6 +4397,7 @@ function openEditLead(l) {
   // time they reach the button, so it closes rather than promising a save.
   if (saveBtn) saveBtn.textContent = IS_REP ? 'Done' : 'Save changes';
   checkConvertBanner();
+  renderLeadEmailButtons(l);
   openModal('m-edit-lead');
 }
 
@@ -8071,7 +8288,7 @@ function renderReps(reps, unassigned) {
   setText('rep-kpi-active', reps.filter(r => r.active).length);
   setText('rep-kpi-assigned', reps.reduce((s, r) => s + (r.assigned || 0), 0));
   setText('rep-kpi-unassigned', unassigned);
-  if (!reps.length) { $('rep-tbody').innerHTML = '<tr><td colspan="10" class="empty">No sales reps yet. Click “New Rep” to create one.</td></tr>'; return; }
+  if (!reps.length) { $('rep-tbody').innerHTML = '<tr><td colspan="11" class="empty">No sales reps yet. Click “New Rep” to create one.</td></tr>'; return; }
   $('rep-tbody').innerHTML = reps.map(r => {
     const status = r.active ? '<span class="badge bg-grn">Active</span>' : '<span class="badge bg-gray">Inactive</span>';
     const pickup = r.pickup_rate == null ? '-' : r.pickup_rate + '%';
@@ -8081,6 +8298,7 @@ function renderReps(reps, unassigned) {
     return `<tr>
       <td>${esc(r.name || '-')}</td>
       <td style="font-family:var(--mono);font-size:11px">${esc(r.email || '-')}</td>
+      <td style="font-family:var(--mono);font-size:11px">${r.reply_to_email ? esc(r.reply_to_email) : `<span style="color:var(--ink3)">${esc(r.email || '-')}</span>`}</td>
       <td>${status}</td>
       <td>${r.assigned || 0}</td>
       <td>${r.open || 0}</td>
@@ -8090,6 +8308,7 @@ function renderReps(reps, unassigned) {
       <td>${close}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-xs" onclick="impersonateRep('${r.user_id}','${safeName}',this)" title="View the dashboard exactly as this rep, then switch back">👁 View as</button>
+        <button class="btn btn-xs" onclick="openRepEdit('${r.user_id}')">Edit</button>
         <button class="btn btn-xs" onclick="openRepPassword('${r.user_id}')">Password</button>
         <button class="btn btn-xs" onclick="toggleRepActive('${r.user_id}',${!r.active})">${r.active ? 'Disable' : 'Enable'}</button>
         <button class="btn btn-xs" style="color:var(--red)" onclick="deleteRep('${r.user_id}')">Delete</button>
@@ -8099,18 +8318,38 @@ function renderReps(reps, unassigned) {
 }
 
 function openCreateRepModal() {
-  setVal('rep-name', ''); setVal('rep-email', ''); setVal('rep-pass', '');
+  setVal('rep-name', ''); setVal('rep-email', ''); setVal('rep-pass', ''); setVal('rep-replyto', '');
   openModal('m-rep');
 }
 async function createRep() {
   const name = $('rep-name').value.trim();
   const email = $('rep-email').value.trim();
   const password = $('rep-pass').value;
+  const replyTo = $('rep-replyto').value.trim();
   if (!email || !password) { toast('Email and password required', true); return; }
   if (password.length < 8) { toast('Password must be at least 8 characters', true); return; }
   try {
-    await callRepEdge('create_rep', { name, email, password });
+    await callRepEdge('create_rep', { name, email, password, reply_to_email: replyTo });
     closeModal('m-rep'); toast('Rep created ✓'); loadReps();
+  } catch (e) { toast('Error: ' + e.message, true); }
+}
+
+function openRepEdit(uid) {
+  const r = _reps.find(x => x.user_id === uid);
+  if (!r) return;
+  setVal('rep-edit-uid', uid);
+  setVal('rep-edit-name', r.name || '');
+  setVal('rep-edit-replyto', r.reply_to_email || '');
+  setText('rep-edit-sub', r.email || '');
+  openModal('m-rep-edit');
+}
+async function saveRepEdit() {
+  const user_id = $('rep-edit-uid').value;
+  const name = $('rep-edit-name').value.trim();
+  const reply_to_email = $('rep-edit-replyto').value.trim();
+  try {
+    await callRepEdge('update_rep', { user_id, name, reply_to_email });
+    closeModal('m-rep-edit'); toast('Rep updated ✓'); loadReps();
   } catch (e) { toast('Error: ' + e.message, true); }
 }
 

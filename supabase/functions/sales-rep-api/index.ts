@@ -69,7 +69,7 @@ serve(async (req) => {
     if (action === "list_reps") {
       const { data: reps } = await admin
         .from("sales_reps")
-        .select("user_id, email, name, active, created_at")
+        .select("user_id, email, name, active, reply_to_email, created_at")
         .order("created_at", { ascending: true });
       const ids = (reps || []).map((r: { user_id: string }) => r.user_id);
 
@@ -138,11 +138,33 @@ serve(async (req) => {
       });
       if (cErr || !created?.user) return json({ error: cErr?.message || "Could not create user" }, 400);
 
+      const replyTo = String((body as { reply_to_email?: string }).reply_to_email || "").trim().toLowerCase();
       const { error: rErr } = await admin.from("sales_reps").insert({
         user_id: created.user.id, email, name: name || null, active: true,
+        reply_to_email: replyTo || null,
       });
       if (rErr) return json({ error: rErr.message }, 500);
       return json({ ok: true, user_id: created.user.id });
+    }
+
+    // ── update_rep ───────────────────────────────────────────────────────────
+    // Display name and the Reply-To used on sales emails this rep sends.
+    // Blank reply_to_email clears the override and falls back to their login
+    // address, which is what send-sales-email does when the column is null.
+    if (action === "update_rep") {
+      const { user_id } = body as { user_id?: string };
+      if (!user_id) return json({ error: "user_id is required" }, 400);
+      const name = String((body as { name?: string }).name ?? "").trim();
+      const replyTo = String((body as { reply_to_email?: string }).reply_to_email ?? "").trim().toLowerCase();
+      if (replyTo && !/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(replyTo)) {
+        return json({ error: "Enter a valid reply-to email" }, 400);
+      }
+      const { error } = await admin.from("sales_reps")
+        .update({ name: name || null, reply_to_email: replyTo || null })
+        .eq("user_id", user_id);
+      if (error) return json({ error: error.message }, 500);
+      if (name) await admin.auth.admin.updateUserById(user_id, { user_metadata: { name } });
+      return json({ ok: true });
     }
 
     // ── set_password ─────────────────────────────────────────────────────────
