@@ -943,32 +943,32 @@ td strong{font-weight:500}
         </div>
       </div>
 
-      <!-- ══ TURNKEY LEAD ENGINES ══ -->
-      <div class="panel" id="panel-tle">
+      <!-- ══ HIRING PIPELINE ══ -->
+      <div class="panel" id="panel-hiring">
         <div class="ph">
-          <div class="ph-left"><h1>Turnkey Lead Engines</h1><p>Done-for-you lead engines · build, run and hand over</p></div>
+          <div class="ph-left"><h1>Hiring Pipeline</h1><p>Candidates from application through to hired</p></div>
           <div class="ph-right">
-            <button class="btn btn-sm" onclick="loadTLE()">↻ Refresh</button>
-            <button class="btn btn-p btn-sm" onclick="openModal('m-tle')">+ Add engine</button>
+            <button class="btn btn-sm" onclick="loadHiring()">↻ Refresh</button>
+            <button class="btn btn-p btn-sm" onclick="openModal('m-hire')">+ Add candidate</button>
           </div>
         </div>
-        <div class="kg c4 mb4">
-          <div class="kpi"><div class="klabel">Live Engines</div><div class="kval blu" id="tle-active">-</div></div>
-          <div class="kpi"><div class="klabel">Onboarding</div><div class="kval" id="tle-onboarding">-</div><div class="ksub">build in progress</div></div>
-          <div class="kpi"><div class="klabel">Monthly Retainer</div><div class="kval grn" id="tle-mrr">-</div><div class="ksub">live engines</div></div>
-          <div class="kpi"><div class="klabel">Ad Budget / mo</div><div class="kval" id="tle-budget">-</div><div class="ksub">live engines</div></div>
-          <div class="kpi"><div class="klabel">Total Engines</div><div class="kval" id="tle-total">-</div><div class="ksub">all-time</div></div>
-          <div class="kpi"><div class="klabel">Churn Rate</div><div class="kval red" id="tle-churn-rate">-</div><div class="ksub">churned ÷ total</div></div>
-          <div class="kpi"><div class="klabel">Retention Rate</div><div class="kval grn" id="tle-retention-rate">-</div><div class="ksub">live + paused ÷ total</div></div>
-          <div class="kpi"><div class="klabel">Avg CX</div><div class="kval" id="tle-cx">-</div><div class="ksub">out of 10</div></div>
+        <div id="hiring-followup-banner" style="display:none;margin-bottom:14px;padding:10px 14px;background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.28);border-radius:var(--r);font-size:11px">
+          <span style="font-weight:600;color:var(--amb)">⚠ <span id="hiring-followup-count">0</span> candidates need follow-up</span>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--ink2);margin-left:8px" id="hiring-followup-names"></span>
         </div>
-        <div class="sl">Engine Pipeline <div class="sl-line"></div></div>
-        <div class="kanban-wrap"><div class="kanban" id="tle-kanban"></div></div>
-        <div class="sl">All Engines <div class="sl-line"></div></div>
+        <div class="kg c4 mb4">
+          <div class="kpi"><div class="klabel">In Pipeline</div><div class="kval blu" id="hiring-open">-</div><div class="ksub">not hired or rejected</div></div>
+          <div class="kpi"><div class="klabel">Interviewing</div><div class="kval" id="hiring-interview">-</div></div>
+          <div class="kpi"><div class="klabel">Offers Out</div><div class="kval" id="hiring-offer">-</div></div>
+          <div class="kpi"><div class="klabel">Hired</div><div class="kval grn" id="hiring-hired">-</div><div class="ksub" id="hiring-rate-sub"></div></div>
+        </div>
+        <div class="sl">Pipeline <div class="sl-line"></div></div>
+        <div class="kanban-wrap"><div class="kanban" id="hiring-kanban"></div></div>
+        <div class="sl">All Candidates <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Client</th><th>Stage</th><th>CX</th><th>Niche</th><th>Retainer / mo</th><th>Ad Budget / mo</th><th>Target Leads / mo</th><th>Price / Lead</th><th>Live Since</th><th></th></tr></thead>
-            <tbody id="tle-tbody"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
+            <thead><tr><th>Name</th><th>Role</th><th>Stage</th><th>Rating</th><th>Expected</th><th>Available</th><th>Source</th><th>Next Follow-up</th><th></th></tr></thead>
+            <tbody id="hiring-tbody"><tr><td colspan="9" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1612,7 +1612,7 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Company</label><input class="fi" id="l-company" placeholder="e.g. Solar Co Pty Ltd"></div>
     <div class="frow"><label class="flabel">Email</label><input class="fi" id="l-email" type="email" placeholder="sarah@example.com.au"></div>
     <div class="frow"><label class="flabel">Phone</label><input class="fi" id="l-phone" placeholder="04xx xxx xxx"></div>
-    <div class="frow"><label class="flabel">Lead Type</label>
+    <div class="frow" id="l-type-row" style="display:none"><label class="flabel">Lead Type</label>
       <select class="fs" id="l-type">
         <option value="ppl">Pay-Per-Lead (PPL)</option>
         <option value="managed">Managed Advertising (MA)</option>
@@ -1620,7 +1620,7 @@ td strong{font-weight:500}
       </select>
     </div>
     <div class="frow"><label class="flabel">Stage</label>
-      <select class="fs" id="l-stage">
+      <select class="fs" id="l-stage" onchange="toggleLeadTypeRow()">
         <option value="new_lead">New Lead</option><option value="no_answer">No Answer</option>
         <option value="call_back">Call-Back/Booked</option><option value="proposal">Proposal / Follow-up</option>
         <option value="closed_won">Closed Won</option><option value="closed_lost">Closed Lost</option>
@@ -1843,68 +1843,84 @@ td strong{font-weight:500}
   </div>
 </div>
 
-<div class="overlay" id="m-tle">
+<div class="overlay" id="m-hire">
   <div class="modal">
-    <h2>Add Turnkey Lead Engine</h2><div class="msub">Done-for-you lead engine client</div>
-    <div class="frow"><label class="flabel">Company Name</label><input class="fi" id="tle-co" placeholder="e.g. Apex Solar Group"></div>
-    <div class="frow"><label class="flabel">Contact Name</label><input class="fi" id="tle-cn" placeholder="e.g. Dana Reid"></div>
-    <div class="frow"><label class="flabel">Email</label><input class="fi" id="tle-em" type="email" placeholder="dana@example.com"></div>
-    <div class="frow"><label class="flabel">Phone</label><input class="fi" id="tle-ph" placeholder="04xx xxx xxx"></div>
-    <div class="frow"><label class="flabel">Niche</label>
-      <select class="fs" id="tle-niche">
-        <option>Solar Residential</option><option>Solar Commercial</option><option>Battery Storage</option><option>Battery Retrofit</option><option>EV Charger</option><option>HVAC</option><option>Roofing - Restorations</option><option>Roofing - Replacements</option><option>Renovation - Kitchens</option><option>Renovation - Bathrooms</option><option>Renovation - Decks</option><option>Renovation - Fencing</option><option>Carpentry</option><option>Other</option>
-      </select>
-    </div>
-    <div class="frow"><label class="flabel">Monthly Retainer (AUD)</label><input class="fi" id="tle-fee" type="number" placeholder="e.g. 2500"></div>
-    <div class="frow"><label class="flabel">Ad Budget (AUD/mo)</label><input class="fi" id="tle-budget" type="number" placeholder="e.g. 6000"></div>
-    <div class="frow"><label class="flabel">Target Leads / mo</label><input class="fi" id="tle-target" type="number" placeholder="e.g. 120"></div>
-    <div class="frow"><label class="flabel">Price / Lead (AUD) <span style="font-size:9.5px;color:var(--ink3);font-weight:300">optional - internal benchmark</span></label><input class="fi" id="tle-price" type="number" placeholder="e.g. 85"></div>
+    <h2>Add Candidate</h2><div class="msub">New hiring pipeline entry</div>
+    <div class="frow"><label class="flabel">Candidate Name</label><input class="fi" id="h-name" placeholder="e.g. Priya Raman"></div>
+    <div class="frow"><label class="flabel">Role Applied For</label><input class="fi" id="h-role" placeholder="e.g. Sales Rep - Outbound"></div>
+    <div class="frow"><label class="flabel">Email</label><input class="fi" id="h-email" type="email" placeholder="priya@example.com"></div>
+    <div class="frow"><label class="flabel">Phone</label><input class="fi" id="h-phone" placeholder="04xx xxx xxx"></div>
     <div class="frow"><label class="flabel">Stage</label>
-      <select class="fs" id="tle-stage">
-        <option value="onboarding">Onboarding</option>
-        <option value="active">Live</option>
-        <option value="paused">Paused</option><option value="churned">Churned</option>
+      <select class="fs" id="h-stage">
+        <option value="applied">Applied</option><option value="screening">Screening</option>
+        <option value="interview">Interview</option><option value="offer">Offer</option>
+        <option value="hired">Hired</option><option value="rejected">Rejected</option>
       </select>
     </div>
-    <div class="frow"><label class="flabel">CX Score <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10 - client experience rating</span></label><input class="fi" id="tle-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
-    <div class="frow"><label class="flabel">Live Since</label><input class="fi" id="tle-start" type="date"></div>
+    <div class="frow"><label class="flabel">Source</label>
+      <select class="fs" id="h-source">
+        <option value="seek">Seek</option><option value="indeed">Indeed</option>
+        <option value="linkedin">LinkedIn</option><option value="referral">Referral</option>
+        <option value="direct">Direct / Website</option><option value="recruiter">Recruiter</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="frow" style="flex:1"><label class="flabel">Expected Salary (AUD)</label><input class="fi" id="h-salary" type="number" placeholder="e.g. 75000"></div>
+      <div class="frow" style="flex:1"><label class="flabel">Available From</label><input class="fi" id="h-available" type="date"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="frow" style="flex:1"><label class="flabel">Rating <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10</span></label><input class="fi" id="h-rating" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
+      <div class="frow" style="flex:1"><label class="flabel">Next Follow-up</label><input class="fi" id="h-followup" type="date"></div>
+    </div>
+    <div class="frow"><label class="flabel">Resume / Profile Link</label><input class="fi" id="h-resume" placeholder="https://..."></div>
+    <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="h-notes"></textarea></div>
     <div class="macts">
-      <button class="btn" onclick="closeModal('m-tle')">Cancel</button>
-      <button class="btn btn-p" onclick="saveTleClient()">Save engine</button>
+      <button class="btn" onclick="closeModal('m-hire')">Cancel</button>
+      <button class="btn btn-p" onclick="saveHire()">Save candidate</button>
     </div>
   </div>
 </div>
 
-<div class="overlay" id="m-edit-tle">
+<div class="overlay" id="m-edit-hire">
   <div class="modal">
-    <h2>Edit Turnkey Lead Engine</h2><div class="msub" id="edit-tle-sub"></div>
-    <input type="hidden" id="etle-id">
-    <div class="frow"><label class="flabel">Company Name</label><input class="fi" id="etle-co"></div>
-    <div class="frow"><label class="flabel">Contact Name</label><input class="fi" id="etle-cn"></div>
-    <div class="frow"><label class="flabel">Email</label><input class="fi" id="etle-em" type="email"></div>
-    <div class="frow"><label class="flabel">Phone</label><input class="fi" id="etle-ph"></div>
-    <div class="frow"><label class="flabel">Niche</label>
-      <select class="fs" id="etle-niche">
-        <option>Solar Residential</option><option>Solar Commercial</option><option>Battery Storage</option><option>Battery Retrofit</option><option>EV Charger</option><option>HVAC</option><option>Roofing - Restorations</option><option>Roofing - Replacements</option><option>Renovation - Kitchens</option><option>Renovation - Bathrooms</option><option>Renovation - Decks</option><option>Renovation - Fencing</option><option>Carpentry</option><option>Other</option>
-      </select>
-    </div>
-    <div class="frow"><label class="flabel">Monthly Retainer (AUD)</label><input class="fi" id="etle-fee" type="number"></div>
-    <div class="frow"><label class="flabel">Ad Budget (AUD/mo)</label><input class="fi" id="etle-budget" type="number"></div>
-    <div class="frow"><label class="flabel">Target Leads / mo</label><input class="fi" id="etle-target" type="number"></div>
-    <div class="frow"><label class="flabel">Price / Lead (AUD)</label><input class="fi" id="etle-price" type="number"></div>
+    <h2>Edit Candidate</h2><div class="msub" id="edit-hire-sub"></div>
+    <input type="hidden" id="eh-id">
+    <input type="hidden" id="eh-stage-orig">
+    <div class="frow"><label class="flabel">Candidate Name</label><input class="fi" id="eh-name"></div>
+    <div class="frow"><label class="flabel">Role Applied For</label><input class="fi" id="eh-role"></div>
+    <div class="frow"><label class="flabel">Email</label><input class="fi" id="eh-email" type="email"></div>
+    <div class="frow"><label class="flabel">Phone</label><input class="fi" id="eh-phone"></div>
     <div class="frow"><label class="flabel">Stage</label>
-      <select class="fs" id="etle-stage">
-        <option value="onboarding">Onboarding</option>
-        <option value="active">Live</option>
-        <option value="paused">Paused</option><option value="churned">Churned</option>
+      <select class="fs" id="eh-stage" onchange="saveHireStageNow()">
+        <option value="applied">Applied</option><option value="screening">Screening</option>
+        <option value="interview">Interview</option><option value="offer">Offer</option>
+        <option value="hired">Hired</option><option value="rejected">Rejected</option>
       </select>
     </div>
-    <div class="frow"><label class="flabel">CX Score</label><input class="fi" id="etle-cx" type="number" min="0" max="10" step="1"></div>
-    <div class="frow"><label class="flabel">Live Since</label><input class="fi" id="etle-start" type="date"></div>
+    <div class="frow"><label class="flabel">Source</label>
+      <select class="fs" id="eh-source">
+        <option value="seek">Seek</option><option value="indeed">Indeed</option>
+        <option value="linkedin">LinkedIn</option><option value="referral">Referral</option>
+        <option value="direct">Direct / Website</option><option value="recruiter">Recruiter</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="frow" style="flex:1"><label class="flabel">Expected Salary (AUD)</label><input class="fi" id="eh-salary" type="number"></div>
+      <div class="frow" style="flex:1"><label class="flabel">Available From</label><input class="fi" id="eh-available" type="date"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="frow" style="flex:1"><label class="flabel">Rating <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10</span></label><input class="fi" id="eh-rating" type="number" min="0" max="10" step="1"></div>
+      <div class="frow" style="flex:1"><label class="flabel">Next Follow-up</label><input class="fi" id="eh-followup" type="date"></div>
+    </div>
+    <div class="frow"><label class="flabel">Resume / Profile Link</label><input class="fi" id="eh-resume"></div>
+    <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="eh-notes"></textarea></div>
     <div class="macts">
-      <button class="btn btn-red" onclick="deleteTleClient()">Delete</button>
-      <button class="btn" onclick="closeModal('m-edit-tle')">Cancel</button>
-      <button class="btn btn-p" onclick="updateTleClient()">Save changes</button>
+      <button class="btn btn-red btn-sm" onclick="deleteHire()">Delete</button>
+      <div style="flex:1"></div>
+      <button class="btn" onclick="closeModal('m-edit-hire')">Cancel</button>
+      <button class="btn btn-p" onclick="updateHire()">Save changes</button>
     </div>
   </div>
 </div>
@@ -1920,7 +1936,7 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Company</label><input class="fi" id="el-company"></div>
     <div class="frow"><label class="flabel">Email</label><input class="fi" id="el-email" type="email"></div>
     <div class="frow"><label class="flabel">Phone</label><input class="fi" id="el-phone"></div>
-    <div class="frow"><label class="flabel">Lead Type</label>
+    <div class="frow" id="el-type-row" style="display:none"><label class="flabel">Lead Type</label>
       <select class="fs" id="el-type">
         <option value="ppl">Pay-Per-Lead (PPL)</option>
         <option value="managed">Managed Advertising (MA)</option>
@@ -2871,7 +2887,7 @@ window.addEventListener('load', () => {
   buildKanban('crm-kanban', CRM_STAGES, 'crm');
   buildKanban('ppl-kanban', PPL_STAGES, 'ppl');
   buildKanban('mg-kanban',  MG_STAGES,  'mg');
-  buildKanban('tle-kanban', TLE_STAGES, 'tle');
+  buildKanban('hiring-kanban', HIRING_STAGES, 'hiring');
   // PS kanban built on login (after auth determines account type)
 });
 
@@ -2955,8 +2971,7 @@ const PANEL_GROUPS = {
   ]},
   ppl: {label:'Clients', members:[
     {panel:'ppl',     label:'PPL Clients'},
-    {panel:'managed', label:'Managed Ads'},
-    {panel:'tle',     label:'Turnkey Lead Engines'}
+    {panel:'managed', label:'Managed Ads'}
   ]},
   'sales-conv': {label:'Messaging', members:[
     {panel:'sales-conv', label:'Conversations'},
@@ -2964,7 +2979,8 @@ const PANEL_GROUPS = {
   ]},
   salesreps: {label:'Team', members:[
     {panel:'salesreps', label:'Sales Reps'},
-    {panel:'payrates',  label:'Pay Rates'}
+    {panel:'payrates',  label:'Pay Rates'},
+    {panel:'hiring',    label:'Hiring Pipeline'}
   ]}
 };
 // panel id -> the group that hosts it
@@ -3091,7 +3107,6 @@ function nav(panel, el) {
   renderSubtabs(panel);
   if (panel === 'files') { loadFileContent(); loadTemplateClientDropdown(); }
   if (panel === 'ppl') { populateMapClientDropdown(); }
-  if (panel === 'tle') loadTLE();
   if (panel === 'cpl') loadCplEditorPanel();
   if (panel === 'broadcast') loadBroadcast();
   if (panel === 'pcal') loadPcal();
@@ -3100,6 +3115,7 @@ function nav(panel, el) {
   if (panel === 'sales-conv') loadSalesConversations();
   if (panel === 'invoices') loadInvoices();
   if (panel === 'goals') loadGoals();
+  if (panel === 'hiring') loadHiring();
   if (panel === 'salesreps') loadReps();
   if (panel === 'payrates') loadPayRates();
 }
@@ -3148,7 +3164,7 @@ function closeModal(id) { $(id).classList.remove('open'); }
 document.addEventListener('click', e => { if (e.target.classList.contains('overlay')) e.target.classList.remove('open'); });
 
 async function loadAll() {
-  await Promise.all([loadTasks(), loadCRM(), loadPPL(), loadManaged(), loadTLE(), loadFinance()]);
+  await Promise.all([loadTasks(), loadCRM(), loadPPL(), loadManaged(), loadHiring(), loadFinance()]);
   await loadTaskLeadDropdowns();
   loadFileContent();
   populateMapClientDropdown();
@@ -3872,7 +3888,7 @@ async function drop(e,prefix,newStage) {
     loadCRM();
     return;
   }
-  const TABLE_MAP = { crm: 'leads' };
+  const TABLE_MAP = { crm: 'leads', hiring: 'hiring_candidates' };
   const table = TABLE_MAP[prefix] || 'clients';
   const updateData={stage:newStage,updated_at:now()};
   if (prefix==='crm'&&['call_back','proposal','closed_won'].includes(newStage)) updateData.contactable=true;
@@ -3880,7 +3896,7 @@ async function drop(e,prefix,newStage) {
   if (error) { toast('Move failed: '+error.message,true); return; }
   toast('→ ' + stageLabel(newStage));
   draggedId=null;draggedPrefix=null;
-  if (prefix==='crm') loadCRM(); else if (prefix==='ppl') loadPPL(); else if (prefix==='tle') loadTLE(); else loadManaged();
+  if (prefix==='crm') loadCRM(); else if (prefix==='hiring') loadHiring(); else if (prefix==='ppl') loadPPL(); else loadManaged();
 }
 
 const CRM_STAGES=[{id:'new_lead',label:'New Lead'},{id:'no_answer',label:'No Answer'},{id:'call_back',label:'Call-Back/Booked'},{id:'proposal',label:'Proposal'},{id:'closed_won',label:'Closed Won'},{id:'closed_lost',label:'Closed Lost'}];
@@ -4007,7 +4023,7 @@ function renderCRM() {
           <div class="kcard-meta">${esc(l.company||'-')}</div>
           ${l.phone?`<div class="kcard-phone">${esc(l.phone)}</div>`:''}
           <div style="display:flex;gap:4px;margin-top:3px;align-items:center">
-            ${l.lead_type?`<span class="badge ${typeBadge(l.lead_type)}" style="font-size:8.5px">${typeLabel(l.lead_type)}</span>`:''}
+            ${(l.lead_type && l.stage==='closed_won')?`<span class="badge ${typeBadge(l.lead_type)}" style="font-size:8.5px">${typeLabel(l.lead_type)}</span>`:''}
             ${(!IS_REP && l.value)?`<span class="kcard-val">${fmt(l.value)}</span>`:''}
           </div>
           ${(!IS_REP && l.owner_id)?`<div class="kcard-meta" style="margin-top:2px;color:var(--acc);font-size:9.5px">▸ ${esc(repName(l.owner_id)||'assigned')}</div>`:''}
@@ -4037,7 +4053,7 @@ function renderCRM() {
     <tr style="cursor:pointer" data-lead-id="${esc(l.id)}" class="lead-row">
       <td><strong>${esc(l.name||'-')}</strong></td>
       <td>${esc(l.company||'-')}</td>
-      <td><span class="badge ${typeBadge(l.lead_type)}">${typeLabel(l.lead_type)}</span></td>
+      <td>${(l.lead_type && l.stage==='closed_won')?`<span class="badge ${typeBadge(l.lead_type)}">${typeLabel(l.lead_type)}</span>`:'<span style="color:var(--ink3)">-</span>'}</td>
       <td><span class="badge ${stageBadge(l.stage)}">${stageLabel(l.stage)}</span></td>
       <td>${l.value?'$'+Number(l.value).toLocaleString()+'/mo':'-'}</td>
       <td>${esc(l.source||'-')}</td>
@@ -4071,6 +4087,17 @@ function checkConvertBanner() {
   // Converting a lead spins up a PPL/Managed client - out of scope for reps.
   const stage = $('el-stage').value;
   $('convert-banner').style.display = (!IS_REP && stage === 'closed_won') ? 'block' : 'none';
+  toggleLeadTypeRow('el');
+}
+// PPL vs Managed Advertising is what the client BUYS, so it is only a real
+// answer once the deal is won - before that it was a guess sitting on every
+// card. The row appears at Closed Won (where it decides which kind of client
+// the lead converts into) and nowhere else; open clients carry the type on
+// their own records in the Clients panels.
+function toggleLeadTypeRow(prefix) {
+  const p = prefix === 'el' ? 'el' : 'l';
+  const row = $(p + '-type-row'), stage = $(p + '-stage');
+  if (row && stage) row.style.display = stage.value === 'closed_won' ? '' : 'none';
 }
 // Stage saves the moment it is picked - the same write dragging the card
 // between kanban columns makes, so the two routes behave alike. Everything
@@ -4095,6 +4122,7 @@ async function saveStageNow() {
   } else {
     const upd = { stage, updated_at: now() };
     if (['call_back','proposal','closed_won'].includes(stage)) upd.contactable = true;
+    if (prev === 'closed_won') upd.lead_type = null;
     ({ error } = await db.from('leads').update(upd).eq('id', id));
   }
   _stageSaving = false; sel.disabled = false;
@@ -4131,7 +4159,7 @@ function openEditLead(l) {
   }
   setVal('el-stage',l.stage);
   setVal('el-stage-orig',l.stage||'');
-  setVal('el-type',l.lead_type||'ppl');setVal('el-value',l.value);
+  setVal('el-type',l.lead_type||'ppl');   // shown only at Closed WonsetVal('el-value',l.value);
   setVal('el-source',l.source);setVal('el-notes',l.notes);
   setVal('el-contactable',l.contactable===true?'true':l.contactable===false?'false':'');
   const lc = l.last_contact ? l.last_contact.split('T')[0] : '';
@@ -4222,7 +4250,7 @@ async function updateLead() {
   const origLastContact = $('el-last-contact-orig').value || null;
   const origCount = parseInt($('el-contact-count-orig').value||'0', 10) || 0;
   const contactIncrement = (newLastContact && (!origLastContact || newLastContact > origLastContact)) ? 1 : 0;
-  const d={name:$('el-name').value.trim(),company:$('el-company').value.trim(),email:$('el-email').value.trim(),phone:$('el-phone').value.trim(),stage,lead_type:$('el-type').value,value:parseFloat($('el-value').value)||null,source:$('el-source').value,notes:$('el-notes').value.trim(),contactable,last_contact:newLastContact,next_followup:$('el-next-followup').value||null,contact_count:origCount+contactIncrement,updated_at:now()};
+  const d={name:$('el-name').value.trim(),company:$('el-company').value.trim(),email:$('el-email').value.trim(),phone:$('el-phone').value.trim(),stage,lead_type:stage==='closed_won'?$('el-type').value:null,value:parseFloat($('el-value').value)||null,source:$('el-source').value,notes:$('el-notes').value.trim(),contactable,last_contact:newLastContact,next_followup:$('el-next-followup').value||null,contact_count:origCount+contactIncrement,updated_at:now()};
   // Only full users can (re)assign a lead's owner; reps can't touch it.
   if (!IS_REP) d.owner_id = $('el-owner').value || null;
   if (!d.name) { toast('Name required',true); return; }
@@ -4245,7 +4273,7 @@ async function saveLead() {
     p_email:$('l-email').value.trim()||null,
     p_phone:$('l-phone').value.trim()||null,
     p_stage:$('l-stage').value,
-    p_lead_type:$('l-type').value||null,
+    p_lead_type:$('l-stage').value==='closed_won'?($('l-type').value||null):null,
     p_value:parseFloat($('l-value').value)||null,
     p_source:$('l-source').value||null,
     p_notes:$('l-notes').value.trim()||null,
@@ -4253,7 +4281,181 @@ async function saveLead() {
   if (error) { toast('DB error: '+error.message,true); return; }
   if (data?.duplicate) { toast('A lead with that name and contact already exists',true); return; }
   ['l-name','l-company','l-email','l-phone','l-value','l-notes'].forEach(id=>{$(id).value='';});
+  setVal('l-stage','new_lead'); toggleLeadTypeRow();
   closeModal('m-lead'); loadCRM(); toast('Lead saved ✓');
+}
+
+/* ═══ HIRING PIPELINE ═══
+   The recruitment counterpart to the sales pipeline, and deliberately built
+   the same way: one kanban of stages you drag candidates across, one table
+   underneath, and the same edit-on-click modal. Candidates live in their own
+   `hiring_candidates` table - they share almost no fields with a sales lead,
+   and every rep-scoping policy on `leads` would need an exception for rows
+   that are not leads. RLS keeps the whole board off a rep's session. */
+const HIRING_STAGES=[
+  {id:'applied',label:'Applied'},{id:'screening',label:'Screening'},
+  {id:'interview',label:'Interview'},{id:'offer',label:'Offer'},
+  {id:'hired',label:'Hired'},{id:'rejected',label:'Rejected'}
+];
+const HIRING_CLOSED=['hired','rejected'];
+const HIRE_CACHE={};
+function hireStageLabel(s){ return (HIRING_STAGES.find(h=>h.id===s)||{}).label || s || '-'; }
+function hireStageBadge(s){
+  return s==='hired'?'bg-grn':s==='rejected'?'bg-red':s==='offer'?'bg-vio'
+        :s==='interview'?'bg-sky':s==='screening'?'bg-amb':'bg-blu';
+}
+async function loadHiring() {
+  if (IS_REP) return;   // walled off server-side too; this just saves the query
+  const {data,error}=await db.from('hiring_candidates').select('*').order('created_at',{ascending:false});
+  if (error) { $('hiring-tbody').innerHTML=`<tr><td colspan="9" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
+  renderHiring(data||[]);
+}
+function renderHiring(cands) {
+  const open=cands.filter(c=>!HIRING_CLOSED.includes(c.stage));
+  const hired=cands.filter(c=>c.stage==='hired');
+  setText('hiring-open',open.length||'-');
+  setText('hiring-interview',cands.filter(c=>c.stage==='interview').length||'-');
+  setText('hiring-offer',cands.filter(c=>c.stage==='offer').length||'-');
+  setText('hiring-hired',hired.length||'-');
+  setText('hiring-rate-sub',cands.length?`${hired.length} of ${cands.length} candidates`:'');
+
+  // Anyone still in play whose follow-up date has come and gone.
+  const today=new Date().toISOString().split('T')[0];
+  const due=open.filter(c=>c.next_followup && c.next_followup<=today);
+  const banner=$('hiring-followup-banner');
+  if (banner) {
+    banner.style.display=due.length?'block':'none';
+    setText('hiring-followup-count',due.length);
+    setText('hiring-followup-names',due.slice(0,6).map(c=>c.name).join(' · ')+(due.length>6?` +${due.length-6} more`:''));
+  }
+  const dueIds=new Set(due.map(c=>String(c.id)));
+
+  cands.forEach(c=>{ HIRE_CACHE[c.id]=c; });
+  HIRING_STAGES.forEach(st=>{
+    const col=$('hiring-col-'+st.id),cnt=$('hiringc-'+st.id);
+    const list=cands.filter(c=>c.stage===st.id);
+    if (cnt) cnt.textContent=list.length;
+    if (!col) return;
+    col.innerHTML=list.map(c=>`
+      <div class="kcard" id="kc-hiring-${esc(String(c.id))}" data-cand-id="${esc(String(c.id))}">
+        <div class="kcard-name">${esc(c.name||'-')}</div>
+        <div class="kcard-meta">${esc(c.role||'-')}</div>
+        ${c.phone?`<div class="kcard-phone">${esc(c.phone)}</div>`:''}
+        <div style="display:flex;gap:4px;margin-top:3px;align-items:center">
+          ${c.rating!=null?`<span style="font-size:9px;font-family:var(--mono);color:${c.rating>=8?'var(--grn)':c.rating>=5?'var(--amb)':'var(--red)'}">★ ${c.rating}/10</span>`:''}
+          ${c.expected_salary?`<span class="kcard-val">${fmt(c.expected_salary)}</span>`:''}
+        </div>
+        ${c.source?`<div class="kcard-meta" style="margin-top:2px;font-size:9.5px">via ${esc(hireSourceLabel(c.source))}</div>`:''}
+        ${dueIds.has(String(c.id))?`<div style="font-size:9px;color:var(--amb);font-family:var(--mono);margin-top:3px">⚠ follow-up due ${esc(c.next_followup)}</div>`:''}
+      </div>`).join('');
+    col.querySelectorAll('.kcard').forEach(card=>{
+      const id=card.dataset.candId;
+      initCardDrag(card,id,'hiring');
+      card.addEventListener('click',()=>{ if (HIRE_CACHE[id]) openEditHire(HIRE_CACHE[id]); });
+    });
+  });
+
+  const tb=$('hiring-tbody');
+  if (!cands.length) { tb.innerHTML='<tr><td colspan="9" class="empty">No candidates yet.</td></tr>'; return; }
+  const order=s=>HIRING_STAGES.findIndex(h=>h.id===s);
+  tb.innerHTML=[...cands].sort((a,b)=>order(a.stage)-order(b.stage)).map(c=>`
+    <tr class="cand-row" data-cand-id="${esc(String(c.id))}" style="cursor:pointer">
+      <td><strong>${esc(c.name||'-')}</strong>${c.email?`<div style="font-size:10px;color:var(--ink3)">${esc(c.email)}</div>`:''}</td>
+      <td>${esc(c.role||'-')}</td>
+      <td><span class="badge ${hireStageBadge(c.stage)}">${esc(hireStageLabel(c.stage))}</span></td>
+      <td>${c.rating!=null?c.rating+'/10':'-'}</td>
+      <td>${c.expected_salary?fmt(c.expected_salary):'-'}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--ink3)">${esc(c.available_from||'-')}</td>
+      <td>${esc(hireSourceLabel(c.source))}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:${dueIds.has(String(c.id))?'var(--amb)':'var(--ink3)'}">${esc(c.next_followup||'-')}${dueIds.has(String(c.id))?' ⚠':''}</td>
+      <td style="white-space:nowrap"><button class="btn btn-xs edit-cand-btn">Edit</button>${c.resume_url?` <a class="btn btn-xs" href="${esc(c.resume_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Resume</a>`:''}</td>
+    </tr>`).join('');
+  tb.querySelectorAll('.cand-row').forEach(row=>{
+    row.addEventListener('click',()=>{ const c=HIRE_CACHE[row.dataset.candId]; if (c) openEditHire(c); });
+  });
+}
+function hireSourceLabel(v) {
+  return {seek:'Seek',indeed:'Indeed',linkedin:'LinkedIn',referral:'Referral',
+          direct:'Direct / Website',recruiter:'Recruiter',other:'Other'}[v] || (v || '-');
+}
+function hireForm(prefix) {
+  const num=id=>$(id).value!==''?parseFloat($(id).value):null;
+  const int=id=>$(id).value!==''?parseInt($(id).value,10):null;
+  return {
+    name:$(prefix+'-name').value.trim(),
+    role:$(prefix+'-role').value.trim()||null,
+    email:$(prefix+'-email').value.trim()||null,
+    phone:$(prefix+'-phone').value.trim()||null,
+    stage:$(prefix+'-stage').value,
+    source:$(prefix+'-source').value||null,
+    expected_salary:num(prefix+'-salary'),
+    available_from:$(prefix+'-available').value||null,
+    rating:int(prefix+'-rating'),
+    next_followup:$(prefix+'-followup').value||null,
+    resume_url:$(prefix+'-resume').value.trim()||null,
+    notes:$(prefix+'-notes').value.trim()||null
+  };
+}
+async function saveHire() {
+  const d=hireForm('h');
+  if (!d.name) { toast('Candidate name required',true); return; }
+  const {error}=await db.from('hiring_candidates').insert([d]);
+  if (error) { toast('DB error: '+error.message,true); return; }
+  ['h-name','h-role','h-email','h-phone','h-salary','h-available','h-rating','h-followup','h-resume','h-notes']
+    .forEach(id=>{ if($(id))$(id).value=''; });
+  setVal('h-stage','applied'); setVal('h-source','seek');
+  closeModal('m-hire'); toast('Candidate saved ✓');
+  loadHiring();
+}
+function openEditHire(c) {
+  if (!c) return;
+  setVal('eh-id',c.id);
+  setVal('eh-name',c.name||'');
+  setVal('eh-role',c.role||'');
+  setVal('eh-email',c.email||'');
+  setVal('eh-phone',c.phone||'');
+  setVal('eh-stage',c.stage||'applied');
+  setVal('eh-stage-orig',c.stage||'');
+  setVal('eh-source',c.source||'other');
+  setVal('eh-salary',c.expected_salary??'');
+  setVal('eh-available',c.available_from||'');
+  setVal('eh-rating',c.rating??'');
+  setVal('eh-followup',c.next_followup||'');
+  setVal('eh-resume',c.resume_url||'');
+  setVal('eh-notes',c.notes||'');
+  setText('edit-hire-sub',(c.name||'')+(c.role?' · '+c.role:''));
+  openModal('m-edit-hire');
+}
+// Stage saves on the spot here too - same reasoning as the sales pipeline, and
+// the same behaviour as dragging the card between columns.
+let _hireStageSaving=false;
+async function saveHireStageNow() {
+  const sel=$('eh-stage'); if (!sel) return;
+  const id=$('eh-id').value, stage=sel.value, prev=$('eh-stage-orig').value;
+  if (!id || !stage || stage===prev || _hireStageSaving) return;
+  _hireStageSaving=true; sel.disabled=true;
+  const {error}=await db.from('hiring_candidates').update({stage,updated_at:now()}).eq('id',id);
+  _hireStageSaving=false; sel.disabled=false;
+  if (error) { sel.value=prev; toast('Stage not saved: '+error.message,true); return; }
+  setVal('eh-stage-orig',stage);
+  toast('→ '+hireStageLabel(stage));
+  loadHiring();
+}
+async function updateHire() {
+  const id=$('eh-id').value;
+  const d=hireForm('eh');
+  if (!d.name) { toast('Candidate name required',true); return; }
+  d.updated_at=now();
+  const {error}=await db.from('hiring_candidates').update(d).eq('id',id);
+  if (error) { toast('DB error: '+error.message,true); return; }
+  setVal('eh-stage-orig',d.stage);
+  closeModal('m-edit-hire'); loadHiring(); toast('Candidate updated ✓');
+}
+async function deleteHire() {
+  if (!confirm('Delete this candidate?')) return;
+  const {error}=await db.from('hiring_candidates').delete().eq('id',$('eh-id').value);
+  if (error) { toast('DB error: '+error.message,true); return; }
+  closeModal('m-edit-hire'); loadHiring(); toast('Candidate deleted');
 }
 
 const PPL_STAGES=[{id:'active_client',label:'Active'},{id:'paused',label:'Paused'},{id:'churned',label:'Churned'}];
@@ -4933,144 +5135,6 @@ async function logPplOrder() {
   loadPPL();
 }
 
-
-/* ═══ TURNKEY LEAD ENGINES ═══
-   Done-for-you engines live in the same `clients` table under type='tle', so
-   they sit alongside PPL and Managed without a schema of their own. */
-const TLE_STAGES=[{id:'onboarding',label:'Onboarding'},{id:'active',label:'Live'},{id:'paused',label:'Paused'},{id:'churned',label:'Churned'}];
-let tleChurnChart=null;
-async function loadTLE() {
-  const {data,error}=await db.from('clients').select('*').eq('type','tle').order('created_at',{ascending:false});
-  if (error) { $('tle-tbody').innerHTML=`<tr><td colspan="10" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
-  renderTLE(data||[]);
-}
-function renderTLE(clients) {
-  const live=clients.filter(c=>c.stage==='active');
-  const onboarding=clients.filter(c=>c.stage==='onboarding');
-  const paused=clients.filter(c=>c.stage==='paused');
-  const churned=clients.filter(c=>c.stage==='churned');
-  const money=n=>'$'+Math.round(n).toLocaleString();
-  setText('tle-active',live.length||'-');
-  setText('tle-onboarding',onboarding.length||'-');
-  const mrr=live.reduce((s,c)=>s+(c.management_fee||0),0);
-  const budget=live.reduce((s,c)=>s+(c.monthly_budget||0),0);
-  setText('tle-mrr',mrr?money(mrr):'-');
-  setText('tle-budget',budget?money(budget):'-');
-  setText('tle-total',clients.length||'-');
-  setText('tle-churn-rate',clients.length?(churned.length/clients.length*100).toFixed(1)+'%':'-');
-  setText('tle-retention-rate',clients.length?((live.length+paused.length)/clients.length*100).toFixed(1)+'%':'-');
-  const scored=clients.filter(c=>c.cx_score!=null);
-  setText('tle-cx',scored.length?(scored.reduce((s,c)=>s+c.cx_score,0)/scored.length).toFixed(1):'-');
-
-  TLE_STAGES.forEach(s=>{
-    const col=$('tle-col-'+s.id),cnt=$('tlec-'+s.id);
-    const sl=clients.filter(c=>c.stage===s.id);
-    if (cnt) cnt.textContent=sl.length;
-    if (!col) return;
-    sl.forEach(c=>{ CLIENT_CACHE[c.id]=c; });
-    col.innerHTML=sl.map(c=>`
-      <div class="kcard" id="kc-tle-${esc(String(c.id))}" data-client-id="${esc(String(c.id))}" data-client-type="tle">
-        <div class="kcard-name">${esc(c.company_name)}</div>
-        <div class="kcard-meta">${esc(c.niche||'')}${c.target_leads_month?' · '+c.target_leads_month+' leads/mo target':''}</div>
-        ${c.cx_score!=null?`<div style="font-size:9px;font-family:var(--mono);margin-top:2px;color:${c.cx_score>=8?'var(--grn)':c.cx_score>=5?'var(--amb)':'var(--red)'}">CX ${c.cx_score}/10</div>`:''}
-        ${c.phone?`<div class="kcard-phone">${esc(c.phone)}</div>`:''}
-        ${c.management_fee?`<div class="kcard-val">${money(c.management_fee)}/mo</div>`:''}
-        ${c.monthly_budget?`<div style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-top:2px">Ad budget ${money(c.monthly_budget)}/mo</div>`:''}
-      </div>`).join('');
-    col.querySelectorAll('.kcard').forEach(card=>{
-      const id=card.dataset.clientId;
-      initCardDrag(card,id,'tle');
-      card.addEventListener('click',()=>{ if (CLIENT_CACHE[id]) openEditTle(CLIENT_CACHE[id]); });
-    });
-  });
-
-  const tb=$('tle-tbody');
-  if (!clients.length) { tb.innerHTML='<tr><td colspan="10" class="empty">No lead engines yet.</td></tr>'; return; }
-  const stageOrder=s=>s==='active'?0:s==='onboarding'?1:s==='paused'?2:3;
-  tb.innerHTML=[...clients].sort((a,b)=>stageOrder(a.stage)-stageOrder(b.stage)).map(c=>`
-    <tr data-client-id="${esc(String(c.id))}" data-client-type="tle" class="client-row" style="cursor:pointer">
-      <td><strong>${esc(c.company_name)}</strong>${c.contact_name?`<div style="font-size:10px;color:var(--ink3)">${esc(c.contact_name)}</div>`:''}</td>
-      <td><span class="badge ${stageBadge(c.stage)}">${c.stage==='active'?'Live':stageLabel(c.stage)}</span></td>
-      <td>${c.cx_score!=null?c.cx_score+'/10':'-'}</td>
-      <td>${esc(c.niche||'-')}</td>
-      <td>${c.management_fee?money(c.management_fee):'-'}</td>
-      <td>${c.monthly_budget?money(c.monthly_budget):'-'}</td>
-      <td>${c.target_leads_month||'-'}</td>
-      <td>${c.lead_price?'$'+Number(c.lead_price).toFixed(0):'-'}</td>
-      <td style="font-family:var(--mono);font-size:10px;color:var(--ink3)">${c.start_date||'-'}</td>
-      <td><button class="btn btn-xs" onclick="event.stopPropagation();openEditTle(CLIENT_CACHE['${esc(String(c.id))}'])">Edit</button></td>
-    </tr>`).join('');
-  clients.forEach(c=>{ CLIENT_CACHE[c.id]=c; });
-  tb.querySelectorAll('.client-row').forEach(row=>{
-    row.addEventListener('click',()=>{ const c=CLIENT_CACHE[row.dataset.clientId]; if (c) openEditTle(c); });
-  });
-}
-function tleForm(prefix) {
-  const num=id=>$(id).value!==''?parseFloat($(id).value):null;
-  const int=id=>$(id).value!==''?parseInt($(id).value):null;
-  return {
-    type:'tle',
-    company_name:$(prefix+'-co').value.trim(),
-    contact_name:$(prefix+'-cn').value.trim()||null,
-    email:$(prefix+'-em').value.trim()||null,
-    phone:$(prefix+'-ph').value.trim()||null,
-    niche:$(prefix+'-niche').value,
-    management_fee:num(prefix+'-fee')||0,
-    monthly_budget:num(prefix+'-budget')||0,
-    target_leads_month:int(prefix+'-target'),
-    lead_price:num(prefix+'-price'),
-    stage:$(prefix+'-stage').value,
-    cx_score:int(prefix+'-cx'),
-    start_date:$(prefix+'-start').value||null
-  };
-}
-async function saveTleClient() {
-  const d=tleForm('tle');
-  if (!d.company_name) { toast('Company name required',true); return; }
-  d.created_at=now();
-  const {error}=await db.from('clients').insert([d]);
-  if (error) { toast('DB error: '+error.message,true); return; }
-  ['tle-co','tle-cn','tle-em','tle-ph','tle-fee','tle-budget','tle-target','tle-price','tle-cx','tle-start'].forEach(id=>{ if($(id))$(id).value=''; });
-  closeModal('m-tle'); toast('Engine saved ✓');
-  loadTLE();
-}
-function openEditTle(c) {
-  if (!c) return;
-  setVal('etle-id',c.id);
-  setVal('etle-co',c.company_name||'');
-  setVal('etle-cn',c.contact_name||'');
-  setVal('etle-em',c.email||'');
-  setVal('etle-ph',c.phone||'');
-  setVal('etle-niche',c.niche||'Solar Residential');
-  setVal('etle-fee',c.management_fee??'');
-  setVal('etle-budget',c.monthly_budget??'');
-  setVal('etle-target',c.target_leads_month??'');
-  setVal('etle-price',c.lead_price??'');
-  setVal('etle-stage',c.stage||'onboarding');
-  setVal('etle-cx',c.cx_score??'');
-  setVal('etle-start',c.start_date||'');
-  const sub=$('edit-tle-sub'); if (sub) sub.textContent=c.company_name||'';
-  openModal('m-edit-tle');
-}
-async function updateTleClient() {
-  const id=$('etle-id').value;
-  const d=tleForm('etle');
-  if (!d.company_name) { toast('Company name required',true); return; }
-  delete d.type;
-  d.updated_at=now();
-  const {error}=await db.from('clients').update(d).eq('id',id);
-  if (error) { toast('DB error: '+error.message,true); return; }
-  closeModal('m-edit-tle'); toast('Engine updated ✓');
-  loadTLE();
-}
-async function deleteTleClient() {
-  const id=$('etle-id').value;
-  if (!confirm('Delete this lead engine? This cannot be undone.')) return;
-  const {error}=await db.from('clients').delete().eq('id',id);
-  if (error) { toast('DB error: '+error.message,true); return; }
-  closeModal('m-edit-tle'); toast('Engine deleted');
-  loadTLE();
-}
 
 const MG_STAGES=[{id:'onboarding',label:'Onboarding'},{id:'active',label:'Active'},{id:'paused',label:'Paused'},{id:'churned',label:'Churned'}];
 const MG_ONBOARDING_SUB_STAGES=['Paid & Signed','Form Filled','Meta/Google Access Granted','Assets Provided & Previews Pending','Previews Accepted'];
