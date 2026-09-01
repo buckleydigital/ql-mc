@@ -1913,6 +1913,7 @@ td strong{font-weight:500}
   <div class="modal">
     <h2>Edit Lead</h2><div class="msub" id="edit-lead-sub"></div>
     <input type="hidden" id="el-id">
+    <input type="hidden" id="el-stage-orig">
     <input type="hidden" id="el-contact-count-orig">
     <input type="hidden" id="el-last-contact-orig">
     <div class="frow"><label class="flabel">Contact Name</label><input class="fi" id="el-name"></div>
@@ -1927,7 +1928,7 @@ td strong{font-weight:500}
       </select>
     </div>
     <div class="frow"><label class="flabel">Stage</label>
-      <select class="fs" id="el-stage" onchange="checkConvertBanner()">
+      <select class="fs" id="el-stage" onchange="checkConvertBanner();saveStageNow()">
         <option value="new_lead">New Lead</option><option value="no_answer">No Answer</option>
         <option value="call_back">Call-Back/Booked</option><option value="proposal">Proposal / Follow-up</option>
         <option value="closed_won">Closed Won</option><option value="closed_lost">Closed Lost</option>
@@ -4071,6 +4072,47 @@ function checkConvertBanner() {
   const stage = $('el-stage').value;
   $('convert-banner').style.display = (!IS_REP && stage === 'closed_won') ? 'block' : 'none';
 }
+// Stage saves the moment it is picked - the same write dragging the card
+// between kanban columns makes, so the two routes behave alike. Everything
+// else in this modal still waits for Save changes; only the stage jumps the
+// queue, because it is the one field both reps and admins open a lead purely
+// to flip, and making them confirm it twice was friction with nothing behind
+// it. Nothing the user has typed into the other fields is written here.
+let _stageSaving = false;
+async function saveStageNow() {
+  const sel = $('el-stage'); if (!sel) return;
+  const id = $('el-id').value;
+  const stage = sel.value;
+  const prev = $('el-stage-orig').value;
+  if (!id || !stage || stage === prev || _stageSaving) return;
+
+  _stageSaving = true; sel.disabled = true;
+  let error;
+  if (IS_REP) {
+    // Reps write through the guarded RPC - the leads UPDATE policy blocks them
+    // outright, exactly as it does on the Save changes path and on drag.
+    ({ error } = await db.rpc('rep_update_lead_stage', { p_lead_id: id, p_stage: stage }));
+  } else {
+    const upd = { stage, updated_at: now() };
+    if (['call_back','proposal','closed_won'].includes(stage)) upd.contactable = true;
+    ({ error } = await db.from('leads').update(upd).eq('id', id));
+  }
+  _stageSaving = false; sel.disabled = false;
+
+  if (error) {
+    // Put the dropdown back where it was, so it never shows a stage the row
+    // does not have.
+    sel.value = prev; checkConvertBanner();
+    toast('Stage not saved: ' + error.message, true);
+    return;
+  }
+  setVal('el-stage-orig', stage);
+  // Mirror the auto-contactable the write just made, so a later Save changes
+  // from the still-open modal does not put a stale value back.
+  if (['call_back','proposal','closed_won'].includes(stage)) setVal('el-contactable','true');
+  toast('→ ' + stageLabel(stage));
+  loadCRM();
+}
 function openEditLead(l) {
   setVal('el-id',l.id);setVal('el-name',l.name);setVal('el-company',l.company);
   setVal('el-email',l.email);setVal('el-phone',l.phone);
@@ -4088,6 +4130,7 @@ function openEditLead(l) {
     }
   }
   setVal('el-stage',l.stage);
+  setVal('el-stage-orig',l.stage||'');
   setVal('el-type',l.lead_type||'ppl');setVal('el-value',l.value);
   setVal('el-source',l.source);setVal('el-notes',l.notes);
   setVal('el-contactable',l.contactable===true?'true':l.contactable===false?'false':'');
@@ -4105,7 +4148,9 @@ function openEditLead(l) {
     const e = $(id); if (e) e.disabled = IS_REP;
   });
   const saveBtn = $('el-save');
-  if (saveBtn) saveBtn.textContent = IS_REP ? 'Save stage' : 'Save changes';
+  // Reps only have the stage to change and it has already saved itself by the
+  // time they reach the button, so it closes rather than promising a save.
+  if (saveBtn) saveBtn.textContent = IS_REP ? 'Done' : 'Save changes';
   checkConvertBanner();
   openModal('m-edit-lead');
 }
@@ -4159,9 +4204,12 @@ async function updateLead() {
   const id=$('el-id').value;
   const stage=$('el-stage').value;
   if (IS_REP) {
-    // Stage and nothing else. Enforced server-side, not here: the leads UPDATE
-    // policy blocks reps outright, so this guarded RPC is the only write they
-    // can make - it re-checks that the caller is a rep who owns the lead.
+    // Stage and nothing else, and the dropdown saves on change, so there is
+    // usually nothing left to write by the time the button is pressed.
+    if (stage === $('el-stage-orig').value) { closeModal('m-edit-lead'); return; }
+    // Enforced server-side, not here: the leads UPDATE policy blocks reps
+    // outright, so this guarded RPC is the only write they can make - it
+    // re-checks that the caller is a rep who owns the lead.
     const {error}=await db.rpc('rep_update_lead_stage',{p_lead_id:id,p_stage:stage});
     if (error) { toast('Error: '+error.message,true); return; }
     closeModal('m-edit-lead'); loadCRM(); toast('→ '+stageLabel(stage));
