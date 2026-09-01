@@ -1405,6 +1405,38 @@ td strong{font-weight:500}
         </div>
       </div>
 
+      <!-- ══ TEAM MEMBERS (CSM / Ops / Tech / Media Buyer) ══ -->
+      <div class="panel" id="panel-team">
+        <div class="ph">
+          <div class="ph-left"><h1>Team Members</h1><p>CSMs, Ops Managers, Tech Leads &amp; Media Buyers - roster only, no dashboard login</p></div>
+          <div class="ph-right"><button class="btn btn-p btn-sm" onclick="openCreateTeamModal()">+ New Member</button></div>
+        </div>
+        <div class="kg c4 mb4">
+          <div class="kpi"><div class="klabel">CSMs</div><div class="kval blu" id="team-kpi-csm">-</div><div class="ksub" id="team-kpi-csm-sub"></div></div>
+          <div class="kpi"><div class="klabel">Ops Managers</div><div class="kval" id="team-kpi-ops_manager">-</div><div class="ksub" id="team-kpi-ops_manager-sub"></div></div>
+          <div class="kpi"><div class="klabel">Tech Leads</div><div class="kval" id="team-kpi-tech_lead">-</div><div class="ksub" id="team-kpi-tech_lead-sub"></div></div>
+          <div class="kpi"><div class="klabel">Media Buyers</div><div class="kval" id="team-kpi-media_buyer">-</div><div class="ksub" id="team-kpi-media_buyer-sub"></div></div>
+        </div>
+
+        <div class="sl">Roster <div class="sl-line"></div></div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+          <select class="fi" id="team-filter-role" style="width:auto;font-size:12px;padding:5px 10px" onchange="renderTeam()">
+            <option value="">All roles</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer">
+            <input type="checkbox" id="team-filter-active" onchange="renderTeam()" style="width:15px;height:15px;cursor:pointer">
+            <span>Active only</span>
+          </label>
+          <button class="btn btn-sm" onclick="loadTeam()" style="margin-left:auto">↻ Refresh</button>
+        </div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th><th>Started</th><th>Pay Rate</th><th>Status</th><th></th></tr></thead>
+            <tbody id="team-tbody"><tr><td colspan="8" class="empty">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- ══ PAY RATES ══ -->
       <div class="panel" id="panel-payrates">
         <div class="ph">
@@ -1696,6 +1728,50 @@ td strong{font-weight:500}
 </div>
 
 <!-- Create / edit a sales rep account -->
+<!-- Team member: CSM / Ops Manager / Tech Lead / Media Buyer -->
+<div class="overlay" id="m-team">
+  <div class="modal">
+    <h2>New Team Member</h2><div class="msub">Roster entry only - this does not create a login</div>
+    <div class="frow"><label class="flabel">Name</label><input class="fi" id="tm-name" placeholder="e.g. Priya Raman"></div>
+    <div class="frow"><label class="flabel">Role</label><select class="fs" id="tm-role"></select></div>
+    <div class="frow"><label class="flabel">Email</label><input class="fi" id="tm-email" type="email" placeholder="priya@quoteleads.com.au"></div>
+    <div class="frow"><label class="flabel">Phone</label><input class="fi" id="tm-phone" placeholder="04xx xxx xxx"></div>
+    <div style="display:flex;gap:8px">
+      <div class="frow" style="flex:1"><label class="flabel">Start Date</label><input class="fi" id="tm-start" type="date"></div>
+      <div class="frow" style="flex:1"><label class="flabel">Pay Rate <span style="font-size:9.5px;color:var(--ink3);font-weight:300">optional</span></label><select class="fs" id="tm-payrate"></select></div>
+    </div>
+    <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="tm-notes"></textarea></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-team')">Cancel</button>
+      <button class="btn btn-p" onclick="saveTeamMember()">Save member</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="m-team-edit">
+  <div class="modal">
+    <h2>Edit Team Member</h2><div class="msub" id="team-edit-sub">-</div>
+    <input type="hidden" id="etm-id">
+    <div class="frow"><label class="flabel">Name</label><input class="fi" id="etm-name"></div>
+    <div class="frow"><label class="flabel">Role</label><select class="fs" id="etm-role"></select></div>
+    <div class="frow"><label class="flabel">Email</label><input class="fi" id="etm-email" type="email"></div>
+    <div class="frow"><label class="flabel">Phone</label><input class="fi" id="etm-phone"></div>
+    <div style="display:flex;gap:8px">
+      <div class="frow" style="flex:1"><label class="flabel">Start Date</label><input class="fi" id="etm-start" type="date"></div>
+      <div class="frow" style="flex:1"><label class="flabel">Pay Rate <span style="font-size:9.5px;color:var(--ink3);font-weight:300">optional</span></label><select class="fs" id="etm-payrate"></select></div>
+    </div>
+    <div class="frow"><label class="flabel">Status</label>
+      <select class="fs" id="etm-active"><option value="true">Active</option><option value="false">Inactive</option></select>
+    </div>
+    <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="etm-notes"></textarea></div>
+    <div class="macts">
+      <button class="btn" style="color:var(--red)" onclick="deleteTeamMember()">Delete</button>
+      <button class="btn" onclick="closeModal('m-team-edit')">Cancel</button>
+      <button class="btn btn-p" onclick="updateTeamMember()">Save changes</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="m-rep">
   <div class="modal">
     <h2>New Sales Rep</h2><div class="msub">Creates a restricted login (pipeline + own invoices only)</div>
@@ -1911,11 +1987,19 @@ td strong{font-weight:500}
   </div>
 </div>
 
+<datalist id="hire-role-options">
+  <option value="Sales Rep"></option>
+  <option value="CSM"></option>
+  <option value="Ops Manager"></option>
+  <option value="Tech Lead"></option>
+  <option value="Media Buyer"></option>
+</datalist>
+
 <div class="overlay" id="m-hire">
   <div class="modal">
     <h2>Add Candidate</h2><div class="msub">New hiring pipeline entry</div>
     <div class="frow"><label class="flabel">Candidate Name</label><input class="fi" id="h-name" placeholder="e.g. Priya Raman"></div>
-    <div class="frow"><label class="flabel">Role Applied For</label><input class="fi" id="h-role" placeholder="e.g. Sales Rep - Outbound"></div>
+    <div class="frow"><label class="flabel">Role Applied For</label><input class="fi" id="h-role" list="hire-role-options" placeholder="e.g. Media Buyer"></div>
     <div class="frow"><label class="flabel">Email</label><input class="fi" id="h-email" type="email" placeholder="priya@example.com"></div>
     <div class="frow"><label class="flabel">Phone</label><input class="fi" id="h-phone" placeholder="04xx xxx xxx"></div>
     <div class="frow"><label class="flabel">Stage</label>
@@ -1956,7 +2040,7 @@ td strong{font-weight:500}
     <input type="hidden" id="eh-id">
     <input type="hidden" id="eh-stage-orig">
     <div class="frow"><label class="flabel">Candidate Name</label><input class="fi" id="eh-name"></div>
-    <div class="frow"><label class="flabel">Role Applied For</label><input class="fi" id="eh-role"></div>
+    <div class="frow"><label class="flabel">Role Applied For</label><input class="fi" id="eh-role" list="hire-role-options"></div>
     <div class="frow"><label class="flabel">Email</label><input class="fi" id="eh-email" type="email"></div>
     <div class="frow"><label class="flabel">Phone</label><input class="fi" id="eh-phone"></div>
     <div class="frow"><label class="flabel">Stage</label>
@@ -1986,6 +2070,7 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="eh-notes"></textarea></div>
     <div class="macts">
       <button class="btn btn-red btn-sm" onclick="deleteHire()">Delete</button>
+      <button class="btn btn-sm" id="eh-to-team" onclick="hireToTeam()" style="display:none">＋ Add to Team</button>
       <div style="flex:1"></div>
       <button class="btn" onclick="closeModal('m-edit-hire')">Cancel</button>
       <button class="btn btn-p" onclick="updateHire()">Save changes</button>
@@ -3084,6 +3169,7 @@ const PANEL_GROUPS = {
   ]},
   salesreps: {label:'Team', members:[
     {panel:'salesreps', label:'Sales Reps'},
+    {panel:'team',      label:'Team Members'},
     {panel:'payrates',  label:'Pay Rates'},
     {panel:'hiring',    label:'Hiring Pipeline'}
   ]}
@@ -3224,6 +3310,7 @@ function nav(panel, el) {
   if (panel === 'sentmail') loadSentEmails();
   if (panel === 'hiring') loadHiring();
   if (panel === 'salesreps') loadReps();
+  if (panel === 'team') loadTeam();
   if (panel === 'payrates') loadPayRates();
 }
 
@@ -4842,7 +4929,36 @@ function openEditHire(c) {
   setVal('eh-resume',c.resume_url||'');
   setVal('eh-notes',c.notes||'');
   setText('edit-hire-sub',(c.name||'')+(c.role?' · '+c.role:''));
+  syncHireToTeamBtn(c.stage);
   openModal('m-edit-hire');
+}
+// A hired candidate can be pushed onto the team roster in one click - only the
+// non-rep roles live there, so a hired sales rep still gets a login created on
+// the Sales Reps panel instead.
+function syncHireToTeamBtn(stage) {
+  const b=$('eh-to-team'); if (b) b.style.display = stage==='hired' ? '' : 'none';
+}
+// Maps the free-text "role applied for" onto a team_members role where it is
+// obvious; anything else opens the modal on the default role to pick by hand.
+function teamRoleFromText(txt) {
+  const t=String(txt||'').toLowerCase();
+  if (/(customer success|\bcsm\b)/.test(t))     return 'csm';
+  if (/(media buy|\bbuyer\b|\bads? manager\b)/.test(t)) return 'media_buyer';
+  if (/(ops|operations)/.test(t))              return 'ops_manager';
+  if (/(tech|developer|engineer|cto)/.test(t)) return 'tech_lead';
+  return '';
+}
+function hireToTeam() {
+  const c=HIRE_CACHE[$('eh-id').value];
+  if (!c) return;
+  const role=teamRoleFromText($('eh-role').value||c.role);
+  closeModal('m-edit-hire');
+  nav('team');
+  openCreateTeamModal({
+    name:$('eh-name').value||c.name, email:$('eh-email').value||c.email,
+    phone:$('eh-phone').value||c.phone, start_date:c.available_from||'',
+    role, notes:'Hired from the pipeline'+(c.role?` as ${c.role}`:'')
+  });
 }
 // Stage saves on the spot here too - same reasoning as the sales pipeline, and
 // the same behaviour as dragging the card between columns.
@@ -4856,6 +4972,7 @@ async function saveHireStageNow() {
   _hireStageSaving=false; sel.disabled=false;
   if (error) { sel.value=prev; toast('Stage not saved: '+error.message,true); return; }
   setVal('eh-stage-orig',stage);
+  syncHireToTeamBtn(stage);
   toast('→ '+hireStageLabel(stage));
   loadHiring();
 }
@@ -8406,6 +8523,158 @@ async function callRepEdge(action, payload = {}) {
   const out = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(out.error || `Request failed (${res.status})`);
   return out;
+}
+
+// ── Team members (CSM / Ops Manager / Tech Lead / Media Buyer) ──────────────
+// The roles that are not sales reps. A rep is an auth account with its own
+// scoped view of the dashboard, so it lives in auth.users and is managed
+// through the service-role edge function. These four are people we track but
+// who never log in, so they are a plain `team_members` row and go straight
+// through PostgREST like any other admin table.
+const TEAM_ROLES = [
+  {id:'csm',          label:'CSM',          badge:'bg-blu'},
+  {id:'ops_manager',  label:'Ops Manager',  badge:'bg-vio'},
+  {id:'tech_lead',    label:'Tech Lead',    badge:'bg-sky'},
+  {id:'media_buyer',  label:'Media Buyer',  badge:'bg-amb'}
+];
+let _team = [];
+function teamRoleLabel(r){ return (TEAM_ROLES.find(t=>t.id===r)||{}).label || r || '-'; }
+function teamRoleBadge(r){ return (TEAM_ROLES.find(t=>t.id===r)||{}).badge || 'bg-gray'; }
+
+// Every role dropdown in the app is built from TEAM_ROLES so adding a role is
+// a one-line change here (plus the CHECK constraint on the table).
+function fillTeamRoleSelects() {
+  const opts = TEAM_ROLES.map(t=>`<option value="${t.id}">${esc(t.label)}</option>`).join('');
+  ['tm-role','etm-role'].forEach(id=>{ const e=$(id); if (e) e.innerHTML=opts; });
+  const f=$('team-filter-role');
+  if (f) f.innerHTML='<option value="">All roles</option>'+opts;
+}
+
+// Pay rates are free-text role types, so we offer them as a dropdown rather
+// than a foreign key - a member can also sit on no rate at all.
+async function fillTeamPayRateSelects(selected) {
+  const {data} = await db.from('pay_rates').select('role_type').order('role_type');
+  const roles=[...new Set((data||[]).map(r=>r.role_type).filter(Boolean))];
+  if (selected && !roles.includes(selected)) roles.push(selected);
+  const opts='<option value="">- none -</option>'+roles.map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join('');
+  ['tm-payrate','etm-payrate'].forEach(id=>{ const e=$(id); if (e) e.innerHTML=opts; });
+}
+
+async function loadTeam() {
+  if (IS_REP) return;   // walled off by RLS too; this just saves the query
+  const tb=$('team-tbody');
+  if (tb) tb.innerHTML='<tr><td colspan="8" class="empty">Loading...</td></tr>';
+  fillTeamRoleSelects();
+  const [{data,error}] = await Promise.all([
+    db.from('team_members').select('*').order('created_at',{ascending:false}),
+    fillTeamPayRateSelects()
+  ]);
+  if (error) { if (tb) tb.innerHTML=`<tr><td colspan="8" class="empty" style="color:var(--red)">Error: ${esc(error.message)}</td></tr>`; return; }
+  _team=data||[];
+  renderTeam();
+}
+
+function renderTeam() {
+  const roleFilter=$('team-filter-role')?.value||'';
+  const activeOnly=$('team-filter-active')?.checked;
+  TEAM_ROLES.forEach(t=>{
+    const all=_team.filter(m=>m.role===t.id);
+    const active=all.filter(m=>m.active);
+    setText('team-kpi-'+t.id, all.length||'-');
+    setText('team-kpi-'+t.id+'-sub', all.length ? `${active.length} active` : '');
+  });
+  const rows=_team.filter(m=>(!roleFilter||m.role===roleFilter)&&(!activeOnly||m.active));
+  const tb=$('team-tbody');
+  if (!tb) return;
+  if (!rows.length) {
+    tb.innerHTML=`<tr><td colspan="8" class="empty">${_team.length?'No members match that filter.':'No team members yet. Click “New Member” to add one.'}</td></tr>`;
+    return;
+  }
+  const order=r=>TEAM_ROLES.findIndex(t=>t.id===r);
+  tb.innerHTML=[...rows].sort((a,b)=>order(a.role)-order(b.role)||String(a.name).localeCompare(String(b.name))).map(m=>`
+    <tr class="team-row" data-team-id="${esc(String(m.id))}" style="cursor:pointer">
+      <td><strong>${esc(m.name||'-')}</strong></td>
+      <td><span class="badge ${teamRoleBadge(m.role)}">${esc(teamRoleLabel(m.role))}</span></td>
+      <td style="font-family:var(--mono);font-size:11px">${esc(m.email||'-')}</td>
+      <td style="font-family:var(--mono);font-size:11px">${esc(m.phone||'-')}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--ink3)">${esc(m.start_date||'-')}</td>
+      <td>${esc(m.pay_rate_role||'-')}</td>
+      <td>${m.active?'<span class="badge bg-grn">Active</span>':'<span class="badge bg-gray">Inactive</span>'}</td>
+      <td style="white-space:nowrap"><button class="btn btn-xs edit-team-btn">Edit</button></td>
+    </tr>`).join('');
+  tb.querySelectorAll('.team-row').forEach(row=>{
+    row.addEventListener('click',()=>openTeamEdit(row.dataset.teamId));
+  });
+}
+
+function teamForm(prefix) {
+  return {
+    name:$(prefix+'-name').value.trim(),
+    role:$(prefix+'-role').value,
+    email:$(prefix+'-email').value.trim()||null,
+    phone:$(prefix+'-phone').value.trim()||null,
+    start_date:$(prefix+'-start').value||null,
+    pay_rate_role:$(prefix+'-payrate').value||null,
+    notes:$(prefix+'-notes').value.trim()||null
+  };
+}
+
+// `role` and `name` may be pre-filled when a hired candidate is promoted onto
+// the roster straight from the hiring pipeline.
+async function openCreateTeamModal(prefill = {}) {
+  fillTeamRoleSelects();
+  await fillTeamPayRateSelects();
+  setVal('tm-name',prefill.name||''); setVal('tm-email',prefill.email||'');
+  setVal('tm-phone',prefill.phone||''); setVal('tm-start',prefill.start_date||'');
+  setVal('tm-payrate',''); setVal('tm-notes',prefill.notes||'');
+  setVal('tm-role',prefill.role||TEAM_ROLES[0].id);
+  openModal('m-team');
+}
+async function saveTeamMember() {
+  const d=teamForm('tm');
+  if (!d.name) { toast('Name required',true); return; }
+  const {error}=await db.from('team_members').insert([d]);
+  if (error) { toast('DB error: '+error.message,true); return; }
+  closeModal('m-team'); toast('Team member added ✓');
+  loadTeam();
+}
+
+async function openTeamEdit(id) {
+  const m=_team.find(x=>String(x.id)===String(id));
+  if (!m) return;
+  fillTeamRoleSelects();
+  await fillTeamPayRateSelects(m.pay_rate_role);
+  setVal('etm-id',m.id);
+  setVal('etm-name',m.name||'');
+  setVal('etm-role',m.role||TEAM_ROLES[0].id);
+  setVal('etm-email',m.email||'');
+  setVal('etm-phone',m.phone||'');
+  setVal('etm-start',m.start_date||'');
+  setVal('etm-payrate',m.pay_rate_role||'');
+  setVal('etm-active',m.active?'true':'false');
+  setVal('etm-notes',m.notes||'');
+  setText('team-edit-sub',(m.name||'')+' · '+teamRoleLabel(m.role));
+  openModal('m-team-edit');
+}
+async function updateTeamMember() {
+  const id=$('etm-id').value;
+  const d=teamForm('etm');
+  if (!d.name) { toast('Name required',true); return; }
+  d.active=$('etm-active').value==='true';
+  d.updated_at=now();
+  const {error}=await db.from('team_members').update(d).eq('id',id);
+  if (error) { toast('DB error: '+error.message,true); return; }
+  closeModal('m-team-edit'); toast('Team member updated ✓');
+  loadTeam();
+}
+async function deleteTeamMember() {
+  const id=$('etm-id').value;
+  const m=_team.find(x=>String(x.id)===String(id));
+  if (!confirm(`Delete ${m?.name||'this team member'} from the roster?`)) return;
+  const {error}=await db.from('team_members').delete().eq('id',id);
+  if (error) { toast('DB error: '+error.message,true); return; }
+  closeModal('m-team-edit'); toast('Team member deleted');
+  loadTeam();
 }
 
 // ── Pay Rates (owner-only; RLS blocks reps) ─────────────────────────────────
