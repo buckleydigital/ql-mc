@@ -492,6 +492,7 @@ td strong{font-weight:500}
 /* ═══ MODALS ═══ */
 .overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;backdrop-filter:blur(10px);padding:16px}
 .overlay.open{display:flex}
+.overlay.stacked{z-index:520}
 .modal{
   background:var(--s1);border:1px solid var(--bd2);
   border-radius:var(--r3);
@@ -1982,7 +1983,7 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Subject</label><input class="fi" id="se-subject"></div>
     <div class="frow"><label class="flabel">Message <span style="font-size:9.5px;color:var(--ink3);font-weight:300">edit for this lead if you want - the template is unchanged</span></label><textarea class="fta" id="se-body" style="min-height:280px;font-family:var(--font);line-height:1.6"></textarea></div>
     <div class="macts">
-      <button class="btn" onclick="closeModal('m-send-email')">Cancel</button>
+      <button class="btn" onclick="closeSendEmail()">Cancel</button>
       <button class="btn btn-p" id="se-send" onclick="sendSalesEmail()">Send email</button>
     </div>
   </div>
@@ -4263,7 +4264,16 @@ async function openSendEmail(kind) {
   setText('se-title', kind === 'info' ? 'Send Info / Proposal' : 'Send Follow-Up');
   setText('se-sub', (lead.name || '') + (lead.company ? ' · ' + lead.company : ''));
   const btn = $('se-send'); btn.disabled = false; btn.textContent = 'Send email';
+  closeModal('m-edit-lead');
+  $('m-send-email').classList.add('stacked');
   openModal('m-send-email');
+}
+// Closing the draft returns you to the lead you opened it from.
+function closeSendEmail() {
+  const id = $('se-lead-id').value;
+  closeModal('m-send-email');
+  const l = LEAD_CACHE[id];
+  if (l) openEditLead(l);
 }
 
 async function sendSalesEmail() {
@@ -4291,7 +4301,7 @@ async function sendSalesEmail() {
       else l.followup_sent_at = out.sent_at || now();
       renderLeadEmailButtons(l);
     }
-    closeModal('m-send-email');
+    closeSendEmail();
     toast(kind === 'info' ? 'Info email sent ✓' : 'Follow-up sent ✓');
     loadCRM();
   } catch (e) {
