@@ -851,8 +851,8 @@ td strong{font-weight:500}
         <div class="sl">All Leads <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Name</th><th>Company</th><th>Type</th><th>Stage</th><th>Value /mo</th><th>Source</th><th>Last Contact</th><th>Notes</th><th></th></tr></thead>
-            <tbody id="crm-tbody"><tr><td colspan="9" class="empty">Loading...</td></tr></tbody>
+            <thead><tr><th>Name</th><th>Company</th><th>Stage</th><th>Value /mo</th><th>Source</th><th>Last Contact</th><th>Notes</th><th></th></tr></thead>
+            <tbody id="crm-tbody"><tr><td colspan="8" class="empty">Loading...</td></tr></tbody>
           </table>
           <div class="pager" id="crm-pager"></div>
         </div>
@@ -942,6 +942,33 @@ td strong{font-weight:500}
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- ══ SENT EMAILS ══ -->
+      <div class="panel" id="panel-sentmail">
+        <div class="ph">
+          <div class="ph-left"><h1>Sent Emails</h1><p>Every info and follow-up email sent from a lead</p></div>
+          <div class="ph-right"><button class="btn btn-sm" onclick="loadSentEmails()">↻ Refresh</button></div>
+        </div>
+        <div class="kg c4 mb4">
+          <div class="kpi"><div class="klabel">Sent</div><div class="kval blu" id="sm-total">-</div><div class="ksub">all time</div></div>
+          <div class="kpi"><div class="klabel">Info Emails</div><div class="kval" id="sm-info">-</div></div>
+          <div class="kpi"><div class="klabel">Follow-Ups</div><div class="kval" id="sm-followup">-</div></div>
+          <div class="kpi"><div class="klabel">Last 7 Days</div><div class="kval grn" id="sm-week">-</div></div>
+        </div>
+        <div style="display:flex;gap:4px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:10px;color:var(--ink3);margin-right:4px">Show:</span>
+          <button class="btn btn-xs sm-filter active" data-kind="" onclick="setSentFilter('',this)">All</button>
+          <button class="btn btn-xs sm-filter" data-kind="info" onclick="setSentFilter('info',this)">Info</button>
+          <button class="btn btn-xs sm-filter" data-kind="followup" onclick="setSentFilter('followup',this)">Follow-up</button>
+        </div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Sent</th><th>Lead</th><th>To</th><th>Type</th><th>Subject</th><th>Sent By</th><th></th></tr></thead>
+            <tbody id="sm-tbody"><tr><td colspan="7" class="empty">Loading...</td></tr></tbody>
+          </table>
+        </div>
+        <div id="sm-pager" style="margin-top:10px"></div>
       </div>
 
       <!-- ══ SALES EMAIL TEMPLATES ══ -->
@@ -1646,15 +1673,8 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Company</label><input class="fi" id="l-company" placeholder="e.g. Solar Co Pty Ltd"></div>
     <div class="frow"><label class="flabel">Email</label><input class="fi" id="l-email" type="email" placeholder="sarah@example.com.au"></div>
     <div class="frow"><label class="flabel">Phone</label><input class="fi" id="l-phone" placeholder="04xx xxx xxx"></div>
-    <div class="frow" id="l-type-row" style="display:none"><label class="flabel">Lead Type</label>
-      <select class="fs" id="l-type">
-        <option value="ppl">Pay-Per-Lead (PPL)</option>
-        <option value="managed">Managed Advertising (MA)</option>
-        <option value="ppl_managed">PPL + Managed</option>
-      </select>
-    </div>
     <div class="frow"><label class="flabel">Stage</label>
-      <select class="fs" id="l-stage" onchange="toggleLeadTypeRow()">
+      <select class="fs" id="l-stage">
         <option value="new_lead">New Lead</option><option value="no_answer">No Answer</option>
         <option value="call_back">Call-Back/Booked</option><option value="proposal">Proposal / Follow-up</option>
         <option value="closed_won">Closed Won</option><option value="closed_lost">Closed Lost</option>
@@ -1973,6 +1993,19 @@ td strong{font-weight:500}
   </div>
 </div>
 
+<div class="overlay" id="m-sent-email">
+  <div class="modal">
+    <h2>Sent Email</h2><div class="msub" id="sm-sub"></div>
+    <div class="frow"><label class="flabel">To</label><input class="fi" id="sm-v-to" disabled></div>
+    <div class="frow"><label class="flabel">Reply-To</label><input class="fi" id="sm-v-replyto" disabled></div>
+    <div class="frow"><label class="flabel">Subject</label><input class="fi" id="sm-v-subject" disabled></div>
+    <div class="frow"><label class="flabel">Message</label><textarea class="fta" id="sm-v-body" style="min-height:300px;line-height:1.6" disabled></textarea></div>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-sent-email')">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="m-send-email">
   <div class="modal">
     <h2 id="se-title">Send Info</h2><div class="msub" id="se-sub"></div>
@@ -2000,13 +2033,6 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">Company</label><input class="fi" id="el-company"></div>
     <div class="frow"><label class="flabel">Email</label><input class="fi" id="el-email" type="email"></div>
     <div class="frow"><label class="flabel">Phone</label><input class="fi" id="el-phone"></div>
-    <div class="frow" id="el-type-row" style="display:none"><label class="flabel">Lead Type</label>
-      <select class="fs" id="el-type">
-        <option value="ppl">Pay-Per-Lead (PPL)</option>
-        <option value="managed">Managed Advertising (MA)</option>
-        <option value="ppl_managed">PPL + Managed</option>
-      </select>
-    </div>
     <div class="frow"><label class="flabel">Stage</label>
       <select class="fs" id="el-stage" onchange="checkConvertBanner();saveStageNow()">
         <option value="new_lead">New Lead</option><option value="no_answer">No Answer</option>
@@ -2048,6 +2074,15 @@ td strong{font-weight:500}
       <select class="fs" id="el-owner"><option value="">- Unassigned</option></select>
     </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="el-notes"></textarea></div>
+    <div class="admin-only-field" id="el-hq-row" style="display:none">
+      <div class="sl" style="margin-top:4px">QuoteLeadsHQ <div class="sl-line"></div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
+        <button class="btn btn-sm" id="el-hq-create" onclick="createHqAccount()">Create HQ account</button>
+        <select class="fs" id="el-hq-va" style="width:auto;display:none"><option value="">Assign a VA…</option></select>
+        <button class="btn btn-sm" id="el-hq-assign" onclick="assignHqVa()" style="display:none">Assign</button>
+      </div>
+      <div id="el-hq-note" style="font-size:11px;color:var(--ink3);line-height:1.6;margin-bottom:4px"></div>
+    </div>
     <div class="sl" style="margin-top:4px">Emails <div class="sl-line"></div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
       <button class="btn btn-sm" id="el-send-info" onclick="openSendEmail('info')">Send Info</button>
@@ -2910,8 +2945,6 @@ function stageBadge(s) {
 function stageLabel(s) {
   return {active_client:'Active',paused:'Paused',churned:'Churned',lead:'Lead',qualified:'Qualified',onboarding:'Onboarding',active:'Active',proposal_sent:'Proposal Sent',new_lead:'New Lead',no_answer:'No Answer',call_back:'Call-Back/Booked',proposal:'Proposal',closed_won:'Closed Won',closed_lost:'Closed Lost'}[s] || s;
 }
-function typeLabel(t) { return t === 'managed' ? 'MA' : 'PPL'; }
-function typeBadge(t) { return t === 'managed' ? 'bg-vio' : 'bg-sky'; }
 
 function toggleTheme() {
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -3046,7 +3079,8 @@ const PANEL_GROUPS = {
   'sales-conv': {label:'Messaging', members:[
     {panel:'sales-conv', label:'Conversations'},
     {panel:'broadcast',  label:'Bulk SMS', adminOnly:true},
-    {panel:'emailtpl',   label:'Email Templates', adminOnly:true}
+    {panel:'emailtpl',   label:'Email Templates', adminOnly:true},
+    {panel:'sentmail',   label:'Sent Emails'}
   ]},
   salesreps: {label:'Team', members:[
     {panel:'salesreps', label:'Sales Reps'},
@@ -3187,6 +3221,7 @@ function nav(panel, el) {
   if (panel === 'invoices') loadInvoices();
   if (panel === 'goals') loadGoals();
   if (panel === 'emailtpl') loadEmailTemplates();
+  if (panel === 'sentmail') loadSentEmails();
   if (panel === 'hiring') loadHiring();
   if (panel === 'salesreps') loadReps();
   if (panel === 'payrates') loadPayRates();
@@ -4095,7 +4130,6 @@ function renderCRM() {
           <div class="kcard-meta">${esc(l.company||'-')}</div>
           ${l.phone?`<div class="kcard-phone">${esc(l.phone)}</div>`:''}
           <div style="display:flex;gap:4px;margin-top:3px;align-items:center">
-            ${(l.lead_type && l.stage==='closed_won')?`<span class="badge ${typeBadge(l.lead_type)}" style="font-size:8.5px">${typeLabel(l.lead_type)}</span>`:''}
             ${(!IS_REP && l.value)?`<span class="kcard-val">${fmt(l.value)}</span>`:''}
           </div>
           ${(!IS_REP && l.owner_id)?`<div class="kcard-meta" style="margin-top:2px;color:var(--acc);font-size:9.5px">▸ ${esc(repName(l.owner_id)||'assigned')}</div>`:''}
@@ -4110,7 +4144,7 @@ function renderCRM() {
     }
   });
   const tb=$('crm-tbody');
-  if (!allLeads.length) { tb.innerHTML='<tr><td colspan="9" class="empty">No leads yet.</td></tr>'; $('crm-pager').innerHTML=''; return; }
+  if (!allLeads.length) { tb.innerHTML='<tr><td colspan="8" class="empty">No leads yet.</td></tr>'; $('crm-pager').innerHTML=''; return; }
   allLeads.forEach(l => { LEAD_CACHE[l.id] = l; });
   const totalPages = Math.ceil(allLeads.length / PAGE_SIZE);
   if (crmPage >= totalPages) crmPage = totalPages - 1;
@@ -4125,7 +4159,6 @@ function renderCRM() {
     <tr style="cursor:pointer" data-lead-id="${esc(l.id)}" class="lead-row">
       <td><strong>${esc(l.name||'-')}</strong></td>
       <td>${esc(l.company||'-')}</td>
-      <td>${(l.lead_type && l.stage==='closed_won')?`<span class="badge ${typeBadge(l.lead_type)}">${typeLabel(l.lead_type)}</span>`:'<span style="color:var(--ink3)">-</span>'}</td>
       <td><span class="badge ${stageBadge(l.stage)}">${stageLabel(l.stage)}</span></td>
       <td>${l.value?'$'+Number(l.value).toLocaleString()+'/mo':'-'}</td>
       <td>${esc(l.source||'-')}</td>
@@ -4155,6 +4188,76 @@ function renderCRM() {
   });
   renderPager('crm-pager', crmPage, allLeads.length, p => { crmPage = p; renderCRM(); });
 }
+/* ═══ SENT EMAILS ═══
+   The log the send function writes, read back. RLS already decides what is
+   visible: everything for a full user, their own leads for a rep - so this
+   panel needs no role check of its own beyond what the query returns. */
+let _sentMail = [], _sentFilter = '', _sentPage = 0;
+async function loadSentEmails() {
+  const { data, error } = await db
+    .from('sales_email_log')
+    .select('id,lead_id,kind,to_email,reply_to,subject,body,sent_by,sent_at')
+    .order('sent_at', { ascending: false })
+    .limit(500);
+  if (error) { $('sm-tbody').innerHTML = `<tr><td colspan="7" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
+  _sentMail = data || [];
+
+  // Lead names, so the table reads like a pipeline rather than a mail log.
+  const ids = [...new Set(_sentMail.map(r => r.lead_id).filter(Boolean))];
+  if (ids.length) {
+    const { data: leads } = await db.from('leads').select('id,name,company').in('id', ids);
+    (leads || []).forEach(l => { LEAD_CACHE[l.id] = { ...(LEAD_CACHE[l.id] || {}), ...l }; });
+  }
+  if (!IS_REP && !_reps.length) await ensureRepOptions();
+  _sentPage = 0;
+  renderSentEmails();
+}
+function setSentFilter(kind, btn) {
+  _sentFilter = kind; _sentPage = 0;
+  document.querySelectorAll('.sm-filter').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderSentEmails();
+}
+function renderSentEmails() {
+  const week = Date.now() - 7 * 86400000;
+  setText('sm-total', _sentMail.length || '-');
+  setText('sm-info', _sentMail.filter(r => r.kind === 'info').length || '-');
+  setText('sm-followup', _sentMail.filter(r => r.kind === 'followup').length || '-');
+  setText('sm-week', _sentMail.filter(r => new Date(r.sent_at).getTime() >= week).length || '-');
+
+  const rows = _sentFilter ? _sentMail.filter(r => r.kind === _sentFilter) : _sentMail;
+  const tb = $('sm-tbody');
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="7" class="empty">Nothing sent yet.</td></tr>'; $('sm-pager').innerHTML = ''; return; }
+  const pages = Math.ceil(rows.length / PAGE_SIZE);
+  if (_sentPage >= pages) _sentPage = pages - 1;
+  const page = rows.slice(_sentPage * PAGE_SIZE, (_sentPage + 1) * PAGE_SIZE);
+
+  tb.innerHTML = page.map(r => {
+    const l = LEAD_CACHE[r.lead_id] || {};
+    const who = _reps.find(x => x.user_id === r.sent_by);
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:10.5px;white-space:nowrap">${new Date(r.sent_at).toLocaleString('en-AU', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
+      <td><strong>${esc(l.name || '-')}</strong>${l.company ? `<div style="font-size:10px;color:var(--ink3)">${esc(l.company)}</div>` : ''}</td>
+      <td style="font-family:var(--mono);font-size:10.5px">${esc(r.to_email)}</td>
+      <td><span class="badge ${r.kind === 'info' ? 'bg-blu' : 'bg-vio'}">${r.kind === 'info' ? 'Info' : 'Follow-up'}</span></td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.subject)}</td>
+      <td style="font-size:11px;color:var(--ink2)">${esc(who ? (who.name || who.email) : (r.reply_to || '-'))}</td>
+      <td><button class="btn btn-xs" onclick="viewSentEmail('${esc(r.id)}')">View</button></td>
+    </tr>`;
+  }).join('');
+  renderPager('sm-pager', _sentPage, rows.length, p => { _sentPage = p; renderSentEmails(); });
+}
+function viewSentEmail(id) {
+  const r = _sentMail.find(x => x.id === id); if (!r) return;
+  const l = LEAD_CACHE[r.lead_id] || {};
+  setText('sm-sub', (l.name || '') + (l.company ? ' · ' + l.company : '') + ' · ' + new Date(r.sent_at).toLocaleString('en-AU'));
+  setVal('sm-v-to', r.to_email);
+  setVal('sm-v-replyto', r.reply_to || '-');
+  setVal('sm-v-subject', r.subject);
+  setVal('sm-v-body', r.body);
+  openModal('m-sent-email');
+}
+
 /* ═══ SALES EMAILS ═══
    Two templates, shared across the team, merged against the lead when a rep
    opens the draft. The rep can edit the draft for that one lead; the template
@@ -4310,21 +4413,107 @@ async function sendSalesEmail() {
   }
 }
 
+/* ═══ WON LEAD → QUOTELEADSHQ CLIENT ═══
+   Creating the account emails the client their password-setup link, so it is
+   behind an explicit button and a confirm rather than the stage change: a
+   mis-dragged card must not be able to email a customer. The lead carries
+   hq_company_id once it is done, which is what stops a second account - not
+   the disabled button, which only knows about one browser tab. */
+let _hqVas = null;
+function renderHqRow() {
+  const row = $('el-hq-row'); if (!row) return;
+  const l = LEAD_CACHE[$('el-id').value] || {};
+  const stage = $('el-stage').value;
+  const show = !IS_REP && stage === 'closed_won';
+  row.style.display = show ? '' : 'none';
+  if (!show) return;
+
+  const created = !!l.hq_company_id;
+  const assigned = !!l.hq_va_user_id;
+  const btn = $('el-hq-create'), sel = $('el-hq-va'), asg = $('el-hq-assign'), note = $('el-hq-note');
+
+  btn.textContent = created ? 'HQ Account Created' : 'Create HQ account';
+  btn.disabled = created || !(l.email || '').trim();
+  btn.style.opacity = btn.disabled ? '.5' : '';
+  sel.style.display = created ? '' : 'none';
+  asg.style.display = created ? '' : 'none';
+  if (created) { ensureHqVaOptions(); sel.value = l.hq_va_user_id || ''; }
+
+  const when = d => d ? new Date(d).toLocaleDateString('en-AU') : '';
+  note.textContent = !(l.email || '').trim()
+    ? 'Add an email address before creating the account'
+    : !created
+      ? 'Creates their QuoteLeadsHQ login and emails them a password-setup link.'
+      : assigned
+        ? `Account created ${when(l.hq_account_created_at)} · VA assigned ${when(l.hq_va_assigned_at)}`
+        : `Account created ${when(l.hq_account_created_at)} · assign a VA and they get an email to check scope and introduce themselves`;
+}
+
+async function callHq(action, payload) {
+  const { data: { session } } = await db.auth.getSession();
+  const res = await fetch(`${_ep}/functions/v1/sync-to-hq`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+    body: JSON.stringify({ action, ...payload }),
+  });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(out.error || 'ql-hq call failed');
+  return out;
+}
+
+async function ensureHqVaOptions() {
+  const sel = $('el-hq-va'); if (!sel) return;
+  if (_hqVas) return;
+  try {
+    const out = await callHq('list_vas', {});
+    _hqVas = out.vas || [];
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Assign a VA…</option>' +
+      _hqVas.map(v => `<option value="${esc(v.id)}">${esc(v.name || v.id)} (${v.assigned})</option>`).join('');
+    sel.value = cur;
+  } catch (e) { /* leave the picker empty; the note explains the state */ }
+}
+
+async function createHqAccount() {
+  const id = $('el-id').value, l = LEAD_CACHE[id] || {};
+  if (!confirm(`Create a QuoteLeadsHQ account for ${l.name || 'this lead'}?\n\n${l.email} will be emailed a link to set their password.`)) return;
+  const btn = $('el-hq-create');
+  btn.disabled = true; btn.textContent = 'Creating...';
+  try {
+    const out = await callHq('create_hq_account', { lead_id: id });
+    l.hq_company_id = out.company_id;
+    l.hq_account_created_at = now();
+    renderHqRow();
+    toast(out.existing ? 'Linked to their existing HQ account ✓' : 'HQ account created ✓');
+    loadCRM();
+  } catch (e) {
+    toast(e.message, true);
+    renderHqRow();
+  }
+}
+
+async function assignHqVa() {
+  const id = $('el-id').value, vaId = $('el-hq-va').value;
+  if (!vaId) { toast('Pick a VA first', true); return; }
+  const asg = $('el-hq-assign');
+  asg.disabled = true; asg.textContent = 'Assigning...';
+  try {
+    const out = await callHq('assign_va', { lead_id: id, va_user_id: vaId });
+    const l = LEAD_CACHE[id] || {};
+    l.hq_va_user_id = vaId; l.hq_va_assigned_at = now();
+    toast(out.notified ? 'VA assigned and notified ✓' : 'VA assigned ✓');
+  } catch (e) {
+    toast(e.message, true);
+  }
+  asg.disabled = false; asg.textContent = 'Assign';
+  renderHqRow();
+}
+
 function checkConvertBanner() {
-  // Converting a lead spins up a PPL/Managed client - out of scope for reps.
+  // Converting a lead spins up a client record - out of scope for reps.
   const stage = $('el-stage').value;
   $('convert-banner').style.display = (!IS_REP && stage === 'closed_won') ? 'block' : 'none';
-  toggleLeadTypeRow('el');
-}
-// PPL vs Managed Advertising is what the client BUYS, so it is only a real
-// answer once the deal is won - before that it was a guess sitting on every
-// card. The row appears at Closed Won (where it decides which kind of client
-// the lead converts into) and nowhere else; open clients carry the type on
-// their own records in the Clients panels.
-function toggleLeadTypeRow(prefix) {
-  const p = prefix === 'el' ? 'el' : 'l';
-  const row = $(p + '-type-row'), stage = $(p + '-stage');
-  if (row && stage) row.style.display = stage.value === 'closed_won' ? '' : 'none';
+  renderHqRow();
 }
 // Stage saves the moment it is picked - the same write dragging the card
 // between kanban columns makes, so the two routes behave alike. Everything
@@ -4386,7 +4575,7 @@ function openEditLead(l) {
   }
   setVal('el-stage',l.stage);
   setVal('el-stage-orig',l.stage||'');
-  setVal('el-type',l.lead_type||'ppl');   // shown only at Closed WonsetVal('el-value',l.value);
+  setVal('el-value',l.value);
   setVal('el-source',l.source);setVal('el-notes',l.notes);
   setVal('el-contactable',l.contactable===true?'true':l.contactable===false?'false':'');
   const lc = l.last_contact ? l.last_contact.split('T')[0] : '';
@@ -4399,7 +4588,7 @@ function openEditLead(l) {
   // Reps view lead details read-only apart from Stage, which they may change
   // here as well as by dragging the card (drag needs a mouse - on a phone the
   // modal is the only way).
-  ['el-name','el-company','el-email','el-phone','el-type','el-source','el-notes','el-contactable','el-last-contact','el-next-followup'].forEach(id => {
+  ['el-name','el-company','el-email','el-phone','el-source','el-notes','el-contactable','el-last-contact','el-next-followup'].forEach(id => {
     const e = $(id); if (e) e.disabled = IS_REP;
   });
   const saveBtn = $('el-save');
@@ -4407,6 +4596,7 @@ function openEditLead(l) {
   // time they reach the button, so it closes rather than promising a save.
   if (saveBtn) saveBtn.textContent = IS_REP ? 'Done' : 'Save changes';
   checkConvertBanner();
+  renderHqRow();
   renderLeadEmailButtons(l);
   openModal('m-edit-lead');
 }
@@ -4478,7 +4668,7 @@ async function updateLead() {
   const origLastContact = $('el-last-contact-orig').value || null;
   const origCount = parseInt($('el-contact-count-orig').value||'0', 10) || 0;
   const contactIncrement = (newLastContact && (!origLastContact || newLastContact > origLastContact)) ? 1 : 0;
-  const d={name:$('el-name').value.trim(),company:$('el-company').value.trim(),email:$('el-email').value.trim(),phone:$('el-phone').value.trim(),stage,lead_type:stage==='closed_won'?$('el-type').value:null,value:parseFloat($('el-value').value)||null,source:$('el-source').value,notes:$('el-notes').value.trim(),contactable,last_contact:newLastContact,next_followup:$('el-next-followup').value||null,contact_count:origCount+contactIncrement,updated_at:now()};
+  const d={name:$('el-name').value.trim(),company:$('el-company').value.trim(),email:$('el-email').value.trim(),phone:$('el-phone').value.trim(),stage,lead_type:'managed',value:parseFloat($('el-value').value)||null,source:$('el-source').value,notes:$('el-notes').value.trim(),contactable,last_contact:newLastContact,next_followup:$('el-next-followup').value||null,contact_count:origCount+contactIncrement,updated_at:now()};
   // Only full users can (re)assign a lead's owner; reps can't touch it.
   if (!IS_REP) d.owner_id = $('el-owner').value || null;
   if (!d.name) { toast('Name required',true); return; }
@@ -4501,7 +4691,7 @@ async function saveLead() {
     p_email:$('l-email').value.trim()||null,
     p_phone:$('l-phone').value.trim()||null,
     p_stage:$('l-stage').value,
-    p_lead_type:$('l-stage').value==='closed_won'?($('l-type').value||null):null,
+    p_lead_type:'managed',
     p_value:parseFloat($('l-value').value)||null,
     p_source:$('l-source').value||null,
     p_notes:$('l-notes').value.trim()||null,
@@ -4509,7 +4699,7 @@ async function saveLead() {
   if (error) { toast('DB error: '+error.message,true); return; }
   if (data?.duplicate) { toast('A lead with that name and contact already exists',true); return; }
   ['l-name','l-company','l-email','l-phone','l-value','l-notes'].forEach(id=>{$(id).value='';});
-  setVal('l-stage','new_lead'); toggleLeadTypeRow();
+  setVal('l-stage','new_lead');
   closeModal('m-lead'); loadCRM(); toast('Lead saved ✓');
 }
 

@@ -35,6 +35,81 @@ Deno.serve(async (req: Request) => {
     const body = await req.json()
     const { action } = body
 
+    // ── action: create_hq_account ─────────────────────────────────────────────
+    // A won lead becomes a ql-hq client. The lead is read here rather than
+    // taken from the request, so the account is created from what is actually
+    // on the record, and hq_company_id is written back so the lead knows it has
+    // one and the button cannot be pressed into creating a second.
+    if (action === 'create_hq_account') {
+      const { lead_id } = body as { lead_id?: string }
+      if (!lead_id) return json({ error: 'lead_id is required' }, 400)
+
+      const { data: lead } = await supabase
+        .from('leads')
+        .select('id, name, company, email, phone, niche, stage, hq_company_id')
+        .eq('id', lead_id)
+        .maybeSingle()
+      if (!lead) return json({ error: 'Lead not found' }, 404)
+      if (!lead.email) return json({ error: 'This lead has no email address' }, 400)
+      if (lead.stage !== 'closed_won') return json({ error: 'Only a Closed Won lead can be converted' }, 400)
+      if (lead.hq_company_id) return json({ error: 'This lead already has a QuoteLeadsHQ account', company_id: lead.hq_company_id }, 409)
+
+      const res = await fetch(`${QL_HQ_API_URL}/sync-from-mc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-secret': QL_MC_API_SECRET },
+        body: JSON.stringify({
+          action: 'create_client_account',
+          email: lead.email,
+          name: lead.name,
+          company_name: lead.company,
+          phone: lead.phone,
+          niche: lead.niche,
+          plan: 'managed',
+        }),
+      })
+      const out = await res.json().catch(() => ({}))
+      if (!res.ok) return json({ error: out.error || 'ql-hq rejected the account' }, 502)
+
+      if (out.company_id) {
+        await supabase.from('leads')
+          .update({ hq_company_id: out.company_id, hq_account_created_at: new Date().toISOString() })
+          .eq('id', lead_id)
+      }
+      return json({ ok: true, ...out })
+    }
+
+    // ── action: list_vas ──────────────────────────────────────────────────────
+    if (action === 'list_vas') {
+      const res = await fetch(`${QL_HQ_API_URL}/sync-from-mc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-secret': QL_MC_API_SECRET },
+        body: JSON.stringify({ action: 'list_vas' }),
+      })
+      const out = await res.json().catch(() => ({}))
+      return json(out, res.ok ? 200 : 502)
+    }
+
+    // ── action: assign_va ─────────────────────────────────────────────────────
+    if (action === 'assign_va') {
+      const { lead_id, va_user_id } = body as { lead_id?: string; va_user_id?: string }
+      if (!lead_id || !va_user_id) return json({ error: 'lead_id and va_user_id are required' }, 400)
+      const { data: lead } = await supabase
+        .from('leads').select('hq_company_id').eq('id', lead_id).maybeSingle()
+      if (!lead?.hq_company_id) return json({ error: 'Create the QuoteLeadsHQ account first' }, 400)
+
+      const res = await fetch(`${QL_HQ_API_URL}/sync-from-mc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-secret': QL_MC_API_SECRET },
+        body: JSON.stringify({ action: 'assign_va', va_user_id, company_id: lead.hq_company_id }),
+      })
+      const out = await res.json().catch(() => ({}))
+      if (!res.ok) return json({ error: out.error || 'ql-hq rejected the assignment' }, 502)
+      await supabase.from('leads')
+        .update({ hq_va_user_id: va_user_id, hq_va_assigned_at: new Date().toISOString() })
+        .eq('id', lead_id)
+      return json({ ok: true, ...out })
+    }
+
     // ── action: scrub ─────────────────────────────────────────────────────────
     // Looks up the lead → client → ql_hq_company_id, then notifies ql-hq to
     // decrement delivered_leads on the matching ppl_order AND flag the exact
