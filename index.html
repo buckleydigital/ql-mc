@@ -4414,17 +4414,19 @@ function renderLeadEmailButtons(l) {
   info.style.opacity = info.disabled ? '.5' : '';
   info.style.cursor = info.disabled ? 'default' : '';
 
-  fup.style.display = infoSent ? '' : 'none';
+  // Always offered, whether or not the info email went through this dashboard -
+  // the ones sent by hand still need following up.
+  fup.style.display = '';
   fup.textContent = fupSent ? 'Follow Up Sent' : 'Follow Up';
   fup.disabled = fupSent || !hasEmail;
   fup.style.opacity = fup.disabled ? '.5' : '';
   fup.style.cursor = fup.disabled ? 'default' : '';
 
   const when = d => new Date(d).toLocaleDateString('en-AU');
-  note.textContent = !hasEmail ? 'No email address on this lead'
-    : fupSent ? 'Follow-up sent ' + when(l.followup_sent_at)
-    : infoSent ? 'Info sent ' + when(l.info_sent_at)
-    : '';
+  const parts = [];
+  if (infoSent) parts.push('Info sent ' + when(l.info_sent_at));
+  if (fupSent) parts.push('Follow-up sent ' + when(l.followup_sent_at));
+  note.textContent = !hasEmail ? 'No email address on this lead' : parts.join(' · ');
 }
 
 async function openSendEmail(kind) {

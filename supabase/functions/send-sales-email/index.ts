@@ -88,9 +88,12 @@ Deno.serve(async (req: Request) => {
     // Order and once-only are enforced here, not by the disabled attribute on a
     // button: a stale tab must not be able to send a second copy.
     if (kind === "info" && lead.info_sent_at) return json({ error: "The info email has already been sent" }, 409);
-    if (kind === "followup") {
-      if (!lead.info_sent_at) return json({ error: "Send the info email first" }, 400);
-      if (lead.followup_sent_at) return json({ error: "The follow-up has already been sent" }, 409);
+    // The follow-up deliberately does NOT require the info email to have gone
+    // through this dashboard: plenty were sent by hand before this existed, and
+    // refusing to follow those up would be the tool arguing with reality. Once
+    // only still holds for each kind.
+    if (kind === "followup" && lead.followup_sent_at) {
+      return json({ error: "The follow-up has already been sent" }, 409);
     }
 
     // Reply-To: the rep's own address, so the answer lands with whoever sent it.
