@@ -160,7 +160,9 @@ async function getRepPerformance({ rep, days = 30 } = {}) {
   for (const r of reps.rows) {
     byRep.set(r.user_id, { name: r.name || r.email, active: r.active, total: 0, won: 0, open: 0, won_value: 0 })
   }
-  const unassigned = { name: 'unassigned', total: 0, won: 0, open: 0, won_value: 0 }
+  // Ownerless leads belong to the operator, so they get a named row rather
+  // than being written off as unassigned.
+  const unassigned = { name: config.ownerlessName, total: 0, won: 0, open: 0, won_value: 0 }
 
   for (const l of leads.rows) {
     const bucket = byRep.get(l.owner_id) ?? unassigned
@@ -185,25 +187,12 @@ async function getRepPerformance({ rep, days = 30 } = {}) {
     table = match
   }
 
-  // Most leads carry no owner, so a team close rate computed over owned leads
-  // alone describes a minority of the pipeline. Report the coverage rather
-  // than quietly dropping the rest.
-  const owned = leads.rows.filter((l) => l.owner_id).length
-  const coverage = leads.rows.length ? Math.round((owned / leads.rows.length) * 100) : 0
-
   const top = table[0]
   const summary = top
-    ? `${top.name} closed ${top.won} of ${top.total} over ${days} days, a close rate of ${top.close_rate_pct} percent.` +
-      (coverage < 80 ? ` Only ${coverage} percent of leads have an owner, so this covers part of the pipeline.` : '')
-    : `No leads were assigned in the last ${days} days.`
+    ? `${top.name} closed ${top.won} of ${top.total} over ${days} days, a close rate of ${top.close_rate_pct} percent.`
+    : `No leads came in over the last ${days} days.`
 
-  return ok(summary, {
-    window_days: Number(days),
-    reps: table,
-    owner_coverage_pct: coverage,
-    leads_in_window: leads.rows.length,
-    leads_with_owner: owned,
-  })
+  return ok(summary, { window_days: Number(days), reps: table, leads_in_window: leads.rows.length })
 }
 
 async function getClientSnapshot({ name } = {}) {

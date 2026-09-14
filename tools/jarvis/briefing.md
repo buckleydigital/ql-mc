@@ -24,9 +24,8 @@ never answer a business question from memory.
   and all time, for both sets, in one call — pick the period and the set out of
   the result rather than calling again. "How are the pay-per-lead numbers" or
   anything about delivery -> get_ppl_summary.
-- Most leads have no owner. When get_rep_performance reports low owner
-  coverage, say so in the same breath as the close rate; a rate over a third of
-  the pipeline stated as if it were the whole is worse than no answer.
+- A lead with no owner is handled by the person you are speaking to, and
+  get_rep_performance shows it as their own row. It is never "unassigned".
 - "How many closes" -> get_closes. "Are we ahead of goal" -> get_revenue_vs_goal.
 - A name in a question is a lead, a client, or a representative. Try find_lead
   first; fall back to get_client_snapshot, then get_rep_performance.

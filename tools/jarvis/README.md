@@ -105,9 +105,10 @@ The briefing tells JARVIS to prefer a purpose-built tool when one fits.
   `ppl_leads`. `get_lead_totals` reports both, labelled, because the spoken
   question rarely says which — and the briefing tells JARVIS how the wording
   picks one.
-- **Owner coverage is low** (92 of 242 leads at the time of writing), so
-  `get_rep_performance` reports the coverage alongside the close rate instead
-  of quietly computing over the owned minority.
+- **A lead with no `owner_id` belongs to the operator**, not to nobody — most
+  of the pipeline is handled directly. `get_rep_performance` gives those a
+  named row (`QL_OWNERLESS_NAME`, default "you") rather than calling them
+  unassigned.
 - **Dates are local.** Every "today" is computed in `QL_TIMEZONE`
   (`dates.mjs`). UTC day boundaries would report yesterday's lead count for the
   whole working morning.

@@ -48,6 +48,13 @@ export const config = {
   wonStages: list('QL_WON_STAGES', 'won,closed won,client,signed'),
   deadStages: list('QL_DEAD_STAGES', 'lost,dead,closed lost,disqualified'),
 
+  /**
+   * A lead with no owner_id is not unassigned — it is handled by the operator
+   * running this assistant. Naming that makes the rep table complete instead
+   * of showing most of the pipeline as nobody's.
+   */
+  ownerlessName: process.env.QL_OWNERLESS_NAME ?? 'you',
+
   /** Currency label used in spoken summaries. */
   currency: process.env.QL_CURRENCY ?? 'AUD',
 }
