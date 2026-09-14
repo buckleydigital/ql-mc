@@ -17,6 +17,7 @@
 import { select, count, patch, insert, invoke } from './db.mjs'
 import { config } from './config.mjs'
 import { EXPLORE_TOOLS } from './explore.mjs'
+import { userToken } from './auth.mjs'
 import { localDate, localMonth, startOfLocalDay, daysAgo, startOfMonth } from './dates.mjs'
 
 const money = (n) =>
@@ -411,18 +412,85 @@ async function updateLeadFollowup({ lead_id, next_followup } = {}) {
   return ok(`Follow-up for ${row.name || row.company} is set for ${next_followup}.`, { lead: row })
 }
 
-async function sendLeadEmail({ lead_id, kind = 'info' } = {}) {
+async function sendLeadEmail({ lead_id, kind = 'info', subject, body } = {}) {
   if (!lead_id) throw new Error('lead_id is required')
-  // The edge function owns templating, logging to sales_email_log, and the
-  // info_sent_at / followup_sent_at stamps. Reuse it rather than restate it.
-  const res = await invoke('send-sales-email', { lead_id, kind })
-  return ok(`The ${kind} email has gone out.`, { result: res })
+  if (kind !== 'info' && kind !== 'followup') throw new Error('kind must be info or followup')
+
+  // The function validates a rendered subject and body — it does not read the
+  // templates itself. The app merges them client-side (mergeTemplate in
+  // index.html), so that work happens here too, from the same table and with
+  // the same single-brace placeholders.
+  const [{ rows: leads }, { rows: templates }] = await Promise.all([
+    select('leads', { select: 'id,name,company,email,stage', id: `eq.${lead_id}` }, { limit: 1 }),
+    select('sales_email_templates', { select: 'kind,subject,body' }, { limit: 20 }),
+  ])
+
+  const lead = leads[0]
+  if (!lead) throw new Error(`No lead with id ${lead_id}`)
+  if (!lead.email) throw new Error(`${lead.name || 'That lead'} has no email address.`)
+
+  const token = await userToken()
+  const me = await currentRep(token)
+  const vals = {
+    first_name: String(lead.name || '').trim().split(/\s+/)[0] || '',
+    company_name: (lead.company || '').trim(),
+    rep_name: me.name,
+    rep_email: me.reply_to_email || me.email,
+  }
+
+  const tpl = templates.find((x) => x.kind === kind)
+  if (!tpl && (!subject || !body)) {
+    throw new Error(`No "${kind}" email template is saved, and no subject and body were given.`)
+  }
+
+  const merged = (text) =>
+    String(text || '')
+      .replace(/\{(first_name|company_name|rep_name|rep_email)\}/g, (_, k) => vals[k] || '')
+      .replace(/[ \t]{2,}/g, ' ')
+      .replace(/[ \t]+([,.;:!?])/g, '$1')
+      .trim()
+
+  const res = await invoke(
+    'send-sales-email',
+    {
+      lead_id,
+      kind,
+      subject: subject || merged(tpl.subject),
+      body: body || merged(tpl.body),
+    },
+    { token },
+  )
+  return ok(`The ${kind} email has gone to ${lead.email}.`, { lead: lead.name || lead.company, result: res })
+}
+
+/** Who the send is attributed to, from the logged-in session. */
+async function currentRep(token) {
+  const res = await fetch(`${config.url()}/auth/v1/user`, {
+    headers: { apikey: config.key(), Authorization: `Bearer ${token}` },
+  })
+  const user = res.ok ? await res.json() : {}
+  const { rows } = await select('sales_reps', { select: 'user_id,name,email,reply_to_email', user_id: `eq.${user.id}` }, { limit: 1 })
+  return rows[0] ?? { name: user.user_metadata?.name || '', email: user.email || '', reply_to_email: null }
 }
 
 async function sendLeadSms({ lead_id, message } = {}) {
   if (!lead_id || !message) throw new Error('lead_id and message are required')
-  const res = await invoke('send-sms', { lead_id, message })
-  return ok('The message has been sent.', { result: res })
+
+  // The function takes the destination number explicitly, and needs
+  // source:'sales' to look the lead up in `leads` rather than `ppl_leads`.
+  const { rows } = await select(
+    'leads',
+    { select: 'id,name,phone,sms_opted_out', id: `eq.${lead_id}` },
+    { limit: 1 },
+  )
+  const lead = rows[0]
+  if (!lead) throw new Error(`No lead with id ${lead_id}`)
+  if (!lead.phone) throw new Error(`${lead.name || 'That lead'} has no phone number.`)
+  if (lead.sms_opted_out) throw new Error(`${lead.name || 'That lead'} has opted out of messages.`)
+
+  const token = await userToken()
+  const res = await invoke('send-sms', { to: lead.phone, message, lead_id, source: 'sales' }, { token })
+  return ok(`The message has gone to ${lead.name || lead.phone}.`, { result: res })
 }
 
 async function createTask({ title, assigned_to, due_date, priority = 'normal', notes } = {}) {

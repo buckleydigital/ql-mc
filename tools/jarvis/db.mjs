@@ -74,10 +74,13 @@ export async function insert(table, body) {
 }
 
 /** Call a Supabase edge function, so the assistant reuses the app's own logic. */
-export async function invoke(fn, body) {
+export async function invoke(fn, body, { token } = {}) {
+  // The edge functions verify a USER token and attribute the send to it, so a
+  // caller identity is passed through rather than the service-role key.
+  const auth = token ? { ...headers(), Authorization: `Bearer ${token}` } : headers()
   const res = await fetch(`${config.url()}/functions/v1/${fn}`, {
     method: 'POST',
-    headers: headers(),
+    headers: auth,
     body: JSON.stringify(body),
   })
   const text = await res.text()

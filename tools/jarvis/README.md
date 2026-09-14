@@ -81,8 +81,15 @@ credential (`*_key`, `*_token`, `*secret*`, `*password*`) comes back redacted.
 `send_lead_sms`, `create_task`.
 
 The two `send_*` tools call the existing edge functions (`send-sales-email`,
-`send-sms`) rather than reimplementing them, so templating, logging and the
+`send-sms`) rather than reimplementing them, so logging and the
 `info_sent_at` / `followup_sent_at` stamps stay in one place.
+
+**Sending needs a login.** Both functions verify a *user* token
+(`auth.getUser`) and attribute the send to that person — the rep's name and
+reply-to address come out of the session, so a service-role key is rejected.
+Set `QL_USER_EMAIL` and `QL_USER_PASSWORD` to the rep the assistant should send
+as. Reads never use it; leave them unset and the read tools work while the two
+`send_*` tools say what is missing.
 
 ### Curated tools vs. the fallback
 
