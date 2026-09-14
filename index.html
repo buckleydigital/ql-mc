@@ -9582,7 +9582,7 @@ const JV = (() => {
     try { ws = new WebSocket(BRIDGE); }
     catch (e) { connecting = false; return offline(e.message); }
 
-    ws.onopen = () => { connecting = false; status('Ready', 'ready'); };
+    ws.onopen = () => { connecting = false; status('Ready', 'ready'); probeVoice(); };
     ws.onerror = () => { connecting = false; };
     ws.onclose = () => {
       connecting = false; ws = null;
@@ -9642,12 +9642,52 @@ const JV = (() => {
     ws.send(JSON.stringify({ type: 'ask', text, id: 'q' + (++askId) }));
   }
 
-  /* ── speech ── */
-  function speak(text) {
-    if (!voice || !window.speechSynthesis || !text) return;
-    if (text === spoke) return;
+  /* ── speech ──
+     Two engines, chosen at connect the way jarvis chooses them: the bridge
+     reports whether an ElevenLabs key is configured (GET /health), and if it
+     is, replies are spoken in the real JARVIS voice through POST /tts. With
+     no key the browser's own voice is used, so this works either way and
+     upgrades by itself the moment a key appears. */
+  let useEleven = false, audio = null;
+
+  async function probeVoice() {
+    try {
+      const r = await fetch(BRIDGE.replace(/^ws/, 'http') + '/health', { cache: 'no-store' });
+      const h = await r.json();
+      useEleven = Boolean(h.tts);
+    } catch { useEleven = false; }
+    const el = $$('jv-speak');
+    if (el) el.title = useEleven ? 'ElevenLabs voice' : 'Browser voice';
+  }
+
+  function hush() {
+    if (audio) { audio.pause(); audio = null; }
+    if (window.speechSynthesis) speechSynthesis.cancel();
+  }
+
+  async function speak(text) {
+    if (!voice || !text || text === spoke) return;
     spoke = text;
-    speechSynthesis.cancel();
+    hush();
+
+    if (useEleven) {
+      try {
+        const r = await fetch(BRIDGE.replace(/^ws/, 'http') + '/tts', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        if (r.ok) {
+          const url = URL.createObjectURL(await r.blob());
+          audio = new Audio(url);
+          audio.onended = () => URL.revokeObjectURL(url);
+          await audio.play();
+          return;
+        }
+      } catch { /* fall through to the browser voice */ }
+    }
+
+    if (!window.speechSynthesis) return;
     const u = new SpeechSynthesisUtterance(text);
     u.rate = 1.05; u.pitch = 0.9;
     speechSynthesis.speak(u);
@@ -9676,7 +9716,7 @@ const JV = (() => {
       connect();
       $$('jv-input').focus();
     },
-    close() { $$('jv-panel').classList.remove('open'); if (window.speechSynthesis) speechSynthesis.cancel(); },
+    close() { $$('jv-panel').classList.remove('open'); hush(); },
     key(e) {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(e.target.value); e.target.value = ''; }
     },
@@ -9684,14 +9724,14 @@ const JV = (() => {
       voice = !voice;
       localStorage.setItem('ql_jarvis_voice', voice ? '1' : '0');
       $$('jv-speak').textContent = voice ? '🔊' : '🔇';
-      if (!voice && window.speechSynthesis) speechSynthesis.cancel();
+      if (!voice) hush();
     },
     toggleMic() {
       if (!rec) rec = initMic();
       if (!rec) return;
       if (micOn) { rec.stop(); return; }
       // Barge-in: stop him talking the moment you start.
-      if (window.speechSynthesis) speechSynthesis.cancel();
+      hush();
       try { rec.start(); micOn = true; $$('jv-mic').classList.add('on'); } catch (e) {}
     },
     ask
