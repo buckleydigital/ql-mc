@@ -6,7 +6,7 @@
 <title>Mission Control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=Press+Start+2P&display=swap" rel="stylesheet">
-<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co https://*.googleapis.com https://*.twilio.com wss://*.twilio.com https://graph.facebook.com 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://maps.googleapis.com https://sdk.twilio.com https://esm.sh; img-src * data: blob:; media-src * blob:;">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co ws://localhost:8787 ws://127.0.0.1:8787 http://localhost:8787 http://127.0.0.1:8787 https://*.googleapis.com https://*.twilio.com wss://*.twilio.com https://graph.facebook.com 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://maps.googleapis.com https://sdk.twilio.com https://esm.sh; img-src * data: blob:; media-src * blob:;">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
@@ -648,6 +648,41 @@ td strong{font-weight:500}
 .mobile-only{display:none}
 @media(max-width:700px){.mobile-only{display:inline-flex}}
 
+/* ══ JARVIS ══ */
+.jv-dot{position:absolute;top:2px;right:2px;width:5px;height:5px;border-radius:50%;background:var(--ink3);transition:background .3s}
+.jv-dot.ready{background:var(--grn,#3fb950);box-shadow:0 0 6px var(--grn,#3fb950)}
+.jv-dot.busy{background:var(--acc);box-shadow:0 0 6px var(--acc);animation:jv-pulse 1s infinite}
+.jv-dot.err{background:var(--red)}
+@keyframes jv-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+#jv-panel{position:fixed;top:42px;right:0;bottom:0;width:390px;max-width:100vw;background:var(--s1);border-left:1px solid var(--bd2);box-shadow:-8px 0 28px rgba(0,0,0,.35);z-index:9998;display:none;flex-direction:column}
+#jv-panel.open{display:flex}
+@media(max-width:700px){#jv-panel{width:100vw;top:0}}
+
+.jv-head{display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid var(--bd)}
+.jv-reactor{width:22px;height:22px;border-radius:50%;border:2px solid var(--acc);position:relative;flex:none;opacity:.5;transition:opacity .3s}
+.jv-reactor::after{content:'';position:absolute;inset:4px;border-radius:50%;background:var(--acc);opacity:.5}
+.jv-reactor.live{opacity:1}
+.jv-reactor.live::after{animation:jv-pulse 1.6s infinite}
+.jv-title{font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:.08em}
+.jv-status{font-family:var(--mono);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.07em}
+
+.jv-body{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:11px}
+.jv-msg{font-size:12.5px;line-height:1.55;max-width:92%;white-space:pre-wrap;word-break:break-word}
+.jv-msg.you{align-self:flex-end;background:var(--acc);color:#fff;padding:7px 11px;border-radius:var(--r) var(--r) 2px var(--r)}
+.jv-msg.jarvis{align-self:flex-start;color:var(--ink)}
+.jv-msg.sys{align-self:center;text-align:center;font-family:var(--mono);font-size:10px;color:var(--ink3);max-width:100%}
+.jv-msg.sys a{color:var(--acc)}
+.jv-tool{align-self:flex-start;font-family:var(--mono);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;opacity:.8}
+.jv-empty{color:var(--ink3);font-size:12px;text-align:center;margin:auto;line-height:1.7}
+
+.jv-foot{border-top:1px solid var(--bd);padding:10px 12px;display:flex;gap:7px;align-items:flex-end}
+#jv-input{flex:1;resize:none;background:var(--s2,var(--s1));border:1px solid var(--bd2);border-radius:var(--r2,6px);color:var(--ink);font-family:inherit;font-size:12.5px;padding:8px 10px;max-height:110px}
+#jv-input:focus{outline:none;border-color:var(--acc)}
+.jv-mic{flex:none;width:34px;height:34px;border-radius:50%;border:1px solid var(--bd2);background:transparent;color:var(--ink2);cursor:pointer;font-size:14px}
+.jv-mic.on{background:var(--red);border-color:var(--red);color:#fff;animation:jv-pulse 1.2s infinite}
+.jv-mic:disabled{opacity:.35;cursor:not-allowed}
+
 </style>
 </head>
 <body>
@@ -682,6 +717,7 @@ td strong{font-weight:500}
     <span id="clock"></span>
     <span class="uname-chip" id="uname"></span>
     <button class="ibtn" id="alert-tray-btn" onclick="toggleAlertTray()" title="Alerts" style="position:relative">🔔<span id="alert-tray-badge" style="display:none;position:absolute;top:-2px;right:-2px;background:var(--red);color:#fff;border-radius:8px;font-size:8px;padding:0 4px;font-family:var(--mono);font-weight:700;line-height:1.6">0</span></button>
+    <button class="ibtn" id="jv-btn" onclick="JV.toggle()" title="JARVIS" style="position:relative">◈<span id="jv-dot" class="jv-dot"></span></button>
     <button class="ibtn" id="theme-btn" onclick="toggleTheme()" title="Toggle theme">◐</button>
     <button class="ibtn" onclick="doLogout()" title="Sign out">⎋</button>
   </div>
@@ -692,6 +728,24 @@ td strong{font-weight:500}
       <button class="btn btn-xs" onclick="toggleAlertTray()">✕</button>
     </div>
     <div id="alert-tray-body"><div style="color:var(--ink3);font-size:12px">Loading alerts…</div></div>
+  </div>
+
+  <!-- ═══ JARVIS ═══ -->
+  <div id="jv-panel">
+    <div class="jv-head">
+      <div class="jv-reactor" id="jv-reactor"></div>
+      <div style="flex:1;min-width:0">
+        <div class="jv-title">JARVIS</div>
+        <div class="jv-status" id="jv-status">Not connected</div>
+      </div>
+      <button class="jv-mic" id="jv-speak" onclick="JV.toggleVoice()" title="Speak replies aloud">🔊</button>
+      <button class="btn btn-xs" onclick="JV.close()">✕</button>
+    </div>
+    <div class="jv-body" id="jv-body"></div>
+    <div class="jv-foot">
+      <textarea id="jv-input" rows="1" placeholder="Ask about the numbers…" onkeydown="JV.key(event)"></textarea>
+      <button class="jv-mic" id="jv-mic" onclick="JV.toggleMic()" title="Hold a conversation">🎤</button>
+    </div>
   </div>
 
   <div class="layout">
@@ -9473,6 +9527,176 @@ async function addPcalEntry() {
   loadPcal();
 }
 
+
+
+/* ══════════════════════════════════════════════════════════════════
+   JARVIS — the voice panel.
+
+   Talks to the local bridge (github.com/adewaskar/jarvis) over its
+   WebSocket. The bridge runs Claude Code headless and reaches the
+   quoteleads MCP server in tools/jarvis, so every number he reads out
+   comes from this same database.
+
+   Protocol, from bridge/server.mjs:
+     out  {type:'ask', text, id}   {type:'interrupt'}
+     in   {type:'ready', servers}  {type:'text', delta}
+          {type:'tool', name}      {type:'done'}   {type:'error', message}
+
+   Two things have to be true for the connection to work, and the panel
+   says so plainly rather than failing silently:
+     - the bridge must allow this page's origin
+       (JARVIS_ALLOWED_ORIGINS=https://buckleydigital.github.io)
+     - this page is https and the bridge is ws://localhost, which Chrome
+       permits as a trustworthy local origin but may gate behind its
+       local-network prompt. Serving this file from localhost avoids it.
+   ══════════════════════════════════════════════════════════════════ */
+const JV = (() => {
+  const BRIDGE = localStorage.getItem('ql_jarvis_bridge') || 'ws://localhost:8787';
+  let ws = null, connecting = false, bubble = null, askId = 0, spoke = '';
+  let voice = localStorage.getItem('ql_jarvis_voice') !== '0';
+  let rec = null, micOn = false;
+
+  const $$ = id => document.getElementById(id);
+  const body = () => $$('jv-body');
+
+  function status(text, cls) {
+    const el = $$('jv-status'); if (el) el.textContent = text;
+    const dot = $$('jv-dot'); if (dot) dot.className = 'jv-dot' + (cls ? ' ' + cls : '');
+    const r = $$('jv-reactor'); if (r) r.classList.toggle('live', cls === 'ready' || cls === 'busy');
+  }
+
+  function line(cls, text) {
+    const el = document.createElement('div');
+    el.className = 'jv-msg ' + cls;
+    if (cls === 'sys') el.innerHTML = text; else el.textContent = text;
+    body().appendChild(el);
+    body().scrollTop = body().scrollHeight;
+    return el;
+  }
+
+  function connect() {
+    if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
+    if (connecting) return;
+    connecting = true;
+    status('Connecting…', 'busy');
+    try { ws = new WebSocket(BRIDGE); }
+    catch (e) { connecting = false; return offline(e.message); }
+
+    ws.onopen = () => { connecting = false; status('Ready', 'ready'); };
+    ws.onerror = () => { connecting = false; };
+    ws.onclose = () => {
+      connecting = false; ws = null;
+      // A close with no open is the usual shape of a blocked or refused
+      // connection, so the guidance belongs here rather than in onerror.
+      if (!body().querySelector('.jv-offline')) offline();
+      else status('Not connected', 'err');
+    };
+    ws.onmessage = ev => {
+      let m; try { m = JSON.parse(ev.data); } catch { return; }
+      if (m.type === 'ready') return status('Ready', 'ready');
+      if (m.type === 'tool') {
+        const t = document.createElement('div');
+        t.className = 'jv-tool'; t.textContent = '⟢ ' + String(m.name || '').replace(/^mcp__/, '').replace(/__/g, ' ');
+        body().appendChild(t); body().scrollTop = body().scrollHeight;
+        return;
+      }
+      if (m.type === 'text' && m.delta) {
+        if (!bubble) bubble = line('jarvis', '');
+        bubble.textContent += m.delta;
+        body().scrollTop = body().scrollHeight;
+        return;
+      }
+      if (m.type === 'done') {
+        status('Ready', 'ready');
+        if (bubble && voice) speak(bubble.textContent);
+        bubble = null;
+        return;
+      }
+      if (m.type === 'error') { status('Error', 'err'); line('sys', esc(m.message || 'Something went wrong.')); bubble = null; }
+    };
+  }
+
+  function offline(detail) {
+    status('Not connected', 'err');
+    const el = line('sys',
+      'No bridge on <b>' + esc(BRIDGE) + '</b>.<br>' +
+      'Start JARVIS (<code>npm start</code>), and allow this page:<br>' +
+      '<code>JARVIS_ALLOWED_ORIGINS=' + esc(location.origin) + '</code>' +
+      (location.protocol === 'https:'
+        ? '<br><br>This page is https, so Chrome may also block a local connection. ' +
+          'Serving this file from localhost avoids that.'
+        : '') +
+      (detail ? '<br><br>' + esc(detail) : ''));
+    el.classList.add('jv-offline');
+  }
+
+  function esc(t) { const d = document.createElement('div'); d.textContent = String(t ?? ''); return d.innerHTML; }
+
+  function ask(text) {
+    text = String(text || '').trim();
+    if (!text) return;
+    if (!ws || ws.readyState !== 1) { connect(); line('sys', 'Not connected yet — try again in a moment.'); return; }
+    line('you', text);
+    bubble = null;
+    status('Thinking…', 'busy');
+    ws.send(JSON.stringify({ type: 'ask', text, id: 'q' + (++askId) }));
+  }
+
+  /* ── speech ── */
+  function speak(text) {
+    if (!voice || !window.speechSynthesis || !text) return;
+    if (text === spoke) return;
+    spoke = text;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.05; u.pitch = 0.9;
+    speechSynthesis.speak(u);
+  }
+
+  function initMic() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return null;
+    const r = new SR();
+    r.continuous = false; r.interimResults = false; r.lang = 'en-AU';
+    r.onresult = e => { const t = e.results[0][0].transcript; ask(t); };
+    r.onend = () => { micOn = false; $$('jv-mic').classList.remove('on'); };
+    r.onerror = () => { micOn = false; $$('jv-mic').classList.remove('on'); };
+    return r;
+  }
+
+  return {
+    toggle() { const p = $$('jv-panel'); p.classList.contains('open') ? this.close() : this.open(); },
+    open() {
+      $$('jv-panel').classList.add('open');
+      if (!body().children.length) {
+        line('sys', 'Ask about leads, closes, revenue, spend or a client.<br>Everything comes from this database.');
+      }
+      if (!window.SpeechRecognition && !window.webkitSpeechRecognition) $$('jv-mic').disabled = true;
+      $$('jv-speak').textContent = voice ? '🔊' : '🔇';
+      connect();
+      $$('jv-input').focus();
+    },
+    close() { $$('jv-panel').classList.remove('open'); if (window.speechSynthesis) speechSynthesis.cancel(); },
+    key(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(e.target.value); e.target.value = ''; }
+    },
+    toggleVoice() {
+      voice = !voice;
+      localStorage.setItem('ql_jarvis_voice', voice ? '1' : '0');
+      $$('jv-speak').textContent = voice ? '🔊' : '🔇';
+      if (!voice && window.speechSynthesis) speechSynthesis.cancel();
+    },
+    toggleMic() {
+      if (!rec) rec = initMic();
+      if (!rec) return;
+      if (micOn) { rec.stop(); return; }
+      // Barge-in: stop him talking the moment you start.
+      if (window.speechSynthesis) speechSynthesis.cancel();
+      try { rec.start(); micOn = true; $$('jv-mic').classList.add('on'); } catch (e) {}
+    },
+    ask
+  };
+})();
 
 </script>
 
