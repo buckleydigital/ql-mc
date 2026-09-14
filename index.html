@@ -3390,9 +3390,15 @@ function applyRoleUI() {
     if (repNav) repNav.style.display = 'none';
     document.querySelectorAll('.rep-stat-strip').forEach(e => e.style.display = '');
     document.querySelectorAll('.admin-only-field').forEach(e => e.style.display = 'none');
+    // JARVIS reads the whole business — revenue, spend, every client. Reps see
+    // neither the button nor the panel, and jarvis-chat refuses their token
+    // as well, because a hidden button is not a restriction.
+    const jvBtn = $('jv-btn'); if (jvBtn) jvBtn.style.display = 'none';
+    JV.close();
     nav('crm');
   } else {
     if (repNav) repNav.style.display = '';
+    const jvBtn = $('jv-btn'); if (jvBtn) jvBtn.style.display = '';
     document.querySelectorAll('.rep-stat-strip').forEach(e => e.style.display = 'none');
   }
 }
@@ -9656,6 +9662,7 @@ const JV = (() => {
   return {
     toggle() { const p = $$('jv-panel'); p.classList.contains('open') ? this.close() : this.open(); },
     open() {
+      if (typeof IS_REP !== 'undefined' && IS_REP) return;
       $$('jv-panel').classList.add('open');
       if (!body().children.length) {
         line('sys', 'Ask about leads, closes, revenue, spend, a client or your tasks.<br>Everything comes from this database.');

@@ -1457,6 +1457,16 @@ Deno.serve(async (req: Request) => {
     )
     if (authErr || !user) return json({ error: 'Unauthorized' }, 401)
 
+    // Reps are scoped to their own leads in this app; JARVIS answers across the
+    // whole business — revenue, margin, ad spend, every client, every rep's
+    // numbers. account_type lives in app_metadata, which only the service role
+    // can write, so it cannot be forged by the caller. This is the real
+    // restriction: hiding the button in the UI is a convenience, not a control.
+    const accountType = (user.app_metadata as Record<string, unknown> | undefined)?.account_type
+    if (accountType === 'sales_rep' || accountType === 'lead_buyer') {
+      return json({ error: 'Not available for this account.' }, 403)
+    }
+
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) return json({ error: 'ANTHROPIC_API_KEY is not set' }, 500)
 
