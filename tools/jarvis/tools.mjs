@@ -86,65 +86,124 @@ async function getPipelineSummary() {
   )
 }
 
+/**
+ * The months a managed client's retainer is attributed to.
+ *
+ * Mirrors mgPaymentMonths() in index.html: `active_months` is a JSON array of
+ * YYYY-MM, and `retainer_payment_dates` can remap any of them to the month the
+ * money actually arrived. Cash basis, so a fee counts in the month it was paid.
+ */
+function retainerMonths(client) {
+  let months = []
+  let paid = {}
+  try { months = JSON.parse(client.active_months || '[]') } catch {}
+  try { paid = JSON.parse(client.retainer_payment_dates || '{}') } catch {}
+  return months.map((m) => (paid?.[m] ? String(paid[m]).slice(0, 7) : m))
+}
+
+/**
+ * Revenue is not a table. The `revenue` table exists in the schema but nothing
+ * writes to it — the app computes revenue from three sources, and so does this
+ * (loadFinance / renderFinance in index.html):
+ *
+ *   pay-per-lead   ppl_order_log, leads_qty x lead_price
+ *   managed custom managed_order_log.amount
+ *   retainers      managed clients, fee x months attributed to the period
+ */
 async function getRevenueVsGoal({ month } = {}) {
   const target = month || localMonth()
-  const from = month ? startOfLocalDay(`${month}-01`) : startOfMonth()
-  const fromDate = from.slice(0, 10)
+  const from = `${target}-01`
+  const end = new Date(`${from}T12:00:00Z`)
+  end.setUTCMonth(end.getUTCMonth() + 1)
+  const next = end.toISOString().slice(0, 8) + '01'
 
-  const [rev, exp, goals] = await Promise.all([
-    select('revenue', { select: 'amount,type,date,client_id', date: `gte.${fromDate}` }, { limit: 5000 }),
-    select('expenses', { select: 'amount,category,date', date: `gte.${fromDate}` }, { limit: 5000 }),
-    // Small table, and `month` is free text — match in JS rather than guess its format.
+  const [pplOrders, mgOrders, mgClients, goals, expenses, spendLog] = await Promise.all([
+    select('ppl_order_log', { select: 'leads_qty,lead_price,order_date', order_date: `gte.${from}`, and: `(order_date.lt.${next})` }, { limit: 5000 }),
+    select('managed_order_log', { select: 'amount,order_date', order_date: `gte.${from}`, and: `(order_date.lt.${next})` }, { limit: 5000 }),
+    select('clients', { select: 'company_name,management_fee,active_months,retainer_payment_dates,payments_made,stage', type: 'eq.managed' }, { limit: 500 }),
     select('monthly_goals', { select: 'month,revenue_goal,margin_goal' }, { limit: 200 }),
+    select('expenses', { select: 'amount,category,date', date: `gte.${from}`, and: `(date.lt.${next})` }, { limit: 5000 }),
+    select('campaign_spend_log', { select: 'spend,leads,period', period: `eq.${target}` }, { limit: 2000 }),
   ])
 
-  const booked = sum(rev.rows, 'amount')
-  const spent = sum(exp.rows, 'amount')
-  const goal = goals.rows.find((g) => norm(g.month).startsWith(target))
-  const revenueGoal = Number(goal?.revenue_goal || 0)
-  const pct = revenueGoal ? Math.round((booked / revenueGoal) * 100) : null
+  const pplRevenue = pplOrders.rows.reduce((s, o) => s + Number(o.leads_qty || 0) * Number(o.lead_price || 0), 0)
+  const managedCustom = sum(mgOrders.rows, 'amount')
+  const retainers = mgClients.rows.reduce(
+    (s, c) => s + retainerMonths(c).filter((m) => m === target).length * Number(c.management_fee || 0),
+    0,
+  )
 
-  const byType = {}
-  for (const r of rev.rows) byType[r.type || 'other'] = (byType[r.type || 'other'] || 0) + Number(r.amount || 0)
+  const revenue = pplRevenue + managedCustom + retainers
+  // The app counts ad spend as an expense alongside the expenses table.
+  const adSpend = sum(spendLog.rows, 'spend')
+  const costs = sum(expenses.rows, 'amount') + adSpend
+
+  const goal = goals.rows.find((g) => norm(g.month) === target)
+  const revenueGoal = Number(goal?.revenue_goal || 0)
+  const pct = revenueGoal ? Math.round((revenue / revenueGoal) * 100) : null
 
   const summary = revenueGoal
-    ? `${money(booked)} booked this month against a goal of ${money(revenueGoal)}. That is ${pct} percent.`
-    : `${money(booked)} booked this month. No revenue goal is set for ${target}.`
+    ? `${money(revenue)} booked this month against a goal of ${money(revenueGoal)}. That is ${pct} percent.`
+    : `${money(revenue)} booked this month. No revenue goal is set for ${target}.`
 
   return ok(summary, {
     month: target,
-    revenue: booked,
+    revenue,
     revenue_goal: revenueGoal || null,
     pct_of_goal: pct,
-    expenses: spent,
-    margin: booked - spent,
+    breakdown: { pay_per_lead: pplRevenue, managed_custom: managedCustom, retainers },
+    costs,
+    ad_spend: adSpend,
+    margin: revenue - costs,
     margin_goal: Number(goal?.margin_goal || 0) || null,
-    revenue_by_type: byType,
   })
 }
 
-async function getAdSpendAndCpl() {
-  const today = localDate()
-  const monthStart = startOfMonth().slice(0, 10)
+/**
+ * Spend and cost per lead.
+ *
+ * Two sources, and they work differently:
+ *
+ *   - campaign_spend_log is the pay-per-lead source of truth, keyed by a
+ *     YYYY-MM `period`. Monthly granularity — there is no daily figure.
+ *   - ad_spend_daily.spend for account_type 'agency' is CUMULATIVE year to
+ *     date, not that day's spend. Spend for a period is the latest row in it
+ *     minus the latest row before it. Summing those rows, as an obvious
+ *     reading would, inflates the number enormously.
+ */
+async function getAdSpendAndCpl({ month } = {}) {
+  const target = month || localMonth()
+  const from = `${target}-01`
+  const end = new Date(`${from}T12:00:00Z`)
+  end.setUTCMonth(end.getUTCMonth() + 1)
+  const next = end.toISOString().slice(0, 8) + '01'
 
-  const { rows } = await select(
-    'ad_spend_daily',
-    { select: 'date,spend,leads,clicks,impressions,account_type,client_name', date: `gte.${monthStart}` },
-    { limit: 5000 },
+  const agency = { select: 'date,spend', account_type: 'eq.agency', order: 'date.desc' }
+  const [spendLog, latest, baseline] = await Promise.all([
+    select('campaign_spend_log', { select: 'campaign_name,spend,leads,period,source', period: `eq.${target}` }, { limit: 2000 }),
+    select('ad_spend_daily', { ...agency, date: `gte.${from}`, and: `(date.lt.${next})` }, { limit: 1 }),
+    select('ad_spend_daily', { ...agency, date: `lt.${from}` }, { limit: 1 }),
+  ])
+
+  const pplSpend = sum(spendLog.rows, 'spend')
+  const pplLeads = spendLog.rows.reduce((s, r) => s + Number(r.leads || 0), 0)
+  const cpl = pplLeads ? Math.round((pplSpend / pplLeads) * 100) / 100 : null
+
+  const agencySpend = Math.max(
+    0,
+    Number(latest.rows[0]?.spend || 0) - Number(baseline.rows[0]?.spend || 0),
   )
 
-  const todayRows = rows.filter((r) => r.date === today)
-  const mtdSpend = sum(rows, 'spend')
-  const mtdLeads = sum(rows, 'leads')
-  const todaySpend = sum(todayRows, 'spend')
-  const todayLeads = sum(todayRows, 'leads')
-  const cpl = (s, l) => (l ? Math.round((s / l) * 100) / 100 : null)
-
   return ok(
-    `${money(todaySpend)} spent today for ${todayLeads} leads, a cost per lead of ${money(cpl(todaySpend, todayLeads) ?? 0)}. Month to date is ${money(mtdSpend)} at ${money(cpl(mtdSpend, mtdLeads) ?? 0)}.`,
+    pplLeads
+      ? `${money(pplSpend)} on pay-per-lead advertising this month for ${pplLeads} leads, a cost per lead of ${money(cpl)}. Agency spend is ${money(agencySpend)}.`
+      : `No pay-per-lead spend is logged for ${target}. Agency spend is ${money(agencySpend)}.`,
     {
-      today: { date: today, spend: todaySpend, leads: todayLeads, cpl: cpl(todaySpend, todayLeads) },
-      month_to_date: { spend: mtdSpend, leads: mtdLeads, cpl: cpl(mtdSpend, mtdLeads) },
+      month: target,
+      pay_per_lead: { spend: pplSpend, leads: pplLeads, cpl, campaigns: spendLog.rows.length },
+      agency: { spend: agencySpend, as_at: latest.rows[0]?.date ?? null },
+      total_spend: pplSpend + agencySpend,
+      note: 'Pay-per-lead spend is logged monthly, so there is no daily figure. Agency spend is a delta of cumulative year-to-date rows.',
     },
   )
 }
@@ -581,14 +640,14 @@ export const TOOLS = [
   },
   {
     name: 'get_revenue_vs_goal',
-    description: 'Revenue booked this month against the monthly revenue goal, with expenses and margin. Answers "are we ahead of goal".',
+    description: 'Revenue booked this month against the monthly goal, broken into pay-per-lead orders, managed custom orders and retainers, with costs and margin. Answers "are we ahead of goal".',
     inputSchema: { type: 'object', properties: { month: str('Month as YYYY-MM. Defaults to the current month.') } },
     handler: getRevenueVsGoal,
   },
   {
     name: 'get_ad_spend_and_cpl',
-    description: 'Advertising spend, leads generated and cost per lead, for today and month to date.',
-    inputSchema: { type: 'object', properties: {} },
+    description: 'Advertising spend and cost per lead for the month: pay-per-lead from the campaign spend log, plus agency spend. Logged monthly, so there is no daily figure.',
+    inputSchema: { type: 'object', properties: { month: str('Month as YYYY-MM. Defaults to the current month.') } },
     handler: getAdSpendAndCpl,
   },
   {

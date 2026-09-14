@@ -109,6 +109,18 @@ The briefing tells JARVIS to prefer a purpose-built tool when one fits.
   of the pipeline is handled directly. `get_rep_performance` gives those a
   named row (`QL_OWNERLESS_NAME`, default "you") rather than calling them
   unassigned.
+- **Revenue is not a table.** The `revenue` table exists in the schema but
+  nothing writes to it. Revenue is composed, exactly as `renderFinance` in
+  `index.html` composes it: pay-per-lead orders (`ppl_order_log`, qty x price),
+  managed custom orders (`managed_order_log`), and retainers (managed clients'
+  `management_fee` x the months `active_months` / `retainer_payment_dates`
+  attribute to the period, cash basis).
+- **`ad_spend_daily.spend` is cumulative year to date**, not that day's spend,
+  for `account_type = 'agency'`. Spend for a period is the latest row in it
+  minus the latest row before it. Summing the rows — the obvious reading —
+  overstates it enormously. Pay-per-lead spend and CPL come from
+  `campaign_spend_log`, keyed by a `YYYY-MM` period, so there is no daily
+  figure for it. `leads_daily` and `daily_snapshots` are unused by the app.
 - **Dates are local.** Every "today" is computed in `QL_TIMEZONE`
   (`dates.mjs`). UTC day boundaries would report yesterday's lead count for the
   whole working morning.
