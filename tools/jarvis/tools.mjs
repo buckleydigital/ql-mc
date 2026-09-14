@@ -15,7 +15,7 @@
  */
 
 import { select, count, patch, insert, invoke } from './db.mjs'
-import { config } from './config.mjs'
+import { config, stageKey } from './config.mjs'
 import { EXPLORE_TOOLS } from './explore.mjs'
 import { userToken } from './auth.mjs'
 import { localDate, localMonth, startOfLocalDay, daysAgo, startOfMonth } from './dates.mjs'
@@ -25,8 +25,8 @@ const money = (n) =>
 
 const sum = (rows, key) => rows.reduce((t, r) => t + Number(r[key] || 0), 0)
 const norm = (s) => String(s ?? '').trim().toLowerCase()
-const isDead = (stage) => config.deadStages.includes(norm(stage))
-const isWon = (stage) => config.wonStages.includes(norm(stage))
+const isDead = (stage) => config.deadStages.includes(stageKey(stage))
+const isWon = (stage) => config.wonStages.includes(stageKey(stage))
 
 /** PostgREST `in` needs the quoted-list form: in.("a","b") */
 const inList = (values) => `in.(${values.map((v) => `"${v}"`).join(',')})`

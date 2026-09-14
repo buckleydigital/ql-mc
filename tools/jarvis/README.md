@@ -113,7 +113,11 @@ The briefing tells JARVIS to prefer a purpose-built tool when one fits.
   (`dates.mjs`). UTC day boundaries would report yesterday's lead count for the
   whole working morning.
 - **Won and dead stages are configured, not inferred.** `leads.stage` is free
-  text; `QL_WON_STAGES` and `QL_DEAD_STAGES` decide what counts.
+  text. The live vocabulary is `closed_won`, `closed_lost`, `proposal`,
+  `no_answer`, `new_lead`; `QL_WON_STAGES` and `QL_DEAD_STAGES` decide which
+  count, and anything unlisted is open. Matching folds case and separators, so
+  a config written as `closed won` still matches `closed_won` — a silent miss
+  here reports zero closes instead of failing, which is why it is forgiving.
 - **`get_closes` dates a win by `updated_at`,** because `leads` has no
   `closed_at` column. Exact for a lead closed and left alone; it drifts if a won
   lead is edited in a later month. If closes-per-month becomes a number anyone

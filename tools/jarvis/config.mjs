@@ -17,10 +17,19 @@ const required = (name) => {
   return value
 }
 
+/**
+ * Stage names are matched on a canonical form: lowercased, with underscores
+ * and hyphens folded to spaces. The database says `closed_won`; someone
+ * configuring this will write `closed won` or `Closed Won`. All three match,
+ * because a silent miss here reports zero closes rather than an error.
+ */
+export const stageKey = (s) =>
+  String(s ?? '').trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ')
+
 const list = (name, fallback) =>
   (process.env[name] ?? fallback)
     .split(',')
-    .map((s) => s.trim().toLowerCase())
+    .map(stageKey)
     .filter(Boolean)
 
 export const config = {
@@ -45,8 +54,10 @@ export const config = {
    * or dead is a business fact, not a schema fact — it belongs in config where
    * it can change without a code edit.
    */
-  wonStages: list('QL_WON_STAGES', 'won,closed won,client,signed'),
-  deadStages: list('QL_DEAD_STAGES', 'lost,dead,closed lost,disqualified'),
+  // The live vocabulary: closed_won, closed_lost, proposal, no_answer,
+  // new_lead. Anything not named here counts as open.
+  wonStages: list('QL_WON_STAGES', 'closed_won,won'),
+  deadStages: list('QL_DEAD_STAGES', 'closed_lost,lost,dead,disqualified'),
 
   /**
    * A lead with no owner_id is not unassigned — it is handled by the operator
