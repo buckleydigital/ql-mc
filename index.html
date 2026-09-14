@@ -9632,11 +9632,53 @@ const JV = (() => {
   /* ── speech ── */
   function hush() { if (window.speechSynthesis) speechSynthesis.cancel(); }
 
+  /**
+   * Pick the closest thing to the JARVIS voice the browser actually has.
+   *
+   * The default is whatever the OS considers first, which is usually a
+   * generic American one. A British male voice is shipped by both Chrome
+   * ("Google UK English Male") and macOS ("Daniel"), and is a far better
+   * match. Preference order, first hit wins; falls back to the default.
+   */
+  const VOICE_ORDER = [
+    /Google UK English Male/i,
+    /\bDaniel\b/i,           // macOS en-GB
+    /\bArthur\b/i,           // macOS en-GB, newer
+    /\bOliver\b/i,
+    /\bGeorge\b/i,
+    /Microsoft (Ryan|George)/i,
+    /en[-_]GB.*male/i,
+  ];
+  let picked = null, pickedOnce = false;
+
+  function pickVoice() {
+    if (pickedOnce) return picked;
+    const all = window.speechSynthesis?.getVoices?.() ?? [];
+    // getVoices() is empty until the list loads, so don't cache an empty pick.
+    if (!all.length) return null;
+    pickedOnce = true;
+    for (const want of VOICE_ORDER) {
+      const hit = all.find(v => want.test(v.name) || want.test(`${v.lang} ${v.name}`));
+      if (hit) { picked = hit; break; }
+    }
+    // Nothing British on this machine — any en-GB, then leave it to the OS.
+    picked = picked || all.find(v => /^en[-_]GB/i.test(v.lang)) || null;
+    return picked;
+  }
+
+  if (window.speechSynthesis) {
+    speechSynthesis.onvoiceschanged = () => { pickedOnce = false; pickVoice(); };
+  }
+
   function speak(text) {
     if (!voice || !window.speechSynthesis || !text) return;
     hush();
     const u = new SpeechSynthesisUtterance(text);
-    u.rate = 1.05; u.pitch = 0.9;
+    const v = pickVoice();
+    if (v) { u.voice = v; u.lang = v.lang; }
+    // Measured, a little lower than default. Clipped speech reads as urgency,
+    // which is the opposite of the character.
+    u.rate = 1.0; u.pitch = 0.85;
     speechSynthesis.speak(u);
   }
 
