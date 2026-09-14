@@ -69,11 +69,32 @@ Deno.serve(async (req: Request) => {
     )
 
     if (!res.ok) {
-      const detail = (await res.text()).slice(0, 300)
-      return new Response(JSON.stringify({ error: `ElevenLabs ${res.status}: ${detail}` }), {
-        status: 502,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      const detail = (await res.text()).slice(0, 200)
+
+      // A rejected voice id is the common case, and the useful thing to say
+      // back is which voices this key CAN use — Voice Library voices are not
+      // available over the API on the free tier, and some are restricted to
+      // paid accounts, so a perfectly valid id can still be refused.
+      let usable = ''
+      try {
+        const list = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': key } })
+        if (list.ok) {
+          const { voices } = await list.json()
+          usable = (voices ?? [])
+            .slice(0, 8)
+            .map((v: { name: string; voice_id: string }) => `${v.name} (${v.voice_id})`)
+            .join(', ')
+        }
+      } catch { /* diagnostics are best effort */ }
+
+      return new Response(
+        JSON.stringify({
+          error: `ElevenLabs ${res.status}: ${detail}`,
+          voice_tried: voiceId(),
+          usable_voices: usable || undefined,
+        }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
     }
 
     return new Response(res.body, {

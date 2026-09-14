@@ -9666,11 +9666,14 @@ const JV = (() => {
         // id and an out-of-credits account look identical from here otherwise.
         if (!voiceWarned) {
           voiceWarned = true;
-          let detail = '';
-          try { detail = (await res.json()).error || ''; } catch (e) {}
+          let info = {};
+          try { info = await res.json(); } catch (e) {}
           line('sys', 'Using the browser voice — ElevenLabs returned ' + res.status +
-            (detail ? '.<br>' + esc(detail) : '.') +
-            '<br>A locked voice usually needs adding to your library first.');
+            (info.error ? '.<br>' + esc(info.error) : '.') +
+            (info.voice_tried ? '<br>Voice tried: <code>' + esc(info.voice_tried) + '</code>' : '') +
+            (info.usable_voices
+              ? '<br><br>Voices this key can use:<br>' + esc(info.usable_voices)
+              : '<br>Voice Library voices need a paid plan to work over the API.'));
         }
         return false;
       }
