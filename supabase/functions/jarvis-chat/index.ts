@@ -11,13 +11,16 @@
  * sends a question and gets an answer; it never sees the key, and it cannot
  * ask for a tool it was not offered.
  *
- * Tools come from ../_shared/quoteleads — the SAME modules the MCP server
- * hands to the local bridge, so both brains answer from one implementation.
+ * Tools come from ./quoteleads — the SAME modules the MCP server hands to the
+ * local bridge, so both brains answer from one implementation. They live
+ * INSIDE this function's folder because the deploy bundler uploads only the
+ * function directory: a sibling _shared/ is not included and the import fails
+ * to resolve. The MCP server reaches in from tools/jarvis instead.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Anthropic from 'npm:@anthropic-ai/sdk@0.115.0'
-import { TOOLS } from '../_shared/quoteleads/tools.mjs'
+import { TOOLS } from './quoteleads/tools.mjs'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

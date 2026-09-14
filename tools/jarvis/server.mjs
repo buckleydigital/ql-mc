@@ -12,10 +12,11 @@
  */
 
 import { createInterface } from 'node:readline'
-// The tool implementations live under supabase/functions/_shared/quoteleads so
-// that this server and the jarvis-chat edge function run the SAME code. Node
-// imports them from here; Deno bundles them into the function.
-import { TOOLS } from '../../supabase/functions/_shared/quoteleads/tools.mjs'
+// The tool implementations live inside the jarvis-chat edge function, because
+// its deploy bundler only uploads that one directory. This server and the
+// hosted brain therefore run the SAME code: Deno bundles it, Node imports it
+// from here.
+import { TOOLS } from '../../supabase/functions/jarvis-chat/quoteleads/tools.mjs'
 
 const PROTOCOL_VERSION = '2024-11-05'
 const byName = new Map(TOOLS.map((t) => [t.name, t]))

@@ -34,8 +34,10 @@ supabase secrets list --project-ref wmegoygrancfwxagqskh
 
 ## One implementation, two brains
 
-The tools live in `supabase/functions/_shared/quoteleads/`. Both brains import
-them:
+The tools live in `supabase/functions/jarvis-chat/quoteleads/` — inside the
+function's own folder, because `supabase functions deploy` uploads only the
+directory being deployed; a sibling `_shared/` is not included in the bundle and
+the import fails to resolve at deploy time. Both brains import them:
 
 - **the edge function** (hosted, this document) bundles them
 - **the MCP server** in `tools/jarvis/` imports them for the local jarvis
