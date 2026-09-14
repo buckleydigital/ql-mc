@@ -7,8 +7,18 @@
  * or set the variables in the MCP client's `env` block.
  */
 
+/**
+ * Read an environment variable in either runtime.
+ *
+ * These modules run in two places: Node, as the MCP server the local bridge
+ * spawns, and Deno, inside the jarvis-chat edge function. Reading env through
+ * one accessor is what lets the tool implementations stay a single copy.
+ */
+export const env = (name) =>
+  globalThis.Deno?.env?.get?.(name) ?? globalThis.process?.env?.[name] ?? undefined
+
 const required = (name) => {
-  const value = process.env[name]
+  const value = env(name)
   if (!value) {
     throw new Error(
       `${name} is not set. Copy tools/jarvis/.env.example to .env and fill it in.`,
@@ -27,27 +37,29 @@ export const stageKey = (s) =>
   String(s ?? '').trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ')
 
 const list = (name, fallback) =>
-  (process.env[name] ?? fallback)
+  (env(name) ?? fallback)
     .split(',')
     .map(stageKey)
     .filter(Boolean)
 
 export const config = {
   /** PostgREST base, e.g. https://<ref>.supabase.co */
-  url: () => required('QL_SUPABASE_URL').replace(/\/+$/, ''),
+  // Inside an edge function SUPABASE_URL and the service-role key are provided
+  // by the platform, so the QL_ names are only needed outside it.
+  url: () => (env('QL_SUPABASE_URL') ?? required('SUPABASE_URL')).replace(/\/+$/, ''),
 
   /**
    * Service-role or anon key. Service-role reads past RLS, which is what a
    * single-operator assistant wants; it never leaves this machine, and this
    * server exposes no tool that runs caller-supplied SQL.
    */
-  key: () => required('QL_SUPABASE_KEY'),
+  key: () => env('QL_SUPABASE_KEY') ?? required('SUPABASE_SERVICE_ROLE_KEY'),
 
   /**
    * The business runs on Australian dates. "Today" has to mean the local day,
    * not UTC, or every morning before 10am reports yesterday's numbers.
    */
-  timezone: process.env.QL_TIMEZONE ?? 'Australia/Sydney',
+  timezone: env('QL_TIMEZONE') ?? 'Australia/Sydney',
 
   /**
    * Stage vocabulary. `leads.stage` is free text, so which values count as won
@@ -64,8 +76,8 @@ export const config = {
    * running this assistant. Naming that makes the rep table complete instead
    * of showing most of the pipeline as nobody's.
    */
-  ownerlessName: process.env.QL_OWNERLESS_NAME ?? 'you',
+  ownerlessName: env('QL_OWNERLESS_NAME') ?? 'you',
 
   /** Currency label used in spoken summaries. */
-  currency: process.env.QL_CURRENCY ?? 'AUD',
+  currency: env('QL_CURRENCY') ?? 'AUD',
 }

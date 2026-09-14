@@ -12,7 +12,10 @@
  */
 
 import { createInterface } from 'node:readline'
-import { TOOLS } from './tools.mjs'
+// The tool implementations live under supabase/functions/_shared/quoteleads so
+// that this server and the jarvis-chat edge function run the SAME code. Node
+// imports them from here; Deno bundles them into the function.
+import { TOOLS } from '../../supabase/functions/_shared/quoteleads/tools.mjs'
 
 const PROTOCOL_VERSION = '2024-11-05'
 const byName = new Map(TOOLS.map((t) => [t.name, t]))

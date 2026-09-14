@@ -738,6 +738,7 @@ td strong{font-weight:500}
         <div class="jv-title">JARVIS</div>
         <div class="jv-status" id="jv-status">Not connected</div>
       </div>
+      <button class="jv-mic" id="jv-writes" onclick="JV.toggleWrites()" title="Read-only">🔒</button>
       <button class="jv-mic" id="jv-speak" onclick="JV.toggleVoice()" title="Speak replies aloud">🔊</button>
       <button class="btn btn-xs" onclick="JV.close()">✕</button>
     </div>
@@ -9530,34 +9531,28 @@ async function addPcalEntry() {
 
 
 /* ══════════════════════════════════════════════════════════════════
-   JARVIS — the voice panel.
+   JARVIS — the assistant panel.
 
-   Talks to the local bridge (github.com/adewaskar/jarvis) over its
-   WebSocket. The bridge runs Claude Code headless and reaches the
-   quoteleads MCP server in tools/jarvis, so every number he reads out
-   comes from this same database.
+   The brain is the jarvis-chat edge function: it holds the Anthropic key
+   as a server secret and runs the QuoteLeads tools (the same modules the
+   local MCP server uses) against this database. Nothing runs on anyone's
+   laptop, so this works from the deployed site on any device.
 
-   Protocol, from bridge/server.mjs:
-     out  {type:'ask', text, id}   {type:'interrupt'}
-     in   {type:'ready', servers}  {type:'text', delta}
-          {type:'tool', name}      {type:'done'}   {type:'error', message}
+   The browser sends a question and the conversation so far, and gets an
+   answer back. It never sees the key, and it cannot ask for a tool the
+   function did not offer.
 
-   Two things have to be true for the connection to work, and the panel
-   says so plainly rather than failing silently:
-     - the bridge must allow this page's origin
-       (JARVIS_ALLOWED_ORIGINS=https://buckleydigital.github.io)
-     - this page is https and the bridge is ws://localhost, which Chrome
-       permits as a trustworthy local origin but may gate behind its
-       local-network prompt. Serving this file from localhost avoids it.
+   Voice is the browser's own: speechSynthesis to speak, SpeechRecognition
+   to listen. Both are optional — typing always works.
    ══════════════════════════════════════════════════════════════════ */
 const JV = (() => {
-  const BRIDGE = localStorage.getItem('ql_jarvis_bridge') || 'ws://localhost:8787';
-  let ws = null, connecting = false, bubble = null, askId = 0, spoke = '';
+  let history = [], busy = false, rec = null, micOn = false;
   let voice = localStorage.getItem('ql_jarvis_voice') !== '0';
-  let rec = null, micOn = false;
+  let writes = localStorage.getItem('ql_jarvis_writes') === '1';
 
   const $$ = id => document.getElementById(id);
   const body = () => $$('jv-body');
+  const esc = t => { const d = document.createElement('div'); d.textContent = String(t ?? ''); return d.innerHTML; };
 
   function status(text, cls) {
     const el = $$('jv-status'); if (el) el.textContent = text;
@@ -9574,120 +9569,63 @@ const JV = (() => {
     return el;
   }
 
-  function connect() {
-    if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
-    if (connecting) return;
-    connecting = true;
-    status('Connecting…', 'busy');
-    try { ws = new WebSocket(BRIDGE); }
-    catch (e) { connecting = false; return offline(e.message); }
-
-    ws.onopen = () => { connecting = false; status('Ready', 'ready'); probeVoice(); };
-    ws.onerror = () => { connecting = false; };
-    ws.onclose = () => {
-      connecting = false; ws = null;
-      // A close with no open is the usual shape of a blocked or refused
-      // connection, so the guidance belongs here rather than in onerror.
-      if (!body().querySelector('.jv-offline')) offline();
-      else status('Not connected', 'err');
-    };
-    ws.onmessage = ev => {
-      let m; try { m = JSON.parse(ev.data); } catch { return; }
-      if (m.type === 'ready') return status('Ready', 'ready');
-      if (m.type === 'tool') {
-        const t = document.createElement('div');
-        t.className = 'jv-tool'; t.textContent = '⟢ ' + String(m.name || '').replace(/^mcp__/, '').replace(/__/g, ' ');
-        body().appendChild(t); body().scrollTop = body().scrollHeight;
-        return;
-      }
-      if (m.type === 'text' && m.delta) {
-        if (!bubble) bubble = line('jarvis', '');
-        bubble.textContent += m.delta;
-        body().scrollTop = body().scrollHeight;
-        return;
-      }
-      if (m.type === 'done') {
-        status('Ready', 'ready');
-        if (bubble && voice) speak(bubble.textContent);
-        bubble = null;
-        return;
-      }
-      if (m.type === 'error') { status('Error', 'err'); line('sys', esc(m.message || 'Something went wrong.')); bubble = null; }
-    };
-  }
-
-  function offline(detail) {
-    status('Not connected', 'err');
-    const el = line('sys',
-      'No bridge on <b>' + esc(BRIDGE) + '</b>.<br>' +
-      'Start JARVIS (<code>npm start</code>), and allow this page:<br>' +
-      '<code>JARVIS_ALLOWED_ORIGINS=' + esc(location.origin) + '</code>' +
-      (location.protocol === 'https:'
-        ? '<br><br>This page is https, so Chrome may also block a local connection. ' +
-          'Serving this file from localhost avoids that.'
-        : '') +
-      (detail ? '<br><br>' + esc(detail) : ''));
-    el.classList.add('jv-offline');
-  }
-
-  function esc(t) { const d = document.createElement('div'); d.textContent = String(t ?? ''); return d.innerHTML; }
-
-  function ask(text) {
+  async function ask(text) {
     text = String(text || '').trim();
-    if (!text) return;
-    if (!ws || ws.readyState !== 1) { connect(); line('sys', 'Not connected yet — try again in a moment.'); return; }
+    if (!text || busy) return;
     line('you', text);
-    bubble = null;
+    busy = true;
     status('Thinking…', 'busy');
-    ws.send(JSON.stringify({ type: 'ask', text, id: 'q' + (++askId) }));
-  }
 
-  /* ── speech ──
-     Two engines, chosen at connect the way jarvis chooses them: the bridge
-     reports whether an ElevenLabs key is configured (GET /health), and if it
-     is, replies are spoken in the real JARVIS voice through POST /tts. With
-     no key the browser's own voice is used, so this works either way and
-     upgrades by itself the moment a key appears. */
-  let useEleven = false, audio = null;
-
-  async function probeVoice() {
+    const thinking = line('jarvis', '…');
     try {
-      const r = await fetch(BRIDGE.replace(/^ws/, 'http') + '/health', { cache: 'no-store' });
-      const h = await r.json();
-      useEleven = Boolean(h.tts);
-    } catch { useEleven = false; }
-    const el = $$('jv-speak');
-    if (el) el.title = useEleven ? 'ElevenLabs voice' : 'Browser voice';
-  }
+      if (!window.db) throw new Error('Sign in first.');
+      const { data: { session } } = await db.auth.getSession();
+      if (!session) throw new Error('Your session has expired — sign in again.');
 
-  function hush() {
-    if (audio) { audio.pause(); audio = null; }
-    if (window.speechSynthesis) speechSynthesis.cancel();
-  }
+      const res = await fetch(_ep + '/functions/v1/jarvis-chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: _ak,
+          Authorization: 'Bearer ' + session.access_token,
+        },
+        // The whole conversation goes back each turn, so follow-ups like
+        // "and last month?" resolve against what was already said.
+        body: JSON.stringify({ text, messages: history, allow_writes: writes }),
+      });
 
-  async function speak(text) {
-    if (!voice || !text || text === spoke) return;
-    spoke = text;
-    hush();
+      const out = await res.json();
+      if (!res.ok || out.error) throw new Error(out.error || ('Request failed: ' + res.status));
 
-    if (useEleven) {
-      try {
-        const r = await fetch(BRIDGE.replace(/^ws/, 'http') + '/tts', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ text })
-        });
-        if (r.ok) {
-          const url = URL.createObjectURL(await r.blob());
-          audio = new Audio(url);
-          audio.onended = () => URL.revokeObjectURL(url);
-          await audio.play();
-          return;
-        }
-      } catch { /* fall through to the browser voice */ }
+      // The function returns the full transcript, tool calls included, so the
+      // next turn continues from exactly what the model saw.
+      if (Array.isArray(out.messages)) history = out.messages;
+      if (Array.isArray(out.tools) && out.tools.length) {
+        const t = document.createElement('div');
+        t.className = 'jv-tool';
+        t.textContent = '⟢ ' + [...new Set(out.tools)].join(', ').replace(/_/g, ' ');
+        body().insertBefore(t, thinking);
+      }
+
+      thinking.textContent = out.reply || '(no answer)';
+      status('Ready', 'ready');
+      if (voice) speak(thinking.textContent);
+    } catch (e) {
+      thinking.remove();
+      line('sys', esc(e.message));
+      status('Error', 'err');
+    } finally {
+      busy = false;
+      body().scrollTop = body().scrollHeight;
     }
+  }
 
-    if (!window.speechSynthesis) return;
+  /* ── speech ── */
+  function hush() { if (window.speechSynthesis) speechSynthesis.cancel(); }
+
+  function speak(text) {
+    if (!voice || !window.speechSynthesis || !text) return;
+    hush();
     const u = new SpeechSynthesisUtterance(text);
     u.rate = 1.05; u.pitch = 0.9;
     speechSynthesis.speak(u);
@@ -9698,10 +9636,18 @@ const JV = (() => {
     if (!SR) return null;
     const r = new SR();
     r.continuous = false; r.interimResults = false; r.lang = 'en-AU';
-    r.onresult = e => { const t = e.results[0][0].transcript; ask(t); };
+    r.onresult = e => ask(e.results[0][0].transcript);
     r.onend = () => { micOn = false; $$('jv-mic').classList.remove('on'); };
     r.onerror = () => { micOn = false; $$('jv-mic').classList.remove('on'); };
     return r;
+  }
+
+  function paintWrites() {
+    const b = $$('jv-writes');
+    if (!b) return;
+    b.textContent = writes ? '🔓' : '🔒';
+    b.title = writes ? 'Can send and change things' : 'Read-only — cannot send or change anything';
+    b.classList.toggle('on', writes);
   }
 
   return {
@@ -9709,11 +9655,12 @@ const JV = (() => {
     open() {
       $$('jv-panel').classList.add('open');
       if (!body().children.length) {
-        line('sys', 'Ask about leads, closes, revenue, spend or a client.<br>Everything comes from this database.');
+        line('sys', 'Ask about leads, closes, revenue, spend, a client or your tasks.<br>Everything comes from this database.');
       }
       if (!window.SpeechRecognition && !window.webkitSpeechRecognition) $$('jv-mic').disabled = true;
       $$('jv-speak').textContent = voice ? '🔊' : '🔇';
-      connect();
+      paintWrites();
+      status('Ready', 'ready');
       $$('jv-input').focus();
     },
     close() { $$('jv-panel').classList.remove('open'); hush(); },
@@ -9726,14 +9673,25 @@ const JV = (() => {
       $$('jv-speak').textContent = voice ? '🔊' : '🔇';
       if (!voice) hush();
     },
+    toggleWrites() {
+      // Off by default and per-browser. With it off the edge function is not
+      // even told the sending tools exist, so a misheard sentence cannot email
+      // a customer.
+      writes = !writes;
+      localStorage.setItem('ql_jarvis_writes', writes ? '1' : '0');
+      paintWrites();
+      line('sys', writes
+        ? 'Sending and changes are <b>on</b>. He will confirm before anything irreversible.'
+        : 'Read-only. He can look at anything and change nothing.');
+    },
     toggleMic() {
       if (!rec) rec = initMic();
       if (!rec) return;
       if (micOn) { rec.stop(); return; }
-      // Barge-in: stop him talking the moment you start.
       hush();
       try { rec.start(); micOn = true; $$('jv-mic').classList.add('on'); } catch (e) {}
     },
+    reset() { history = []; body().innerHTML = ''; this.open(); },
     ask
   };
 })();

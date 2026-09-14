@@ -15,7 +15,7 @@
  */
 
 import { select, count, patch, insert, remove, invoke } from './db.mjs'
-import { config, stageKey } from './config.mjs'
+import { config, stageKey, env } from './config.mjs'
 import { EXPLORE_TOOLS } from './explore.mjs'
 import { userToken } from './auth.mjs'
 import { localDate, localMonth, startOfLocalDay, daysAgo, startOfMonth } from './dates.mjs'
@@ -552,7 +552,7 @@ async function sendLeadEmail({ lead_id, kind = 'info', subject, body } = {}) {
 
 /** Who a send is attributed to: the rep row for the configured login. */
 async function repIdentity() {
-  const email = process.env.QL_USER_EMAIL
+  const email = env('QL_USER_EMAIL')
   if (!email) return { name: '', email: '', reply_to_email: null }
   const { rows } = await select(
     'sales_reps',
