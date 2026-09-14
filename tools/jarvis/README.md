@@ -75,10 +75,16 @@ credential (`*_key`, `*_token`, `*secret*`, `*password*`) comes back redacted.
 **Reads** — `get_daily_brief` (everything, one call), `get_lead_totals`,
 `get_leads_today`, `get_closes`, `get_pipeline_summary`, `get_revenue_vs_goal`,
 `get_ad_spend_and_cpl`, `get_rep_performance`, `get_client_snapshot`,
-`find_lead`, `get_followups_due`, `get_delivery_failures`.
+`find_lead`, `list_tasks`, `get_followups_due`, `get_delivery_failures`,
+`get_email_draft`.
 
 **Writes** — `update_lead_stage`, `update_lead_followup`, `send_lead_email`,
-`send_lead_sms`, `create_task`.
+`send_lead_sms`, `create_task`, `update_task`, `delete_task`.
+
+`delete_task` takes a task id and nothing else — never a title — because a
+loose name match plus a misheard sentence is how the wrong task gets deleted,
+and there is no undo. The briefing has JARVIS confirm the specific task first,
+and offer marking it done instead.
 
 The two `send_*` tools call the existing edge functions (`send-sales-email`,
 `send-sms`) rather than reimplementing them, so logging and the

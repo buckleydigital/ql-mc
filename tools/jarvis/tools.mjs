@@ -14,7 +14,7 @@
  * `npm run bridge:writes` a deliberate act.
  */
 
-import { select, count, patch, insert, invoke } from './db.mjs'
+import { select, count, patch, insert, remove, invoke } from './db.mjs'
 import { config, stageKey } from './config.mjs'
 import { EXPLORE_TOOLS } from './explore.mjs'
 import { userToken } from './auth.mjs'
@@ -333,6 +333,27 @@ async function getFollowupsDue() {
   )
 }
 
+async function listTasks({ search, assigned_to, include_done = false, limit = 50 } = {}) {
+  const params = { select: 'id,title,assigned_to,priority,done,due_date,notes,linked_name', order: 'due_date.asc.nullslast' }
+  if (!include_done) params.done = 'is.false'
+  if (assigned_to) params.assigned_to = `ilike.*${assigned_to}*`
+  if (search) params.title = `ilike.*${String(search).replace(/[(),]/g, ' ').trim()}*`
+
+  const { rows, total } = await select('tasks', params, { limit })
+  if (!rows.length) {
+    return ok(search ? `I have no record of a task matching ${search}.` : 'There are no open tasks.', { tasks: [] })
+  }
+
+  const today = localDate()
+  const overdue = rows.filter((r) => !r.done && r.due_date && r.due_date < today)
+  const summary =
+    rows.length === 1
+      ? `One task: ${rows[0].title}${rows[0].due_date ? `, due ${rows[0].due_date}` : ''}.`
+      : `${total} task${total === 1 ? '' : 's'}${overdue.length ? `, ${overdue.length} overdue` : ''}. ${rows.slice(0, 3).map((r) => r.title).join('; ')}.`
+
+  return ok(summary, { total, overdue: overdue.length, tasks: rows })
+}
+
 async function getDeliveryFailures({ hours = 24 } = {}) {
   const since = new Date(Date.now() - Number(hours) * 3600_000).toISOString()
   const [failures, stuck] = await Promise.all([
@@ -617,6 +638,32 @@ async function sendLeadSms({ lead_id, message } = {}) {
   return ok(`The message has gone to ${lead.name || lead.phone}.`, { result: res })
 }
 
+async function updateTask({ task_id, done, title, assigned_to, due_date, priority, notes } = {}) {
+  if (!task_id) throw new Error('task_id is required — get it from list_tasks')
+
+  const patchBody = { updated_at: new Date().toISOString() }
+  for (const [k, v] of Object.entries({ done, title, assigned_to, due_date, priority, notes })) {
+    if (v !== undefined) patchBody[k] = v
+  }
+  if (Object.keys(patchBody).length === 1) throw new Error('Nothing to change')
+
+  const [row] = await patch('tasks', { id: `eq.${task_id}` }, patchBody)
+  if (!row) throw new Error(`No task with id ${task_id}`)
+  return ok(
+    done === true ? `${row.title} is done.` : done === false ? `${row.title} is open again.` : `${row.title} is updated.`,
+    { task: row },
+  )
+}
+
+async function deleteTask({ task_id } = {}) {
+  // By id only, never by title: a loose match plus a misheard sentence is how
+  // the wrong task gets deleted, and there is nothing to undo it with.
+  if (!task_id) throw new Error('task_id is required — get it from list_tasks')
+  const rows = await remove('tasks', { id: `eq.${task_id}` })
+  if (!rows.length) throw new Error(`No task with id ${task_id}`)
+  return ok(`${rows[0].title} is deleted.`, { deleted: rows[0] })
+}
+
 async function createTask({ title, assigned_to, due_date, priority = 'normal', notes } = {}) {
   if (!title) throw new Error('title is required')
   const [row] = await insert('tasks', [{ title, assigned_to, due_date, priority, notes, done: false }])
@@ -707,6 +754,21 @@ export const TOOLS = [
     handler: findLead,
   },
   {
+    name: 'list_tasks',
+    description:
+      'Open tasks from the task board, newest due first: title, who it is for, priority, due date. Filter by a word in the title or by assignee. Returns each task id, which update_task and delete_task need.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        search: str('Match part of the task title.'),
+        assigned_to: str('Whose tasks, partial match.'),
+        include_done: { type: 'boolean', description: 'Include completed tasks. Default false.' },
+        limit: { type: 'number', description: 'Default 50.' },
+      },
+    },
+    handler: listTasks,
+  },
+  {
     name: 'get_followups_due',
     description: 'Leads whose follow-up date has arrived or passed, and open tasks past their due date.',
     inputSchema: { type: 'object', properties: {} },
@@ -771,6 +833,35 @@ export const TOOLS = [
       required: ['lead_id', 'message'],
     },
     handler: sendLeadSms,
+  },
+  {
+    name: 'update_task',
+    description: 'Mark a task done or not done, or change its title, assignee, due date, priority or notes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        task_id: str('Task UUID, from list_tasks.'),
+        done: { type: 'boolean', description: 'true marks it complete.' },
+        title: str('New title.'),
+        assigned_to: str('New assignee.'),
+        due_date: str('Date as YYYY-MM-DD.'),
+        priority: str('low, normal or high.'),
+        notes: str('New notes.'),
+      },
+      required: ['task_id'],
+    },
+    handler: updateTask,
+  },
+  {
+    name: 'delete_task',
+    description:
+      'Permanently delete a task. There is no undo. Requires the task id from list_tasks — never delete from a name match alone, and confirm with the user first.',
+    inputSchema: {
+      type: 'object',
+      properties: { task_id: str('Task UUID, from list_tasks.') },
+      required: ['task_id'],
+    },
+    handler: deleteTask,
   },
   {
     name: 'create_task',

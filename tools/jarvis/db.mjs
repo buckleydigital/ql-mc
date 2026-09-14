@@ -73,6 +73,18 @@ export async function insert(table, body) {
   return res.json()
 }
 
+export async function remove(table, params) {
+  const qs = new URLSearchParams(params)
+  const res = await fetch(`${config.url()}/rest/v1/${table}?${qs}`, {
+    method: 'DELETE',
+    headers: { ...headers(), Prefer: 'return=representation' },
+  })
+  if (!res.ok) {
+    throw new Error(`${table}: ${res.status} ${(await res.text()).slice(0, 300)}`)
+  }
+  return res.json()
+}
+
 /** Call a Supabase edge function, so the assistant reuses the app's own logic. */
 export async function invoke(fn, body, { token } = {}) {
   // The edge functions verify a USER token and attribute the send to it, so a
