@@ -75,3 +75,38 @@ one call, which is the cheapest way to ask a broad question.
 
 The loop is bounded at 8 rounds of tool calls, and the conversation at 40
 messages, so a confused turn cannot bill indefinitely.
+
+## The voice
+
+Two engines, chosen automatically per reply:
+
+1. **ElevenLabs** via the `jarvis-voice` function — the voice the jarvis
+   project uses (George, a deep British voice). Requires an ElevenLabs key.
+2. **The browser's own speech** — free, instant, and a satnav. The panel picks
+   the best British male voice available (`Google UK English Male` on Chrome,
+   `Daniel` on macOS) rather than the OS default.
+
+The panel tries ElevenLabs first. If the function answers 503 — which is what
+it returns when no key is set — it stops asking for the rest of the session and
+uses the browser voice. So the site works with no key and upgrades the moment
+one appears; nothing to toggle.
+
+### Turning on the real voice
+
+```bash
+supabase secrets set ELEVENLABS_API_KEY=... --project-ref wmegoygrancfwxagqskh
+supabase functions deploy jarvis-voice --project-ref wmegoygrancfwxagqskh
+```
+
+Reload the page and ask something. To use a different voice, set
+`JARVIS_VOICE_ID` to an ElevenLabs voice id; the default is George
+(`JBFqnCBsd6RMkjVDRZzb`).
+
+`jarvis-voice` keeps `verify_jwt` on, so only a signed-in user can reach it —
+nobody outside the app can spend your ElevenLabs credits. It is standalone (no
+shared modules), so it needs no build step.
+
+**Cost.** ElevenLabs bills per character synthesised, so every spoken reply
+costs a little. JARVIS answers in a sentence or two by design, which keeps this
+small, and the function caps a line at 1200 characters. The 🔇 toggle stops
+speech entirely when you would rather just read.
