@@ -185,12 +185,25 @@ async function getRepPerformance({ rep, days = 30 } = {}) {
     table = match
   }
 
+  // Most leads carry no owner, so a team close rate computed over owned leads
+  // alone describes a minority of the pipeline. Report the coverage rather
+  // than quietly dropping the rest.
+  const owned = leads.rows.filter((l) => l.owner_id).length
+  const coverage = leads.rows.length ? Math.round((owned / leads.rows.length) * 100) : 0
+
   const top = table[0]
   const summary = top
-    ? `${top.name} closed ${top.won} of ${top.total} over ${days} days, a close rate of ${top.close_rate_pct} percent.`
+    ? `${top.name} closed ${top.won} of ${top.total} over ${days} days, a close rate of ${top.close_rate_pct} percent.` +
+      (coverage < 80 ? ` Only ${coverage} percent of leads have an owner, so this covers part of the pipeline.` : '')
     : `No leads were assigned in the last ${days} days.`
 
-  return ok(summary, { window_days: Number(days), reps: table })
+  return ok(summary, {
+    window_days: Number(days),
+    reps: table,
+    owner_coverage_pct: coverage,
+    leads_in_window: leads.rows.length,
+    leads_with_owner: owned,
+  })
 }
 
 async function getClientSnapshot({ name } = {}) {
@@ -314,28 +327,59 @@ async function getDailyBrief() {
 }
 
 async function getLeadTotals() {
-  // One call answers "today", "this week", "this month" and "overall", because
-  // spoken questions arrive in every one of those shapes and a second round
-  // trip is a second silence while he waits.
+  // Two different questions share the word "leads". The SALES PIPELINE is the
+  // `leads` table; PAY PER LEAD is `ppl_leads`. Both come back every time,
+  // labelled, so an ambiguous question never gets a confidently wrong number.
   const today = startOfLocalDay(localDate())
-  const [all, mtd, week, todayCount, yesterdayAndToday] = await Promise.all([
-    count('leads', {}),
-    count('leads', { created_at: `gte.${startOfMonth()}` }),
-    count('leads', { created_at: `gte.${daysAgo(7)}` }),
-    count('leads', { created_at: `gte.${today}` }),
-    count('leads', { created_at: `gte.${daysAgo(1)}` }),
+  const periods = {
+    today: { created_at: `gte.${today}` },
+    since_yesterday: { created_at: `gte.${daysAgo(1)}` },
+    last_7_days: { created_at: `gte.${daysAgo(7)}` },
+    month_to_date: { created_at: `gte.${startOfMonth()}` },
+    all_time: {},
+  }
+
+  const tally = async (table) => {
+    const entries = await Promise.all(
+      Object.entries(periods).map(async ([k, filter]) => [k, await count(table, filter)]),
+    )
+    const out = Object.fromEntries(entries)
+    out.yesterday = out.since_yesterday - out.today
+    delete out.since_yesterday
+    return out
+  }
+
+  const [sales, ppl] = await Promise.all([tally('leads'), tally('ppl_leads')])
+
+  return ok(
+    `Sales pipeline: ${sales.today} today, ${sales.month_to_date} this month, ${sales.all_time} overall. ` +
+      `Pay per lead: ${ppl.today} today, ${ppl.month_to_date} this month, ${ppl.all_time} overall.`,
+    { sales_pipeline: sales, pay_per_lead: ppl, month: localMonth() },
+  )
+}
+
+async function getPplSummary() {
+  const today = startOfLocalDay(localDate())
+  const [todayRows, monthRows, undelivered, unassigned, total] = await Promise.all([
+    count('ppl_leads', { created_at: `gte.${today}` }),
+    select('ppl_leads', { select: 'status,assigned_client_id,source,delivered_at,created_at', created_at: `gte.${startOfMonth()}` }, { limit: 10000 }),
+    count('ppl_leads', { delivered_at: 'is.null' }),
+    count('ppl_leads', { assigned_client_id: 'is.null' }),
+    count('ppl_leads', {}),
   ])
 
-  const yesterday = yesterdayAndToday - todayCount
+  const byStatus = {}
+  for (const r of monthRows.rows) byStatus[r.status || 'unset'] = (byStatus[r.status || 'unset'] || 0) + 1
+
   return ok(
-    `${todayCount} today, ${week} in the last seven days, ${mtd} this month, ${all} overall.`,
+    `${todayRows} pay-per-lead leads today, ${monthRows.total} this month, ${total} overall. ${undelivered} are undelivered and ${unassigned} are unassigned.`,
     {
-      today: todayCount,
-      yesterday,
-      last_7_days: week,
-      month_to_date: mtd,
-      all_time: all,
-      month: localMonth(),
+      today: todayRows,
+      month_to_date: monthRows.total,
+      all_time: total,
+      undelivered,
+      unassigned,
+      by_status_this_month: byStatus,
     },
   )
 }
@@ -515,14 +559,14 @@ export const TOOLS = [
   },
   {
     name: 'get_leads_today',
-    description: 'How many leads arrived today, with yesterday and the seven-day average for comparison, broken down by source.',
+    description: 'Sales pipeline leads that arrived today, with yesterday and the seven-day average for comparison, broken down by source. Sales pipeline only — use get_ppl_summary for pay-per-lead.',
     inputSchema: { type: 'object', properties: {} },
     handler: getLeadsToday,
   },
   {
     name: 'get_lead_totals',
     description:
-      'Lead counts for every period at once: today, yesterday, the last seven days, month to date, and all time. Answers "how many leads today" and "how many overall".',
+      'Lead counts for every period at once — today, yesterday, the last seven days, month to date, all time — for BOTH the sales pipeline (the `leads` table) and pay-per-lead (`ppl_leads`). Answers "how many leads today", "how many in our sales pipeline" and "how many pay per lead leads".',
     inputSchema: { type: 'object', properties: {} },
     handler: getLeadTotals,
   },
@@ -534,8 +578,15 @@ export const TOOLS = [
     handler: getCloses,
   },
   {
+    name: 'get_ppl_summary',
+    description:
+      'Pay-per-lead volume and health (the `ppl_leads` table): how many arrived today and this month, how many are undelivered or unassigned, and the breakdown by status. Use this when the question says "pay per lead" or "PPL".',
+    inputSchema: { type: 'object', properties: {} },
+    handler: getPplSummary,
+  },
+  {
     name: 'get_pipeline_summary',
-    description: 'Counts and dollar value of the sales pipeline grouped by stage, plus total open value.',
+    description: 'Counts and dollar value of the sales pipeline (the `leads` table) grouped by stage, plus total open value.',
     inputSchema: { type: 'object', properties: {} },
     handler: getPipelineSummary,
   },
