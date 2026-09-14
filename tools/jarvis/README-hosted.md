@@ -99,8 +99,9 @@ supabase functions deploy jarvis-voice --project-ref wmegoygrancfwxagqskh
 ```
 
 Reload the page and ask something. To use a different voice, set
-`JARVIS_VOICE_ID` to an ElevenLabs voice id; the default is George
-(`JBFqnCBsd6RMkjVDRZzb`).
+`ELEVENLABS_VOICE_ID` to an ElevenLabs voice id; the default is George
+(`JBFqnCBsd6RMkjVDRZzb`). `JARVIS_VOICE_ID` — the name the jarvis bridge uses —
+is accepted as a fallback, so a machine already set up for that keeps working.
 
 `jarvis-voice` keeps `verify_jwt` on, so only a signed-in user can reach it —
 nobody outside the app can spend your ElevenLabs credits. It is standalone (no

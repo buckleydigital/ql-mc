@@ -19,8 +19,13 @@ const corsHeaders = {
 }
 
 // George — the deep British voice jarvis uses by default. Override with the
-// JARVIS_VOICE_ID secret to use one of your own.
+// ELEVENLABS_VOICE_ID secret to use one of your own.
 const DEFAULT_VOICE = 'JBFqnCBsd6RMkjVDRZzb'
+
+// JARVIS_VOICE_ID is what the jarvis project's bridge calls it, so it is
+// accepted too rather than silently ignored on a machine set up for that.
+const voiceId = () =>
+  Deno.env.get('ELEVENLABS_VOICE_ID') ?? Deno.env.get('JARVIS_VOICE_ID') ?? DEFAULT_VOICE
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -49,7 +54,7 @@ Deno.serve(async (req: Request) => {
     if (!line) return new Response('No text', { status: 400, headers: corsHeaders })
 
     const res = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${Deno.env.get('JARVIS_VOICE_ID') ?? DEFAULT_VOICE}?output_format=mp3_44100_128`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId()}?output_format=mp3_44100_128`,
       {
         method: 'POST',
         headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
