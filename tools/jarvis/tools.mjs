@@ -508,33 +508,59 @@ async function sendLeadEmail({ lead_id, kind = 'info', subject, body } = {}) {
   if (!lead_id) throw new Error('lead_id is required')
   if (kind !== 'info' && kind !== 'followup') throw new Error('kind must be info or followup')
 
-  // The function validates a rendered subject and body — it does not read the
-  // templates itself. The app merges them client-side (mergeTemplate in
-  // index.html), so that work happens here too, from the same table and with
-  // the same single-brace placeholders.
-  const [{ rows: leads }, { rows: templates }] = await Promise.all([
+  // The function validates a rendered subject and body; it does not read the
+  // templates itself. get_email_draft renders the same text, so the assistant
+  // can read a draft aloud before this is ever called.
+  const draft = await composeEmail(lead_id, kind)
+  if (!draft.lead.email) throw new Error(`${draft.lead.name || 'That lead'} has no email address.`)
+  if (!draft.template_found && (!subject || !body)) {
+    throw new Error(`No "${kind}" email template is saved, and no subject and body were given.`)
+  }
+
+  const token = await userToken()
+  const res = await invoke(
+    'send-sales-email',
+    { lead_id, kind, subject: subject || draft.subject, body: body || draft.body },
+    { token },
+  )
+  return ok(`The ${kind} email has gone to ${draft.lead.email}.`, {
+    lead: draft.lead.name || draft.lead.company,
+    result: res,
+  })
+}
+
+/** Who a send is attributed to: the rep row for the configured login. */
+async function repIdentity() {
+  const email = process.env.QL_USER_EMAIL
+  if (!email) return { name: '', email: '', reply_to_email: null }
+  const { rows } = await select(
+    'sales_reps',
+    { select: 'user_id,name,email,reply_to_email', email: `eq.${email}` },
+    { limit: 1 },
+  )
+  return rows[0] ?? { name: '', email, reply_to_email: null }
+}
+
+/**
+ * Render an email from the saved template, exactly as mergeTemplate() in
+ * index.html does — same table, same single-brace placeholders.
+ */
+async function composeEmail(lead_id, kind) {
+  const [{ rows: leads }, { rows: templates }, me] = await Promise.all([
     select('leads', { select: 'id,name,company,email,stage', id: `eq.${lead_id}` }, { limit: 1 }),
     select('sales_email_templates', { select: 'kind,subject,body' }, { limit: 20 }),
+    repIdentity(),
   ])
 
   const lead = leads[0]
   if (!lead) throw new Error(`No lead with id ${lead_id}`)
-  if (!lead.email) throw new Error(`${lead.name || 'That lead'} has no email address.`)
 
-  const token = await userToken()
-  const me = await currentRep(token)
   const vals = {
     first_name: String(lead.name || '').trim().split(/\s+/)[0] || '',
     company_name: (lead.company || '').trim(),
     rep_name: me.name,
     rep_email: me.reply_to_email || me.email,
   }
-
-  const tpl = templates.find((x) => x.kind === kind)
-  if (!tpl && (!subject || !body)) {
-    throw new Error(`No "${kind}" email template is saved, and no subject and body were given.`)
-  }
-
   const merged = (text) =>
     String(text || '')
       .replace(/\{(first_name|company_name|rep_name|rep_email)\}/g, (_, k) => vals[k] || '')
@@ -542,27 +568,33 @@ async function sendLeadEmail({ lead_id, kind = 'info', subject, body } = {}) {
       .replace(/[ \t]+([,.;:!?])/g, '$1')
       .trim()
 
-  const res = await invoke(
-    'send-sales-email',
-    {
-      lead_id,
-      kind,
-      subject: subject || merged(tpl.subject),
-      body: body || merged(tpl.body),
-    },
-    { token },
-  )
-  return ok(`The ${kind} email has gone to ${lead.email}.`, { lead: lead.name || lead.company, result: res })
+  const tpl = templates.find((x) => x.kind === kind)
+  return {
+    lead,
+    rep: me,
+    template_found: Boolean(tpl),
+    subject: tpl ? merged(tpl.subject) : '',
+    body: tpl ? merged(tpl.body) : '',
+  }
 }
 
-/** Who the send is attributed to, from the logged-in session. */
-async function currentRep(token) {
-  const res = await fetch(`${config.url()}/auth/v1/user`, {
-    headers: { apikey: config.key(), Authorization: `Bearer ${token}` },
-  })
-  const user = res.ok ? await res.json() : {}
-  const { rows } = await select('sales_reps', { select: 'user_id,name,email,reply_to_email', user_id: `eq.${user.id}` }, { limit: 1 })
-  return rows[0] ?? { name: user.user_metadata?.name || '', email: user.email || '', reply_to_email: null }
+async function getEmailDraft({ lead_id, kind = 'info' } = {}) {
+  if (!lead_id) throw new Error('lead_id is required')
+  const draft = await composeEmail(lead_id, kind)
+  if (!draft.template_found) {
+    return ok(`There is no "${kind}" template saved.`, { kind })
+  }
+  return ok(
+    `To ${draft.lead.name || draft.lead.company} at ${draft.lead.email || 'no address on file'}, subject: ${draft.subject}.`,
+    {
+      to: draft.lead.email,
+      lead: draft.lead.name || draft.lead.company,
+      from_rep: draft.rep.name || draft.rep.email,
+      kind,
+      subject: draft.subject,
+      body: draft.body,
+    },
+  )
 }
 
 async function sendLeadSms({ lead_id, message } = {}) {
@@ -685,6 +717,18 @@ export const TOOLS = [
     description: 'Lead deliveries that failed recently, and how many leads are sitting undelivered.',
     inputSchema: { type: 'object', properties: { hours: { type: 'number', description: 'Look-back window in hours. Defaults to 24.' } } },
     handler: getDeliveryFailures,
+  },
+
+  {
+    name: 'get_email_draft',
+    description:
+      'Render the info or follow-up email for a lead WITHOUT sending it: who it goes to, the subject and the body, from the saved template. Read this back before calling send_lead_email.',
+    inputSchema: {
+      type: 'object',
+      properties: { lead_id: str('Lead UUID, from find_lead.'), kind: str('"info" or "followup". Defaults to info.') },
+      required: ['lead_id'],
+    },
+    handler: getEmailDraft,
   },
 
   // Writes. Named so the bridge holds them behind JARVIS_ALLOW_WRITES.

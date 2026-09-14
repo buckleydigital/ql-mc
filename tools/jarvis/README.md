@@ -84,6 +84,11 @@ The two `send_*` tools call the existing edge functions (`send-sales-email`,
 `send-sms`) rather than reimplementing them, so logging and the
 `info_sent_at` / `followup_sent_at` stamps stay in one place.
 
+`get_email_draft` renders exactly what `send_lead_email` would send, without
+sending it, so the assistant can read back the recipient and subject and wait
+for a yes. The briefing requires that — a voice command is acted on from a
+misheard sentence as often as a clear one, and an email cannot be recalled.
+
 **Sending needs a login.** Both functions verify a *user* token
 (`auth.getUser`) and attribute the send to that person — the rep's name and
 reply-to address come out of the session, so a service-role key is rejected.
