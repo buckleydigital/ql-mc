@@ -9578,7 +9578,10 @@ const JV = (() => {
 
     const thinking = line('jarvis', '…');
     try {
-      if (!window.db) throw new Error('Sign in first.');
+      // `db` is declared with `let` (index.html:2947), so it lives in the
+      // global lexical scope and is NOT a property of window — checking
+      // window.db reports "not signed in" for a perfectly good session.
+      if (typeof db === 'undefined' || !db) throw new Error('Sign in first.');
       const { data: { session } } = await db.auth.getSession();
       if (!session) throw new Error('Your session has expired — sign in again.');
 
