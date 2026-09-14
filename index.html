@@ -9633,7 +9633,7 @@ const JV = (() => {
   // 'unknown' until the first attempt; 'no' once the server says there is no
   // ElevenLabs key, so a machine without one stops asking and simply uses the
   // browser voice.
-  let eleven = 'unknown', audio = null;
+  let eleven = 'unknown', audio = null, voiceWarned = false;
 
   function hush() {
     if (audio) { audio.pause(); audio = null; }
@@ -9659,7 +9659,21 @@ const JV = (() => {
 
       // 503 is the documented "no key configured" answer, not a failure.
       if (res.status === 503) { eleven = 'no'; return false; }
-      if (!res.ok) return false;
+
+      if (!res.ok) {
+        // Anything else IS a failure, and falling back silently would leave you
+        // wondering why the voice never changed. Say it once — a rejected voice
+        // id and an out-of-credits account look identical from here otherwise.
+        if (!voiceWarned) {
+          voiceWarned = true;
+          let detail = '';
+          try { detail = (await res.json()).error || ''; } catch (e) {}
+          line('sys', 'Using the browser voice — ElevenLabs returned ' + res.status +
+            (detail ? '.<br>' + esc(detail) : '.') +
+            '<br>A locked voice usually needs adding to your library first.');
+        }
+        return false;
+      }
 
       const url = URL.createObjectURL(await res.blob());
       hush();
