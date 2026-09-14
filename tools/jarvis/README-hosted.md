@@ -19,8 +19,18 @@ exposing it.
 ## Deploy
 
 ```bash
+node tools/jarvis/build-edge.mjs     # only if you changed the tools
 supabase functions deploy jarvis-chat --project-ref wmegoygrancfwxagqskh
 ```
+
+`index.ts` is **generated** and committed. This project's deploy ships only the
+entrypoint — a local import of a sibling file does not survive bundling, which
+is why every other function here is a single file too — so the function has to
+be self-contained. The build concatenates `quoteleads/*.mjs` into it, and fails
+loudly if two modules ever declare the same top-level name.
+
+Edit `index.template.ts` for the handler, or `quoteleads/*.mjs` for the tools.
+Never edit `index.ts` directly; the next build overwrites it.
 
 `ANTHROPIC_API_KEY` is already set as a project secret. `SUPABASE_URL` and
 `SUPABASE_SERVICE_ROLE_KEY` are provided by the platform. Nothing else to
@@ -34,10 +44,8 @@ supabase secrets list --project-ref wmegoygrancfwxagqskh
 
 ## One implementation, two brains
 
-The tools live in `supabase/functions/jarvis-chat/quoteleads/` — inside the
-function's own folder, because `supabase functions deploy` uploads only the
-directory being deployed; a sibling `_shared/` is not included in the bundle and
-the import fails to resolve at deploy time. Both brains import them:
+The tools live in `supabase/functions/jarvis-chat/quoteleads/`. Both brains use
+them:
 
 - **the edge function** (hosted, this document) bundles them
 - **the MCP server** in `tools/jarvis/` imports them for the local jarvis

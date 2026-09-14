@@ -25,7 +25,7 @@ const redact = (rows) =>
     ),
   )
 
-const headers = () => ({
+const authHeaders = () => ({
   apikey: config.key(),
   Authorization: `Bearer ${config.key()}`,
 })
@@ -39,7 +39,7 @@ let schemaCache = null
  */
 async function fetchSchema() {
   if (schemaCache) return schemaCache
-  const res = await fetch(`${config.url()}/rest/v1/`, { headers: headers() })
+  const res = await fetch(`${config.url()}/rest/v1/`, { headers: authHeaders() })
   if (!res.ok) throw new Error(`schema: ${res.status}`)
 
   const spec = await res.json()
@@ -95,7 +95,7 @@ export async function queryTable({ table, columns = '*', filters = {}, order, li
   qs.set('limit', String(Math.min(Number(limit) || 50, MAX_LIMIT)))
 
   const res = await fetch(`${config.url()}/rest/v1/${table}?${qs}`, {
-    headers: { ...headers(), Prefer: 'count=exact' },
+    headers: { ...authHeaders(), Prefer: 'count=exact' },
   })
   if (!res.ok) {
     const body = (await res.text()).slice(0, 300)
