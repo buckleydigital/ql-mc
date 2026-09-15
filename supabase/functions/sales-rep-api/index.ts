@@ -14,7 +14,8 @@
 //   delete_rep       → delete the auth user + roster row + free their leads
 //   get_config       → read auto-assign settings
 //   set_config       → write auto-assign settings
-//   auto_assign_now  → assign every currently-unassigned lead (least-loaded)
+//   auto_assign_now  → assign every currently-unassigned lead using the
+//                      configured mode (least-loaded / fixed rep / round robin)
 //
 // The sales_rep's OWN data (their pipeline, contact logs, invoices, stats) is
 // read straight from the tables in the browser under RLS — it never comes
@@ -30,6 +31,25 @@ const corsHeaders = {
 };
 
 const CLOSED_STAGES = ["closed_won", "closed_lost", "churned"];
+
+// The round-robin pool holds rep user_ids plus this sentinel for the main
+// QuoteLeads account. A house turn leaves the lead unassigned, which under RLS
+// means only the admin can see it — no rep login is involved.
+const HOUSE = "house";
+const HOUSE_EMAIL = "contact@quoteleads.com.au";
+const MODES = ["least_busy", "fixed", "round_robin"];
+
+// Keep a rep out of the saved rotation once they are disabled or deleted.
+// deno-lint-ignore no-explicit-any
+async function dropFromPool(admin: any, userId: string) {
+  const { data } = await admin
+    .from("sales_rep_config").select("round_robin_pool").eq("id", 1).maybeSingle();
+  const pool: string[] = (data?.round_robin_pool as string[]) || [];
+  if (!pool.includes(userId)) return;
+  await admin.from("sales_rep_config")
+    .update({ round_robin_pool: pool.filter((e) => e !== userId), updated_at: new Date().toISOString() })
+    .eq("id", 1);
+}
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -188,10 +208,12 @@ serve(async (req) => {
       if (uErr) return json({ error: uErr.message }, 500);
       // Block / restore login.
       await admin.auth.admin.updateUserById(user_id, { ban_duration: on ? "none" : "876000h" });
-      // Deactivating frees their open leads back to the pool.
+      // Deactivating frees their open leads back to the pool, and takes them
+      // out of the round-robin rotation so the turn order stays honest.
       if (!on) {
         await admin.from("leads").update({ owner_id: null })
           .eq("owner_id", user_id).not("stage", "in", `(${CLOSED_STAGES.join(",")})`);
+        await dropFromPool(admin, user_id);
       }
       return json({ ok: true });
     }
@@ -202,6 +224,7 @@ serve(async (req) => {
       if (!user_id) return json({ error: "user_id is required" }, 400);
       // Free their leads first so nothing is orphaned.
       await admin.from("leads").update({ owner_id: null }).eq("owner_id", user_id);
+      await dropFromPool(admin, user_id);
       await admin.from("sales_reps").delete().eq("user_id", user_id);
       const { error } = await admin.auth.admin.deleteUser(user_id);
       if (error) return json({ error: error.message }, 500);
@@ -211,37 +234,84 @@ serve(async (req) => {
     // ── get_config ───────────────────────────────────────────────────────────
     if (action === "get_config") {
       const { data } = await admin
-        .from("sales_rep_config").select("auto_assign_enabled, auto_assign_rep_id").eq("id", 1).maybeSingle();
+        .from("sales_rep_config")
+        .select("auto_assign_enabled, auto_assign_rep_id, auto_assign_mode, round_robin_pool, house_email")
+        .eq("id", 1).maybeSingle();
       return json({
         auto_assign_enabled: data?.auto_assign_enabled === true,
         auto_assign_rep_id: data?.auto_assign_rep_id ?? null,
+        auto_assign_mode: (data?.auto_assign_mode as string) || "least_busy",
+        round_robin_pool: (data?.round_robin_pool as string[]) ?? [],
+        house_email: (data?.house_email as string) || HOUSE_EMAIL,
       });
     }
 
     // ── set_config ───────────────────────────────────────────────────────────
     if (action === "set_config") {
-      const { auto_assign_enabled, auto_assign_rep_id } = body as {
+      const { auto_assign_enabled, auto_assign_rep_id, auto_assign_mode, round_robin_pool } = body as {
         auto_assign_enabled?: boolean;
         auto_assign_rep_id?: string | null;
+        auto_assign_mode?: string;
+        round_robin_pool?: string[];
       };
       const enabled = auto_assign_enabled === true;
-      const repId = auto_assign_rep_id || null;
+      const mode = MODES.includes(String(auto_assign_mode)) ? String(auto_assign_mode) : "least_busy";
+      const repId = mode === "fixed" ? (auto_assign_rep_id || null) : null;
+
+      // Only keep pool entries we recognise: the house slot, or a real rep.
+      let pool: string[] = [];
+      if (Array.isArray(round_robin_pool) && round_robin_pool.length) {
+        const { data: reps } = await admin.from("sales_reps").select("user_id");
+        const known = new Set((reps || []).map((r: { user_id: string }) => r.user_id));
+        const seen = new Set<string>();
+        for (const raw of round_robin_pool) {
+          const entry = String(raw);
+          if (seen.has(entry)) continue;
+          if (entry === HOUSE || known.has(entry)) { pool.push(entry); seen.add(entry); }
+        }
+      }
+      if (mode === "round_robin" && enabled && !pool.length) {
+        return json({ error: "Pick at least one rep (or the main account) for the round-robin pool" }, 400);
+      }
+      if (mode === "fixed" && enabled && !repId) {
+        return json({ error: "Pick the rep that new leads should go to" }, 400);
+      }
+
       const { error } = await admin.from("sales_rep_config").upsert(
-        { id: 1, auto_assign_enabled: enabled, auto_assign_rep_id: repId, updated_at: new Date().toISOString() },
+        {
+          id: 1,
+          auto_assign_enabled: enabled,
+          auto_assign_rep_id: repId,
+          auto_assign_mode: mode,
+          round_robin_pool: pool,
+          updated_at: new Date().toISOString(),
+        },
         { onConflict: "id" },
       );
       if (error) return json({ error: error.message }, 500);
-      return json({ ok: true, auto_assign_enabled: enabled, auto_assign_rep_id: repId });
+      return json({
+        ok: true,
+        auto_assign_enabled: enabled,
+        auto_assign_rep_id: repId,
+        auto_assign_mode: mode,
+        round_robin_pool: pool,
+      });
     }
 
     // ── auto_assign_now ──────────────────────────────────────────────────────
-    // Distribute every currently-unassigned, still-open lead.
-    // If a fixed rep is configured (and active) they get all of them;
-    // otherwise uses the same least-loaded round-robin the trigger uses.
+    // Distribute every currently-unassigned, still-open lead using the
+    // configured mode: a fixed rep takes all of them, round robin deals them
+    // out one at a time across the pool, and least-busy fills the lightest
+    // load first. Round-robin 'house' turns are skipped — those leads stay
+    // unassigned on purpose, which keeps them admin-only.
     if (action === "auto_assign_now") {
       const { data: cfg } = await admin
-        .from("sales_rep_config").select("auto_assign_rep_id").eq("id", 1).maybeSingle();
-      const fixedId: string | null = (cfg as Record<string, unknown>)?.auto_assign_rep_id as string ?? null;
+        .from("sales_rep_config")
+        .select("auto_assign_rep_id, auto_assign_mode, round_robin_pool, round_robin_cursor")
+        .eq("id", 1).maybeSingle();
+      const c = (cfg || {}) as Record<string, unknown>;
+      const mode = (c.auto_assign_mode as string) || "least_busy";
+      const fixedId: string | null = mode === "fixed" ? ((c.auto_assign_rep_id as string) ?? null) : null;
 
       const { data: pending } = await admin
         .from("leads").select("id").is("owner_id", null)
@@ -249,6 +319,28 @@ serve(async (req) => {
         .order("created_at", { ascending: true });
 
       let assigned = 0;
+
+      if (mode === "round_robin") {
+        // Same filter the trigger applies: house stays, dead/inactive reps go.
+        const { data: reps } = await admin.from("sales_reps").select("user_id").eq("active", true);
+        const live = new Set((reps || []).map((r: { user_id: string }) => r.user_id));
+        const pool = ((c.round_robin_pool as string[]) || [])
+          .filter((e) => e === HOUSE || live.has(e));
+        if (!pool.length) return json({ error: "Nobody is in the round-robin pool" }, 400);
+
+        let cursor = Number(c.round_robin_cursor ?? 0);
+        let house = 0;
+        for (const lead of pending || []) {
+          cursor += 1;
+          const pick = pool[cursor % pool.length];
+          if (pick === HOUSE) { house++; continue; }   // left with the main account
+          const { error } = await admin.from("leads").update({ owner_id: pick }).eq("id", lead.id);
+          if (!error) assigned++;
+        }
+        await admin.from("sales_rep_config")
+          .update({ round_robin_cursor: cursor, updated_at: new Date().toISOString() }).eq("id", 1);
+        return json({ ok: true, assigned, house });
+      }
 
       if (fixedId) {
         // Fixed-rep mode: verify they're active, then bulk-assign.

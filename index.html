@@ -1442,13 +1442,30 @@ td strong{font-weight:500}
             <input type="checkbox" id="rep-autoassign" onchange="onAutoAssignToggle()" style="width:15px;height:15px;cursor:pointer">
             <span>Auto-assign new leads</span>
           </label>
+          <div id="rep-assign-mode-wrap" style="display:none;align-items:center;gap:8px">
+            <span style="font-size:12px;color:var(--ink2)">using</span>
+            <select id="rep-assign-mode" class="fi" style="font-size:12px;padding:5px 10px;width:auto" onchange="onAssignModeChange()">
+              <option value="least_busy">Least-busy active rep</option>
+              <option value="round_robin">Round robin (pool)</option>
+              <option value="fixed">One specific rep</option>
+            </select>
+          </div>
           <div id="rep-assign-target-wrap" style="display:none;align-items:center;gap:8px">
             <span style="font-size:12px;color:var(--ink2)">to</span>
             <select id="rep-assign-target" class="fi" style="font-size:12px;padding:5px 10px;width:auto" onchange="saveAutoAssign()">
-              <option value="">Least-busy active rep</option>
+              <option value="">Pick a rep...</option>
             </select>
           </div>
           <button class="btn btn-sm" onclick="autoAssignNow()" style="margin-left:auto">Assign unassigned now</button>
+
+          <!-- Round-robin pool: who takes a turn, in order. The main account
+               slot hands its turn to nobody, so the lead stays admin-only. -->
+          <div id="rep-rr-wrap" style="display:none;flex-basis:100%;border-top:1px solid var(--bd);padding-top:10px;margin-top:2px">
+            <div style="font-size:11.5px;color:var(--ink2);margin-bottom:8px">
+              Leads are dealt out one at a time, in turn, to everyone ticked below.
+            </div>
+            <div id="rep-rr-pool" style="display:flex;flex-wrap:wrap;gap:8px 18px"></div>
+          </div>
         </div>
 
         <div class="sl">Team <div class="sl-line"></div></div>
@@ -8793,12 +8810,17 @@ async function loadReps() {
       db.from('leads').select('id', { count: 'exact', head: true }).is('owner_id', null),
     ]);
     const enabled = cfgRes.auto_assign_enabled === true;
+    _repCfg = {
+      mode: cfgRes.auto_assign_mode || 'least_busy',
+      pool: cfgRes.round_robin_pool || [],
+      house_email: cfgRes.house_email || HOUSE_EMAIL,
+    };
     $('rep-autoassign').checked = enabled;
     renderReps(repsRes.reps || [], unassignedRes.count || 0);
-    // Restore target dropdown state after renderReps populates the options.
-    const wrap = $('rep-assign-target-wrap');
-    wrap.style.display = enabled ? 'flex' : 'none';
+    // Restore the mode + target state after renderReps populates the options.
+    setVal('rep-assign-mode', _repCfg.mode);
     if (cfgRes.auto_assign_rep_id) setVal('rep-assign-target', cfgRes.auto_assign_rep_id);
+    renderAssignControls(enabled);
   } catch (e) {
     $('rep-tbody').innerHTML = `<tr><td colspan="10" class="empty" style="color:var(--red)">Error: ${esc(e.message)}</td></tr>`;
   }
@@ -8810,12 +8832,13 @@ function renderReps(reps, unassigned) {
   const sel = $('rep-assign-target');
   const prev = sel ? sel.value : '';
   if (sel) {
-    sel.innerHTML = '<option value="">Least-busy active rep</option>' +
+    sel.innerHTML = '<option value="">Pick a rep...</option>' +
       reps.filter(r => r.active).map(r =>
         `<option value="${esc(r.user_id)}">${esc(r.name || r.email)}</option>`
       ).join('');
     if (prev) sel.value = prev;
   }
+  renderRoundRobinPool(reps);
   setText('rep-kpi-total', reps.length);
   setText('rep-kpi-active', reps.filter(r => r.active).length);
   setText('rep-kpi-assigned', reps.reduce((s, r) => s + (r.assigned || 0), 0));
@@ -8918,32 +8941,96 @@ async function deleteRep(uid) {
   catch (e) { toast('Error: ' + e.message, true); }
 }
 
+// The round-robin pool is an ordered list of who takes the next lead. Entries
+// are rep user_ids plus HOUSE — the main QuoteLeads account, whose turn leaves
+// the lead unassigned so only the admin sees it.
+const HOUSE = 'house';
+const HOUSE_EMAIL = 'contact@quoteleads.com.au';
+let _repCfg = { mode: 'least_busy', pool: [], house_email: HOUSE_EMAIL };
+
+function renderRoundRobinPool(reps) {
+  const box = $('rep-rr-pool');
+  if (!box) return;
+  const inPool = new Set(_repCfg.pool || []);
+  const entries = (reps || []).filter(r => r.active)
+    .map(r => ({ id: r.user_id, label: r.name || r.email, sub: r.name ? r.email : '' }));
+  entries.push({ id: HOUSE, label: 'Main account', sub: _repCfg.house_email || HOUSE_EMAIL, house: true });
+  box.innerHTML = entries.map(e => `
+    <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer">
+      <input type="checkbox" class="rep-rr-cb" value="${esc(e.id)}" ${inPool.has(e.id) ? 'checked' : ''}
+             onchange="saveAutoAssign()" style="width:14px;height:14px;cursor:pointer">
+      <span>${esc(e.label)}${e.sub ? `<span style="color:var(--ink3)"> · ${esc(e.sub)}</span>` : ''}${
+        e.house ? '<span style="color:var(--ink3)"> · goes to no rep, admin only</span>' : ''}</span>
+    </label>`).join('');
+  if (!entries.length) box.innerHTML = '<span style="font-size:12px;color:var(--ink3)">No active reps yet.</span>';
+}
+
+// Pool order = the order shown on screen, so the rotation is what you read.
+function currentPool() {
+  return Array.from(document.querySelectorAll('.rep-rr-cb'))
+    .filter(cb => cb.checked).map(cb => cb.value);
+}
+
+function renderAssignControls(enabled) {
+  const mode = $('rep-assign-mode').value;
+  $('rep-assign-mode-wrap').style.display = enabled ? 'flex' : 'none';
+  $('rep-assign-target-wrap').style.display = enabled && mode === 'fixed' ? 'flex' : 'none';
+  $('rep-rr-wrap').style.display = enabled && mode === 'round_robin' ? 'block' : 'none';
+}
+
 function onAutoAssignToggle() {
-  const enabled = $('rep-autoassign').checked;
-  $('rep-assign-target-wrap').style.display = enabled ? 'flex' : 'none';
+  renderAssignControls($('rep-autoassign').checked);
+  saveAutoAssign();
+}
+
+function onAssignModeChange() {
+  renderAssignControls($('rep-autoassign').checked);
   saveAutoAssign();
 }
 
 async function saveAutoAssign() {
   const enabled = $('rep-autoassign').checked;
-  const repId = $('rep-assign-target').value || null;
+  const mode = $('rep-assign-mode').value;
+  const repId = mode === 'fixed' ? ($('rep-assign-target').value || null) : null;
+  const pool = mode === 'round_robin' ? currentPool() : (_repCfg.pool || []);
+  // Don't save a half-configured mode — the server rejects it anyway, and the
+  // picker is already on screen for them to finish.
+  if (enabled && mode === 'round_robin' && !pool.length) {
+    toast('Tick who should be in the round-robin pool', true); return;
+  }
+  if (enabled && mode === 'fixed' && !repId) {
+    toast('Pick the rep new leads should go to', true); return;
+  }
   try {
-    await callRepEdge('set_config', { auto_assign_enabled: enabled, auto_assign_rep_id: repId });
-    const label = enabled
-      ? (repId ? ('on → ' + ((_reps||[]).find(r=>r.user_id===repId)?.name || 'selected rep')) : 'on → least-busy rep')
-      : 'off';
-    toast('Auto-assign ' + label);
+    const res = await callRepEdge('set_config', {
+      auto_assign_enabled: enabled,
+      auto_assign_rep_id: repId,
+      auto_assign_mode: mode,
+      round_robin_pool: pool,
+    });
+    _repCfg.mode = res.auto_assign_mode || mode;
+    _repCfg.pool = res.round_robin_pool || pool;
+    toast('Auto-assign ' + (enabled ? 'on → ' + assignModeLabel(mode, repId, pool) : 'off'));
   } catch (e) {
     toast('Error: ' + e.message, true);
-    $('rep-autoassign').checked = !enabled;
-    $('rep-assign-target-wrap').style.display = !enabled ? 'flex' : 'none';
+    loadReps();
   }
+}
+
+function assignModeLabel(mode, repId, pool) {
+  if (mode === 'fixed') return (_reps || []).find(r => r.user_id === repId)?.name || 'selected rep';
+  if (mode === 'round_robin') {
+    const n = (pool || []).length;
+    return `round robin across ${n} slot${n === 1 ? '' : 's'}`;
+  }
+  return 'least-busy rep';
 }
 
 async function autoAssignNow() {
   try {
     const r = await callRepEdge('auto_assign_now');
-    toast(`Assigned ${r.assigned} lead${r.assigned === 1 ? '' : 's'}`);
+    const house = r.house ? `, ${r.house} left with the main account` : '';
+    toast(`Assigned ${r.assigned} lead${r.assigned === 1 ? '' : 's'}${house}`);
     loadReps();
   } catch (e) { toast('Error: ' + e.message, true); }
 }
