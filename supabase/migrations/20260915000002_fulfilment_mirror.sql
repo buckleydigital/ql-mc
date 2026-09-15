@@ -60,10 +60,20 @@ CREATE INDEX IF NOT EXISTS clients_fulfilment_next_due_idx
 -- the dashboard's JavaScript means the panel, any report and anything added
 -- later all mean the same thing by it.
 --
--- security_invoker so the view is read as the querying user: the restrictive
--- no_sales_rep policy on `clients` still applies through it, and a sales rep
--- sees nothing. Without this the view would run as its owner and would be a way
--- around the gating.
+-- GATING: the view guards itself, and does not rely on the policies on `clients`.
+--
+-- It would be neater to let RLS do this, but as of this migration `clients`
+-- carries a PERMISSIVE policy `auth_all_clients` with USING (true) alongside
+-- `clients_full_users_read` (USING NOT is_sales_rep()). Permissive policies are
+-- OR-ed, so the permissive true wins and the one intended to restrict reps has
+-- no effect - a sales rep can already read every client row. That predates this
+-- migration and is reported separately; it is not this migration's to silently
+-- change, because rewriting access on `clients` could break the rep dashboard.
+--
+-- So the rep check is an explicit predicate in the view instead. security_invoker
+-- is kept as well, so if and when the policies on `clients` are tightened this
+-- view inherits that too rather than bypassing it. Belt and braces, and the
+-- gating is true today either way.
 CREATE OR REPLACE VIEW public.fulfilment_stuck
 WITH (security_invoker = true) AS
 SELECT
@@ -80,19 +90,20 @@ SELECT
   c.fulfilment_stage_at,
   GREATEST(0, EXTRACT(EPOCH FROM (now() - c.fulfilment_next_due)) / 3600)::int AS hours_overdue
 FROM public.clients c
-WHERE c.fulfilment_next_step IS NOT NULL
+WHERE NOT public.is_sales_rep()
+  AND c.fulfilment_next_step IS NOT NULL
   AND (
     (c.fulfilment_next_due IS NOT NULL AND c.fulfilment_next_due < now())
     OR coalesce(c.fulfilment_blocked_count, 0) > 0
   );
 
 COMMENT ON VIEW public.fulfilment_stuck IS
-  'Clients past an SLA or with a blocked step. One definition of stuck, shared by every reader. security_invoker, so the no_sales_rep policy on clients still applies.';
+  'Clients past an SLA or with a blocked step. One definition of stuck, shared by every reader. Returns nothing to a sales rep via its own predicate, not via the policies on clients.';
 
--- Granted explicitly rather than left to the schema's default privileges: a
--- view nobody may select from is not a feature, and security_invoker only means
--- anything once the grant exists. The gating is the policy on `clients`, which
--- this view is read through - not the absence of a grant.
+-- Granted explicitly rather than left to the schema's default privileges: a view
+-- nobody may select from is not a feature. The gating is the is_sales_rep()
+-- predicate above, not the absence of a grant - a rep may select from this view
+-- and simply gets no rows.
 GRANT SELECT ON public.fulfilment_stuck TO authenticated, service_role;
 
 -- ─── 3. Who logged that action ──────────────────────────────────────────────
@@ -109,18 +120,26 @@ ALTER TABLE public.client_action_log
 COMMENT ON COLUMN public.client_action_log.actor_name IS
   'Who logged it, denormalised so the row stays readable after the account goes. NULL on rows that pre-date this column.';
 
--- ─── 4. Keep the reps gated ─────────────────────────────────────────────────
--- 20260618000001 applied a restrictive no_sales_rep policy to a fixed list of
--- tables. `clients` is on that list, so the mirrored columns are already gated.
--- This re-asserts it rather than assuming, because the columns added above are
--- exactly the kind of internal state a rep should not be reading, and a table
--- that lost its policy would fail silently and invisibly.
+-- ─── 4. Note on rep gating for `clients` itself ─────────────────────────────
+-- The view above gates itself, so the stuck list is safe. The mirrored COLUMNS,
+-- though, live on `clients`, and `clients` does not currently restrict reps: a
+-- PERMISSIVE `auth_all_clients` policy with USING (true) OR-s away the
+-- `clients_full_users_read` policy that checks is_sales_rep(). 20260618000001
+-- only added its restrictive no_sales_rep policy to tables that already had a
+-- permissive policy, and whatever created auth_all_clients afterwards reopened
+-- this one.
+--
+-- Deliberately NOT fixed here. Dropping or rewriting a policy on `clients`
+-- changes what the rep dashboard can load, which is a decision to make
+-- knowingly rather than as a side effect of adding columns. This raises a notice
+-- so it is on the record, and the fix is proposed separately.
 DO $$
 BEGIN
-  IF NOT EXISTS (
+  IF EXISTS (
     SELECT 1 FROM pg_policies
-     WHERE schemaname = 'public' AND tablename = 'clients' AND policyname = 'no_sales_rep'
+     WHERE schemaname = 'public' AND tablename = 'clients'
+       AND permissive = 'PERMISSIVE' AND coalesce(qual, '') = 'true'
   ) THEN
-    RAISE WARNING 'clients has no no_sales_rep policy - sales reps may be able to read fulfilment state. Check 20260618000001_sales_reps.sql ran.';
+    RAISE WARNING 'clients has a PERMISSIVE policy with USING (true), so sales reps can read every client row including the fulfilment columns added here. The fulfilment_stuck view is gated independently. Fix the clients policies separately.';
   END IF;
 END $$;
