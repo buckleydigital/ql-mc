@@ -14,6 +14,11 @@
 //                       then we propagate the decrement + scrubbed flag back
 //                       to ql-hq via its sync-from-mc. ql-hq never decrements
 //                       itself on dispute approval, so nothing double-counts.
+//   upsert_fulfilment — ql-hq owns fulfilment (its Team Panel is where the work
+//                       happens) and pushes the derived summary here whenever a
+//                       step moves, so ql-mc can report on what is stuck without
+//                       holding the audit trail. Authority over each column is
+//                       split explicitly at the handler.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -204,6 +209,79 @@ Deno.serve(async (req: Request) => {
       }
 
       return json({ ok: true, lead_id: match.id, scrubbed_now: acted === true, hq_synced: hqSynced })
+    }
+
+    // ── action: upsert_fulfilment ────────────────────────────────────────────
+    // ql-hq owns fulfilment and pushes the DERIVED SUMMARY here whenever a step
+    // moves. Never the audit trail: that stays in one place, written by the
+    // service that performs the actions.
+    //
+    // Authority is split deliberately, and this is the only place it is
+    // decided:
+    //   • onboarding_sub_stage - ql-hq's. It is computed from the actual steps,
+    //     so it is overwritten on every push.
+    //   • active_status        - ql-mc's. "Ads Paused (Billing Issue)",
+    //     "Ads Scaling", "Churned" are management decisions ql-hq knows nothing
+    //     about, so a value already set here is never clobbered; ql-hq can only
+    //     fill it when it is empty.
+    //   • stage                - advanced onboarding → active when ads go live,
+    //     because that is what going live means, but never moved backwards and
+    //     never touched for a client already past onboarding.
+    if (action === 'upsert_fulfilment') {
+      const { hq_company_id, summary } = body as {
+        hq_company_id?: string
+        summary?: Record<string, unknown>
+      }
+      if (!hq_company_id || !summary) {
+        return json({ error: 'hq_company_id and summary are required' }, 400)
+      }
+
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      )
+
+      const { data: client } = await supabase
+        .from('clients')
+        .select('id, stage, active_status')
+        .eq('ql_hq_company_id', hq_company_id)
+        .maybeSingle()
+
+      // Not every ql-hq company has a ql-mc client row - a self-serve PPL signup
+      // that was never taken on as a managed client, for instance. That is not an
+      // error and must not make ql-hq retry: there is simply nothing to mirror.
+      if (!client) {
+        return json({ ok: true, mirrored: false, reason: 'no matching ql-mc client' })
+      }
+
+      const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+      const patch: Record<string, unknown> = {
+        fulfilment_steps_done:    num(summary.steps_done),
+        fulfilment_steps_settled: num(summary.steps_settled),
+        fulfilment_steps_total:   num(summary.steps_total),
+        fulfilment_blocked_count: num(summary.blocked_count) ?? 0,
+        fulfilment_stage_at:      summary.stage_at ?? null,
+        fulfilment_next_step:     summary.next_step_key ?? null,
+        fulfilment_next_due:      summary.next_step_due ?? null,
+        fulfilment_synced_at:     new Date().toISOString(),
+        updated_at:               new Date().toISOString(),
+      }
+
+      // The kanban already renders this column, and ql-hq maps its steps onto
+      // the exact same strings, so the existing board gains real history without
+      // being touched.
+      if (summary.stage) patch.onboarding_sub_stage = summary.stage
+
+      const hqActive = summary.active_status as string | null | undefined
+      if (hqActive && !client.active_status) patch.active_status = hqActive
+      if (hqActive === 'Ads Live' && client.stage === 'onboarding') patch.stage = 'active'
+
+      const { error: upErr } = await supabase.from('clients').update(patch).eq('id', client.id)
+      if (upErr) {
+        console.error('upsert_fulfilment: update failed:', upErr.message)
+        return json({ error: upErr.message }, 500)
+      }
+      return json({ ok: true, mirrored: true, client_id: client.id })
     }
 
     if (action !== 'upsert_ppl_client') {

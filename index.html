@@ -1262,6 +1262,14 @@ td strong{font-weight:500}
         </div>
         <div class="sl">Client Pipeline <div class="sl-line"></div></div>
         <div class="kanban-wrap"><div class="kanban" id="mg-kanban"></div></div>
+        <div class="sl">Fulfilment Watch <div class="sl-line"></div></div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Client</th><th>Stage</th><th>Waiting on</th><th>Overdue</th><th>Blocked</th><th>Progress</th></tr></thead>
+            <tbody id="mg-stuck-tbody"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
+          </table>
+        </div>
+
         <div class="sl">CPL Tracking <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
@@ -5754,13 +5762,74 @@ async function logPplOrder() {
 const MG_STAGES=[{id:'onboarding',label:'Onboarding'},{id:'active',label:'Active'},{id:'paused',label:'Paused'},{id:'churned',label:'Churned'}];
 const MG_ONBOARDING_SUB_STAGES=['Paid & Signed','Form Filled','Meta/Google Access Granted','Assets Provided & Previews Pending','Previews Accepted'];
 const MG_ACTIVE_STATUSES=['Ads Live','Ads Paused (Self Paused)','Ads Paused (Billing Issue)','Ads Scaling (+20% every 3-5 days)','Churned'];
+// ─── Fulfilment (mirrored from ql-hq) ───────────────────────────────────────
+// ql-hq owns fulfilment: its Team Panel is where CSMs, ops managers and media
+// buyers actually work, so the steps and the audit trail live there and only the
+// derived summary is mirrored onto `clients` (see 20260915000002). Read-only
+// here by design - there is no control in this app that writes these columns,
+// because two places writing the same state is how they end up disagreeing.
+function fulfilChip(c) {
+  // Nothing mirrored yet: either a client ql-hq has no company for, or the push
+  // has not arrived. Saying nothing beats showing a confident 0/0.
+  if (c.fulfilment_steps_total == null) return '';
+  const settled = c.fulfilment_steps_settled || 0;
+  const total   = c.fulfilment_steps_total   || 0;
+  const blocked = c.fulfilment_blocked_count || 0;
+  const due     = c.fulfilment_next_due ? new Date(c.fulfilment_next_due) : null;
+  const overdue = due && due < new Date();
+  const hrs     = overdue ? Math.floor((Date.now() - due.getTime()) / 3600000) : 0;
+  const late    = hrs >= 48 ? Math.round(hrs / 24) + 'd late' : hrs + 'h late';
+  const [col, bg, bd, txt] = blocked
+    ? ['var(--red)', 'rgba(239,68,68,.1)', 'rgba(239,68,68,.25)', blocked + ' blocked']
+    : overdue
+      ? ['var(--amb)', 'rgba(245,158,11,.1)', 'rgba(245,158,11,.25)', late]
+      : !c.fulfilment_next_step
+        ? ['var(--grn)', 'rgba(16,185,129,.1)', 'rgba(16,185,129,.25)', 'onboarded']
+        : ['var(--txt3)', 'rgba(160,160,184,.08)', 'var(--bd)', settled + '/' + total];
+  return `<div style="font-size:8.5px;font-family:var(--mono);margin-top:2px;color:${col};background:${bg};border:1px solid ${bd};border-radius:3px;padding:1px 5px;display:inline-block">${esc(txt)}</div>`;
+}
+
 async function loadManaged() {
-  const [{data,error},{data:orderData}]=await Promise.all([
+  const [{data,error},{data:orderData},{data:stuck,error:stuckErr}]=await Promise.all([
     db.from('clients').select('*').eq('type','managed').order('created_at',{ascending:false}),
-    db.from('managed_order_log').select('*').order('order_date',{ascending:false})
+    db.from('managed_order_log').select('*').order('order_date',{ascending:false}),
+    // The definition of "stuck" lives in the fulfilment_stuck view, not here, so
+    // this panel and anything added later cannot disagree about what it means.
+    // It is security_invoker, so a sales rep reading it gets nothing.
+    db.from('fulfilment_stuck').select('*').order('hours_overdue',{ascending:false})
   ]);
   if (error) { $('mg-tbody').innerHTML=`<tr><td colspan="10" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
   renderManaged(data||[], orderData||[]);
+  renderFulfilStuck(stuck||[], stuckErr);
+}
+
+function renderFulfilStuck(rows, err) {
+  const tb=$('mg-stuck-tbody'); if(!tb) return;
+  // A missing view means the migration has not run yet. Say that rather than
+  // showing an empty table that reads as "nothing is stuck".
+  if (err) { tb.innerHTML=`<tr><td colspan="6" class="empty">Fulfilment mirror not available yet (${esc(err.message)})</td></tr>`; return; }
+  if (!rows.length) { tb.innerHTML='<tr><td colspan="6" class="empty">Nothing overdue or blocked.</td></tr>'; return; }
+  tb.innerHTML=rows.map(r=>{
+    const hrs=r.hours_overdue||0;
+    const late=hrs<=0?'-':hrs>=48?Math.round(hrs/24)+'d':hrs+'h';
+    const step=(r.fulfilment_next_step||'').replace(/_/g,' ');
+    return `<tr data-client-id="${esc(String(r.client_id))}" data-client-type="managed" style="cursor:pointer">
+      <td><b>${esc(r.company_name||'(no name)')}</b></td>
+      <td>${esc(r.onboarding_sub_stage||r.stage||'-')}</td>
+      <td>${esc(step||'-')}</td>
+      <td style="color:${hrs>0?'var(--amb)':'var(--txt3)'};font-family:var(--mono)">${esc(late)}</td>
+      <td style="color:${r.fulfilment_blocked_count?'var(--red)':'var(--txt3)'};font-family:var(--mono)">${r.fulfilment_blocked_count||0}</td>
+      <td style="font-family:var(--mono)">${r.fulfilment_steps_settled||0}/${r.fulfilment_steps_total||0}</td>
+    </tr>`;
+  }).join('');
+  // Same click-through as every other managed table: CLIENT_CACHE is populated
+  // by renderManaged, which runs just before this, so the row is already there.
+  tb.querySelectorAll('tr[data-client-id]').forEach(tr=>{
+    tr.addEventListener('click',()=>{
+      const c=CLIENT_CACHE[tr.dataset.clientId];
+      if (c) openEditClient('managed',c);
+    });
+  });
 }
 function renderManaged(clients, orderLog=[]) {
   setText('mg-active',clients.filter(c=>c.stage==='active').length);
@@ -5792,6 +5861,7 @@ function renderManaged(clients, orderLog=[]) {
         <div class="kcard" id="kc-mg-${esc(String(c.id))}" data-client-id="${esc(String(c.id))}" data-client-type="managed">
           <div class="kcard-name">${esc(c.company_name)}</div>
           ${c.stage==='onboarding'&&c.onboarding_sub_stage?`<div style="font-size:8.5px;font-family:var(--mono);margin-top:2px;color:var(--vio);background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.25);border-radius:3px;padding:1px 5px;display:inline-block">${esc(c.onboarding_sub_stage)}</div>`:''}
+          ${c.stage==='onboarding'?fulfilChip(c):''}
           ${c.stage==='active'&&c.active_status?`<div style="font-size:8.5px;font-family:var(--mono);margin-top:2px;color:${c.active_status.startsWith('Ads Live')||c.active_status.startsWith('Ads Scaling')?'var(--grn)':c.active_status.startsWith('Churned')?'var(--red)':'var(--amb)'};background:${c.active_status.startsWith('Ads Live')||c.active_status.startsWith('Ads Scaling')?'rgba(16,185,129,.1)':c.active_status.startsWith('Churned')?'rgba(239,68,68,.1)':'rgba(245,158,11,.1)'};border:1px solid ${c.active_status.startsWith('Ads Live')||c.active_status.startsWith('Ads Scaling')?'rgba(16,185,129,.25)':c.active_status.startsWith('Churned')?'rgba(239,68,68,.25)':'rgba(245,158,11,.25)'};border-radius:3px;padding:1px 5px;display:inline-block">${esc(c.active_status)}</div>`:''}
           <div class="kcard-meta">${fmt(c.spend_mtd||0)} MTD</div>
           ${c.cx_score!=null?`<div style="font-size:9px;font-family:var(--mono);margin-top:2px;color:${c.cx_score>=8?'var(--grn)':c.cx_score>=5?'var(--amb)':'var(--red)'}">CX ${c.cx_score}/10</div>`:''}
