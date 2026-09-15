@@ -9657,8 +9657,12 @@ const JV = (() => {
         body: JSON.stringify({ text }),
       });
 
-      // 503 is the documented "no key configured" answer, not a failure.
-      if (res.status === 503) { eleven = 'no'; return false; }
+      // 503 is the function saying no key is configured. 404 is the function
+      // not being deployed at all — the normal state if you never set up the
+      // paid voice. Both mean "use the browser voice", quietly and for the
+      // rest of the session: neither is worth a warning, and retrying on every
+      // reply would add a pointless round trip to each answer.
+      if (res.status === 503 || res.status === 404) { eleven = 'no'; return false; }
 
       if (!res.ok) {
         // Anything else IS a failure, and falling back silently would leave you
