@@ -14,6 +14,9 @@
 //                       then we propagate the decrement + scrubbed flag back
 //                       to ql-hq via its sync-from-mc. ql-hq never decrements
 //                       itself on dispute approval, so nothing double-counts.
+//   check_lead_exists — the growth-onboarding spam gate. Is this email or phone
+//                       already in our sales pipeline (any stage)? Only ql-mc can
+//                       answer; ql-hq holds the signup for review if not.
 //   upsert_fulfilment — ql-hq owns fulfilment (its Team Panel is where the work
 //                       happens) and pushes the derived summary here whenever a
 //                       step moves, so ql-mc can report on what is stuck without
@@ -209,6 +212,65 @@ Deno.serve(async (req: Request) => {
       }
 
       return json({ ok: true, lead_id: match.id, scrubbed_now: acted === true, hq_synced: hqSynced })
+    }
+
+    // ── action: check_lead_exists ────────────────────────────────────────────
+    // The spam gate for growth-onboarding. ql-hq asks: is this person already in
+    // our sales pipeline? Only ql-mc can answer, because the pipeline lives here.
+    //
+    // A match means we have actually spoken to them, which is the whole signal.
+    // A signup from an email and phone that appear nowhere in the pipeline is
+    // either spam or someone who found the form without ever talking to us, and
+    // both of those want a human to look before an account exists.
+    //
+    // ANY stage counts, closed_lost included. The question is "do we know this
+    // person", not "are they still open". Deliberately no stage filter.
+    if (action === 'check_lead_exists') {
+      const email = String((body as { email?: string }).email ?? '').trim().toLowerCase()
+      const phoneRaw = String((body as { phone?: string }).phone ?? '').trim()
+      const phone = phoneRaw ? normalisePhone(phoneRaw) : null
+
+      if (!email && !phone) {
+        return json({ error: 'email or phone is required' }, 400)
+      }
+
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      )
+
+      // The digit comparison happens in SQL (find_leads_by_contact), not here.
+      // Doing it in this function meant fetching leads and comparing in memory,
+      // which silently stops matching past whatever row cap the fetch used - so
+      // the gate would start holding genuine clients as the pipeline grew. The
+      // function is service_role only and SECURITY DEFINER, because it has to
+      // read past the restrictive no_sales_rep policy on `leads`.
+      const { data: matchRows, error: rpcErr } = await supabase.rpc('find_leads_by_contact', {
+        p_email: email || null,
+        p_phone: phone || null,
+        p_limit: 5,
+      })
+
+      if (rpcErr) {
+        // Say so rather than answering "no match": a failed lookup must not be
+        // mistaken for a clean miss, or a database blip would start holding
+        // every genuine signup (or worse, be read as a pass).
+        console.error('check_lead_exists: lookup failed:', rpcErr.message)
+        return json({ error: `lookup failed: ${rpcErr.message}` }, 500)
+      }
+
+      const matches = matchRows || []
+
+      return json({
+        ok: true,
+        matched: matches.length > 0,
+        match_count: matches.length,
+        // Capped: the gate only needs to know it matched and roughly where. The
+        // full pipeline is not ql-hq's to hold.
+        matches: matches.slice(0, 5),
+        checked_email: email || null,
+        checked_phone: phone,
+      })
     }
 
     // ── action: upsert_fulfilment ────────────────────────────────────────────
