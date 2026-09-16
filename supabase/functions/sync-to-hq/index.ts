@@ -35,6 +35,36 @@ Deno.serve(async (req: Request) => {
     const body = await req.json()
     const { action } = body
 
+    // ── actions: get_sms_agent_config / update_sms_agent_config ──────────────
+    // Read and edit the agency's own AI SMS agent (Don), which lives on ql-hq,
+    // from the Sales Conversations panel here - so nobody has to log into ql-hq
+    // as the agency account just to change his wording.
+    //
+    // ADMIN ONLY, checked here rather than in the page. account_type comes from
+    // the signed JWT, so a rep cannot claim otherwise, and hiding the button is
+    // not a restriction. ql-hq pins the edit to the agency's own company, so
+    // even a forged call from here could not touch a client's agent.
+    if (action === 'get_sms_agent_config' || action === 'update_sms_agent_config') {
+      if (user.app_metadata?.account_type === 'sales_rep') {
+        return json({ error: 'Not available to sales reps' }, 403)
+      }
+
+      const res = await fetch(`${QL_HQ_API_URL}/sync-from-mc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-secret': QL_MC_API_SECRET },
+        body: JSON.stringify({
+          action,
+          ...(action === 'update_sms_agent_config' ? { patch: body.patch ?? {} } : {}),
+        }),
+      })
+      const out = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        console.error('sms_agent_config:', action, res.status, JSON.stringify(out))
+        return json({ error: out?.error || `ql-hq returned ${res.status}` }, res.status)
+      }
+      return json(out)
+    }
+
     // ── action: create_hq_account ─────────────────────────────────────────────
     // A won lead becomes a ql-hq client. The lead is read here rather than
     // taken from the request, so the account is created from what is actually

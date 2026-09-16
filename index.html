@@ -1376,6 +1376,7 @@ td strong{font-weight:500}
           <div class="ph-right">
             <select id="tz-select" class="btn btn-sm" title="Display timezone" onchange="setTimezone(this.value)" style="cursor:pointer"></select>
             <button class="btn btn-sm" onclick="loadSalesConversations()">↻ Refresh</button>
+            <button class="btn btn-sm admin-only-field" onclick="openAgentSettings()">🤖 AI Agent</button>
             <button class="btn btn-sm admin-only-field" onclick="openTwilioSettings()">⚙ Twilio Settings</button>
           </div>
         </div>
@@ -2721,6 +2722,72 @@ td strong{font-weight:500}
     <div class="macts">
       <button class="btn" onclick="closeModal('m-sms-lead')">Cancel</button>
       <button class="btn btn-p" id="sms-send-btn" onclick="sendSms()">Send SMS</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI SMS Agent modal -->
+<!-- Edits the agency's OWN agent (Don), which lives on ql-hq. ql-mc has no
+     sms_agent_config table; this goes out through sync-to-hq, which refuses a
+     sales rep, and ql-hq pins the edit to the agency's own company so a client's
+     agent can never be reached from here. -->
+<div class="overlay" id="m-agent-settings">
+  <div class="modal" style="max-width:760px">
+    <h2>AI SMS Agent</h2>
+    <div class="msub" id="ag-sub">The agent that replies to sales-pipeline leads</div>
+
+    <div id="ag-loading" style="padding:20px 0;color:var(--ink3);font-size:12px">Loading…</div>
+
+    <div id="ag-body" style="display:none">
+      <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Status</div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
+        <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer">
+          <input type="checkbox" id="ag-active" style="width:15px;height:15px;cursor:pointer"> Agent switched on
+        </label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer">
+          <input type="checkbox" id="ag-auto-reply" style="width:15px;height:15px;cursor:pointer"> Reply automatically
+        </label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer">
+          <input type="checkbox" id="ag-nurture" style="width:15px;height:15px;cursor:pointer"> Keep nurturing quiet leads
+        </label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer">
+          <input type="checkbox" id="ag-ooh" style="width:15px;height:15px;cursor:pointer"> Out of hours only
+        </label>
+      </div>
+      <p style="font-size:10.5px;color:var(--ink3);margin:0 0 8px;line-height:1.6">
+        With the agent off, nothing is sent and replies still land in Sales Conversations.
+      </p>
+
+      <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Behaviour</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px">
+        <div class="frow" style="margin:0"><label class="flabel">Agent name</label><input class="fi" id="ag-name" placeholder="Don"></div>
+        <div class="frow" style="margin:0"><label class="flabel">Max words / SMS</label><input class="fi" id="ag-max-words" type="number" min="1" max="300"></div>
+        <div class="frow" style="margin:0"><label class="flabel">Reply delay (sec)</label><input class="fi" id="ag-delay" type="number" min="0" max="3600"></div>
+        <div class="frow" style="margin:0"><label class="flabel">Follow up after (days)</label><input class="fi" id="ag-followup-days" type="number" min="0" max="365"></div>
+      </div>
+
+      <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Messages</div>
+      <div class="frow"><label class="flabel">First message <span style="font-weight:300;color:var(--ink3)">sent within 60s of the enquiry · {{first_name}} is merged</span></label>
+        <textarea class="fta" id="ag-welcome" rows="3"></textarea></div>
+      <div class="frow"><label class="flabel">Follow-up message</label>
+        <textarea class="fta" id="ag-followup" rows="2"></textarea></div>
+      <div class="frow"><label class="flabel">Out-of-hours reply</label>
+        <textarea class="fta" id="ag-ooh-msg" rows="2"></textarea></div>
+
+      <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">System prompt</div>
+      <p style="font-size:10.5px;color:var(--ink3);margin:0 0 8px;line-height:1.6">
+        Everything the agent knows about how to behave. This is the whole brief, so read it before changing it.
+      </p>
+      <textarea class="fta" id="ag-prompt" rows="18" style="font-family:var(--mono);font-size:11px;line-height:1.65"></textarea>
+      <div style="display:flex;justify-content:space-between;gap:10px;margin-top:4px;flex-wrap:wrap">
+        <span style="font-size:10.5px;color:var(--ink3)" id="ag-prompt-count"></span>
+        <span style="font-size:10.5px;color:var(--ink3)" id="ag-updated"></span>
+      </div>
+    </div>
+
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-agent-settings')">Cancel</button>
+      <button class="btn btn-p" id="ag-save-btn" onclick="saveAgentSettings()">Save</button>
     </div>
   </div>
 </div>
@@ -9451,6 +9518,87 @@ async function sendConvReply() {
 }
 
 // ── Twilio Settings (standalone modal, also reachable from Conversations panel) ──
+
+// ── AI SMS Agent (the agency's own agent, stored on ql-hq) ─────────────────
+// Read and written through the existing callHq helper, so this uses the same
+// sync-to-hq path as every other cross-product call rather than a second one.
+// The rep check is server-side; the button is also behind admin-only-field, but
+// a hidden button is not a restriction.
+let _agentCfg = null;
+
+async function openAgentSettings() {
+  openModal('m-agent-settings');
+  $('ag-loading').style.display = '';
+  $('ag-body').style.display = 'none';
+  try {
+    const out = await callHq('get_sms_agent_config', {});
+    _agentCfg = out.config || {};
+    const c = _agentCfg;
+    $('ag-sub').textContent = (c.agent_name || 'The agent') +
+      ' · replies to sales-pipeline leads' + (c.twilio_number ? ' from ' + c.twilio_number : '');
+    setVal('ag-name', c.agent_name || '');
+    setVal('ag-max-words', c.max_sms_words != null ? c.max_sms_words : '');
+    setVal('ag-delay', c.reply_delay_seconds != null ? c.reply_delay_seconds : '');
+    setVal('ag-followup-days', c.days_until_followup != null ? c.days_until_followup : '');
+    setVal('ag-welcome', c.welcome_message || '');
+    setVal('ag-followup', c.followup_message || '');
+    setVal('ag-ooh-msg', c.out_of_hours_msg || '');
+    setVal('ag-prompt', c.system_prompt || '');
+    $('ag-active').checked = c.is_active === true;
+    $('ag-auto-reply').checked = c.auto_reply === true;
+    $('ag-nurture').checked = c.ai_nurture_enabled === true;
+    $('ag-ooh').checked = c.out_of_hours_only === true;
+    $('ag-updated').textContent = c.updated_at ? 'Last saved ' + fmtDate(c.updated_at, true) : '';
+    updateAgentPromptCount();
+    $('ag-prompt').oninput = updateAgentPromptCount;
+    $('ag-loading').style.display = 'none';
+    $('ag-body').style.display = '';
+  } catch (err) {
+    $('ag-loading').textContent = 'Could not load the agent: ' + err.message;
+  }
+}
+
+function updateAgentPromptCount() {
+  const n = ($('ag-prompt').value || '').length;
+  $('ag-prompt-count').textContent = n.toLocaleString() + ' characters';
+}
+
+async function saveAgentSettings() {
+  const btn = $('ag-save-btn');
+  const prompt = $('ag-prompt').value.trim();
+  // Saving an empty prompt would leave the agent with no brief at all, which is
+  // worse than any wording. Blocked rather than silently accepted.
+  if (!prompt) { toast('The system prompt cannot be empty', true); return; }
+  if ($('ag-active').checked && !_agentCfg.is_active &&
+      !confirm('Switch the agent on? It will start texting new sales-pipeline leads.')) return;
+
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const num = (id) => { const v = $(id).value.trim(); return v === '' ? undefined : parseInt(v, 10); };
+    const patch = {
+      agent_name:          $('ag-name').value.trim(),
+      system_prompt:       prompt,
+      welcome_message:     $('ag-welcome').value.trim(),
+      followup_message:    $('ag-followup').value.trim(),
+      out_of_hours_msg:    $('ag-ooh-msg').value.trim(),
+      is_active:           $('ag-active').checked,
+      auto_reply:          $('ag-auto-reply').checked,
+      ai_nurture_enabled:  $('ag-nurture').checked,
+      out_of_hours_only:   $('ag-ooh').checked,
+    };
+    const mw = num('ag-max-words');       if (mw !== undefined) patch.max_sms_words = mw;
+    const dl = num('ag-delay');           if (dl !== undefined) patch.reply_delay_seconds = dl;
+    const fd = num('ag-followup-days');   if (fd !== undefined) patch.days_until_followup = fd;
+
+    await callHq('update_sms_agent_config', { patch });
+    toast('Agent saved ✓');
+    closeModal('m-agent-settings');
+  } catch (err) {
+    toast('Save failed: ' + err.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+}
 
 async function openTwilioSettings() {
   const s = await loadBizSettings();
