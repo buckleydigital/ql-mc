@@ -356,7 +356,14 @@ Deno.serve(async (req: Request) => {
       if (summary.stage) patch.onboarding_sub_stage = summary.stage
 
       const hqActive = summary.active_status as string | null | undefined
-      if (hqActive && !client.active_status) patch.active_status = hqActive
+      // ql-hq says "Ads Live" because the ads_live STEP is done, which is a
+      // historical fact. Writing that onto a churned or paused client would
+      // claim they are running right now, which is false - and it is exactly
+      // the kind of wrong that reads as data rather than as a bug. So ql-hq may
+      // only fill this when the client is actually live-ish and the field is
+      // empty; anything else stays ql-mc's.
+      const liveish = client.stage !== 'churned' && client.stage !== 'paused'
+      if (hqActive && !client.active_status && liveish) patch.active_status = hqActive
       if (hqActive === 'Ads Live' && client.stage === 'onboarding') patch.stage = 'active'
 
       const { error: upErr } = await supabase.from('clients').update(patch).eq('id', client.id)
