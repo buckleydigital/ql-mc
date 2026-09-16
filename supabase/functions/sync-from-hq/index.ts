@@ -72,6 +72,9 @@ Deno.serve(async (req: Request) => {
       const postcode = String(body.postcode ?? '').trim()
       const source   = String(body.source ?? 'quoteleads.com.au').trim()
       const campaign = String(body.campaign ?? '').trim()
+      // What volume they said they want. A qualifying answer, so it belongs on
+      // the card rather than only in the notification email.
+      const goal     = String(body.goal ?? '').trim()
       const phone    = normalisePhone(phoneRaw)
 
       if (!name || (!email && !phone)) {
@@ -80,11 +83,30 @@ Deno.serve(async (req: Request) => {
 
       // The funnel's campaign choices onto ql-mc's niche vocabulary. The exact
       // answer is kept in the notes, so nothing the visitor picked is lost.
+      // The funnels send two different vocabularies: the solar funnel sends
+      // platform slugs, /get-started sends the trade label the visitor picked.
+      // Both are mapped here.
+      //
+      // The fallback used to be 'solar', which quietly filed every HVAC, roofing
+      // and renovation enquiry as a solar lead - a reporting error that looks
+      // like data. An unrecognised trade now keeps whatever the visitor chose;
+      // leads.niche is free text and clients already carry labels like 'HVAC',
+      // so an honest unknown beats a confident wrong one.
       const NICHE: Record<string, string> = {
+        // slugs (solar funnel)
         solar: 'solar', solar_battery: 'solar',
         battery_retrofit: 'battery_retrofit', commercial_solar: 'solar',
+        // slugs the /get-started page maps its trade choices onto
+        hvac: 'HVAC', roofing: 'Roofing', renovation: 'Renovation',
+        // and the raw labels, in case a page ever sends those instead
+        'All Solar': 'solar',
+        'Solar + Battery': 'solar',
+        'Battery Retrofit': 'battery_retrofit',
+        'HVAC': 'HVAC',
+        'Roofing': 'Roofing',
+        'Renovation': 'Renovation',
       }
-      const niche = NICHE[campaign] ?? 'solar'
+      const niche = NICHE[campaign] ?? (campaign || 'solar')
       const today = new Date().toISOString().split('T')[0]
 
       const supabase = createClient(
@@ -94,7 +116,8 @@ Deno.serve(async (req: Request) => {
 
       const notes = [
         `Callback requested via ${source}.`,
-        campaign ? `Campaign wanted: ${campaign}.` : null,
+        campaign ? `Trade / campaign: ${campaign}.` : null,
+        goal ? `Volume they want: ${goal}.` : null,
         postcode ? `Service area: ${postcode}.` : null,
         '$2,500 one-off build + first 30 days management, then $600/mo optional.',
       ].filter(Boolean).join('\n')
