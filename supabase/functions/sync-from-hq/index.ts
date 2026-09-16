@@ -81,8 +81,6 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'name and an email or phone are required' }, 400)
       }
 
-      // The funnel's campaign choices onto ql-mc's niche vocabulary. The exact
-      // answer is kept in the notes, so nothing the visitor picked is lost.
       // The funnels send two different vocabularies: the solar funnel sends
       // platform slugs, /get-started sends the trade label the visitor picked.
       // Both are mapped here.
