@@ -2454,6 +2454,7 @@ td strong{font-weight:500}
         <option value="Assets Provided &amp; Previews Pending">Assets Provided &amp; Previews Pending</option>
         <option value="Previews Accepted">Previews Accepted</option>
       </select>
+      <div id="em-sub-stage-note" style="display:none;font-size:10px;color:var(--vio);margin-top:4px;font-family:var(--mono)"></div>
     </div>
     <div class="frow" id="em-active-status-row" style="display:none"><label class="flabel">Ad Status</label>
       <select class="fs" id="em-active-status">
@@ -6020,6 +6021,28 @@ async function openEditClient(type,c) {
     setVal('em-stage',mgStage);
     setVal('em-onboarding-sub-stage',c.onboarding_sub_stage||'');
     setVal('em-active-status',c.active_status||'');
+    // Once ql-hq is mirroring fulfilment for this client, IT owns the onboarding
+    // sub-stage: the value is derived from the actual steps and is overwritten
+    // on every push. Editing it here would look like it worked and then silently
+    // revert, so the control is locked with an explanation rather than left to
+    // lie. active_status stays editable - that one is ql-mc's, and ql-hq only
+    // ever fills it when it is empty.
+    _mgFulfilMirrored = !!c.fulfilment_synced_at;
+    const subSel = $('em-onboarding-sub-stage');
+    if (subSel) {
+      subSel.disabled = _mgFulfilMirrored;
+      subSel.title = _mgFulfilMirrored
+        ? 'Set automatically from the fulfilment checklist in the QuoteLeadsHQ Team Panel'
+        : '';
+    }
+    const subNote = $('em-sub-stage-note');
+    if (subNote) {
+      subNote.style.display = _mgFulfilMirrored ? '' : 'none';
+      subNote.textContent = _mgFulfilMirrored
+        ? 'Set from the fulfilment checklist in the Team Panel · ' +
+          (c.fulfilment_steps_settled || 0) + '/' + (c.fulfilment_steps_total || 0) + ' steps'
+        : '';
+    }
     updateMgSubStageVisibility();
     setVal('em-cx',c.cx_score!=null?c.cx_score:'');
     setVal('em-start',c.start_date||'');
@@ -6107,7 +6130,7 @@ async function updateClient(type) {
     const _todayStr=new Date().toISOString().split('T')[0];
     const _payDates={};_activeMo.forEach(m=>{_payDates[m]=(_prevPayDates&&_prevPayDates[m])||_todayStr;});
     const _emStage=$('em-stage').value;
-    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),retainer_payment_dates:JSON.stringify(_payDates),stage:_emStage,onboarding_sub_stage:_emStage==='onboarding'?($('em-onboarding-sub-stage').value||null):null,active_status:_emStage==='active'?($('em-active-status').value||null):null,cx_score:$('em-cx').value!==''?parseInt($('em-cx').value):null,start_date:$('em-start').value||null,ads_first_live_date:$('em-ads-live').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),client_webhook:$('em-client-webhook').value.trim()||null,webhook_auth_mode:(($('em-webhook-auth').value!=='none'&&$('em-webhook-secret').value.trim())?$('em-webhook-auth').value:'none'),webhook_auth_header:($('em-webhook-auth').value==='header'?($('em-webhook-header').value.trim()||'Authorization'):null),webhook_auth_enabled:$('em-webhook-auth').value==='signature'&&!!$('em-webhook-secret').value.trim(),webhook_secret:$('em-webhook-secret').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
+    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),retainer_payment_dates:JSON.stringify(_payDates),stage:_emStage,...(_mgFulfilMirrored?{}:{onboarding_sub_stage:_emStage==='onboarding'?($('em-onboarding-sub-stage').value||null):null}),active_status:_emStage==='active'?($('em-active-status').value||null):null,cx_score:$('em-cx').value!==''?parseInt($('em-cx').value):null,start_date:$('em-start').value||null,ads_first_live_date:$('em-ads-live').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),client_webhook:$('em-client-webhook').value.trim()||null,webhook_auth_mode:(($('em-webhook-auth').value!=='none'&&$('em-webhook-secret').value.trim())?$('em-webhook-auth').value:'none'),webhook_auth_header:($('em-webhook-auth').value==='header'?($('em-webhook-header').value.trim()||'Authorization'):null),webhook_auth_enabled:$('em-webhook-auth').value==='signature'&&!!$('em-webhook-secret').value.trim(),webhook_secret:$('em-webhook-secret').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   }
   const {error}=await db.from('clients').update(d).eq('id',id);
@@ -9633,6 +9656,9 @@ async function saveTwilioSettings() {
 }
 
 // ── PPL Campaign Action Log (PCAL) ─────────────────────────────────────────
+// True once ql-hq is mirroring fulfilment for the open client, which makes it
+// the owner of onboarding_sub_stage.
+let _mgFulfilMirrored = false;
 let _pcalFilter = 'all';
 let _pcalCampaigns = [];
 
