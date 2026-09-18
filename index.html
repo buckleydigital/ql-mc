@@ -219,10 +219,6 @@ body::after {
 .sb-logo-row{
   display:flex;align-items:center;gap:9px;margin-bottom:14px;
 }
-.sb-logo{
-  height:26px;width:auto;display:block;flex-shrink:0;
-  object-fit:contain;
-}
 .sb-brand{
   font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:-.2px;
   color:var(--ink);line-height:1.1;
@@ -750,8 +746,10 @@ td strong{font-weight:500}
     <!-- SIDEBAR -->
     <div class="sidebar">
       <div class="sb-header">
+        <!-- No logo here: the topbar already carries it, a few pixels above.
+             Two of the same lockup stacked reads as a rendering mistake. The
+             wordmark stays, since the sidebar still needs a header. -->
         <div class="sb-logo-row">
-          <img class="sb-logo" src="./quoteleads-logo-white.png" alt="QuoteLeads">
           <div>
             <div class="sb-brand">QuoteLeads</div>
             <div class="sb-brand-sub">Mission Control</div>
