@@ -242,6 +242,10 @@ Deno.serve(async (req: Request) => {
     const { count: sentToday } = await db
       .from('jarvis_notifications')
       .select('id', { count: 'exact', head: true })
+      // Texts only. A call is logged here too and is always accompanied by a
+      // text, so counting both would burn the SMS cap at twice the rate and
+      // silence him after five urgent events instead of ten.
+      .eq('channel', 'sms')
       .eq('status', 'sent').gte('created_at', since)
     if ((sentToday ?? 0) >= cap) {
       return json({ ok: true, scanned: pendingCount, sent: false, reason: 'daily_cap_reached', cap })
