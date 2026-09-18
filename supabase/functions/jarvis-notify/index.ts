@@ -55,6 +55,15 @@ function describe(e: Ev): string {
       const d = h >= 48 ? `${Math.round(h / 24)}d` : `${h}h`
       return `${who} closed won ${d} ago and still has no HQ account.`
     }
+    case 'proposal_cold': {
+      const d = Number(e.payload.days ?? 0)
+      const v = e.payload.value
+      // The value is worth saying when it is there, because it is what decides
+      // which of these you ring back first. Most leads carry none, so it is
+      // appended rather than assumed.
+      const worth = typeof v === 'number' && v > 0 ? ` ($${v.toLocaleString('en-AU')})` : ''
+      return `${who}${worth} - proposal cold ${d} days.`
+    }
     case 'followup_overdue':
       return `${who} - follow-up is overdue.`
     case 'fulfilment_overdue':
