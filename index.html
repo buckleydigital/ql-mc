@@ -1794,7 +1794,7 @@ td strong{font-weight:500}
         <option value="closed_won">Closed Won</option><option value="closed_lost">Closed Lost</option>
       </select>
     </div>
-    <div class="frow"><label class="flabel">Deal Value (AUD/mo)</label><input class="fi" id="l-value" type="number" placeholder="e.g. 1500"></div>
+    <div class="frow"><label class="flabel">Build Fee (AUD)</label><input class="fi" id="l-value" type="number" placeholder="e.g. 1500"></div>
     <div class="frow"><label class="flabel">Source</label>
       <select class="fs" id="l-source">
         <option value="outbound">Outbound</option><option value="referral">Referral</option>
@@ -2230,7 +2230,7 @@ td strong{font-weight:500}
         <button class="btn btn-p btn-sm" onclick="convertLead('managed')">→ Managed Ads</button>
       </div>
     </div>
-    <div class="frow admin-only-field"><label class="flabel">Deal Value (AUD/mo)</label><input class="fi" id="el-value" type="number"></div>
+    <div class="frow admin-only-field"><label class="flabel">Build Fee (AUD)</label><input class="fi" id="el-value" type="number"></div>
     <div class="frow"><label class="flabel">Source</label>
       <select class="fs" id="el-source">
         <option value="outbound">Outbound</option><option value="referral">Referral</option>
@@ -3169,6 +3169,13 @@ const setVal  = (id, v) => { const e = $(id); if (e) e.value = v ?? ''; };
 const now  = () => new Date().toISOString();
 const esc  = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const fmt  = n => (!n && n !== 0) ? '-' : '$' + Number(n).toLocaleString('en-AU', {minimumFractionDigits:0,maximumFractionDigits:0});
+// Today where the user is, not in UTC. toISOString() is UTC, so in AEST any
+// time before 10am it returns yesterday - which would date a build fee logged
+// at 9am to the day before, and mornings are exactly when deals get converted.
+const localDateStr = (d = new Date()) => {
+  const p = (n) => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+};
 const fmtCpl = n => n ? '$' + Number(n).toFixed(2) : '-';
 // Australian timezones (IANA). Live/DST-aware; default is AEST (Brisbane).
 const AU_TIMEZONES = [
@@ -4922,12 +4929,39 @@ async function convertLead(targetType) {
   if (targetType === 'ppl') {
     clientData = {type:'ppl',company_name:company||name,contact_name:name,email,phone,lead_price:0,stage:'active_client',created_at:now()};
   } else {
-    clientData = {type:'managed',company_name:company||name,contact_name:name,email,phone,management_fee:value||0,stage:'active',created_at:now()};
+    // management_fee is the monthly retainer and drives MRR, so it starts at 0
+    // and is set on the client once the real recurring figure is agreed. The
+    // build fee below is a one-off and belongs in the order log instead.
+    clientData = {type:'managed',company_name:company||name,contact_name:name,email,phone,management_fee:0,stage:'active',created_at:now()};
   }
-  const {error} = await db.from('clients').insert([clientData]);
+  // The new client's id comes back so the build fee can be logged against it.
+  const {data: created, error} = await db.from('clients').insert([clientData]).select('id').single();
   if (error) { toast('Client creation failed: '+error.message, true); return; }
+
+  // The build fee is a one-off, so it is logged as a custom order rather than
+  // left sitting in the lead record where nothing bills from it. It is NOT
+  // written to management_fee: that field is the monthly retainer and feeds
+  // MRR, so a one-off charge landing there would count itself as recurring
+  // revenue every month forever, on top of this order.
+  let feeLogged = false;
+  if (targetType === 'managed' && value > 0 && created?.id) {
+    const {error: ordErr} = await db.from('managed_order_log').insert([{
+      client_id: created.id,
+      description: 'Build Fee',
+      amount: value,
+      order_date: localDateStr(),
+      created_at: now(),
+    }]);
+    // Best effort: the client exists either way, and failing the whole
+    // conversion over the log line would leave a half-converted lead behind.
+    if (ordErr) toast('Client created, but the build fee did not log: '+ordErr.message, true);
+    else feeLogged = true;
+  }
+
   closeModal('m-edit-lead');
-  toast(`✓ Moved to ${targetType==='ppl'?'PPL Clients':'Managed Ads'}`);
+  toast(targetType === 'ppl'
+    ? '✓ Moved to PPL Clients'
+    : `✓ Moved to Managed Ads${feeLogged ? ` - ${fmt(value)} build fee logged` : ''}`);
   loadCRM();
   if (targetType==='ppl') loadPPL(); else loadManaged();
   setTimeout(() => {
@@ -5644,7 +5678,7 @@ async function logManagedOrder() {
   const clientId=$('em-id').value;
   const desc=$('em-ord-desc').value.trim();
   const amount=parseFloat($('em-ord-amount').value)||0;
-  const date=$('em-ord-date').value||new Date().toISOString().split('T')[0];
+  const date=$('em-ord-date').value||localDateStr();
   if (!desc) { toast('Description required',true); return; }
   if (!amount) { toast('Amount required',true); return; }
   const {error}=await db.from('managed_order_log').insert([{client_id:clientId,description:desc,amount,order_date:date,created_at:now()}]);
