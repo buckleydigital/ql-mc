@@ -10396,9 +10396,35 @@ const JV = (() => {
     if (!SR) return null;
     const r = new SR();
     r.continuous = false; r.interimResults = false; r.lang = 'en-AU';
-    r.onresult = e => ask(e.results[0][0].transcript);
+
+    // Say when it is actually listening. Without this the only signal is a CSS
+    // class on a small button, so a mic that never started and a mic that heard
+    // nothing look identical - which reads as "he cannot hear me".
+    r.onstart = () => status('Listening…', 'busy');
+
+    // ask() already echoes what was said, which is what matters here: when
+    // speech recognition mangles a company name, seeing the mangled version is
+    // the difference between "he is broken" and "it misheard me".
+    r.onresult = (e) => ask(e.results[0][0].transcript);
+
     r.onend = () => { micOn = false; $$('jv-mic').classList.remove('on'); };
-    r.onerror = () => { micOn = false; $$('jv-mic').classList.remove('on'); };
+
+    // Errors were swallowed entirely, so every failure looked like silence.
+    // These are the ones that actually happen, and each has a different fix.
+    r.onerror = (e) => {
+      micOn = false;
+      $$('jv-mic').classList.remove('on');
+      const why = {
+        'not-allowed': 'Microphone blocked. Allow it for this site in your browser settings, then try again.',
+        'service-not-allowed': 'Microphone blocked by the browser or the OS.',
+        'no-speech': 'I did not hear anything. Try again, a little closer to the mic.',
+        'audio-capture': 'No microphone found.',
+        'network': 'Speech recognition could not reach its service. Type it instead.',
+        'aborted': '',
+      }[e?.error] ?? `Microphone error: ${e?.error || 'unknown'}.`;
+      if (why) line('sys', why);
+      status('Ready', 'ready');
+    };
     return r;
   }
 
@@ -10450,7 +10476,15 @@ const JV = (() => {
       if (!rec) return;
       if (micOn) { rec.stop(); return; }
       hush();
-      try { rec.start(); micOn = true; $$('jv-mic').classList.add('on'); } catch (e) {}
+      // start() throws if it is already running or the page has no gesture
+      // behind it. Swallowing that was the other half of the mic looking dead.
+      try {
+        rec.start(); micOn = true; $$('jv-mic').classList.add('on');
+      } catch (err) {
+        micOn = false;
+        $$('jv-mic').classList.remove('on');
+        line('sys', 'Could not start the microphone: ' + (err?.message || err));
+      }
     },
     reset() { history = []; body().innerHTML = ''; this.open(); },
     ask
