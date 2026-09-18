@@ -22,7 +22,10 @@ const corsHeaders = {
 // with the ELEVENLABS_VOICE_ID secret, but set here so it works with nothing
 // but an API key: a default that needs a second secret to be right is a
 // default that is wrong.
-const DEFAULT_VOICE = 'Y6FMJQzB8Hprka91pf7R'
+// The PREMADE George, not the Voice Library one. Library voices are refused
+// over the API on the free tier with a 402, and a default that only works on a
+// paid plan is a default that is wrong for whoever sets this up next.
+const DEFAULT_VOICE = 'JBFqnCBsd6RMkjVDRZzb'
 
 // JARVIS_VOICE_ID is what the jarvis project's bridge calls it, so it is
 // accepted too rather than silently ignored on a machine set up for that.
@@ -72,8 +75,8 @@ Deno.serve(async (req: Request) => {
     const line = String(text ?? '').trim().slice(0, 1200)
     if (!line) return new Response('No text', { status: 400, headers: corsHeaders })
 
-    const res = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId()}?output_format=mp3_44100_128`,
+    const speak = (voice: string) => fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`,
       {
         method: 'POST',
         headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
@@ -86,6 +89,25 @@ Deno.serve(async (req: Request) => {
         }),
       },
     )
+
+    const res = await speak(voiceId())
+
+    // One retry on a premade voice when the configured one is refused.
+    //
+    // The common case is a Voice Library id on a free key: ElevenLabs answers
+    // 402 paid_plan_required, and there is nothing the listener can do about it
+    // in the moment. Premade voices work on every tier, so rather than dropping
+    // to the browser's satnav we try the one we know the key can reach. The
+    // original error still surfaces if the retry fails too, so a genuinely
+    // broken key is not hidden behind a working voice.
+    if (!res.ok && voiceId() !== DEFAULT_VOICE) {
+      const retry = await speak(DEFAULT_VOICE)
+      if (retry.ok) {
+        return new Response(retry.body, {
+          headers: { ...corsHeaders, 'Content-Type': 'audio/mpeg', 'Cache-Control': 'no-store' },
+        })
+      }
+    }
 
     if (!res.ok) {
       const detail = (await res.text()).slice(0, 200)

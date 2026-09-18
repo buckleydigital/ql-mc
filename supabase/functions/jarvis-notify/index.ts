@@ -102,7 +102,9 @@ async function renderVoiceLine(
 ): Promise<string | null> {
   const key = Deno.env.get('ELEVENLABS_API_KEY')
   if (!key) return null
-  const voice = Deno.env.get('ELEVENLABS_VOICE_ID') ?? Deno.env.get('JARVIS_VOICE_ID') ?? 'Y6FMJQzB8Hprka91pf7R'
+  // Premade George. A Voice Library id is refused over the API on the free tier
+  // with a 402, so it is the wrong thing to fall back to.
+  const voice = Deno.env.get('ELEVENLABS_VOICE_ID') ?? Deno.env.get('JARVIS_VOICE_ID') ?? 'JBFqnCBsd6RMkjVDRZzb'
   try {
     // mp3 at 22kHz: a phone line is 8kHz anyway, so anything higher is bytes
     // spent on detail the call will throw away.
