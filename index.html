@@ -8762,19 +8762,74 @@ async function downloadInvoicePDF(inv, isReceipt) {
 
 let _lastAlerts = [];
 
+// Dismissed alerts, per browser. The key is built from the ids the alert covers,
+// so clearing "2 orders overdue - A, B" stays cleared while it is still those
+// two - but a third client going overdue changes the key and the alert comes
+// back. Dismissing hides what you have seen; it cannot hide something new.
+const ALERT_DISMISS_KEY = 'ql_alerts_dismissed';
+function loadDismissedAlerts() {
+  try { return new Set(JSON.parse(localStorage.getItem(ALERT_DISMISS_KEY) || '[]')); }
+  catch (_) { return new Set(); }
+}
+function saveDismissedAlerts(set) {
+  // Only keys still in play are kept, so the list cannot grow forever with
+  // conditions that resolved months ago.
+  const live = new Set(_lastAlerts.map(a => a.key));
+  const keep = [...set].filter(k => live.has(k));
+  try { localStorage.setItem(ALERT_DISMISS_KEY, JSON.stringify(keep)); } catch (_) {}
+}
+let _dismissedAlerts = loadDismissedAlerts();
+
 function buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoonOrders) {
   const items = [];
+  const keyOf = (prefix, ids) => prefix + ':' + ids.map(String).sort().join(',');
   if (overdueOrders.length > 0) {
     const names = overdueOrders.map(o => o.clients?.company_name || 'Unknown').join(', ');
-    items.push({type:'error', msg: `${overdueOrders.length} PPL order${overdueOrders.length>1?'s':''} past SLA due date - ${names}`, panel:'ppl'});
+    items.push({type:'error', msg: `${overdueOrders.length} PPL order${overdueOrders.length>1?'s':''} past SLA due date - ${names}`, panel:'ppl',
+      key: keyOf('sla', overdueOrders.map(o => o.id))});
   }
-  if (overduePayments > 0) items.push({type:'error', msg: `${overduePayments} managed client${overduePayments>1?'s':''} with overdue payment`, panel:'managed'});
+  if (overduePayments.length > 0) {
+    // Naming them is the whole point: "1 managed client with overdue payment"
+    // tells you there is a problem and then makes you go hunting for which.
+    const names = overduePayments.map(c => c.company_name || 'Unknown').join(', ');
+    items.push({type:'error', msg: `${overduePayments.length} managed client${overduePayments.length>1?'s':''} with overdue payment - ${names}`, panel:'managed',
+      key: keyOf('pay', overduePayments.map(c => c.id))});
+  }
   if (dueSoonOrders.length > 0) {
     const names = dueSoonOrders.map(o => o.clients?.company_name || 'Unknown').join(', ');
-    items.push({type:'warn', msg: `${dueSoonOrders.length} PPL order${dueSoonOrders.length>1?'s':''} SLA due within 7 days - ${names}`, panel:'ppl'});
+    items.push({type:'warn', msg: `${dueSoonOrders.length} PPL order${dueSoonOrders.length>1?'s':''} SLA due within 7 days - ${names}`, panel:'ppl',
+      key: keyOf('soon', dueSoonOrders.map(o => o.id))});
   }
-  if (crmFollowups > 0) items.push({type:'warn', msg: `${crmFollowups} CRM lead${crmFollowups>1?'s':''} need follow-up`, panel:'crm'});
+  if (crmFollowups.length > 0) {
+    items.push({type:'warn', msg: `${crmFollowups.length} CRM lead${crmFollowups.length>1?'s':''} need follow-up`, panel:'crm',
+      key: keyOf('crm', crmFollowups.map(l => l.id))});
+  }
   return items;
+}
+
+const visibleAlerts = () => _lastAlerts.filter(a => !_dismissedAlerts.has(a.key));
+
+function dismissAlert(key) {
+  _dismissedAlerts.add(key);
+  saveDismissedAlerts(_dismissedAlerts);
+  updateAlertBadge(visibleAlerts().length);
+  renderAlertTray();
+}
+
+function clearAllAlerts() {
+  _lastAlerts.forEach(a => _dismissedAlerts.add(a.key));
+  saveDismissedAlerts(_dismissedAlerts);
+  updateAlertBadge(0);
+  renderAlertTray();
+}
+
+// Undo, because a cleared alert is otherwise gone until its underlying data
+// changes - and these are the things you least want to lose by misclicking.
+function restoreAlerts() {
+  _dismissedAlerts = new Set();
+  try { localStorage.removeItem(ALERT_DISMISS_KEY); } catch (_) {}
+  updateAlertBadge(visibleAlerts().length);
+  renderAlertTray();
 }
 
 function updateAlertBadge(count) {
@@ -8792,11 +8847,26 @@ function toggleAlertTray() {
 
 function renderAlertTray() {
   const body = $('alert-tray-body'); if (!body) return;
-  if (!_lastAlerts.length) {
-    body.innerHTML='<div style="color:var(--grn);font-size:12px">✓ All clear - no active alerts.</div>';
+  const shown = visibleAlerts();
+  const hidden = _lastAlerts.length - shown.length;
+  // Say when alerts are only hidden rather than gone, with the way back. An
+  // "all clear" that is really "all dismissed" is a lie the tray would tell
+  // every time you opened it.
+  const footer = hidden > 0
+    ? `<div style="margin-top:6px;font-size:10.5px;color:var(--ink3);display:flex;align-items:center;gap:8px">
+         <span style="flex:1">${hidden} cleared</span>
+         <button class="btn btn-xs" onclick="restoreAlerts()" style="font-size:10px">Show cleared</button>
+       </div>`
+    : '';
+  if (!shown.length) {
+    body.innerHTML = '<div style="color:var(--grn);font-size:12px">✓ All clear - no active alerts.</div>' + footer;
     return;
   }
-  body.innerHTML = _lastAlerts.map(a=>`<div style="margin-bottom:8px;padding:8px 10px;background:${a.type==='error'?'rgba(255,69,96,.08)':'rgba(245,166,35,.07)'};border:1px solid ${a.type==='error'?'rgba(255,69,96,.25)':'rgba(245,166,35,.25)'};border-radius:var(--r);font-size:11px;display:flex;align-items:center;gap:8px"><span style="color:${a.type==='error'?'var(--red)':'var(--amb)'}">⚠</span><span style="flex:1">${esc(a.msg)}</span><button class="btn btn-xs" onclick="nav('${a.panel}',document.querySelector('[data-panel=\\'${a.panel}\\']'));toggleAlertTray()" style="font-size:10px">→</button></div>`).join('');
+  body.innerHTML = shown.map(a=>`<div style="margin-bottom:8px;padding:8px 10px;background:${a.type==='error'?'rgba(255,69,96,.08)':'rgba(245,166,35,.07)'};border:1px solid ${a.type==='error'?'rgba(255,69,96,.25)':'rgba(245,166,35,.25)'};border-radius:var(--r);font-size:11px;display:flex;align-items:center;gap:8px"><span style="color:${a.type==='error'?'var(--red)':'var(--amb)'}">⚠</span><span style="flex:1">${esc(a.msg)}</span><button class="btn btn-xs" onclick="nav('${a.panel}',document.querySelector('[data-panel=\\'${a.panel}\\']'));toggleAlertTray()" style="font-size:10px" title="Go to it">→</button><button class="btn btn-xs" onclick="dismissAlert('${esc(a.key)}')" style="font-size:10px" title="Clear this alert">✕</button></div>`).join('')
+    + `<div style="margin-top:4px;display:flex;align-items:center;gap:8px">
+         <button class="btn btn-xs" onclick="clearAllAlerts()" style="font-size:10px">Clear all</button>
+         ${hidden > 0 ? `<span style="font-size:10.5px;color:var(--ink3);flex:1">${hidden} cleared</span><button class="btn btn-xs" onclick="restoreAlerts()" style="font-size:10px">Show cleared</button>` : ''}
+       </div>`;
 }
 
 async function loadAlerts() {
@@ -8805,16 +8875,22 @@ async function loadAlerts() {
   const weekAhead = new Date(Date.now() + MS_PER_WEEK).toISOString().split('T')[0];
   const [slaR, mgR, crmR, dueSoonR] = await Promise.all([
     db.from('ppl_order_log').select('id,client_id,sla_due_date,clients(company_name)').eq('status','in_progress').lte('sla_due_date',today).not('sla_due_date','is',null),
-    db.from('clients').select('id,stage,next_payment_date').eq('type','managed'),
+    db.from('clients').select('id,stage,next_payment_date,company_name').eq('type','managed'),
     db.from('leads').select('id,stage,next_followup').in('stage',['new_lead','qualified','call_back','no_answer','onboarding','proposal','proposal_sent']),
     db.from('ppl_order_log').select('id,client_id,sla_due_date,clients(company_name)').eq('status','in_progress').gt('sla_due_date',today).lte('sla_due_date',weekAhead).not('sla_due_date','is',null),
   ]);
   const overdueOrders = slaR.data||[];
-  const overduePayments = (mgR.data||[]).filter(c=>c.stage==='active'&&c.next_payment_date&&c.next_payment_date<today).length;
+  // The rows, not a count - an alert that cannot name the client makes you go
+  // looking for it, which is most of the work it was supposed to save.
+  const overduePayments = (mgR.data||[]).filter(c=>c.stage==='active'&&c.next_payment_date&&c.next_payment_date<today);
   const dueSoonOrders = dueSoonR.data||[];
-  const crmFollowups = (crmR.data||[]).filter(l=>l.next_followup&&l.next_followup<=today).length;
+  const crmFollowups = (crmR.data||[]).filter(l=>l.next_followup&&l.next_followup<=today);
   _lastAlerts = buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoonOrders);
-  updateAlertBadge(_lastAlerts.length);
+  // Drop dismissals whose condition has since resolved, so the stored list
+  // stays small and a recurrence is never pre-silenced.
+  saveDismissedAlerts(_dismissedAlerts);
+  _dismissedAlerts = loadDismissedAlerts();
+  updateAlertBadge(visibleAlerts().length);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -9708,7 +9784,6 @@ async function saveAgentSettings() {
 // His own screen, opened from his own panel. What he watches and when he may
 // interrupt is not a Twilio concern; SMS is just the channel he reaches you on.
 const JARVIS_WATCH_LABELS = {
-  won_no_account:     'Won deals with no HQ account',
   followup_overdue:   'Overdue follow-ups',
   fulfilment_overdue: 'Onboarding past its SLA',
   fulfilment_blocked: 'Fulfilment blocked',
