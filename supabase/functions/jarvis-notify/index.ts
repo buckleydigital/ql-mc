@@ -66,6 +66,24 @@ function describe(e: Ev): string {
   }
 }
 
+// Spoken, not written. A phone call gets one or two sentences, said twice with
+// a pause - people miss the first seconds answering, and there is no scrollback
+// on a voice call. Punctuation is doing real work here: it is what makes the
+// difference between a readout and a sentence.
+function speakable(lines: string[], extra: number): string {
+  const body = lines.join(' ')
+  const tail = extra > 0 ? ` And ${extra} more ${extra === 1 ? 'item' : 'items'} waiting.` : ''
+  return `Sir. ${body}${tail}`
+}
+
+// TwiML is XML, so anything interpolated into it has to be escaped or a client
+// named "Smith & Sons" truncates the call.
+function xmlEscape(v: string): string {
+  return v.replace(/[<>&"']/g, (c) => (
+    { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c] as string
+  ))
+}
+
 // Wall-clock time where the person is, not where the server is. A cron running
 // in UTC must not get to decide that 4am Sydney is a reasonable hour.
 function localHHMM(tz: string, now = new Date()): string {
@@ -125,7 +143,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: s } = await db
       .from('business_settings')
-      .select('jarvis_notify_number, jarvis_notify_enabled, jarvis_timezone, jarvis_quiet_start, jarvis_quiet_end, jarvis_daily_sms_cap, twilio_from_number, jarvis_from_number')
+      .select('jarvis_notify_number, jarvis_notify_enabled, jarvis_timezone, jarvis_quiet_start, jarvis_quiet_end, jarvis_daily_sms_cap, twilio_from_number, jarvis_from_number, jarvis_call_enabled, jarvis_call_cap, jarvis_call_voice')
       .limit(1).maybeSingle()
 
     // Refresh the facts first. Worth doing even when he cannot speak: the event
@@ -220,8 +238,67 @@ Deno.serve(async (req: Request) => {
       error: res.ok ? null : raw.slice(0, 500),
     })
 
+    // ── The phone call ────────────────────────────────────────────────────
+    // Urgent only, and never instead of the text: the SMS is the record you
+    // can re-read, the call is the interrupt. Quiet hours already returned
+    // above, so reaching here means it is a reasonable hour to ring.
+    //
+    // Deliberately one-way. He says the thing and hangs up - no media stream,
+    // no speech recognition, no conversation. That is a different and much
+    // larger project, and for "a client wants to go ahead" it adds nothing:
+    // you are going to ring the client, not argue with Jarvis.
+    let callSid: string | null = null
+    let callError: string | null = null
+    if (res.ok && tier === 'urgent' && s.jarvis_call_enabled === true) {
+      const callCap = Number(s.jarvis_call_cap ?? 3)
+      const { count: callsToday } = await db
+        .from('jarvis_notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('channel', 'call').eq('status', 'sent').gte('created_at', since)
+
+      if (callCap > 0 && (callsToday ?? 0) < callCap) {
+        const voice = String(s.jarvis_call_voice || 'Polly.Brian-Neural')
+        const spoken = xmlEscape(speakable(shown.map(describe), extra))
+        // Inline TwiML, so there is no public webhook to stand up and nothing
+        // for anyone to POST to. Said twice with a pause between, because the
+        // first seconds of an answered call are spent saying "hello".
+        const twiml =
+          `<Response><Pause length="1"/>` +
+          `<Say voice="${xmlEscape(voice)}" language="en-GB">${spoken}</Say>` +
+          `<Pause length="1"/>` +
+          `<Say voice="${xmlEscape(voice)}" language="en-GB">${spoken}</Say>` +
+          `<Say voice="${xmlEscape(voice)}" language="en-GB">Details are in your messages. Goodbye.</Say>` +
+          `</Response>`
+
+        const callRes = await fetch(
+          `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: 'Basic ' + btoa(accountSid + ':' + authToken),
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({ To: to, From: from, Twiml: twiml }).toString(),
+          },
+        )
+        const callRaw = await callRes.text()
+        try { callSid = JSON.parse(callRaw).sid || null } catch { /* keep raw */ }
+        if (!callRes.ok) callError = callRaw.slice(0, 300)
+
+        await db.from('jarvis_notifications').insert({
+          channel: 'call', to_number: to, tier, body: spoken,
+          event_ids: evs.map((e) => e.id),
+          twilio_sid: callSid,
+          status: callRes.ok ? 'sent' : 'failed',
+          error: callRes.ok ? null : callRaw.slice(0, 500),
+        })
+      }
+    }
+
     // Only mark them spoken if the text actually left. A failed send that
     // silently burns the events is how you find out about a problem never.
+    // The call is deliberately not part of this test: the SMS is the delivery
+    // that counts, and a failed call must not re-announce everything next run.
     if (res.ok) {
       await db.from('jarvis_events')
         .update({ notified_at: new Date().toISOString() })
@@ -231,6 +308,8 @@ Deno.serve(async (req: Request) => {
     return json({
       ok: res.ok, scanned: pendingCount, sent: res.ok,
       events: evs.length, twilio_sid: sid,
+      ...(callSid ? { called: true, call_sid: callSid } : {}),
+      ...(callError ? { call_error: callError } : {}),
       ...(res.ok ? {} : { error: raw.slice(0, 300) }),
     })
   } catch (err) {
