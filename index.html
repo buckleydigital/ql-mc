@@ -8848,15 +8848,6 @@ function clearAllAlerts() {
   renderAlertTray();
 }
 
-// Undo, because a cleared alert is otherwise gone until its underlying data
-// changes - and these are the things you least want to lose by misclicking.
-function restoreAlerts() {
-  _dismissedAlerts = new Set();
-  try { localStorage.removeItem(ALERT_DISMISS_KEY); } catch (_) {}
-  updateAlertBadge(visibleAlerts().length);
-  renderAlertTray();
-}
-
 function updateAlertBadge(count) {
   const badge = $('alert-tray-badge');
   if (badge) { badge.textContent=count; badge.style.display=count>0?'':'none'; }
@@ -8873,24 +8864,22 @@ function toggleAlertTray() {
 function renderAlertTray() {
   const body = $('alert-tray-body'); if (!body) return;
   const shown = visibleAlerts();
-  const hidden = _lastAlerts.length - shown.length;
-  // Say when alerts are only hidden rather than gone, with the way back. An
-  // "all clear" that is really "all dismissed" is a lie the tray would tell
-  // every time you opened it.
-  const footer = hidden > 0
-    ? `<div style="margin-top:6px;font-size:10.5px;color:var(--ink3);display:flex;align-items:center;gap:8px">
-         <span style="flex:1">${hidden} cleared</span>
-         <button class="btn btn-xs" onclick="restoreAlerts()" style="font-size:10px">Show cleared</button>
-       </div>`
-    : '';
+  // Cleared means gone. No count of hidden items and no way back - if you have
+  // decided you are done with an alert, being reminded that you dismissed it is
+  // just the same alert wearing a smaller font.
+  //
+  // It is still not permanent in the way deleting a row would be, and that is
+  // deliberate: the dismissal is keyed on the ids the alert covers, so clearing
+  // "2 orders overdue - A, B" stays cleared for exactly those two. A third
+  // client going overdue is a different key and comes back. You can silence
+  // what you have seen; you cannot silence what has not happened yet.
   if (!shown.length) {
-    body.innerHTML = '<div style="color:var(--grn);font-size:12px">✓ All clear - no active alerts.</div>' + footer;
+    body.innerHTML = '<div style="color:var(--grn);font-size:12px">✓ All clear - no active alerts.</div>';
     return;
   }
   body.innerHTML = shown.map(a=>`<div style="margin-bottom:8px;padding:8px 10px;background:${a.type==='error'?'rgba(255,69,96,.08)':'rgba(245,166,35,.07)'};border:1px solid ${a.type==='error'?'rgba(255,69,96,.25)':'rgba(245,166,35,.25)'};border-radius:var(--r);font-size:11px;display:flex;align-items:center;gap:8px"><span style="color:${a.type==='error'?'var(--red)':'var(--amb)'}">⚠</span><span style="flex:1">${esc(a.msg)}</span><button class="btn btn-xs" onclick="nav('${a.panel}',document.querySelector('[data-panel=\\'${a.panel}\\']'));toggleAlertTray()" style="font-size:10px" title="Go to it">→</button><button class="btn btn-xs" onclick="dismissAlert('${esc(a.key)}')" style="font-size:10px" title="Clear this alert">✕</button></div>`).join('')
-    + `<div style="margin-top:4px;display:flex;align-items:center;gap:8px">
+    + `<div style="margin-top:4px">
          <button class="btn btn-xs" onclick="clearAllAlerts()" style="font-size:10px">Clear all</button>
-         ${hidden > 0 ? `<span style="font-size:10.5px;color:var(--ink3);flex:1">${hidden} cleared</span><button class="btn btn-xs" onclick="restoreAlerts()" style="font-size:10px">Show cleared</button>` : ''}
        </div>`;
 }
 
