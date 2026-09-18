@@ -2816,6 +2816,16 @@ td strong{font-weight:500}
       <input type="checkbox" id="ts-jarvis-enabled" style="width:auto;margin:0">
       <label for="ts-jarvis-enabled" style="font-size:12px;color:var(--ink2);cursor:pointer;margin:0">Alerts on</label>
     </div>
+    <div class="frow" style="margin-top:10px"><label class="flabel">Timezone</label>
+      <select class="fi" id="ts-jarvis-tz">
+        <option value="Australia/Sydney">Sydney / Melbourne / Canberra / Hobart (AEST, daylight saving)</option>
+        <option value="Australia/Brisbane">Brisbane / QLD (AEST, no daylight saving)</option>
+        <option value="Australia/Adelaide">Adelaide (ACST, daylight saving)</option>
+        <option value="Australia/Darwin">Darwin / NT (ACST, no daylight saving)</option>
+        <option value="Australia/Perth">Perth / WA (AWST)</option>
+      </select>
+    </div>
+    <p style="font-size:10.5px;color:var(--ink3);margin:4px 0 0;line-height:1.6">Quiet hours are read in this zone, and daylight saving is handled for you - the times below do not shift when the clocks do.</p>
     <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
       <div class="frow" style="flex:1;min-width:110px"><label class="flabel">Quiet from</label><input class="fi" id="ts-jarvis-quiet-start" type="time"></div>
       <div class="frow" style="flex:1;min-width:110px"><label class="flabel">Quiet until</label><input class="fi" id="ts-jarvis-quiet-end" type="time"></div>
@@ -9644,6 +9654,12 @@ async function openTwilioSettings() {
   setVal('ts-webhook-url', s.twilio_webhook_url || '');
   setVal('ts-jarvis-number', s.jarvis_notify_number || '');
   // Times come back as HH:MM:SS; <input type="time"> wants HH:MM.
+  const tz = s.jarvis_timezone || 'Australia/Sydney';
+  const tzSel = $('ts-jarvis-tz');
+  if (!Array.prototype.some.call(tzSel.options, function (o) { return o.value === tz; })) {
+    tzSel.add(new Option(tz, tz));
+  }
+  tzSel.value = tz;
   setVal('ts-jarvis-quiet-start', String(s.jarvis_quiet_start || '20:00').slice(0, 5));
   setVal('ts-jarvis-quiet-end', String(s.jarvis_quiet_end || '07:30').slice(0, 5));
   setVal('ts-jarvis-cap', s.jarvis_daily_sms_cap == null ? 10 : s.jarvis_daily_sms_cap);
@@ -9676,6 +9692,7 @@ async function saveTwilioSettings() {
       twilio_webhook_url: webhookUrl,
       jarvis_notify_number: jarvisNum,
       jarvis_notify_enabled: jarvisOn,
+      jarvis_timezone: $('ts-jarvis-tz').value || 'Australia/Sydney',
       jarvis_quiet_start: $('ts-jarvis-quiet-start').value || '20:00',
       jarvis_quiet_end: $('ts-jarvis-quiet-end').value || '07:30',
       jarvis_daily_sms_cap: cap,
