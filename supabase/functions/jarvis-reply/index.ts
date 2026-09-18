@@ -17,6 +17,58 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
+// The no-tools answer: everything he already knows, put into a sentence.
+//
+// This is the fallback when the tool-holding function will not take the call,
+// and it is genuinely useful on its own - most replies to an alert are "which
+// one", "how long", "what else is open", all answerable from the context that
+// came with the alert. What it cannot do is change anything, and it says so
+// rather than pretending.
+async function answerFromContext(
+  question: string,
+  context: Record<string, unknown>,
+  history: Array<{ role: string; content: string }>,
+): Promise<string> {
+  const key = Deno.env.get('ANTHROPIC_API_KEY')
+  if (!key) return ''
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-5',
+        max_tokens: 300,
+        system:
+          'You are Jarvis, answering the business owner by SMS. Under 300 characters, ' +
+          'plain text, no markdown, no greeting. Answer only from the context given. ' +
+          'You currently cannot change anything - if asked to act, say so in one short ' +
+          'sentence and tell them to use the panel. Never invent a number or a name.',
+        messages: [
+          ...history.slice(-4),
+          { role: 'user', content: `Context: ${JSON.stringify(context)}\n\nThey said: ${question}` },
+        ],
+      }),
+    })
+    if (!res.ok) {
+      console.warn('anthropic fallback failed:', res.status, (await res.text()).slice(0, 200))
+      return ''
+    }
+    const j = await res.json()
+    return (j?.content ?? [])
+      .filter((b: { type: string }) => b.type === 'text')
+      .map((b: { text: string }) => b.text)
+      .join('')
+      .trim()
+  } catch (err) {
+    console.warn('answerFromContext error:', err instanceof Error ? err.message : err)
+    return ''
+  }
+}
+
 Deno.serve(async (req: Request) => {
   // Same capability test as jarvis-notify: prove the caller holds a key that
   // can read a table only service_role can read, rather than comparing against
@@ -97,6 +149,21 @@ Deno.serve(async (req: Request) => {
       `If asked to do something, do it with your tools and confirm briefly what you did. ` +
       `If the request is unclear or would affect a client, ask one short question first.`
 
+    // Two ways to answer, and the difference is whether he can ACT.
+    //
+    // jarvis-chat holds the tools, but it requires a real signed-in user and a
+    // text has none. Until that is resolved it declines this call, so there is
+    // a second path: answer from the context already gathered above, with no
+    // tools at all. That covers "what is open", "which client", "how many" -
+    // everything except changing something.
+    //
+    // Deliberately not worked around here. Getting the tools onto SMS means
+    // giving jarvis-chat a way to trust a caller with no user behind it, and
+    // that is a decision to make on purpose rather than to slip in as the
+    // side effect of wiring up a phone number.
+    let answer = ''
+    let acted = false
+
     const chatRes = await fetch(`${url}/functions/v1/jarvis-chat`, {
       method: 'POST',
       headers: {
@@ -104,19 +171,19 @@ Deno.serve(async (req: Request) => {
         Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!}`,
       },
       body: JSON.stringify({
-        via: 'sms',
         messages: [{ role: 'user', content: preamble }, ...history],
-        // Internal changes only. He can move a stage or tick a task from a
-        // text; anything that reaches a client is not something to authorise
-        // on the strength of a phone number, which is all an SMS proves.
         allow_writes: true,
       }),
     })
-    const chatRaw = await chatRes.text()
-    let answer = ''
-    // jarvis-chat answers { reply, tools, messages }.
-    try { answer = String(JSON.parse(chatRaw)?.reply ?? '') } catch { /* handled below */ }
-    if (!answer) answer = chatRes.ok ? 'I could not put that into words. Try the panel.' : 'I could not reach my tools just now.'
+    if (chatRes.ok) {
+      const chatRaw = await chatRes.text()
+      // jarvis-chat answers { reply, tools, messages }.
+      try { answer = String(JSON.parse(chatRaw)?.reply ?? '') } catch { /* falls through */ }
+      if (answer) acted = true
+    }
+
+    if (!answer) answer = await answerFromContext(question, context, history)
+    if (!answer) answer = 'I could not put that into words. Try the panel.'
 
     const reply = answer.slice(0, 300)
 
@@ -146,7 +213,7 @@ Deno.serve(async (req: Request) => {
       error: sendRes.ok ? null : sendRaw.slice(0, 400),
     })
 
-    return json({ ok: sendRes.ok, replied: reply.length, twilio_sid: sid })
+    return json({ ok: sendRes.ok, replied: reply.length, twilio_sid: sid, with_tools: acted })
   } catch (err) {
     console.error('jarvis-reply error:', err)
     return json({ error: err instanceof Error ? err.message : 'Internal server error' }, 500)

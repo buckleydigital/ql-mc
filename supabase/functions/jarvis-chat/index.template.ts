@@ -88,48 +88,25 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
-    const bearer = authHeader.replace('Bearer ', '').trim()
-    const body = await req.json().catch(() => ({}))
-    const body_isBridgeRequest = body?.via === 'sms'
-
-    // The SMS bridge has no user to present: a text message arrives from
-    // Twilio, not from a logged-in browser. It calls with the service key
-    // instead, proven the same way jarvis-notify proves it - by reading a table
-    // that only a service-role key can read - rather than by comparing against
-    // an env var, which broke once already when the runtime's copy of the key
-    // turned out not to be the same string as the dashboard's.
-    //
-    // A bridge caller is the owner by construction: the only way to reach it is
-    // a text to Jarvis's own Twilio number, and twilio-inbound-sms checks the
-    // sender against jarvis_notify_number before forwarding anything here.
-    let isBridge = false
-    if (body_isBridgeRequest) {
-      const caller = createClient(Deno.env.get('SUPABASE_URL')!, bearer)
-      const { error: capErr } = await caller.from('jarvis_messages').select('id').limit(1)
-      if (capErr) return json({ error: 'Unauthorized' }, 401)
-      isBridge = true
-    }
-
-    let user: { app_metadata?: Record<string, unknown> } | null = null
-    if (!isBridge) {
-      const { data: { user: u }, error: authErr } = await admin.auth.getUser(bearer)
-      if (authErr || !u) return json({ error: 'Unauthorized' }, 401)
-      user = u
-    }
+    const { data: { user }, error: authErr } = await admin.auth.getUser(
+      authHeader.replace('Bearer ', ''),
+    )
+    if (authErr || !user) return json({ error: 'Unauthorized' }, 401)
 
     // Reps are scoped to their own leads in this app; JARVIS answers across the
     // whole business — revenue, margin, ad spend, every client, every rep's
     // numbers. account_type lives in app_metadata, which only the service role
     // can write, so it cannot be forged by the caller. This is the real
     // restriction: hiding the button in the UI is a convenience, not a control.
-    const accountType = (user?.app_metadata as Record<string, unknown> | undefined)?.account_type
-    if (!isBridge && (accountType === 'sales_rep' || accountType === 'lead_buyer')) {
+    const accountType = (user.app_metadata as Record<string, unknown> | undefined)?.account_type
+    if (accountType === 'sales_rep' || accountType === 'lead_buyer') {
       return json({ error: 'Not available for this account.' }, 403)
     }
 
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) return json({ error: 'ANTHROPIC_API_KEY is not set' }, 500)
 
+    const body = await req.json().catch(() => ({}))
     const messages = Array.isArray(body.messages) ? body.messages : []
     const text = String(body.text ?? '').trim()
     if (text) messages.push({ role: 'user', content: text })
