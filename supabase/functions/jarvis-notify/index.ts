@@ -340,6 +340,21 @@ Deno.serve(async (req: Request) => {
         .select('id', { count: 'exact', head: true })
         .eq('channel', 'call').eq('status', 'sent').gte('created_at', since)
 
+      // He must never ring a client. That is true by construction today - `to`
+      // is read from jarvis_notify_number and nothing else writes it, and no
+      // tool he has can dial at all - but "true by construction" quietly stops
+      // being true the first time someone refactors this block.
+      //
+      // So it is asserted rather than assumed: the number about to be dialled
+      // is compared against the configured owner number immediately before the
+      // call goes out. A mismatch means something upstream is wrong, and the
+      // right response to that is no call at all.
+      const ownerCheck = normalisePhone(s.jarvis_notify_number || '')
+      if (!ownerCheck || to !== ownerCheck) {
+        console.error('refusing to dial: destination is not the configured owner number')
+        return json({ ok: true, scanned: pendingCount, sent: true, called: false, reason: 'dial_guard' })
+      }
+
       if (callCap > 0 && (callsToday ?? 0) < callCap) {
         const voice = String(s.jarvis_call_voice || 'Polly.Brian-Neural')
         const line = speakable(shown.map(describe), extra)
@@ -348,19 +363,41 @@ Deno.serve(async (req: Request) => {
         // Jarvis's own voice when ElevenLabs can render it, Twilio's Polly when
         // it cannot. Said twice with a pause between either way, because the
         // first seconds of an answered call are spent saying "hello".
-        const clip = await renderVoiceLine(db, `${line} Details are in your messages.`)
-        const twiml = clip
-          ? `<Response><Pause length="1"/>` +
-            `<Play>${xmlEscape(clip)}</Play>` +
-            `<Pause length="1"/>` +
-            `<Play>${xmlEscape(clip)}</Play>` +
-            `</Response>`
-          : `<Response><Pause length="1"/>` +
-            `<Say voice="${xmlEscape(voice)}" language="en-GB">${spoken}</Say>` +
-            `<Pause length="1"/>` +
-            `<Say voice="${xmlEscape(voice)}" language="en-GB">${spoken}</Say>` +
-            `<Say voice="${xmlEscape(voice)}" language="en-GB">Details are in your messages. Goodbye.</Say>` +
-            `</Response>`
+        const clip = await renderVoiceLine(db, line)
+
+        // Then it listens, rather than hanging up on you.
+        //
+        // <Gather input="speech"> is the whole trick: Twilio does the speech
+        // recognition itself and posts the transcript to jarvis-voice-reply, so
+        // there is no media stream, no websocket and no realtime audio to run.
+        // speechTimeout="auto" ends the turn when you stop talking instead of
+        // after a fixed count, which is the difference between a conversation
+        // and a countdown.
+        //
+        // The whole message is said once inside the Gather, so talking over it
+        // is allowed - barge-in is what makes it feel like a person rather than
+        // an answering machine. If nothing is said, the Gather falls through to
+        // the goodbye after it.
+        const askLine = 'Anything you would like me to do?'
+        const gatherBody = clip
+          ? `<Play>${xmlEscape(clip)}</Play>` +
+            `<Say voice="${xmlEscape(voice)}" language="en-GB">${xmlEscape(askLine)}</Say>`
+          : `<Say voice="${xmlEscape(voice)}" language="en-GB">${spoken}</Say>` +
+            `<Say voice="${xmlEscape(voice)}" language="en-GB">${xmlEscape(askLine)}</Say>`
+
+        const replyUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/jarvis-voice-reply`
+        const twiml =
+          `<Response><Pause length="1"/>` +
+          `<Gather input="speech" language="en-AU" speechTimeout="auto" ` +
+          `action="${xmlEscape(replyUrl)}" method="POST">` +
+          gatherBody +
+          `</Gather>` +
+          // Reached only when nothing was said: repeat once, then let them go.
+          (clip
+            ? `<Play>${xmlEscape(clip)}</Play>`
+            : `<Say voice="${xmlEscape(voice)}" language="en-GB">${spoken}</Say>`) +
+          `<Say voice="${xmlEscape(voice)}" language="en-GB">Details are in your messages. Goodbye.</Say>` +
+          `</Response>`
 
         const callRes = await fetch(
           `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`,
