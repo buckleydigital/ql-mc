@@ -2838,7 +2838,7 @@ td strong{font-weight:500}
     </div>
     <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
       <div class="frow" style="flex:1;min-width:110px"><label class="flabel">Max calls / day</label><input class="fi" id="js-call-cap" type="number" min="0" max="20" step="1"></div>
-      <div class="frow" style="flex:2;min-width:150px"><label class="flabel">Voice</label>
+      <div class="frow" style="flex:2;min-width:150px"><label class="flabel">Fallback voice</label>
         <select class="fi" id="js-call-voice">
           <option value="Polly.Brian-Neural">Brian - British male</option>
           <option value="Polly.Arthur-Neural">Arthur - British male</option>
@@ -2849,6 +2849,7 @@ td strong{font-weight:500}
       </div>
     </div>
     <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">Urgent items only, and never instead of the text - the message is the record, the call is the interrupt. Quiet hours apply. Needs a Twilio number with the <strong style="color:var(--ink2)">Voice</strong> capability, not SMS only. He speaks and hangs up; you cannot talk back yet.</p>
+    <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">Calls use Jarvis's own ElevenLabs voice. The dropdown above is only what he falls back to if ElevenLabs is unreachable or out of credits - a plain voice still gets the message to you, which beats a call that never happens.</p>
 
     <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">What he is watching</div>
     <div id="js-watch" style="font-size:11.5px;color:var(--ink3);line-height:1.9">Loading…</div>

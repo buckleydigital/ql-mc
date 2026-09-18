@@ -171,6 +171,9 @@ Deno.serve(async (req: Request) => {
         Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!}`,
       },
       body: JSON.stringify({
+        // Marks this as the SMS bridge. jarvis-chat then proves the bearer is
+        // service-role by using it, rather than taking this flag on trust.
+        via: 'sms',
         messages: [{ role: 'user', content: preamble }, ...history],
         allow_writes: true,
       }),
