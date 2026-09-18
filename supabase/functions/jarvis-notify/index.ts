@@ -84,6 +84,75 @@ function xmlEscape(v: string): string {
   ))
 }
 
+// Render the line in Jarvis's actual voice and hand back a URL Twilio can pull.
+//
+// Returns null on any failure, and the caller falls back to Twilio's own Polly
+// voice. That is the whole point of the design: the call still happens if
+// ElevenLabs is down, out of credits, or has stopped recognising the voice id.
+// An alert that does not arrive because the nice voice was unavailable would be
+// a worse outcome than an alert in a plain one.
+//
+// The clip is uploaded to a PRIVATE bucket and handed over as a signed URL that
+// expires in ten minutes. It names clients and says what is wrong with them, so
+// it does not belong on a public URL just because the filename is a uuid.
+async function renderVoiceLine(
+  // deno-lint-ignore no-explicit-any
+  db: any,
+  text: string,
+): Promise<string | null> {
+  const key = Deno.env.get('ELEVENLABS_API_KEY')
+  if (!key) return null
+  const voice = Deno.env.get('ELEVENLABS_VOICE_ID') ?? Deno.env.get('JARVIS_VOICE_ID') ?? 'Y6FMJQzB8Hprka91pf7R'
+  try {
+    // mp3 at 22kHz: a phone line is 8kHz anyway, so anything higher is bytes
+    // spent on detail the call will throw away.
+    const res = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_22050_32`,
+      {
+        method: 'POST',
+        headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          model_id: 'eleven_turbo_v2_5',
+          voice_settings: { stability: 0.5, similarity_boost: 0.75, use_speaker_boost: true },
+        }),
+      },
+    )
+    if (!res.ok) {
+      console.warn('elevenlabs render failed:', res.status, (await res.text()).slice(0, 200))
+      return null
+    }
+    const bytes = new Uint8Array(await res.arrayBuffer())
+    const path = `call-${crypto.randomUUID()}.mp3`
+    const { error: upErr } = await db.storage.from('jarvis-audio')
+      .upload(path, bytes, { contentType: 'audio/mpeg', upsert: false })
+    if (upErr) { console.warn('audio upload failed:', upErr.message); return null }
+
+    const { data: signed, error: signErr } = await db.storage.from('jarvis-audio')
+      .createSignedUrl(path, 600)
+    if (signErr || !signed?.signedUrl) { console.warn('sign failed:', signErr?.message); return null }
+    return signed.signedUrl as string
+  } catch (err) {
+    console.warn('renderVoiceLine error:', err instanceof Error ? err.message : err)
+    return null
+  }
+}
+
+// Old clips are rubbish the moment the call ends; Storage has no expiry of its
+// own, so they are swept on the way past rather than left to accumulate.
+// deno-lint-ignore no-explicit-any
+async function pruneVoiceClips(db: any) {
+  try {
+    const { data: files } = await db.storage.from('jarvis-audio').list('', { limit: 100 })
+    const cutoff = Date.now() - 3600_000
+    const stale = (files || [])
+      .filter((f: { name: string; created_at?: string }) =>
+        f.created_at ? new Date(f.created_at).getTime() < cutoff : false)
+      .map((f: { name: string }) => f.name)
+    if (stale.length) await db.storage.from('jarvis-audio').remove(stale)
+  } catch { /* housekeeping, never worth failing a run over */ }
+}
+
 // Wall-clock time where the person is, not where the server is. A cron running
 // in UTC must not get to decide that 4am Sydney is a reasonable hour.
 function localHHMM(tz: string, now = new Date()): string {
@@ -258,17 +327,25 @@ Deno.serve(async (req: Request) => {
 
       if (callCap > 0 && (callsToday ?? 0) < callCap) {
         const voice = String(s.jarvis_call_voice || 'Polly.Brian-Neural')
-        const spoken = xmlEscape(speakable(shown.map(describe), extra))
-        // Inline TwiML, so there is no public webhook to stand up and nothing
-        // for anyone to POST to. Said twice with a pause between, because the
+        const line = speakable(shown.map(describe), extra)
+        const spoken = xmlEscape(line)
+
+        // Jarvis's own voice when ElevenLabs can render it, Twilio's Polly when
+        // it cannot. Said twice with a pause between either way, because the
         // first seconds of an answered call are spent saying "hello".
-        const twiml =
-          `<Response><Pause length="1"/>` +
-          `<Say voice="${xmlEscape(voice)}" language="en-GB">${spoken}</Say>` +
-          `<Pause length="1"/>` +
-          `<Say voice="${xmlEscape(voice)}" language="en-GB">${spoken}</Say>` +
-          `<Say voice="${xmlEscape(voice)}" language="en-GB">Details are in your messages. Goodbye.</Say>` +
-          `</Response>`
+        const clip = await renderVoiceLine(db, `${line} Details are in your messages.`)
+        const twiml = clip
+          ? `<Response><Pause length="1"/>` +
+            `<Play>${xmlEscape(clip)}</Play>` +
+            `<Pause length="1"/>` +
+            `<Play>${xmlEscape(clip)}</Play>` +
+            `</Response>`
+          : `<Response><Pause length="1"/>` +
+            `<Say voice="${xmlEscape(voice)}" language="en-GB">${spoken}</Say>` +
+            `<Pause length="1"/>` +
+            `<Say voice="${xmlEscape(voice)}" language="en-GB">${spoken}</Say>` +
+            `<Say voice="${xmlEscape(voice)}" language="en-GB">Details are in your messages. Goodbye.</Say>` +
+            `</Response>`
 
         const callRes = await fetch(
           `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`,
@@ -285,8 +362,10 @@ Deno.serve(async (req: Request) => {
         try { callSid = JSON.parse(callRaw).sid || null } catch { /* keep raw */ }
         if (!callRes.ok) callError = callRaw.slice(0, 300)
 
+        await pruneVoiceClips(db)
         await db.from('jarvis_notifications').insert({
-          channel: 'call', to_number: to, tier, body: spoken,
+          channel: 'call', to_number: to, tier,
+          body: (clip ? '[elevenlabs] ' : '[polly] ') + line,
           event_ids: evs.map((e) => e.id),
           twilio_sid: callSid,
           status: callRes.ok ? 'sent' : 'failed',

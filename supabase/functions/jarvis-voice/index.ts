@@ -18,9 +18,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// George — the deep British voice jarvis uses by default. Override with the
-// ELEVENLABS_VOICE_ID secret to use one of your own.
-const DEFAULT_VOICE = 'JBFqnCBsd6RMkjVDRZzb'
+// George - the deep British voice Jarvis uses by default. Still overridable
+// with the ELEVENLABS_VOICE_ID secret, but set here so it works with nothing
+// but an API key: a default that needs a second secret to be right is a
+// default that is wrong.
+const DEFAULT_VOICE = 'Y6FMJQzB8Hprka91pf7R'
 
 // JARVIS_VOICE_ID is what the jarvis project's bridge calls it, so it is
 // accepted too rather than silently ignored on a machine set up for that.
