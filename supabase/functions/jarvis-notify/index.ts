@@ -125,7 +125,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: s } = await db
       .from('business_settings')
-      .select('jarvis_notify_number, jarvis_notify_enabled, jarvis_timezone, jarvis_quiet_start, jarvis_quiet_end, jarvis_daily_sms_cap, twilio_from_number')
+      .select('jarvis_notify_number, jarvis_notify_enabled, jarvis_timezone, jarvis_quiet_start, jarvis_quiet_end, jarvis_daily_sms_cap, twilio_from_number, jarvis_from_number')
       .limit(1).maybeSingle()
 
     // Refresh the facts first. Worth doing even when he cannot speak: the event
@@ -191,7 +191,9 @@ Deno.serve(async (req: Request) => {
 
     const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')!
     const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')!
-    const from = s.twilio_from_number || Deno.env.get('TWILIO_FROM_NUMBER') || ''
+    // His own number when he has one, so replies reach him rather than the
+    // client agents' webhook; the main number until then, which still sends.
+    const from = s.jarvis_from_number || s.twilio_from_number || Deno.env.get('TWILIO_FROM_NUMBER') || ''
     if (!from) return json({ error: 'no Twilio from-number configured' }, 500)
 
     const params = new URLSearchParams({ To: to, From: from, Body: bodyText })

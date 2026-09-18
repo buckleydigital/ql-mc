@@ -785,7 +785,7 @@ td strong{font-weight:500}
           <button class="navbtn" data-panel="crm" onclick="nav('crm',this)">
             <span class="ni"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span>Sales Pipeline<span id="crm-followup-badge" style="display:none;background:var(--amb);color:#1c1416;border-radius:10px;font-size:9px;padding:1px 6px;margin-left:5px;font-family:var(--mono);font-weight:700;line-height:1.5">0</span>
           </button>
-          <button class="navbtn" data-panel="ppl" onclick="nav('ppl',this)">
+          <button class="navbtn" data-panel="ppl" onclick="nav('managed',this)">
             <span class="ni"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></span>Clients
           </button>
           <button class="navbtn" data-panel="sales-conv" onclick="nav('sales-conv',this)">
@@ -1731,7 +1731,7 @@ td strong{font-weight:500}
     <button class="bnbtn" data-panel="crm" onclick="nav('crm',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span><span class="bnbtn-lbl">Sales</span></button>
     <button class="bnbtn" data-panel="invoices" onclick="nav('invoices',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M5 2v20l2.5-1.5L10 22l2-1.5L14 22l2.5-1.5L19 22V2l-2.5 1.5L14 2l-2 1.5L10 2 7.5 3.5 5 2z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span><span class="bnbtn-lbl">Invoices</span></button>
     <button class="bnbtn" data-panel="sales-conv" onclick="nav('sales-conv',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 01-11.7 7.7L3 21l1.9-6.1A8.5 8.5 0 1121 11.5z"/><path d="M8 10.5h8M8 13.5h5"/></svg></span><span class="bnbtn-lbl">Messages</span></button>
-    <button class="bnbtn" data-panel="ppl" onclick="nav('ppl',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></span><span class="bnbtn-lbl">Clients</span></button>
+    <button class="bnbtn" data-panel="ppl" onclick="nav('managed',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></span><span class="bnbtn-lbl">Clients</span></button>
     <button class="bnbtn" data-panel="finance" onclick="nav('finance',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></span><span class="bnbtn-lbl">Finance</span></button>
     <button class="bnbtn" data-panel="files" onclick="nav('files',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg></span><span class="bnbtn-lbl">Files</span></button>
     <button class="bnbtn" data-panel="salesreps" onclick="nav('salesreps',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0M16 4a3.5 3.5 0 010 7M18 20a6.5 6.5 0 00-3-5.5"/></svg></span><span class="bnbtn-lbl">Team</span></button>
@@ -2805,6 +2805,8 @@ td strong{font-weight:500}
 
     <div style="margin:16px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Alerts</div>
     <div class="frow"><label class="flabel">Text me on</label><input class="fi" id="js-number" placeholder="0412 345 678" type="tel"></div>
+    <div class="frow" style="margin-top:10px"><label class="flabel">Jarvis sends from</label><input class="fi" id="js-from" placeholder="Leave blank to use the main SMS number" type="tel"></div>
+    <p style="font-size:10.5px;color:var(--ink3);margin:4px 0 0;line-height:1.6">Give Jarvis his own Twilio number if you want to reply to him - Twilio allows one inbound webhook per number, and the main one is already pointed at the client agents. Point the new number's webhook at <code style="font-family:var(--mono);font-size:10px">twilio-inbound-sms</code> on this project. Blank means he sends from the main number and replies go nowhere.</p>
     <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
       <input type="checkbox" id="js-enabled" style="width:auto;margin:0">
       <label for="js-enabled" style="font-size:12px;color:var(--ink2);cursor:pointer;margin:0">Alerts on</label>
@@ -3359,9 +3361,12 @@ const PANEL_GROUPS = {
     {panel:'finance', label:'Financials'},
     {panel:'goals',   label:'Goal Board'}
   ]},
+  // Managed Ads first: it is what Clients opens on, and a strip whose first tab
+  // is not the one you landed on reads as a bug. The group key stays 'ppl'
+  // because the sidebar button's data-panel matches on it.
   ppl: {label:'Clients', members:[
-    {panel:'ppl',     label:'PPL Clients'},
-    {panel:'managed', label:'Managed Ads'}
+    {panel:'managed', label:'Managed Ads'},
+    {panel:'ppl',     label:'PPL Clients'}
   ]},
   'sales-conv': {label:'Messaging', members:[
     {panel:'sales-conv', label:'Conversations'},
@@ -9792,6 +9797,7 @@ const JARVIS_WATCH_LABELS = {
 async function openJarvisSettings() {
   const s = await loadBizSettings();
   setVal('js-number', s.jarvis_notify_number || '');
+  setVal('js-from', s.jarvis_from_number || '');
   $('js-enabled').checked = s.jarvis_notify_enabled === true;
   // A zone set by hand is added rather than silently falling back, so opening
   // and saving this form cannot quietly relocate someone.
@@ -9861,6 +9867,7 @@ async function saveJarvisSettings() {
 
     const patch = {
       jarvis_notify_number: raw || null,
+      jarvis_from_number: $('js-from').value.trim() || null,
       jarvis_notify_enabled: on,
       jarvis_timezone: $('js-tz').value || 'Australia/Sydney',
       jarvis_quiet_start: $('js-quiet-start').value || '20:00',
