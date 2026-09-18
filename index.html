@@ -216,17 +216,6 @@ body::after {
   border-bottom:1px solid var(--bd);
   flex-shrink:0;
 }
-.sb-logo-row{
-  display:flex;align-items:center;gap:9px;margin-bottom:14px;
-}
-.sb-brand{
-  font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:-.2px;
-  color:var(--ink);line-height:1.1;
-}
-.sb-brand-sub{
-  font-family:var(--mono);font-size:8.5px;color:var(--ink3);letter-spacing:.08em;text-transform:uppercase;
-}
-
 .sb-status{
   display:flex;align-items:center;gap:5px;
   background:rgba(79,143,255,.055);border:1px solid rgba(79,143,255,.12);
@@ -746,15 +735,10 @@ td strong{font-weight:500}
     <!-- SIDEBAR -->
     <div class="sidebar">
       <div class="sb-header">
-        <!-- No logo here: the topbar already carries it, a few pixels above.
-             Two of the same lockup stacked reads as a rendering mistake. The
-             wordmark stays, since the sidebar still needs a header. -->
-        <div class="sb-logo-row">
-          <div>
-            <div class="sb-brand">QuoteLeads</div>
-            <div class="sb-brand-sub">Mission Control</div>
-          </div>
-        </div>
+        <!-- No brand block here at all. The topbar carries the logo and the
+             words "Mission Control" a few pixels above, so repeating both is
+             the same lockup twice - which reads as a rendering fault rather
+             than as branding. The sidebar starts at the status line. -->
         <div class="sb-status">
           <div class="sb-status-dot"></div>
           All systems live
@@ -2556,6 +2540,10 @@ td strong{font-weight:500}
     <div class="frow"><label class="flabel">PayID</label><input class="fi" id="bs-payid" placeholder="e.g. payments@quoteleads.com.au"></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Invoice Defaults</div>
     <div class="frow"><label class="flabel">Default Notes / Footer</label><textarea class="fta" id="bs-notes" placeholder="Thank you for your business."></textarea></div>
+    <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Sales Email</div>
+    <div class="frow"><label class="flabel">Send from</label><input class="fi" id="bs-sales-from" placeholder="contact@quoteleads.com.au" type="email"></div>
+    <div class="frow" style="margin-top:8px"><label class="flabel">Replies go to</label><input class="fi" id="bs-sales-replyto" placeholder="Leave blank to use the sender's own address" type="email"></div>
+    <p style="font-size:10.5px;color:var(--ink3);margin:6px 0 0;line-height:1.6">The send-from address must be on a domain verified in Resend - anything else is rejected. Reps keep their own reply-to address, so a lead answering a rep still reaches that rep; this one applies to sends with no rep behind them, which includes Jarvis's follow-ups.</p>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Twilio / SMS</div>
     <div class="frow"><label class="flabel">From Number</label><input class="fi" id="bs-twilio-from" placeholder="+61400000000" type="tel"></div>
     <div class="macts">
@@ -8241,6 +8229,8 @@ async function openBizSettingsModal() {
   setVal('bs-accname', s.account_name || '');
   setVal('bs-payid', s.payid || '');
   setVal('bs-notes', s.default_notes || '');
+  setVal('bs-sales-from', s.sales_from_email || '');
+  setVal('bs-sales-replyto', s.sales_reply_to_email || '');
   setVal('bs-twilio-from', s.twilio_from_number || '');
   openModal('m-biz-settings');
 }
@@ -8255,6 +8245,8 @@ async function saveBizSettings() {
     payid: $('bs-payid').value.trim(),
     default_notes: $('bs-notes').value.trim(),
     twilio_from_number: $('bs-twilio-from').value.trim() || null,
+    sales_from_email: $('bs-sales-from').value.trim() || null,
+    sales_reply_to_email: $('bs-sales-replyto').value.trim() || null,
     updated_at: new Date().toISOString()
   };
   const existing = await db.from('business_settings').select('id').limit(1).single();

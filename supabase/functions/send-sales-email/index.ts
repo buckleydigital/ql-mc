@@ -54,11 +54,56 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authErr } = await admin.auth.getUser(token);
-    if (authErr || !user) return json({ error: "Unauthorized" }, 401);
-
+    const token = authHeader.replace("Bearer ", "").trim();
     const body = await req.json().catch(() => ({}));
+
+    // ── The Jarvis bridge ───────────────────────────────────────────────────
+    // A follow-up authorised by text has no signed-in user behind it: the
+    // request starts at Twilio, not in a browser. Rather than making Jarvis
+    // hold a password to log in as somebody, he presents the service key and
+    // proves it by reading jarvis_messages - a table revoked from anon and
+    // authenticated that forces RLS with no policies, so only a service-role
+    // key can read it.
+    //
+    // Narrow on purpose: it needs via:'jarvis' AND a key no browser has. What
+    // actually protects it is upstream - the only route here is a text to
+    // Jarvis's own number from the number in jarvis_notify_number.
+    //
+    // A bridge send is attributed to the account in jarvis_owner_email, so the
+    // reply-to and the log entry name a real person rather than "the system".
+    type Sender = {
+      id: string;
+      email?: string;
+      app_metadata?: Record<string, unknown>;
+      user_metadata?: Record<string, unknown>;
+    };
+    let sender: Sender | null = null;
+
+    if (body?.via === "jarvis") {
+      const caller = createClient(Deno.env.get("SUPABASE_URL")!, token);
+      const { error: capErr } = await caller.from("jarvis_messages").select("id").limit(1);
+      if (capErr) return json({ error: "Unauthorized" }, 401);
+
+      const { data: cfg } = await admin
+        .from("business_settings")
+        .select("jarvis_owner_email")
+        .limit(1).maybeSingle();
+      const ownerEmail = String(cfg?.jarvis_owner_email ?? "").trim();
+      if (!ownerEmail) return json({ error: "jarvis_owner_email is not set" }, 500);
+
+      const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      const owner = (list?.users ?? []).find(
+        (u: { email?: string }) => (u.email ?? "").toLowerCase() === ownerEmail.toLowerCase(),
+      );
+      if (!owner) return json({ error: "jarvis_owner_email does not match a user" }, 500);
+      sender = owner as Sender;
+    } else {
+      const { data: { user: u }, error: authErr } = await admin.auth.getUser(token);
+      if (authErr || !u) return json({ error: "Unauthorized" }, 401);
+      sender = u as Sender;
+    }
+    if (!sender) return json({ error: "Unauthorized" }, 401);
+    const user = sender;
     const leadId  = String(body.lead_id ?? "").trim();
     const kind    = String(body.kind ?? "").trim();
     const subject = String(body.subject ?? "").trim();
@@ -102,10 +147,27 @@ Deno.serve(async (req: Request) => {
       .select("name, email, reply_to_email")
       .eq("user_id", user.id)
       .maybeSingle();
-    const replyTo = String(rep?.reply_to_email || rep?.email || user.email || "").trim();
     const repName = String(rep?.name || (user.user_metadata as Record<string, unknown>)?.name || "").trim();
 
-    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL");
+    // The address sales email goes out from, set in Business Settings rather
+    // than in a secret - it is a business decision, not a deployment one, and
+    // nobody should need a redeploy to change who their email comes from.
+    // Falls back to the env var so nothing breaks before it is filled in.
+    const { data: bset } = await admin
+      .from("business_settings")
+      .select("sales_from_email, sales_reply_to_email")
+      .limit(1).maybeSingle();
+    const fromEmail = String(bset?.sales_from_email ?? "").trim() || Deno.env.get("RESEND_FROM_EMAIL");
+
+    // Reply-To, in order: the rep's own address, the configured default, then
+    // their login. The rep comes first deliberately - they should get the reply
+    // to an email they sent, and a global override would route every rep's
+    // answers away from them without anyone noticing. The configured default is
+    // therefore what applies to sends with no rep behind them, which is exactly
+    // Jarvis's follow-ups.
+    const replyTo = String(
+      rep?.reply_to_email || rep?.email || bset?.sales_reply_to_email || user.email || "",
+    ).trim();
     const apiKey    = Deno.env.get("RESEND_API_KEY");
     if (!fromEmail || !apiKey) return json({ error: "Email is not configured" }, 500);
 
