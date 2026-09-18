@@ -327,10 +327,11 @@ Deno.serve(async (req: Request) => {
     // can re-read, the call is the interrupt. Quiet hours already returned
     // above, so reaching here means it is a reasonable hour to ring.
     //
-    // Deliberately one-way. He says the thing and hangs up - no media stream,
-    // no speech recognition, no conversation. That is a different and much
-    // larger project, and for "a client wants to go ahead" it adds nothing:
-    // you are going to ring the client, not argue with Jarvis.
+    // Two-way, but only just: he says the thing, listens once, and hangs up.
+    // Twilio's own speech recognition does the listening (see the Gather
+    // below), so there is still no media stream and no realtime audio here.
+    // One turn is the right amount - the point is to say "chase Sandford and
+    // Everlite" and get on with your day, not to hold a conversation.
     let callSid: string | null = null
     let callError: string | null = null
     if (res.ok && tier === 'urgent' && s.jarvis_call_enabled === true) {
