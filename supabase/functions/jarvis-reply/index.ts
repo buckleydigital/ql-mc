@@ -175,8 +175,11 @@ Deno.serve(async (req: Request) => {
       `3. If they say "all" or "everyone", do NOT send yet - reply with how many ` +
       `that is and ask them to confirm. Send only after they confirm.\n` +
       `4. If a name matches nothing or matches more than one, ask which, and send nothing.\n` +
-      `5. After sending, confirm briefly who you contacted, by name.\n` +
-      `6. Anything that is not a follow-up they asked for: answer it, do not act on it.`
+      `5. Use the saved follow-up template: call send_lead_email with kind:"followup". ` +
+      `NEVER kind:"info" - that is the first-contact email and these leads have had it. ` +
+      `Do not write your own wording unless they dictate the words themselves.\n` +
+      `6. After sending, confirm briefly who you contacted, by name.\n` +
+      `7. Anything that is not a follow-up they asked for: answer it, do not act on it.`
 
     // Two ways to answer, and the difference is whether he can ACT.
     //
