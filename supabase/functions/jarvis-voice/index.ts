@@ -45,9 +45,26 @@ Deno.serve(async (req: Request) => {
   try {
     const { text, probe } = await req.json().catch(() => ({}))
     if (probe) {
-      return new Response(JSON.stringify({ available: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      // Report which voice is actually in use and what this key can reach.
+      // The env var wins over the code default, so "I set the default" and
+      // "the default is what plays" are different claims - this is how you
+      // tell them apart without guessing.
+      let voices: Array<{ name: string; voice_id: string }> = []
+      try {
+        const list = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': key } })
+        if (list.ok) {
+          const j = await list.json()
+          voices = (j.voices ?? []).map((v: { name: string; voice_id: string }) => ({
+            name: v.name, voice_id: v.voice_id,
+          }))
+        }
+      } catch { /* diagnostics are best effort */ }
+      return new Response(JSON.stringify({
+        available: true,
+        voice_in_use: voiceId(),
+        from_env: !!(Deno.env.get('ELEVENLABS_VOICE_ID') ?? Deno.env.get('JARVIS_VOICE_ID')),
+        usable_voices: voices,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     // A spoken line is a sentence or two. Anything longer is not speech, and

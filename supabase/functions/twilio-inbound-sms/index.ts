@@ -68,6 +68,55 @@ Deno.serve(async (req: Request) => {
 
     const normFrom = normalisePhone(from);
 
+    // ── Jarvis, before anything else ────────────────────────────────────────
+    // Routed on WHICH NUMBER WAS TEXTED, not on who sent it. A message to
+    // Jarvis's own number is his, full stop - no dependence on the owner's
+    // mobile not also being a lead somewhere, and nothing a spoofed sender can
+    // redirect.
+    //
+    // First, deliberately: this must run before the STOP/START keyword block,
+    // or replying "stop" to Jarvis would opt a lead out of sales SMS.
+    const { data: bset } = await db
+      .from("business_settings")
+      .select("jarvis_from_number, jarvis_notify_number")
+      .limit(1).maybeSingle();
+
+    const jarvisNumber = normalisePhone(bset?.jarvis_from_number ?? "");
+    if (jarvisNumber && normalisePhone(to) === jarvisNumber) {
+      const ownerNumber = normalisePhone(bset?.jarvis_notify_number ?? "");
+      // Anyone else texting this number gets nothing. It is not published, so
+      // traffic from a stranger is a wrong number or a scanner, and answering
+      // either would hand out the state of the business.
+      if (!ownerNumber || normFrom !== ownerNumber) {
+        console.warn(`Ignored SMS to Jarvis from non-owner ${from}`);
+        return twimlResponse();
+      }
+
+      // Answering happens in jarvis-reply, called WITHOUT awaiting: Twilio
+      // gives a webhook about fifteen seconds and the Claude tool loop can run
+      // past that. Twilio gets its 200 now and the answer arrives as a fresh
+      // SMS a moment later.
+      const replyCall = fetch(
+        `${Deno.env.get("SUPABASE_URL")}/functions/v1/jarvis-reply`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: JSON.stringify({ from: normFrom, body, message_sid: messageSid }),
+        },
+      ).catch((e) => console.error("jarvis-reply dispatch failed:", e));
+
+      // Keeps the worker alive past the response so the call is not killed
+      // mid-flight. Not available on every runtime, hence the guard.
+      const rt = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime;
+      if (rt?.waitUntil) rt.waitUntil(replyCall);
+      else await replyCall;
+
+      return twimlResponse();
+    }
+
     // Build a deduplicated list of candidate phone formats to check.
     // Twilio sends E.164 (+61412345678) and that's what submit-lead stores,
     // so normFrom === from in the happy path. The .in() approach avoids
