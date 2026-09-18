@@ -118,12 +118,23 @@ Deno.serve(async (req: Request) => {
       .is('resolved_at', null)
       .order('first_seen_at', { ascending: true }).limit(10)
 
+    // lead_id travels with each item on purpose. "Follow up with Sandford" has
+    // to resolve to exactly one lead, and making him search by name invites the
+    // one mistake that matters here - emailing the wrong company.
     const context = {
       last_alert: lastNote?.body ?? null,
       last_alert_at: lastNote?.created_at ?? null,
-      open_items: (openEvents || []).map((e: Record<string, unknown>) => ({
-        kind: e.kind, subject: e.subject, tier: e.tier,
-      })),
+      open_items: (openEvents || []).map((e: Record<string, unknown>) => {
+        const p = (e.payload ?? {}) as Record<string, unknown>
+        return {
+          kind: e.kind,
+          subject: e.subject,
+          tier: e.tier,
+          ...(p.lead_id ? { lead_id: p.lead_id } : {}),
+          ...(p.client_id ? { client_id: p.client_id } : {}),
+          ...(p.days ? { days: p.days } : {}),
+        }
+      }),
     }
 
     await db.from('jarvis_messages').insert({
@@ -143,11 +154,29 @@ Deno.serve(async (req: Request) => {
       content: m.body,
     }))
 
+    // The rules that make "chase Sandford" safe to act on.
+    //
+    // The hard one is the third: act on exactly who was named and nobody else.
+    // The open items are right there in the context, so the tempting failure is
+    // helpfulness - being asked to chase two and chasing the other eleven
+    // because they were also overdue. That is the one mistake that cannot be
+    // taken back, since it reaches real clients.
+    //
+    // "All" is the exception and gets a confirmation, because the difference
+    // between two emails and thirteen is worth one extra text.
     const preamble =
-      `You are answering by SMS, so keep it under 300 characters, plain text, no markdown. ` +
-      `Context you alerted about: ${JSON.stringify(context)}. ` +
-      `If asked to do something, do it with your tools and confirm briefly what you did. ` +
-      `If the request is unclear or would affect a client, ask one short question first.`
+      `You are answering by SMS, so keep it under 300 characters, plain text, no markdown.\n` +
+      `Open items you raised, with their ids: ${JSON.stringify(context)}\n` +
+      `Rules:\n` +
+      `1. Match what they name against the subjects above and use that item's lead_id. ` +
+      `Partial names are fine ("Sandford" means "Sandford Electrical").\n` +
+      `2. Act on EXACTLY the ones they name. Never include an item they did not ` +
+      `name, however overdue it is.\n` +
+      `3. If they say "all" or "everyone", do NOT send yet - reply with how many ` +
+      `that is and ask them to confirm. Send only after they confirm.\n` +
+      `4. If a name matches nothing or matches more than one, ask which, and send nothing.\n` +
+      `5. After sending, confirm briefly who you contacted, by name.\n` +
+      `6. Anything that is not a follow-up they asked for: answer it, do not act on it.`
 
     // Two ways to answer, and the difference is whether he can ACT.
     //
