@@ -10159,7 +10159,12 @@ async function addPcalEntry() {
 const JV = (() => {
   let history = [], busy = false, rec = null, micOn = false;
   let voice = localStorage.getItem('ql_jarvis_voice') !== '0';
-  let writes = localStorage.getItem('ql_jarvis_writes') === '1';
+  // On by default. It was opt-in while the tools were unproven; the point of
+  // the assistant is telling him to do things, and a switch you have to find
+  // and flip every session is a switch that makes the feature look broken.
+  // Still per-browser and still off-able, and the irreversible tools confirm
+  // before they act.
+  let writes = localStorage.getItem('ql_jarvis_writes') !== '0';
 
   const $$ = id => document.getElementById(id);
   const body = () => $$('jv-body');
@@ -10398,9 +10403,9 @@ const JV = (() => {
       if (!voice) hush();
     },
     toggleWrites() {
-      // Off by default and per-browser. With it off the edge function is not
-      // even told the sending tools exist, so a misheard sentence cannot email
-      // a customer.
+      // Per-browser, and on by default. With it OFF the edge function is not
+      // even told the sending tools exist, so the switch is a real lock rather
+      // than a prompt asking him nicely.
       writes = !writes;
       localStorage.setItem('ql_jarvis_writes', writes ? '1' : '0');
       paintWrites();
