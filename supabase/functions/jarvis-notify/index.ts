@@ -90,14 +90,32 @@ function inQuietHours(nowHHMM: string, start: string, end: string): boolean {
 }
 
 Deno.serve(async (req: Request) => {
-  // No public surface. The only callers are pg_cron (via pg_net, with the
-  // service key) and a human testing it with the same key. Checked here rather
-  // than relying on verify_jwt, because a cron has no user JWT to present.
+  // No public surface. The only callers are pg_cron (via pg_net) and a human
+  // testing with the same key. Checked here rather than by verify_jwt, because
+  // a cron has no user JWT to present.
+  //
+  // The check is a capability test, not a string compare. Comparing the bearer
+  // to SUPABASE_SERVICE_ROLE_KEY looked equivalent and was not: the value the
+  // edge runtime injects is not always the same string as the service_role key
+  // in the dashboard, so the first live cron returned 401 - and would have gone
+  // on doing that silently every 15 minutes, which is the worst possible
+  // failure for something whose whole job is telling you when things are wrong.
+  //
+  // Instead the presented key is used to read jarvis_events, which is revoked
+  // from anon and authenticated and forces RLS with no policies. Only a
+  // service-role key can read it, so a successful read IS the proof of
+  // authority, and it cannot drift out of sync with a rotated or reformatted
+  // key the way a hardcoded comparison does.
   const auth = (req.headers.get('Authorization') || '').replace('Bearer ', '').trim()
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  if (!auth || auth !== serviceKey) return json({ error: 'unauthorized' }, 401)
+  if (!auth) return json({ error: 'unauthorized' }, 401)
 
-  const db = createClient(Deno.env.get('SUPABASE_URL')!, serviceKey)
+  const url = Deno.env.get('SUPABASE_URL')!
+  const caller = createClient(url, auth)
+  const { error: authErr } = await caller.from('jarvis_events').select('id').limit(1)
+  if (authErr) return json({ error: 'unauthorized' }, 401)
+
+  // Past the gate, use the runtime's own key for the work itself.
+  const db = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
   try {
     const body = await req.json().catch(() => ({}))

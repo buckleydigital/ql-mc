@@ -738,6 +738,7 @@ td strong{font-weight:500}
         <div class="jv-title">JARVIS</div>
         <div class="jv-status" id="jv-status">Not connected</div>
       </div>
+      <button class="jv-mic admin-only-field" id="jv-settings" onclick="openJarvisSettings()" title="Jarvis settings">⚙</button>
       <button class="jv-mic" id="jv-writes" onclick="JV.toggleWrites()" title="Read-only">🔒</button>
       <button class="jv-mic" id="jv-speak" onclick="JV.toggleVoice()" title="Speak replies aloud">🔊</button>
       <button class="btn btn-xs" onclick="JV.close()">✕</button>
@@ -2793,6 +2794,51 @@ td strong{font-weight:500}
   </div>
 </div>
 
+<!-- Jarvis Settings modal -->
+<!-- Jarvis gets his own settings rather than living inside Twilio's. SMS is
+     only the channel he currently uses to reach you; what he watches and when
+     he is allowed to interrupt belongs to him, not to the phone network. -->
+<div class="overlay" id="m-jarvis-settings">
+  <div class="modal" style="max-width:520px">
+    <h2>◈ Jarvis</h2>
+    <div class="msub">What he watches, and when he is allowed to interrupt you</div>
+
+    <div style="margin:16px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Alerts</div>
+    <div class="frow"><label class="flabel">Text me on</label><input class="fi" id="js-number" placeholder="0412 345 678" type="tel"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+      <input type="checkbox" id="js-enabled" style="width:auto;margin:0">
+      <label for="js-enabled" style="font-size:12px;color:var(--ink2);cursor:pointer;margin:0">Alerts on</label>
+      <span id="js-state" style="margin-left:auto;font-size:10.5px;color:var(--ink3)"></span>
+    </div>
+    <p style="font-size:11px;color:var(--ink3);margin:8px 0 0;line-height:1.6">He only ever texts this number. Clients are never messaged from here.</p>
+
+    <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">When he may interrupt</div>
+    <div class="frow"><label class="flabel">Timezone</label>
+      <select class="fi" id="js-tz">
+        <option value="Australia/Sydney">Sydney / Melbourne / Canberra / Hobart (AEST, daylight saving)</option>
+        <option value="Australia/Brisbane">Brisbane / QLD (AEST, no daylight saving)</option>
+        <option value="Australia/Adelaide">Adelaide (ACST, daylight saving)</option>
+        <option value="Australia/Darwin">Darwin / NT (ACST, no daylight saving)</option>
+        <option value="Australia/Perth">Perth / WA (AWST)</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+      <div class="frow" style="flex:1;min-width:110px"><label class="flabel">Quiet from</label><input class="fi" id="js-quiet-start" type="time"></div>
+      <div class="frow" style="flex:1;min-width:110px"><label class="flabel">Quiet until</label><input class="fi" id="js-quiet-end" type="time"></div>
+      <div class="frow" style="flex:1;min-width:110px"><label class="flabel">Max texts / day</label><input class="fi" id="js-cap" type="number" min="0" max="100" step="1"></div>
+    </div>
+    <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">Quiet hours hold a message rather than dropping it - anything found overnight arrives when they end. Daylight saving is handled for you. The daily cap is the hard backstop: whatever goes wrong, he cannot exceed it.</p>
+
+    <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">What he is watching</div>
+    <div id="js-watch" style="font-size:11.5px;color:var(--ink3);line-height:1.9">Loading…</div>
+
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-jarvis-settings')">Cancel</button>
+      <button class="btn btn-p" id="js-save-btn" onclick="saveJarvisSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Twilio Settings modal -->
 <div class="overlay" id="m-twilio-settings">
   <div class="modal" style="max-width:480px">
@@ -2808,30 +2854,6 @@ td strong{font-weight:500}
       <button class="btn btn-xs" onclick="copyTwilioWebhook()">Copy</button>
     </div>
     <p style="font-size:10.5px;color:var(--ink3);margin-top:4px">Method: <strong style="color:var(--ink2)">HTTP POST</strong></p>
-
-    <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Jarvis Alerts</div>
-    <p style="font-size:11px;color:var(--ink3);margin:0 0 10px;line-height:1.6">Jarvis watches for won deals with no HQ account, overdue follow-ups, and stalled or blocked onboarding, and texts you when something needs you. He never messages clients from here - only this number.</p>
-    <div class="frow"><label class="flabel">Notify my mobile</label><input class="fi" id="ts-jarvis-number" placeholder="0412 345 678" type="tel"></div>
-    <div class="frow" style="display:flex;align-items:center;gap:8px;margin-top:8px">
-      <input type="checkbox" id="ts-jarvis-enabled" style="width:auto;margin:0">
-      <label for="ts-jarvis-enabled" style="font-size:12px;color:var(--ink2);cursor:pointer;margin:0">Alerts on</label>
-    </div>
-    <div class="frow" style="margin-top:10px"><label class="flabel">Timezone</label>
-      <select class="fi" id="ts-jarvis-tz">
-        <option value="Australia/Sydney">Sydney / Melbourne / Canberra / Hobart (AEST, daylight saving)</option>
-        <option value="Australia/Brisbane">Brisbane / QLD (AEST, no daylight saving)</option>
-        <option value="Australia/Adelaide">Adelaide (ACST, daylight saving)</option>
-        <option value="Australia/Darwin">Darwin / NT (ACST, no daylight saving)</option>
-        <option value="Australia/Perth">Perth / WA (AWST)</option>
-      </select>
-    </div>
-    <p style="font-size:10.5px;color:var(--ink3);margin:4px 0 0;line-height:1.6">Quiet hours are read in this zone, and daylight saving is handled for you - the times below do not shift when the clocks do.</p>
-    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
-      <div class="frow" style="flex:1;min-width:110px"><label class="flabel">Quiet from</label><input class="fi" id="ts-jarvis-quiet-start" type="time"></div>
-      <div class="frow" style="flex:1;min-width:110px"><label class="flabel">Quiet until</label><input class="fi" id="ts-jarvis-quiet-end" type="time"></div>
-      <div class="frow" style="flex:1;min-width:110px"><label class="flabel">Max texts / day</label><input class="fi" id="ts-jarvis-cap" type="number" min="0" max="100" step="1"></div>
-    </div>
-    <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">Nothing is sent during quiet hours - it waits until they end rather than being dropped. The daily cap is the hard backstop: whatever goes wrong, he cannot exceed it.</p>
 
     <div class="macts">
       <button class="btn" onclick="closeModal('m-twilio-settings')">Cancel</button>
@@ -9648,22 +9670,118 @@ async function saveAgentSettings() {
   }
 }
 
-async function openTwilioSettings() {
+// ── Jarvis settings ────────────────────────────────────────────────────────
+// His own screen, opened from his own panel. What he watches and when he may
+// interrupt is not a Twilio concern; SMS is just the channel he reaches you on.
+const JARVIS_WATCH_LABELS = {
+  won_no_account:     'Won deals with no HQ account',
+  followup_overdue:   'Overdue follow-ups',
+  fulfilment_overdue: 'Onboarding past its SLA',
+  fulfilment_blocked: 'Fulfilment blocked',
+};
+
+async function openJarvisSettings() {
   const s = await loadBizSettings();
-  setVal('ts-from-number', s.twilio_from_number || '');
-  setVal('ts-webhook-url', s.twilio_webhook_url || '');
-  setVal('ts-jarvis-number', s.jarvis_notify_number || '');
-  // Times come back as HH:MM:SS; <input type="time"> wants HH:MM.
+  setVal('js-number', s.jarvis_notify_number || '');
+  $('js-enabled').checked = s.jarvis_notify_enabled === true;
+  // A zone set by hand is added rather than silently falling back, so opening
+  // and saving this form cannot quietly relocate someone.
   const tz = s.jarvis_timezone || 'Australia/Sydney';
-  const tzSel = $('ts-jarvis-tz');
+  const tzSel = $('js-tz');
   if (!Array.prototype.some.call(tzSel.options, function (o) { return o.value === tz; })) {
     tzSel.add(new Option(tz, tz));
   }
   tzSel.value = tz;
-  setVal('ts-jarvis-quiet-start', String(s.jarvis_quiet_start || '20:00').slice(0, 5));
-  setVal('ts-jarvis-quiet-end', String(s.jarvis_quiet_end || '07:30').slice(0, 5));
-  setVal('ts-jarvis-cap', s.jarvis_daily_sms_cap == null ? 10 : s.jarvis_daily_sms_cap);
-  $('ts-jarvis-enabled').checked = s.jarvis_notify_enabled === true;
+  setVal('js-quiet-start', String(s.jarvis_quiet_start || '20:00').slice(0, 5));
+  setVal('js-quiet-end', String(s.jarvis_quiet_end || '07:30').slice(0, 5));
+  setVal('js-cap', s.jarvis_daily_sms_cap == null ? 10 : s.jarvis_daily_sms_cap);
+  $('js-state').textContent = s.jarvis_notify_enabled ? '' : 'currently silent';
+  openModal('m-jarvis-settings');
+  loadJarvisStatus();
+}
+
+// Counts only - jarvis_events itself stays unreadable from the browser.
+async function loadJarvisStatus() {
+  const host = $('js-watch');
+  try {
+    const { data, error } = await db.rpc('jarvis_status');
+    if (error) throw error;
+    const byKind = (data && data.open_by_kind) || {};
+    const rows = Object.keys(JARVIS_WATCH_LABELS).map(function (k) {
+      const n = byKind[k] || 0;
+      return '<div style="display:flex;justify-content:space-between;gap:12px">' +
+        '<span>' + JARVIS_WATCH_LABELS[k] + '</span>' +
+        '<b style="color:' + (n ? 'var(--amb)' : 'var(--ink3)') + '">' + n + '</b></div>';
+    }).join('');
+    const queued = (data && data.queued) || 0;
+    const last = data && data.last_sent_at;
+    const foot = '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bd);color:var(--ink3)">' +
+      (queued
+        ? '<b style="color:var(--amb)">' + queued + '</b> waiting to be sent.'
+        : 'Nothing waiting to be sent.') +
+      (last ? ' Last text ' + fmtWhen(last) + '.' : ' He has not texted yet.') +
+      '</div>';
+    host.innerHTML = rows + foot;
+  } catch (err) {
+    host.textContent = 'Could not load status: ' + (err.message || err);
+  }
+}
+
+function fmtWhen(iso) {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  if (mins < 1440) return Math.round(mins / 60) + 'h ago';
+  return Math.round(mins / 1440) + 'd ago';
+}
+
+async function saveJarvisSettings() {
+  const btn = $('js-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    // Checked here as well as in the function: alerts switched on against a
+    // number that cannot receive them is a setting that looks saved and then
+    // silently never fires, which is worse than a rejected save.
+    const raw = $('js-number').value.trim();
+    const on = $('js-enabled').checked;
+    if (on && !/^(\+?61|0)4[0-9\s\-().]{8,}$/.test(raw)) {
+      throw new Error('Enter a valid Australian mobile, or switch alerts off.');
+    }
+    const capRaw = parseInt($('js-cap').value, 10);
+    const cap = Number.isFinite(capRaw) ? Math.min(100, Math.max(0, capRaw)) : 10;
+
+    const patch = {
+      jarvis_notify_number: raw || null,
+      jarvis_notify_enabled: on,
+      jarvis_timezone: $('js-tz').value || 'Australia/Sydney',
+      jarvis_quiet_start: $('js-quiet-start').value || '20:00',
+      jarvis_quiet_end: $('js-quiet-end').value || '07:30',
+      jarvis_daily_sms_cap: cap,
+    };
+
+    const existing = await db.from('business_settings').select('id').limit(1).single();
+    let error;
+    if (existing.data) {
+      ({ error } = await db.from('business_settings')
+        .update({ ...patch, updated_at: new Date().toISOString() }).eq('id', existing.data.id));
+    } else {
+      ({ error } = await db.from('business_settings').insert(patch));
+    }
+    if (error) throw error;
+    toast(on ? 'Jarvis will text you ✓' : 'Jarvis saved - alerts off');
+    closeModal('m-jarvis-settings');
+  } catch (err) {
+    toast('Save failed: ' + err.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+}
+
+async function openTwilioSettings() {
+  const s = await loadBizSettings();
+  setVal('ts-from-number', s.twilio_from_number || '');
+  setVal('ts-webhook-url', s.twilio_webhook_url || '');
+  // Times come back as HH:MM:SS; <input type="time"> wants HH:MM.
   openModal('m-twilio-settings');
 }
 
@@ -9675,28 +9793,7 @@ async function saveTwilioSettings() {
     const fromNum = $('ts-from-number').value.trim() || null;
     const webhookUrl = $('ts-webhook-url').value.trim() || null;
 
-    // Checked here as well as in the function: turning alerts on against a
-    // number that cannot receive them is a setting that looks saved and then
-    // silently never fires, which is worse than a rejected save.
-    const jarvisRaw = $('ts-jarvis-number').value.trim();
-    const jarvisNum = jarvisRaw || null;
-    const jarvisOn = $('ts-jarvis-enabled').checked;
-    if (jarvisOn && !/^(\+?61|0)4[0-9\s\-().]{8,}$/.test(jarvisRaw)) {
-      throw new Error('Enter a valid Australian mobile for Jarvis alerts, or switch alerts off.');
-    }
-    const capRaw = parseInt($('ts-jarvis-cap').value, 10);
-    const cap = Number.isFinite(capRaw) ? Math.min(100, Math.max(0, capRaw)) : 10;
-
-    const patch = {
-      twilio_from_number: fromNum,
-      twilio_webhook_url: webhookUrl,
-      jarvis_notify_number: jarvisNum,
-      jarvis_notify_enabled: jarvisOn,
-      jarvis_timezone: $('ts-jarvis-tz').value || 'Australia/Sydney',
-      jarvis_quiet_start: $('ts-jarvis-quiet-start').value || '20:00',
-      jarvis_quiet_end: $('ts-jarvis-quiet-end').value || '07:30',
-      jarvis_daily_sms_cap: cap,
-    };
+    const patch = { twilio_from_number: fromNum, twilio_webhook_url: webhookUrl };
 
     const existing = await db.from('business_settings').select('id').limit(1).single();
     let error;
