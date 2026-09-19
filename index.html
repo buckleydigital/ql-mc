@@ -10371,68 +10371,12 @@ const JV = (() => {
   }
 
   /* ── speech ── */
-  // 'unknown' until the first attempt; 'no' once the server says there is no
-  // ElevenLabs key, so a machine without one stops asking and simply uses the
-  // browser voice.
-  let eleven = 'unknown', audio = null, voiceWarned = false;
-
+  // The browser's own voice, and only that. There was a server-rendered voice
+  // here; it was removed rather than left dormant behind a missing key, because
+  // a path that switches itself on the moment a secret appears is a path nobody
+  // remembers is there.
   function hush() {
-    if (audio) { audio.pause(); audio = null; }
     if (window.speechSynthesis) speechSynthesis.cancel();
-  }
-
-  /** The real voice, if the key is configured. Resolves false to fall back. */
-  async function speakEleven(text) {
-    if (eleven === 'no') return false;
-    try {
-      const { data: { session } } = await db.auth.getSession();
-      if (!session) return false;
-
-      const res = await fetch(_ep + '/functions/v1/jarvis-voice', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: _ak,
-          Authorization: 'Bearer ' + session.access_token,
-        },
-        body: JSON.stringify({ text }),
-      });
-
-      // 503 is the function saying no key is configured. 404 is the function
-      // not being deployed at all — the normal state if you never set up the
-      // paid voice. Both mean "use the browser voice", quietly and for the
-      // rest of the session: neither is worth a warning, and retrying on every
-      // reply would add a pointless round trip to each answer.
-      if (res.status === 503 || res.status === 404) { eleven = 'no'; return false; }
-
-      if (!res.ok) {
-        // Anything else IS a failure, and falling back silently would leave you
-        // wondering why the voice never changed. Say it once — a rejected voice
-        // id and an out-of-credits account look identical from here otherwise.
-        if (!voiceWarned) {
-          voiceWarned = true;
-          let info = {};
-          try { info = await res.json(); } catch (e) {}
-          line('sys', 'Using the browser voice — ElevenLabs returned ' + res.status +
-            (info.error ? '.<br>' + esc(info.error) : '.') +
-            (info.voice_tried ? '<br>Voice tried: <code>' + esc(info.voice_tried) + '</code>' : '') +
-            (info.usable_voices
-              ? '<br><br>Voices this key can use:<br>' + esc(info.usable_voices)
-              : '<br>Voice Library voices need a paid plan to work over the API.'));
-        }
-        return false;
-      }
-
-      const url = URL.createObjectURL(await res.blob());
-      hush();
-      audio = new Audio(url);
-      audio.onended = () => URL.revokeObjectURL(url);
-      await audio.play();
-      eleven = 'yes';
-      return true;
-    } catch (e) {
-      return false;
-    }
   }
 
   /**
@@ -10477,8 +10421,6 @@ const JV = (() => {
     if (!voice || !text) return;
     hush();
 
-    // The real voice first; the browser's own only if it is unavailable.
-    if (await speakEleven(text)) return;
     if (!window.speechSynthesis) return;
 
     const u = new SpeechSynthesisUtterance(text);
