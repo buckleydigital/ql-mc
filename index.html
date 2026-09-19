@@ -720,6 +720,7 @@ td strong{font-weight:500}
         <div class="jv-status" id="jv-status">Not connected</div>
       </div>
       <button class="jv-mic admin-only-field" id="jv-settings" onclick="openJarvisSettings()" title="Jarvis settings">⚙</button>
+      <button class="jv-mic admin-only-field" id="jv-log" onclick="openJarvisLog()" title="What Jarvis has done">☷</button>
       <button class="jv-mic" id="jv-writes" onclick="JV.toggleWrites()" title="Read-only">🔒</button>
       <button class="jv-mic" id="jv-speak" onclick="JV.toggleVoice()" title="Speak replies aloud">🔊</button>
       <button class="btn btn-xs" onclick="JV.close()">✕</button>
@@ -2820,7 +2821,7 @@ td strong{font-weight:500}
     </div>
     <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
       <div class="frow" style="flex:1;min-width:110px"><label class="flabel">Max calls / day</label><input class="fi" id="js-call-cap" type="number" min="0" max="20" step="1"></div>
-      <div class="frow" style="flex:2;min-width:150px"><label class="flabel">Fallback voice</label>
+      <div class="frow" style="flex:2;min-width:150px"><label class="flabel">Voice</label>
         <select class="fi" id="js-call-voice">
           <option value="Polly.Brian-Neural">Brian - British male</option>
           <option value="Polly.Arthur-Neural">Arthur - British male</option>
@@ -2830,8 +2831,8 @@ td strong{font-weight:500}
         </select>
       </div>
     </div>
-    <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">Urgent items only, and never instead of the text - the message is the record, the call is the interrupt. Quiet hours apply. Needs a Twilio number with the <strong style="color:var(--ink2)">Voice</strong> capability, not SMS only. He speaks and hangs up; you cannot talk back yet.</p>
-    <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">Calls use Jarvis's own ElevenLabs voice. The dropdown above is only what he falls back to if ElevenLabs is unreachable or out of credits - a plain voice still gets the message to you, which beats a call that never happens.</p>
+    <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">Urgent items only, and never instead of the text - the message is the record, the call is the interrupt. Quiet hours apply. Needs a Twilio number with the <strong style="color:var(--ink2)">Voice</strong> capability, not SMS only. He speaks, then listens - answer him and he acts on it, same as a text.</p>
+    <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">This is the voice he speaks in. It is included in the call price, so a call costs no more than the Twilio minutes.</p>
 
     <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">What he is watching</div>
     <div id="js-watch" style="font-size:11.5px;color:var(--ink3);line-height:1.9">Loading…</div>
@@ -2839,6 +2840,36 @@ td strong{font-weight:500}
     <div class="macts">
       <button class="btn" onclick="closeModal('m-jarvis-settings')">Cancel</button>
       <button class="btn btn-p" id="js-save-btn" onclick="saveJarvisSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Jarvis action log -->
+<!-- Deliberately its own screen rather than a section of the settings modal.
+     Settings is a form you change; this is a record you read, and the two want
+     different widths and different reading habits. -->
+<div class="overlay" id="m-jarvis-log">
+  <div class="modal" style="max-width:660px">
+    <h2>◈ Jarvis log</h2>
+    <div class="msub">Everything he has spotted, sent and done, newest first</div>
+
+    <div style="display:flex;align-items:center;gap:8px;margin:14px 0 10px">
+      <select class="fi" id="jl-filter" style="flex:1" onchange="renderJarvisLog()">
+        <option value="acted">Things he did (hide what he only spotted)</option>
+        <option value="all">Everything, including every item spotted</option>
+        <option value="client">Only what reached a client</option>
+      </select>
+      <button class="btn btn-xs" onclick="loadJarvisLog()" title="Reload">↻</button>
+    </div>
+
+    <div id="jl-body" style="max-height:52vh;overflow-y:auto;margin:0 -4px;padding:0 4px">
+      <div style="color:var(--ink3);font-size:12px">Loading…</div>
+    </div>
+
+    <p style="font-size:10.5px;color:var(--ink3);margin:12px 0 0;line-height:1.6">Read straight from what was recorded at the time - nothing here is written twice, so it cannot disagree with the pipeline. A failed row means he tried and could not; that is worth knowing and shows up nowhere else.</p>
+
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-jarvis-log')">Close</button>
     </div>
   </div>
 </div>
@@ -9784,7 +9815,7 @@ async function saveAgentSettings() {
 // His own screen, opened from his own panel. What he watches and when he may
 // interrupt is not a Twilio concern; SMS is just the channel he reaches you on.
 const JARVIS_WATCH_LABELS = {
-  followup_overdue:   'Overdue follow-ups',
+  proposal_cold:      'Proposals going cold',
   fulfilment_overdue: 'Onboarding past its SLA',
   fulfilment_blocked: 'Fulfilment blocked',
 };
@@ -9849,6 +9880,99 @@ function fmtWhen(iso) {
   if (mins < 60) return mins + 'm ago';
   if (mins < 1440) return Math.round(mins / 60) + 'h ago';
   return Math.round(mins / 1440) + 'd ago';
+}
+
+// ── Jarvis action log ──────────────────────────────────────────────────────
+// Four tables read as one sequence. The union and the authorisation both live
+// in jarvis_action_log(); this only has to decide what a row looks like.
+//
+// The rows are held in memory after loading so the filter is instant and does
+// not re-query - it is at most a few hundred rows, and a log you can flick
+// through is one you will actually read.
+let _jlRows = [];
+
+const JARVIS_LOG_KINDS = {
+  spotted:        { icon: '\u25CB', label: 'Spotted',      tone: 'var(--ink3)' },
+  texted_you:     { icon: '\u2709', label: 'Texted you',   tone: 'var(--acc)'  },
+  called_you:     { icon: '\u260E', label: 'Called you',   tone: 'var(--acc)'  },
+  you_said:       { icon: '\u203A', label: 'You said',     tone: 'var(--ink2)' },
+  he_replied:     { icon: '\u25C8', label: 'He replied',   tone: 'var(--ink2)' },
+  emailed_client: { icon: '\u2192', label: 'Emailed client', tone: 'var(--grn)' },
+};
+
+async function openJarvisLog() {
+  openModal('m-jarvis-log');
+  await loadJarvisLog();
+}
+
+async function loadJarvisLog() {
+  const host = $('jl-body');
+  host.innerHTML = '<div style="color:var(--ink3);font-size:12px">Loading\u2026</div>';
+  try {
+    const { data, error } = await db.rpc('jarvis_action_log', { p_limit: 200 });
+    if (error) throw error;
+    _jlRows = data || [];
+    renderJarvisLog();
+  } catch (err) {
+    _jlRows = [];
+    host.textContent = 'Could not load the log: ' + (err.message || err);
+  }
+}
+
+function renderJarvisLog() {
+  const host = $('jl-body');
+  const mode = $('jl-filter').value;
+
+  // "Spotted" is the noisiest kind by a wide margin - one scan can raise a
+  // dozen at the same second - so the default view hides it. What he DID is
+  // the question this screen exists to answer; what he merely noticed is
+  // already the settings panel's job.
+  const rows = _jlRows.filter(function (r) {
+    if (mode === 'client') return r.kind === 'emailed_client';
+    if (mode === 'acted')  return r.kind !== 'spotted';
+    return true;
+  });
+
+  if (!rows.length) {
+    host.innerHTML = '<div style="color:var(--ink3);font-size:12px;padding:10px 0">' +
+      (mode === 'client'
+        ? 'He has not emailed a client yet.'
+        : 'Nothing recorded yet. He logs as he goes, so this fills itself in.') +
+      '</div>';
+    return;
+  }
+
+  host.innerHTML = rows.map(function (r) {
+    const k = JARVIS_LOG_KINDS[r.kind] || { icon: '\u00B7', label: r.kind, tone: 'var(--ink3)' };
+    const failed = r.status === 'failed';
+    const when = new Date(r.at);
+
+    // A failed row outranks its kind's colour: the whole reason to show it is
+    // that something did not happen.
+    const tone = failed ? 'var(--red)' : k.tone;
+    const head = '<span style="color:' + tone + ';font-weight:600">' + k.icon + ' ' + esc(k.label) + '</span>' +
+      (r.subject ? '<span style="color:var(--ink2)"> \u2014 ' + esc(r.subject) + '</span>' : '') +
+      (failed ? '<span style="color:var(--red);font-size:9.5px;font-family:var(--mono)"> FAILED</span>' : '');
+
+    const detail = r.detail
+      ? '<div style="color:var(--ink3);font-size:11.5px;line-height:1.55;margin-top:3px;' +
+        'white-space:pre-wrap;word-break:break-word">' + esc(r.detail) + '</div>'
+      : '';
+
+    // The error text, when there is one, is the most useful string on the row.
+    const errText = (r.ref && r.ref.error) ? String(r.ref.error) : '';
+    const errLine = failed && errText
+      ? '<div style="color:var(--red);font-size:10.5px;font-family:var(--mono);margin-top:3px;' +
+        'word-break:break-all">' + esc(errText.slice(0, 200)) + '</div>'
+      : '';
+
+    return '<div style="padding:9px 0;border-bottom:1px solid var(--bd)">' +
+      '<div style="display:flex;gap:10px;align-items:baseline">' +
+        '<div style="flex:1;min-width:0;font-size:12px">' + head + '</div>' +
+        '<div style="font-family:var(--mono);font-size:9.5px;color:var(--ink3);white-space:nowrap" ' +
+          'title="' + esc(when.toLocaleString()) + '">' + esc(fmtWhen(r.at)) + '</div>' +
+      '</div>' + detail + errLine + '</div>';
+  }).join('');
 }
 
 async function saveJarvisSettings() {

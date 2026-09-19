@@ -78,6 +78,9 @@ Deno.serve(async (req: Request) => {
       user_metadata?: Record<string, unknown>;
     };
     let sender: Sender | null = null;
+    // Recorded on the log row so the action log can tell a follow-up Jarvis sent
+    // from the same email sent by hand: the sender id is the owner either way.
+    const viaJarvis = body?.via === "jarvis";
 
     if (body?.via === "jarvis") {
       const caller = createClient(Deno.env.get("SUPABASE_URL")!, token);
@@ -203,6 +206,7 @@ Deno.serve(async (req: Request) => {
     await admin.from("sales_email_log").insert({
       lead_id: leadId, kind, to_email: to, reply_to: replyTo || null,
       subject, body: text, sent_by: user.id, provider_id: payload?.id ?? null,
+      via: viaJarvis ? "jarvis" : null,
     });
 
     return json({ ok: true, to, reply_to: replyTo || null, sent_at: stamp.info_sent_at ?? stamp.followup_sent_at });
