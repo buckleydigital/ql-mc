@@ -898,7 +898,6 @@ td strong{font-weight:500}
         <div class="ph">
           <div class="ph-left"><h1>Pay-Per-Lead</h1><p>Solar lead delivery tracking</p></div>
           <div class="ph-right">
-            <button class="btn btn-sm" id="meta-cap-check-btn" onclick="metaCapCheck()" style="margin-right:6px" title="Check all PPL client caps and auto-pause Meta campaigns">Check Caps Now</button>
             <button class="btn btn-p btn-sm" onclick="openModal('m-ppl')">+ Add client</button>
           </div>
         </div>
@@ -1128,7 +1127,6 @@ td strong{font-weight:500}
           <div class="ph-left"><h1>Meta Campaigns</h1><p>Manage Meta ad campaigns and auto-pause rules</p></div>
           <div class="ph-right">
             <button class="btn btn-sm" id="mc-sync-btn" onclick="syncCampaignInsights()" style="margin-right:6px">Sync Stats</button>
-            <button class="btn btn-sm" id="meta-cap-check-btn2" onclick="metaCapCheck()" style="margin-right:6px">Check Caps Now</button>
             <button class="btn btn-p btn-sm" onclick="openModal('m-add-campaign')">+ Add Campaign</button>
           </div>
         </div>
@@ -1167,13 +1165,6 @@ td strong{font-weight:500}
             <tbody id="mc-tbody"><tr><td colspan="10" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
-        <div class="sl">API Log <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px">last 20 actions</span><div class="sl-line"></div></div>
-        <div class="twrap">
-          <table>
-            <thead><tr><th>Time</th><th>Action</th><th>Campaigns</th><th>Triggered By</th><th>Details</th></tr></thead>
-            <tbody id="mc-log-tbody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
-          </table>
-        </div>
         <div class="sl" style="margin-top:16px">Manual Spend Log <span style="font-size:9px;color:var(--ink3);font-family:var(--mono);margin-left:6px">external &amp; non-connected campaigns</span><div class="sl-line"></div><button class="btn btn-xs btn-p" style="margin-left:8px" onclick="openManualSpendModal()">+ Log Spend</button></div>
         <div class="twrap">
           <table>
@@ -1183,10 +1174,10 @@ td strong{font-weight:500}
         </div>
       </div>
 
-      <!-- ══ PPL CAMPAIGN ACTION LOG (PCAL) ══ -->
+      <!-- ══ CLIENT CAMPAIGN ACTION LOGS (PCAL) ══ -->
       <div class="panel" id="panel-pcal">
         <div class="ph">
-          <div class="ph-left"><h1>PPL Campaign Action Log</h1><p>Track PPL campaigns and log every change</p></div>
+          <div class="ph-left"><h1>Client Campaign Action Logs</h1><p>Track client campaigns and log every change</p></div>
           <div class="ph-right"><button class="btn btn-p btn-sm" onclick="openModal('m-add-ppl-campaign')">+ New Campaign</button></div>
         </div>
         <div class="kg c3 mb4">
@@ -1201,7 +1192,7 @@ td strong{font-weight:500}
           <button class="btn btn-xs pcal-filter-btn" data-filter="paused" onclick="filterPcal('paused',this)">Paused</button>
           <button class="btn btn-xs pcal-filter-btn" data-filter="nuked" onclick="filterPcal('nuked',this)">Nuked</button>
         </div>
-        <div class="sl">PPL Campaigns <div class="sl-line"></div></div>
+        <div class="sl">Client Campaigns <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
             <thead><tr><th>Campaign</th><th>Niche</th><th>Area</th><th>Status</th><th>Linked Meta Campaign</th><th>Notes</th><th>Last Action</th><th></th></tr></thead>
@@ -3006,7 +2997,7 @@ td strong{font-weight:500}
 
 <div class="overlay" id="m-add-ppl-campaign">
   <div class="modal">
-    <h2>New PPL Campaign</h2><div class="msub">Create a campaign to track changes and actions</div>
+    <h2>New Client Campaign</h2><div class="msub">Create a campaign to track changes and actions</div>
     <div class="frow"><label class="flabel">Campaign Name</label><input class="fi" id="pc-name" placeholder="e.g. Solar Brisbane North"></div>
     <div class="frow"><label class="flabel">Niche</label><input class="fi" id="pc-niche" placeholder="e.g. solar, roofing"></div>
     <div class="frow"><label class="flabel">Area</label><input class="fi" id="pc-area" placeholder="e.g. Brisbane, Gold Coast"></div>
@@ -3029,7 +3020,7 @@ td strong{font-weight:500}
 
 <div class="overlay" id="m-edit-ppl-campaign">
   <div class="modal">
-    <h2>Edit PPL Campaign</h2><div class="msub" id="epc-sub"></div>
+    <h2>Edit Client Campaign</h2><div class="msub" id="epc-sub"></div>
     <input type="hidden" id="epc-id">
     <div class="frow"><label class="flabel">Campaign Name</label><input class="fi" id="epc-name"></div>
     <div class="frow"><label class="flabel">Niche</label><input class="fi" id="epc-niche"></div>
@@ -6302,25 +6293,7 @@ async function saveClient(type) {
   type==='ppl'?loadPPL():loadManaged();
 }
 
-/* ═══ META GRAPH API - CAP CHECK & CAMPAIGN TOGGLE ═══ */
-async function metaCapCheck() {
-  const btns=[$('meta-cap-check-btn'),$('meta-cap-check-btn2')].filter(Boolean);
-  btns.forEach(b=>{b.disabled=true;b.textContent='Checking…';});
-  try {
-    const {data:{session}}=await db.auth.getSession();
-    if(!session) throw new Error('Not authenticated');
-    const res=await fetch(`${_ep}/functions/v1/meta-cap-check`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({})});
-    const data=await res.json();
-    if(!res.ok||data.error) throw new Error(data.error||'Cap check failed');
-    if(data.paused&&data.paused>0){
-      toast(`Cap check: ${data.paused} campaign(s) paused, ${data.kept_active} kept active`);
-    } else {
-      toast(`Cap check done - ${data.checked_clients||0} clients, ${data.checked_campaigns||0} campaigns checked, all under cap`);
-    }
-    loadPPL();loadCampaigns();
-  } catch(e){toast('Cap check error: '+e.message,true);}
-  finally{btns.forEach(b=>{b.disabled=false;b.textContent='Check Caps Now';});}
-}
+/* ═══ META GRAPH API - CAMPAIGN TOGGLE ═══ */
 async function metaUnpauseClient(clientId) {
   if(!confirm('Unpause all Meta campaigns for this client?')) return;
   try {
@@ -6511,13 +6484,11 @@ function adAccountLabel(accId){
 let _campaignsCache=[];
 async function loadCampaigns() {
   await loadAdAccounts();
-  const [campaignsRes,logsRes,clientsRes]=await Promise.all([
+  const [campaignsRes,clientsRes]=await Promise.all([
     db.from('meta_campaigns').select('*').order('name'),
-    db.from('meta_api_log').select('*').order('created_at',{ascending:false}).limit(20),
     db.from('clients').select('id,company_name,meta_campaign_ids').eq('type','ppl').not('meta_campaign_ids','is',null),
   ]);
   const campaigns=campaignsRes.data||[];
-  const logs=logsRes.data||[];
   const clients=clientsRes.data||[];
   _campaignsCache=campaigns;
 
@@ -6576,27 +6547,8 @@ async function loadCampaigns() {
   if(!synced){$('mc-tbody').insertAdjacentHTML('afterbegin','<tr><td colspan="10" style="text-align:center;font-size:11px;color:var(--ink3);padding:8px">Stats not synced yet - click <strong>Sync Stats</strong> to pull live data from Meta</td></tr>');}
   }
 
-  // API log table
-  const ltb=$('mc-log-tbody');
-  if(!logs.length){
-    ltb.innerHTML='<tr><td colspan="5" class="empty">No logs yet</td></tr>';
-  } else {
-  ltb.innerHTML=logs.map(l=>{
-    const t=new Date(l.created_at).toLocaleString('en-AU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-    const cids=(l.campaign_ids||[]).join(', ')||'-';
-    const by=l.triggered_by==='cron'?'Cron':'Manual';
-    const det=typeof l.results==='object'?JSON.stringify(l.results).slice(0,80)+'…':'-';
-    return `<tr>
-      <td style="font-family:var(--mono);font-size:10px">${t}</td>
-      <td><span class="badge ${l.action==='CAP_CHECK'?'badge-blue':l.action==='PAUSED'?'badge-red':'badge-green'}">${esc(l.action)}</span></td>
-      <td style="font-family:var(--mono);font-size:9px;max-width:180px;overflow:hidden;text-overflow:ellipsis">${esc(cids)}</td>
-      <td>${by}</td>
-      <td style="font-family:var(--mono);font-size:9px;color:var(--ink3);max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${esc(JSON.stringify(l.results))}">${esc(det)}</td>
-    </tr>`;
-  }).join('');
-  }
-  // Manual Spend Log renders independently - always load it, even when there are
-  // no campaigns or no API log entries, so it never stays stuck on "Loading…".
+  // Manual Spend Log renders independently - always load it, even when there
+  // are no campaigns, so it never stays stuck on "Loading…".
   loadSpendLog();
 }
 
@@ -10060,7 +10012,7 @@ async function saveTwilioSettings() {
   }
 }
 
-// ── PPL Campaign Action Log (PCAL) ─────────────────────────────────────────
+// ── Client Campaign Action Logs (PCAL) ─────────────────────────────────────
 // True once ql-hq is mirroring fulfilment for the open client, which makes it
 // the owner of onboarding_sub_stage.
 let _mgFulfilMirrored = false;
