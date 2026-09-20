@@ -137,8 +137,13 @@ Deno.serve(async (req: Request) => {
       }
 
       if (existingId) {
+        // Deliberately does NOT touch contactable. A repeat enquiry used to
+        // force it back to "Contactable", which silently overwrote a rep who
+        // had marked them uncontactable - the one value on this row that is a
+        // human's explicit judgement. The follow-up date is bumped because a
+        // fresh enquiry genuinely is a reason to look again.
         await supabase.from('leads').update({
-          contactable: true, next_followup: today, updated_at: new Date().toISOString(),
+          next_followup: today, updated_at: new Date().toISOString(),
         }).eq('id', existingId)
         return json({ ok: true, lead_id: existingId, duplicate: true })
       }
@@ -163,7 +168,13 @@ Deno.serve(async (req: Request) => {
         // still tells the rep what the list price is.
         source:        'inbound',
         notes,
-        contactable:   true,
+        // Contact status is left unset, which the board reads as "Not set".
+        //
+        // It used to arrive as "Contactable", which is a claim nobody had
+        // checked: filling in a web form says someone is interested, not that
+        // the number works or that they are happy to be rung. Starting at
+        // "Not set" makes it a judgement a person makes once they have tried,
+        // which is what the three states are for.
         next_followup: today,
       }]).select('id').single()
       if (error) return json({ error: error.message }, 500)
