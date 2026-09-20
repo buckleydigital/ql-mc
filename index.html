@@ -170,6 +170,11 @@ body::after {
   border-bottom:1px solid var(--bd);
   display:flex;align-items:center;padding:0 14px;gap:9px;flex-shrink:0;z-index:20;
 }
+/* Light mode gets the black mark. The white one vanishes on a white topbar,
+   which reads as a broken image rather than as a design choice. */
+.tb-mark-light{display:none}
+[data-theme="light"] .tb-mark-dark{display:none}
+[data-theme="light"] .tb-mark-light{display:block}
 .tb-mark{
   height:22px;width:auto;flex-shrink:0;display:block;
   /* object-fit keeps it honest if the file's aspect ratio ever changes. */
@@ -820,7 +825,13 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
   </div>
   <!-- TOPBAR -->
   <div class="topbar">
-    <img class="tb-mark" src="./quoteleads-logo-white.png" alt="QuoteLeads">
+    <!-- Two files rather than one recoloured by CSS: the mark is a PNG, so a
+         filter could only approximate it, and "approximately our logo" is not
+         a thing to ship. Only one is ever displayed; the other is a cached
+         40KB. The second carries no alt text and is hidden from screen
+         readers, or the name would be announced twice. -->
+    <img class="tb-mark tb-mark-dark" src="./quoteleads-logo-white.png" alt="QuoteLeads">
+    <img class="tb-mark tb-mark-light" src="./quoteleads-logo-black.png" alt="" aria-hidden="true">
     <span class="tb-name">Mission Control</span>
     <div class="tb-sep"></div>
     <div class="tb-sp"></div>

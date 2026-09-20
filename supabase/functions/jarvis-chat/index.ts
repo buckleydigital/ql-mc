@@ -1035,6 +1035,74 @@ async function updateLeadFollowup({ lead_id, next_followup } = {}) {
   return ok(`Follow-up for ${row.name || row.company} is set for ${next_followup}.`, { lead: row })
 }
 
+// Don's side of the story. ql-mc mirrors the agency's sales SMS into
+// sales_sms_log, so this reads the same thread the Sales Conversations panel
+// shows rather than reaching across to ql-hq for it.
+async function getSmsThread({ lead_id, limit = 20 } = {}) {
+  if (!lead_id) throw new Error('lead_id is required')
+  const n = Math.min(Math.max(Number(limit) || 20, 1), 100)
+
+  const { rows } = await select(
+    'sales_sms_log',
+    { select: 'direction,message,sent_by,status,created_at', lead_id: `eq.${lead_id}`, order: 'created_at.desc' },
+    { limit: n },
+  )
+  if (!rows.length) return ok('No SMS with that lead.', { messages: [] })
+
+  // Oldest first for reading; the query took the newest N.
+  const msgs = rows.slice().reverse().map((m) => ({
+    who: m.direction === 'inbound' ? 'lead' : (m.sent_by || 'us'),
+    text: m.message,
+    at: m.created_at,
+    ...(m.status && m.status !== 'sent' ? { status: m.status } : {}),
+  }))
+  const lastIn = msgs.filter((m) => m.who === 'lead').slice(-1)[0]
+
+  return ok(
+    lastIn
+      ? `${msgs.length} messages. They last said: "${String(lastIn.text).slice(0, 120)}"`
+      : `${msgs.length} messages, none of them from the lead.`,
+    { messages: msgs },
+  )
+}
+
+// Don lives on ql-hq; sync-to-hq is the only way in, and it refuses a sales rep
+// and pins the edit to the agency's own company - so a client's agent can never
+// be read or changed from here.
+async function donConfig(patch) {
+  const token = await userToken()
+  return await invoke(
+    'sync-to-hq',
+    patch
+      ? { action: 'update_sms_agent_config', patch }
+      : { action: 'get_sms_agent_config' },
+    { token },
+  )
+}
+
+async function getDonStatus() {
+  const res = await donConfig(null)
+  const c = res?.config ?? res ?? {}
+  const on = c.auto_reply === true
+  return ok(
+    on
+      ? `Don is on${c.out_of_hours_only ? ', out of hours only' : ''}.`
+      : 'Don is off - inbound texts from leads are stored but not answered.',
+    { enabled: on, out_of_hours_only: c.out_of_hours_only === true, agent_name: c.agent_name ?? null },
+  )
+}
+
+async function setDonEnabled({ enabled } = {}) {
+  if (typeof enabled !== 'boolean') throw new Error('enabled must be true or false')
+  await donConfig({ auto_reply: enabled })
+  return ok(
+    enabled
+      ? 'Don is on. He will answer inbound texts from sales leads.'
+      : 'Don is off. Inbound texts will be stored for you rather than answered.',
+    { enabled },
+  )
+}
+
 async function sendLeadEmail({ lead_id, kind = 'info', subject, body } = {}) {
   if (!lead_id) throw new Error('lead_id is required')
   if (kind !== 'info' && kind !== 'followup') throw new Error('kind must be info or followup')
@@ -1292,6 +1360,31 @@ const TOOLS = [
   },
 
   {
+    name: 'get_sms_thread',
+    description:
+      'The SMS conversation with a lead - both sides, oldest first, including anything ' +
+      'Don (the AI SMS agent) sent or received. Read this BEFORE suggesting a chase: a ' +
+      'lead who replied to Don two days ago does not need chasing, and saying so when ' +
+      'they do not is how the assistant stops being trusted.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        lead_id: str('Lead UUID, from find_lead.'),
+        limit: { type: 'number', description: 'Messages to return, newest kept. Default 20.' },
+      },
+      required: ['lead_id'],
+    },
+    handler: getSmsThread,
+  },
+  {
+    name: 'get_don_status',
+    description:
+      'Whether Don, the AI SMS agent that answers sales-pipeline leads, is currently ' +
+      'switched on, plus his hours and wording. Answers "is Don on".',
+    inputSchema: { type: 'object', properties: {} },
+    handler: getDonStatus,
+  },
+  {
     name: 'get_email_draft',
     description:
       'Render the info or follow-up email for a lead WITHOUT sending it: who it goes to, the subject and the body, from the saved template. Read this back before calling send_lead_email.',
@@ -1304,6 +1397,23 @@ const TOOLS = [
   },
 
   // Writes. Named so the bridge holds them behind JARVIS_ALLOW_WRITES.
+  {
+    // Named update_* deliberately: EFFECTFUL is /^(update|send|create|delete)_/
+    // and anchored, so a name like set_don_enabled would have been classed as
+    // a READ and handed to read-only sessions. The naming is the permission.
+    name: 'update_don_enabled',
+    description:
+      'Switch Don, the AI SMS agent, on or off for the agency\'s own sales pipeline. ' +
+      'On means he answers inbound texts from leads himself. This changes how real ' +
+      'leads are handled, so confirm before calling it. It can never reach a client\'s ' +
+      'agent - only the agency\'s own.',
+    inputSchema: {
+      type: 'object',
+      properties: { enabled: { type: 'boolean', description: 'true switches him on.' } },
+      required: ['enabled'],
+    },
+    handler: setDonEnabled,
+  },
   {
     name: 'update_lead_stage',
     description: 'Move a lead to a different pipeline stage.',
