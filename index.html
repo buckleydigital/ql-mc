@@ -170,16 +170,22 @@ body::after {
   border-bottom:1px solid var(--bd);
   display:flex;align-items:center;padding:0 14px;gap:9px;flex-shrink:0;z-index:20;
 }
-/* Light mode gets the black mark. The white one vanishes on a white topbar,
-   which reads as a broken image rather than as a design choice. */
-.tb-mark-light{display:none}
-[data-theme="light"] .tb-mark-dark{display:none}
-[data-theme="light"] .tb-mark-light{display:block}
 .tb-mark{
   height:22px;width:auto;flex-shrink:0;display:block;
   /* object-fit keeps it honest if the file's aspect ratio ever changes. */
   object-fit:contain;
 }
+/* Light mode gets the black mark. The white one vanishes on a white topbar,
+   which reads as a broken image rather than as a design choice.
+   
+   Compound selectors, not bare ones. `.tb-mark-light{display:none}` ties with
+   `.tb-mark{display:block}` on specificity, so whichever came last won - and
+   .tb-mark did, which is why BOTH marks rendered side by side in dark mode.
+   `.tb-mark.tb-mark-light` outranks it outright, so the rule holds wherever it
+   sits in the file. */
+.tb-mark.tb-mark-light{display:none}
+[data-theme="light"] .tb-mark.tb-mark-dark{display:none}
+[data-theme="light"] .tb-mark.tb-mark-light{display:block}
 .tb-name{font-family:var(--display);font-size:12.5px;font-weight:700;letter-spacing:-.2px;color:var(--ink)}
 .tb-sep{width:1px;height:14px;background:var(--bd2);flex-shrink:0}
 .tb-sp{flex:1}
