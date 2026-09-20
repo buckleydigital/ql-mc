@@ -105,7 +105,19 @@ Deno.serve(async (req: Request) => {
         'Renovation': 'Renovation',
       }
       const niche = NICHE[campaign] ?? (campaign || 'solar')
-      const today = new Date().toISOString().split('T')[0]
+      // The business's today, not UTC's.
+      //
+      // toISOString() is UTC, and Sydney runs 10-11 hours ahead - so from 10am
+      // AEST onward the UTC date is still yesterday. Every enquiry after
+      // mid-morning was stamped with a follow-up date already in the past, and
+      // the followup_overdue watcher flagged it the moment it arrived. Steve
+      // Woltmann came in at 07:38 Sydney and was given a due date of the day
+      // before.
+      //
+      // en-CA formats as YYYY-MM-DD, which is what a date column wants.
+      const today = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Australia/Sydney',
+      }).format(new Date())
 
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL')!,

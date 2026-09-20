@@ -1,0 +1,22 @@
+-- A follow-up set for today is not overdue today.
+--
+-- Two bugs stacked, and together they flagged every new web enquiry the moment
+-- it arrived.
+--
+-- 1. next_followup is a DATE, so comparing it to a timestamp read it as
+--    midnight. The test was `next_followup < now() - interval '2 hours'`, true
+--    for a date of today from 02:00 onwards. The watcher now compares dates,
+--    in the timezone the rest of Jarvis uses for quiet hours - Sydney runs
+--    10-11 hours ahead, so current_date in UTC calls a Sydney follow-up late
+--    while it is still morning there.
+--
+-- 2. sync-from-hq stamped next_followup from toISOString(), which is UTC. From
+--    10am AEST onward that is yesterday, so leads arrived with a due date
+--    already in the past. Fixed in the function with Intl/en-CA; same bug, and
+--    the same fix, as the build fee date earlier.
+--
+-- Steve Woltmann showed both: created 07:38 Sydney, stamped 2026-09-20, and
+-- flagged overdue on arrival. Corrected to 2026-09-21 and now silent.
+--
+-- The full function body is in production as of this migration; it differs
+-- from the previous one only in the followup_overdue branch.
