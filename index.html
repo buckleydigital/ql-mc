@@ -1940,9 +1940,13 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
     </div>
     <div class="frow"><label class="flabel">Build Fee (AUD)</label><input class="fi" id="l-value" type="number" placeholder="e.g. 1500"></div>
     <div class="frow"><label class="flabel">Source</label>
+      <!-- Inbound is first and selected: most leads added by hand are someone
+           who got in touch, and a default nobody notices is the one that ends
+           up on the record. -->
       <select class="fs" id="l-source">
+        <option value="inbound" selected>Inbound</option>
         <option value="outbound">Outbound</option><option value="referral">Referral</option>
-        <option value="inbound">Inbound</option><option value="cold_email">Cold Email</option><option value="linkedin">LinkedIn</option>
+        <option value="cold_email">Cold Email</option><option value="linkedin">LinkedIn</option>
       </select>
     </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="l-notes"></textarea></div>

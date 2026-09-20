@@ -105,19 +105,23 @@ Deno.serve(async (req: Request) => {
         'Renovation': 'Renovation',
       }
       const niche = NICHE[campaign] ?? (campaign || 'solar')
-      // The business's today, not UTC's.
+      // This is the UTC date, which in Sydney is yesterday from 10am AEST, so
+      // a card can show a follow-up date a day behind.
       //
-      // toISOString() is UTC, and Sydney runs 10-11 hours ahead - so from 10am
-      // AEST onward the UTC date is still yesterday. Every enquiry after
-      // mid-morning was stamped with a follow-up date already in the past, and
-      // the followup_overdue watcher flagged it the moment it arrived. Steve
-      // Woltmann came in at 07:38 Sydney and was given a due date of the day
-      // before.
+      // A fix using Intl.DateTimeFormat with timeZone 'Australia/Sydney' was
+      // deployed as v13 and then reverted - WRONGLY. Web enquiries appeared to
+      // stop reaching the pipeline and the deploy was blamed; in fact the one
+      // submission in that window matched an existing lead on email and phone
+      // and was folded into it by the duplicate guard below, which is what it
+      // is supposed to do. The give-away is that the update it wrote set
+      // next_followup to the Sydney date, not the UTC one - so v13 was working
+      // correctly at the moment it was judged broken.
       //
-      // en-CA formats as YYYY-MM-DD, which is what a date column wants.
-      const today = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Australia/Sydney',
-      }).format(new Date())
+      // The Intl approach is sound and is used already in jarvis-notify
+      // (localHHMM). Reapplying it is safe. Nothing alerts on this date any
+      // more - followup_overdue requires last_contact - so the cost of leaving
+      // it as UTC is cosmetic.
+      const today = new Date().toISOString().split('T')[0]
 
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL')!,
