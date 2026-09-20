@@ -9928,6 +9928,23 @@ async function saveAgentSettings() {
     const fd = num('ag-followup-days');   if (fd !== undefined) patch.days_until_followup = fd;
 
     await callHq('update_sms_agent_config', { patch });
+
+    // Write the mirror through immediately. jarvis-notify refreshes it every
+    // 15 minutes anyway, but until it does Jarvis would still be reasoning
+    // about the old setting - and the one moment you are most likely to ask
+    // him about Don is just after changing him. Best effort: the save itself
+    // has already succeeded, so a failed mirror write must not report failure.
+    try {
+      const { data: bs } = await db.from('business_settings').select('id').limit(1).maybeSingle();
+      if (bs?.id) {
+        await db.from('business_settings').update({
+          don_enabled:   patch.auto_reply === true,
+          don_active:    patch.is_active === true,
+          don_synced_at: new Date().toISOString(),
+        }).eq('id', bs.id);
+      }
+    } catch (e) { console.warn('Don mirror write-through failed:', e); }
+
     toast('Agent saved ✓');
     closeModal('m-agent-settings');
   } catch (err) {
@@ -9942,6 +9959,7 @@ async function saveAgentSettings() {
 // interrupt is not a Twilio concern; SMS is just the channel he reaches you on.
 const JARVIS_WATCH_LABELS = {
   proposal_cold:      'Proposals going cold',
+  don_off:            'Don off while leads wait',
   fulfilment_overdue: 'Onboarding past its SLA',
   fulfilment_blocked: 'Fulfilment blocked',
 };

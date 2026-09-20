@@ -64,6 +64,15 @@ function describe(e: Ev): string {
       const worth = typeof v === 'number' && v > 0 ? ` ($${v.toLocaleString('en-AU')})` : ''
       return `${who}${worth} - proposal cold ${d} days.`
     }
+    case 'don_off': {
+      const n = Number(e.payload.waiting ?? 0)
+      const h = Number(e.payload.since_hours ?? 0)
+      // Naming the config case explicitly: "turn Don on" is the wrong
+      // instruction when the switch that matters is a different one.
+      const why = e.payload.config_inactive ? ' His agent is set inactive.' : ''
+      return `Don is off and ${n} ${n === 1 ? 'lead has' : 'leads have'} texted in` +
+        `${h ? `, oldest ${h}h ago` : ''}.${why}`
+    }
     case 'followup_overdue':
       return `${who} - follow-up is overdue.`
     case 'fulfilment_overdue':
@@ -91,6 +100,52 @@ function xmlEscape(v: string): string {
   return v.replace(/[<>&"']/g, (c) => (
     { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c] as string
   ))
+}
+
+// Refresh the mirror of Don's on/off state.
+//
+// Don's config lives in ql-hq. A watcher is a SELECT, and a SELECT cannot make
+// an HTTP call to another project - so the only way jarvis_scan() can see him
+// is if his state is sitting in a local column when it runs. Same arrangement
+// as fulfilment, which ql-hq pushes here for the same reason.
+//
+// Best effort on purpose. If ql-hq is unreachable the columns keep their last
+// values and don_synced_at goes stale, which the watcher reads as "I do not
+// know" and stays quiet about, rather than announcing an outage as though Don
+// had been switched off.
+// deno-lint-ignore no-explicit-any
+async function syncDonState(db: any): Promise<void> {
+  const hq = Deno.env.get('QL_HQ_API_URL')
+  const secret = Deno.env.get('QL_MC_API_SECRET')
+  if (!hq || !secret) return
+
+  try {
+    const res = await fetch(`${hq}/sync-from-mc`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-secret': secret },
+      body: JSON.stringify({ action: 'get_sms_agent_config' }),
+    })
+    if (!res.ok) {
+      console.warn('syncDonState: ql-hq returned', res.status)
+      return
+    }
+    const cfg = (await res.json())?.config
+    if (!cfg) return
+
+    // Both halves matter. auto_reply off means he is not answering; is_active
+    // off means the config is not even attached to the inbound number, so
+    // switching auto_reply on alone would not wake him. Recording only the
+    // first would make "Don is on" true and useless.
+    const { data: row } = await db.from('business_settings').select('id').limit(1).maybeSingle()
+    if (!row?.id) return
+    await db.from('business_settings').update({
+      don_enabled:   cfg.auto_reply === true,
+      don_active:    cfg.is_active === true,
+      don_synced_at: new Date().toISOString(),
+    }).eq('id', row.id)
+  } catch (err) {
+    console.warn('syncDonState failed:', err instanceof Error ? err.message : err)
+  }
 }
 
 // Wall-clock time where the person is, not where the server is. A cron running
@@ -154,6 +209,11 @@ Deno.serve(async (req: Request) => {
       .from('business_settings')
       .select('jarvis_notify_number, jarvis_notify_enabled, jarvis_timezone, jarvis_quiet_start, jarvis_quiet_end, jarvis_daily_sms_cap, twilio_from_number, jarvis_from_number, jarvis_call_enabled, jarvis_call_cap, jarvis_call_voice')
       .limit(1).maybeSingle()
+
+    // The mirror first, then the scan: jarvis_scan() reads don_enabled, so
+    // refreshing it afterwards would leave every run reasoning about the
+    // previous heartbeat's answer.
+    await syncDonState(db)
 
     // Refresh the facts first. Worth doing even when he cannot speak: the event
     // table stays current, so the panel and the first message after quiet hours
