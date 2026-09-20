@@ -1,0 +1,18 @@
+-- Never chase a lead nobody has spoken to yet.
+--
+-- sync-from-hq stamps next_followup = today on every web enquiry. That is a
+-- "call them today" prompt for the rep, not a promise anyone made - but the
+-- watcher read it as one, so a brand new lead became an overdue follow-up as
+-- soon as that date passed. Fixing the date comparison only moved the noise to
+-- the next morning; the alert was wrong in KIND, not in timing.
+--
+-- A follow-up is something you owe AFTER making contact. It now requires
+-- last_contact: a rep spoke to them, set a date, and let it slip. That is worth
+-- a text. A new enquiry sitting in the pipeline is not - it is new, and
+-- proposal_cold already covers one that goes quiet later.
+--
+-- No grace period, deliberately. A picked number would just be a guess at how
+-- wrong the wrong alert should be.
+--
+-- Three alerts raised in error were resolved when this went in. All three leads
+-- had last_contact null and contact_count 0 - nobody had ever spoken to them.
