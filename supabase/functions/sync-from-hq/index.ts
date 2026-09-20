@@ -151,7 +151,16 @@ Deno.serve(async (req: Request) => {
         stage:         'new_lead',
         lead_type:     'managed',
         niche,
-        value:         600,
+        // No build fee. This used to seed 600 back when the field was "Deal
+        // Value (AUD/mo)" and 600 was the standard monthly management fee - a
+        // sensible default for a recurring figure. The field is now the Build
+        // Fee, a ONE-OFF charge that gets logged as a real order line the
+        // moment the lead converts, so seeding it would invent a $600 charge
+        // nobody quoted on every site enquiry.
+        //
+        // Left null on purpose: the build fee is whatever is actually agreed on
+        // the call, and an empty field asks for it. The pricing note below
+        // still tells the rep what the list price is.
         source:        'inbound',
         notes,
         contactable:   true,
