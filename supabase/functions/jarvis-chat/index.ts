@@ -804,7 +804,7 @@ async function findLead({ query } = {}) {
   const { rows } = await select(
     'leads',
     {
-      select: 'id,name,company,email,phone,stage,value,source,owner_id,last_contact,next_followup,status,suburb,state,info_sent_at,followup_sent_at',
+      select: 'id,name,company,email,phone,stage,value,source,owner_id,last_contact,next_followup,status,suburb,state,info_sent_at,followup_sent_at,notes',
       or: `(name.ilike.*${q}*,company.ilike.*${q}*,email.ilike.*${q}*,phone.ilike.*${q}*)`,
       order: 'created_at.desc',
     },
@@ -1326,10 +1326,20 @@ const TOOLS = [
   },
   {
     name: 'send_lead_email',
-    description: 'Send the info or follow-up email to a lead, using the app\'s own templates and logging.',
+    description:
+      'Send the info or follow-up email to a lead, using the app\'s own templates and logging. ' +
+      'Pass subject and body ONLY when the person has asked for wording of their own - for ' +
+      'example tailoring it to what was discussed on a call. Leave both out and the saved ' +
+      'template is used, which is the right default. Read the wording back and get a yes ' +
+      'before calling this: it sends immediately and cannot be recalled.',
     inputSchema: {
       type: 'object',
-      properties: { lead_id: str('Lead UUID, from find_lead.'), kind: str('"info" or "followup". Defaults to info.') },
+      properties: {
+        lead_id: str('Lead UUID, from find_lead.'),
+        kind: str('"info" or "followup". Defaults to info.'),
+        subject: str('Overrides the template subject. Only when custom wording was asked for.'),
+        body: str('Overrides the template body, plain text. Only when custom wording was asked for.'),
+      },
       required: ['lead_id'],
     },
     handler: sendLeadEmail,
