@@ -105,23 +105,22 @@ Deno.serve(async (req: Request) => {
         'Renovation': 'Renovation',
       }
       const niche = NICHE[campaign] ?? (campaign || 'solar')
-      // This is the UTC date, which in Sydney is yesterday from 10am AEST, so
-      // a card can show a follow-up date a day behind.
+      // The business's today, not UTC's.
       //
-      // A fix using Intl.DateTimeFormat with timeZone 'Australia/Sydney' was
-      // deployed as v13 and then reverted - WRONGLY. Web enquiries appeared to
-      // stop reaching the pipeline and the deploy was blamed; in fact the one
-      // submission in that window matched an existing lead on email and phone
-      // and was folded into it by the duplicate guard below, which is what it
-      // is supposed to do. The give-away is that the update it wrote set
-      // next_followup to the Sydney date, not the UTC one - so v13 was working
-      // correctly at the moment it was judged broken.
+      // toISOString() is UTC, and Sydney runs 10-11 hours ahead, so from 10am
+      // AEST the UTC date is still yesterday and a card shows a follow-up date
+      // a day behind.
       //
-      // The Intl approach is sound and is used already in jarvis-notify
-      // (localHHMM). Reapplying it is safe. Nothing alerts on this date any
-      // more - followup_overdue requires last_contact - so the cost of leaving
-      // it as UTC is cosmetic.
-      const today = new Date().toISOString().split('T')[0]
+      // This was deployed once, reverted on a false alarm, and is now back: the
+      // enquiry that looked lost had in fact been folded into an existing card
+      // by the duplicate guard below, and the row it wrote carried the Sydney
+      // date - proving this code was working at the moment it was blamed. The
+      // same Intl call is used in jarvis-notify's localHHMM.
+      //
+      // en-CA formats as YYYY-MM-DD, which is what a date column wants.
+      const today = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Australia/Sydney',
+      }).format(new Date())
 
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL')!,
@@ -139,27 +138,50 @@ Deno.serve(async (req: Request) => {
       // A double-tap on the button, or a second try minutes later, should land
       // on the existing card rather than give a rep the same lead twice.
       let existingId: string | null = null
+      let existingNotes: string | null = null
       const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
       for (const [col, val] of [['email', email], ['phone', phone]] as const) {
         if (!val || existingId) continue
         const { data } = await supabase
-          .from('leads').select('id')
+          .from('leads').select('id, notes')
           .eq(col, val)
           .not('stage', 'in', '(closed_won,closed_lost)')
           .gte('created_at', since)
           .order('created_at', { ascending: false })
           .limit(1)
         existingId = data?.[0]?.id ?? null
+        existingNotes = (data?.[0]?.notes as string | null) ?? null
       }
 
       if (existingId) {
+        // Say so on the card.
+        //
+        // Folding a repeat enquiry into the existing lead is right - nobody
+        // wants the same person twice on the board - but it used to happen
+        // silently, so someone who filled the form again left no trace at all.
+        // That is indistinguishable from a broken form, and was read as exactly
+        // that: an enquiry "vanished", a deploy got blamed, and a working
+        // change was reverted over it.
+        //
+        // It is also information a rep wants. Someone enquiring a second time
+        // is warmer than the card's history suggests.
+        //
+        // Skipped when the same line is already there, so a double-tap on the
+        // button does not write the note twice.
+        const again = `Enquired again ${today} via ${source}.`
+        const notesPatch = (existingNotes ?? '').includes(again)
+          ? {}
+          : { notes: [existingNotes, again].filter(Boolean).join('\n') }
+
         // Deliberately does NOT touch contactable. A repeat enquiry used to
         // force it back to "Contactable", which silently overwrote a rep who
         // had marked them uncontactable - the one value on this row that is a
         // human's explicit judgement. The follow-up date is bumped because a
         // fresh enquiry genuinely is a reason to look again.
         await supabase.from('leads').update({
-          next_followup: today, updated_at: new Date().toISOString(),
+          next_followup: today,
+          ...notesPatch,
+          updated_at: new Date().toISOString(),
         }).eq('id', existingId)
         return json({ ok: true, lead_id: existingId, duplicate: true })
       }
