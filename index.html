@@ -6205,8 +6205,23 @@ function renderManaged(clients, orderLog=[]) {
   setText('mg-total',mgTotal||'-');
   setText('mg-churn-rate',mgTotal>0?(mgChurned/mgTotal*100).toFixed(1)+'%':'-');
   setText('mg-retention-rate',mgTotal>0?((mgOnboarding+mgActive+mgPaused)/mgTotal*100).toFixed(1)+'%':'-');
-  mgChurnChart=renderChurnChart('chart-mg-churn',mgActive,mgPaused,mgChurned,mgChurnChart);
-  renderChurnBreakdown('mg-churn-breakdown',mgActive,mgPaused,mgChurned);
+  // Onboarding counts as Active here. A client being built is a client we have,
+  // not a third state the reader has to reconcile.
+  //
+  // It was not only a labelling choice. Both renderers divide by the three
+  // numbers they are handed and label that sum "Total (all-time)", so with
+  // onboarding passed to neither, four clients were absent from the panel
+  // entirely - not a slice, not the total. The figure read "88.9% churned" off
+  // a population of 9 while the churn-rate metric beside it read 61.5% off the
+  // real 13, and nothing on screen explained why two numbers about the same
+  // clients disagreed.
+  //
+  // Deliberately only the managed side: PPL has no onboarding stage, and these
+  // two renderers are shared, so folding it in at the call site keeps the PPL
+  // chart honest.
+  const mgLive=mgActive+mgOnboarding;
+  mgChurnChart=renderChurnChart('chart-mg-churn',mgLive,mgPaused,mgChurned,mgChurnChart);
+  renderChurnBreakdown('mg-churn-breakdown',mgLive,mgPaused,mgChurned);
   MG_STAGES.forEach(s=>{
     const col=$('mg-col-'+s.id),cnt=$('mgc-'+s.id);
     const sl=clients.filter(c=>c.stage===s.id);
