@@ -9964,7 +9964,7 @@ async function saveAgentSettings() {
 const JARVIS_WATCH_LABELS = {
   proposal_cold:      'Proposals going cold',
   followup_overdue:   'Follow-up dates gone past',
-  don_off:            'Don off while leads wait',
+  don_off:            'AI SMS off while leads wait',
   fulfilment_overdue: 'Onboarding past its SLA',
   fulfilment_blocked: 'Fulfilment blocked',
 };
@@ -10491,7 +10491,7 @@ const JV = (() => {
       const byKind = (data && data.open_by_kind) || {};
       const labels = (typeof JARVIS_WATCH_LABELS !== 'undefined') ? JARVIS_WATCH_LABELS : {};
       let html = Object.keys(labels).map((k) => row(labels[k], byKind[k] || 0, true)).join('');
-      html += row('queued to send', (data && data.queued) || 0, true);
+      html += row('Texts queued to send', (data && data.queued) || 0, true);
       watch.innerHTML = html || row('nothing open', 0);
     } catch (_) {
       watch.innerHTML = row('unavailable', '—');

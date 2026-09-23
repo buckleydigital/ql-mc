@@ -67,10 +67,10 @@ function describe(e: Ev): string {
     case 'don_off': {
       const n = Number(e.payload.waiting ?? 0)
       const h = Number(e.payload.since_hours ?? 0)
-      // Naming the config case explicitly: "turn Don on" is the wrong
+      // Naming the config case explicitly: "turn it on" is the wrong
       // instruction when the switch that matters is a different one.
-      const why = e.payload.config_inactive ? ' His agent is set inactive.' : ''
-      return `Don is off and ${n} ${n === 1 ? 'lead has' : 'leads have'} texted in` +
+      const why = e.payload.config_inactive ? ' Its agent is set inactive.' : ''
+      return `The AI SMS agent is off and ${n} ${n === 1 ? 'lead has' : 'leads have'} texted in` +
         `${h ? `, oldest ${h}h ago` : ''}.${why}`
     }
     case 'followup_overdue':
