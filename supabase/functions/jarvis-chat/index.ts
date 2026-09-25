@@ -930,10 +930,25 @@ async function getLeadTotals() {
 
   const [sales, ppl] = await Promise.all([tally('leads'), tally('ppl_leads')])
 
+  // The summary line names the SALES PIPELINE only. Both tallies used to be in
+  // it, so every answer to "how many leads this week" came back with a pay per
+  // lead figure nobody had asked for - usually "and none in pay per lead",
+  // which is noise attached to every single lead question.
+  //
+  // The pay-per-lead numbers still come back in the data, so a follow-up is
+  // answered without a second round trip. They are just no longer put in the
+  // sentence the model reads out.
   return ok(
-    `Sales pipeline: ${sales.today} today, ${sales.month_to_date} this month, ${sales.all_time} overall. ` +
-      `Pay per lead: ${ppl.today} today, ${ppl.month_to_date} this month, ${ppl.all_time} overall.`,
-    { sales_pipeline: sales, pay_per_lead: ppl, month: localMonth() },
+    `Sales pipeline: ${sales.today} today, ${sales.last_7_days} in the last 7 days, ` +
+      `${sales.month_to_date} this month, ${sales.all_time} overall.`,
+    {
+      sales_pipeline: sales,
+      pay_per_lead: ppl,
+      month: localMonth(),
+      note: 'Unless the question was specifically about pay per lead, answer with the '
+        + 'sales pipeline figures only and do not mention pay per lead at all. '
+        + 'The pay_per_lead numbers are here for a follow-up question, not to be volunteered.',
+    },
   )
 }
 
@@ -1540,8 +1555,10 @@ it." Never estimate.
 
 "LEADS" MEANS TWO THINGS AND THE WORDING DECIDES WHICH. "our sales pipeline",
 "the pipeline", or a bare "leads" is the sales pipeline; "pay per lead" or "PPL"
-is a different and larger set. get_lead_totals returns both — read out the one
-they asked about.
+is a different and larger set. get_lead_totals returns both, but ANSWER WITH ONE.
+A bare "leads" question is about the sales pipeline: give that figure and stop.
+Do not mention pay per lead, do not add "and none in pay per lead", do not
+contrast the two. Pay per lead is reported only when they name it.
 
 - "How are we doing", "what are our numbers" -> get_daily_brief, one call.
 - "How many leads" -> get_lead_totals. "How many closes" -> get_closes.

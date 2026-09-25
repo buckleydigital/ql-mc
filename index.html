@@ -2917,6 +2917,15 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
     <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">Urgent items only, and never instead of the text - the message is the record, the call is the interrupt. Quiet hours apply. Needs a Twilio number with the <strong style="color:var(--ink2)">Voice</strong> capability, not SMS only. He speaks, then listens - answer him and he acts on it, same as a text.</p>
     <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">This is the voice he speaks in. It is included in the call price, so a call costs no more than the Twilio minutes.</p>
 
+    <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Voice in this browser</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+      <div class="frow" style="flex:2;min-width:170px;margin:0"><label class="flabel">Speaking voice</label>
+        <select class="fi" id="js-web-voice"></select>
+      </div>
+      <button class="btn" type="button" onclick="JV.sampleVoice()">Hear it</button>
+    </div>
+    <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">Saved on <strong style="color:var(--ink2)">this device only</strong>, because which voices exist depends entirely on the phone or laptop you are on - a phone rarely has the same ones a desktop does. Auto prefers a British male voice and avoids the female ones; pick explicitly if it still gets it wrong.</p>
+
     <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">What he is watching</div>
     <div id="js-watch" style="font-size:11.5px;color:var(--ink3);line-height:1.9">Loading…</div>
 
@@ -9349,7 +9358,30 @@ const JARVIS_WATCH_LABELS = {
   fulfilment_blocked: 'Fulfilment blocked',
 };
 
+// The device's own voices. getVoices() is famously empty on first call, so if
+// it comes back empty the list is rebuilt when the browser fires the event.
+function fillWebVoicePicker() {
+  const sel = $('js-web-voice');
+  if (!sel || typeof JV === 'undefined' || !JV.listVoices) return;
+  const voices = JV.listVoices();
+  let saved = null;
+  try { saved = localStorage.getItem('jv-voice'); } catch (_) {}
+  const auto = JV.currentVoice();
+  sel.innerHTML = '<option value="">Auto' + (auto ? ' - currently ' + esc(auto) : '') + '</option>'
+    + voices.map(v => `<option value="${esc(v.name)}"${v.name === saved ? ' selected' : ''}>${esc(v.name)} (${esc(v.lang)})</option>`).join('');
+  if (!voices.length) {
+    sel.innerHTML = '<option value="">No voices available on this device</option>';
+    if (window.speechSynthesis) {
+      speechSynthesis.addEventListener('voiceschanged', fillWebVoicePicker, { once: true });
+    }
+  }
+  // Applied on change rather than on Save: this is a per-device browser
+  // preference, not part of the settings row that Save writes to the database.
+  sel.onchange = () => { JV.setVoiceByName(sel.value); JV.sampleVoice(); };
+}
+
 async function openJarvisSettings() {
+  fillWebVoicePicker();
   const s = await loadBizSettings();
   setVal('js-number', s.jarvis_notify_number || '');
   setVal('js-from', s.jarvis_from_number || '');
@@ -9967,13 +9999,26 @@ const JV = (() => {
    */
   const VOICE_ORDER = [
     /Google UK English Male/i,
-    /\bDaniel\b/i,           // macOS en-GB
-    /\bArthur\b/i,           // macOS en-GB, newer
+    /\bDaniel\b/i,           // iOS + macOS en-GB
+    /\bArthur\b/i,           // iOS + macOS en-GB, newer
     /\bOliver\b/i,
     /\bGeorge\b/i,
-    /Microsoft (Ryan|George)/i,
+    /\bRishi\b/i,            // iOS en-IN male
+    /Microsoft (Ryan|George|Guy|Christopher)/i,
+    // Android's Google TTS names its voices by codename, not by anything
+    // readable. -gbb- and -gbd- are the male en-GB ones; -gba- and -gbc- are
+    // female. Without these, Android never matched a single pattern above and
+    // fell through to the guesswork below.
+    /en[-_]gb[-_]x[-_](gbb|gbd)/i,
+    /en[-_]au[-_]x[-_](aub|aud)/i,
     /en[-_]GB.*male/i,
   ];
+
+  // Known-female voices, so the fallback cannot land on one. This is the bug
+  // that put a female voice on a phone: the last resort was "any en-GB voice",
+  // and on most phones the first en-GB voice in the list is female.
+  const VOICE_AVOID = /(female|\bKaren\b|\bSamantha\b|\bMartha\b|\bSerena\b|\bKate\b|\bMoira\b|\bFiona\b|\bTessa\b|\bVeena\b|\bZira\b|\bHazel\b|\bSusan\b|\bCatherine\b|[-_]x[-_](gba|gbc|aua|auc))/i;
+
   let picked = null, pickedOnce = false;
 
   function pickVoice() {
@@ -9982,13 +10027,42 @@ const JV = (() => {
     // getVoices() is empty until the list loads, so don't cache an empty pick.
     if (!all.length) return null;
     pickedOnce = true;
+
+    // An explicit choice always wins. Stored per device on purpose: which
+    // voices exist depends entirely on the phone or laptop in hand, so a
+    // single shared setting would be wrong on every device but one.
+    let saved = null;
+    try { saved = localStorage.getItem('jv-voice'); } catch (_) {}
+    if (saved) {
+      const exact = all.find(v => v.name === saved);
+      if (exact) { picked = exact; return picked; }
+    }
+
     for (const want of VOICE_ORDER) {
-      const hit = all.find(v => want.test(v.name) || want.test(`${v.lang} ${v.name}`));
+      const hit = all.find(v => (want.test(v.name) || want.test(`${v.lang} ${v.name}`))
+        && !VOICE_AVOID.test(v.name));
       if (hit) { picked = hit; break; }
     }
-    // Nothing British on this machine — any en-GB, then leave it to the OS.
-    picked = picked || all.find(v => /^en[-_]GB/i.test(v.lang)) || null;
+    // Still nothing: any English voice that is not on the avoid list, British
+    // first. Better silence from the OS default than a voice that was picked
+    // precisely because nothing else matched.
+    picked = picked
+      || all.find(v => /^en[-_]GB/i.test(v.lang) && !VOICE_AVOID.test(v.name))
+      || all.find(v => /^en/i.test(v.lang) && !VOICE_AVOID.test(v.name))
+      || null;
     return picked;
+  }
+
+  // Every English voice this device has, for the settings picker.
+  function listVoices() {
+    const all = window.speechSynthesis?.getVoices?.() ?? [];
+    return all.filter(v => /^en/i.test(v.lang)).sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  function setVoiceByName(name) {
+    try { name ? localStorage.setItem('jv-voice', name) : localStorage.removeItem('jv-voice'); } catch (_) {}
+    pickedOnce = false; picked = null;
+    pickVoice();
   }
 
   if (window.speechSynthesis) {
@@ -9997,6 +10071,13 @@ const JV = (() => {
 
   async function speak(text) {
     if (!voice || !text) return;
+    return speakForce(text);
+  }
+
+  // Same, minus the "are replies muted" check - used by the settings preview,
+  // where the whole point is to hear it.
+  async function speakForce(text) {
+    if (!text) return;
     hush();
 
     if (!window.speechSynthesis) return;
@@ -10062,6 +10143,11 @@ const JV = (() => {
   }
 
   return {
+    // The settings modal needs these; everything else about the voice stays
+    // private to this module.
+    listVoices, setVoiceByName,
+    currentVoice() { return pickVoice()?.name || null; },
+    sampleVoice() { speakForce('Good evening. All systems are live.'); },
     toggle() { const p = $$('jv-panel'); p.classList.contains('open') ? this.close() : this.open(); },
     open() {
       if (typeof IS_REP !== 'undefined' && IS_REP) return;
