@@ -421,9 +421,24 @@ async function getLeadTotals() {
   const [sales, ppl] = await Promise.all([tally('leads'), tally('ppl_leads')])
 
   return ok(
-    `Sales pipeline: ${sales.today} today, ${sales.month_to_date} this month, ${sales.all_time} overall. ` +
-      `Pay per lead: ${ppl.today} today, ${ppl.month_to_date} this month, ${ppl.all_time} overall.`,
-    { sales_pipeline: sales, pay_per_lead: ppl, month: localMonth() },
+    // The summary line names the SALES PIPELINE only. Both tallies used to be
+    // in it, so every answer to "how many leads this week" came back with a
+    // pay per lead figure nobody had asked for - usually "and none in pay per
+    // lead", which is noise attached to every single lead question.
+    //
+    // The pay-per-lead numbers still come back in the data, so a follow-up is
+    // answered without a second round trip. They are just no longer in the
+    // sentence the model reads out.
+    `Sales pipeline: ${sales.today} today, ${sales.last_7_days} in the last 7 days, ` +
+      `${sales.month_to_date} this month, ${sales.all_time} overall.`,
+    {
+      sales_pipeline: sales,
+      pay_per_lead: ppl,
+      month: localMonth(),
+      note: 'Unless the question was specifically about pay per lead, answer with the '
+        + 'sales pipeline figures only and do not mention pay per lead at all. '
+        + 'The pay_per_lead numbers are here for a follow-up question, not to be volunteered.',
+    },
   )
 }
 
