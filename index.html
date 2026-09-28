@@ -6363,6 +6363,19 @@ async function updateClient(type) {
     const {data:_sd1}=await db.auth.getSession();
     if(_sd1?.session)fetch(`${_ep}/functions/v1/sync-to-hq`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${_sd1.session.access_token}`},body:JSON.stringify({ql_hq_company_id:d.ql_hq_company_id,email:d.delivery_email,sms_number:d.delivery_phone,webhook_url:d.client_webhook,postcodes:d.postcodes})}).catch(e=>console.warn('sync-to-hq:',e));
   }
+  // Marking a managed client "Ads Live" here ticks the ads_live step on their
+  // fulfilment checklist in the ql-hq Team Panel. Sent when the status changes,
+  // and again on any save while ql-hq still reports onboarding steps
+  // outstanding, so a push that failed last time is retried. ql-hq ignores it if
+  // the step is already done. Best effort: the save above has already landed.
+  if (type!=='ppl' && d.active_status==='Ads Live') {
+    const _prevC=CLIENT_CACHE[id]||{};
+    if (_prevC.ql_hq_company_id && (_prevC.active_status!=='Ads Live' || _prevC.fulfilment_next_step)) {
+      callHq('mark_ads_live',{client_id:id})
+        .then(out=>{ if(out.updated) toast('Team Panel fulfilment moved to Ads live ✓'); })
+        .catch(e=>{ console.warn('mark_ads_live:',e); toast('Saved, but the Team Panel was not updated: '+e.message,true); });
+    }
+  }
   closeModal(type==='ppl'?'m-edit-ppl':'m-edit-managed');
   if (type==='ppl') { loadPPL(); }
   else {

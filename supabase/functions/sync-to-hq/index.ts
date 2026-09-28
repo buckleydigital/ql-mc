@@ -185,6 +185,50 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true })
     }
 
+    // ── action: mark_ads_live ─────────────────────────────────────────────────
+    // A managed client was set to "Ads Live" here. Tell ql-hq so the ads_live
+    // step on their fulfilment checklist (the Team Panel) is ticked. The client
+    // is read here rather than trusted from the request, so only a client that
+    // really is Ads Live, and really is linked to ql-hq, can move a checklist.
+    if (action === 'mark_ads_live') {
+      if (user.app_metadata?.account_type === 'sales_rep') {
+        return json({ error: 'Not available to sales reps' }, 403)
+      }
+      const { client_id } = body as { client_id?: string }
+      if (!client_id) return json({ error: 'client_id is required' }, 400)
+
+      const { data: client } = await supabase
+        .from('clients')
+        .select('ql_hq_company_id, active_status, ads_first_live_date')
+        .eq('id', client_id)
+        .maybeSingle()
+      if (!client) return json({ error: 'Client not found' }, 404)
+      if (!client.ql_hq_company_id) return json({ ok: true, updated: false, note: 'client not linked to ql-hq' })
+      if (client.active_status !== 'Ads Live') return json({ error: 'Client is not marked Ads Live' }, 400)
+
+      // Who pressed it, so the Team Panel's log says more than "ql-mc".
+      let actor = user.email || 'ql-mc'
+      if (user.email) {
+        const { data: tm } = await supabase
+          .from('team_members').select('name').ilike('email', user.email).limit(1).maybeSingle()
+        if (tm?.name) actor = tm.name as string
+      }
+
+      const res = await fetch(`${QL_HQ_API_URL}/sync-from-mc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-secret': QL_MC_API_SECRET },
+        body: JSON.stringify({
+          action: 'mark_ads_live',
+          ql_hq_company_id: client.ql_hq_company_id,
+          ads_live_date: client.ads_first_live_date ?? null,
+          actor_name: actor,
+        }),
+      })
+      const out = await res.json().catch(() => ({}))
+      if (!res.ok) return json({ error: out?.error || `ql-hq returned ${res.status}` }, 502)
+      return json({ ok: true, ...out })
+    }
+
     // ── action: disable_ai ────────────────────────────────────────────────────
     // Forward a bulk-SMS recipient list to ql-hq so the AI SMS agent is switched
     // OFF for each of them (they went through the bulk SMS flow). ql-hq resolves
