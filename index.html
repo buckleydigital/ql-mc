@@ -2120,8 +2120,8 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
       </select>
     </div>
     <div class="frow"><label class="flabel">CX Score <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10 - client experience rating</span></label><input class="fi" id="mg-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
-    <div class="frow"><label class="flabel">Start Date</label><input class="fi" id="mg-start" type="date"></div>
-    <div class="frow"><label class="flabel">Ads First Live Date</label><input class="fi" id="mg-ads-live" type="date" oninput="calcNextPaymentNew()"></div>
+    <div class="frow"><label class="flabel">Start Date</label><input class="fi" id="mg-start" type="date" oninput="$('mg-ads-live').value=this.value;calcNextPaymentNew()"></div>
+    <div class="frow"><label class="flabel">Ads First Live Date</label><input class="fi" id="mg-ads-live" type="date" oninput="$('mg-start').value=this.value;calcNextPaymentNew()"></div>
     <div class="frow"><label class="flabel">Last Payment Date</label><input class="fi" id="mg-last-pay" type="date" oninput="calcNextPaymentNew()"></div>
     <div class="frow"><label class="flabel">Next Payment Due</label><input class="fi" id="mg-next-pay" type="date"></div>
     <div class="macts">
@@ -2537,8 +2537,8 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
       </select>
     </div>
     <div class="frow"><label class="flabel">CX Score <span style="font-size:9.5px;color:var(--ink3);font-weight:300">/10 - client experience rating</span></label><input class="fi" id="em-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
-    <div class="frow"><label class="flabel">Start Date</label><input class="fi" id="em-start" type="date"></div>
-    <div class="frow"><label class="flabel">Ads First Live Date</label><input class="fi" id="em-ads-live" type="date" oninput="calcNextPayment()"></div>
+    <div class="frow"><label class="flabel">Start Date</label><input class="fi" id="em-start" type="date" oninput="$('em-ads-live').value=this.value;calcNextPayment()"></div>
+    <div class="frow"><label class="flabel">Ads First Live Date</label><input class="fi" id="em-ads-live" type="date" oninput="$('em-start').value=this.value;calcNextPayment()"></div>
     <div class="frow"><label class="flabel">Last Payment Date</label><input class="fi" id="em-last-pay" type="date" oninput="calcNextPayment()"></div>
     <div class="frow"><label class="flabel">Next Payment Due</label><input class="fi" id="em-next-pay" type="date"></div>
     <input type="hidden" id="em-payments-made">
@@ -6269,8 +6269,10 @@ async function openEditClient(type,c) {
     }
     updateMgSubStageVisibility();
     setVal('em-cx',c.cx_score!=null?c.cx_score:'');
-    setVal('em-start',c.start_date||'');
-    setVal('em-ads-live',c.ads_first_live_date||'');
+    // Start date and ads first live date are the same fact; the two inputs
+    // mirror each other, so fill whichever is empty from the other.
+    setVal('em-start',c.start_date||c.ads_first_live_date||'');
+    setVal('em-ads-live',c.ads_first_live_date||c.start_date||'');
     setVal('em-last-pay',c.last_payment_date||'');
     setVal('em-next-pay',c.next_payment_date||'');
     if ((c.ads_first_live_date || c.last_payment_date) && !c.next_payment_date) calcNextPayment();
