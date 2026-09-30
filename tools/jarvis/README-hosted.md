@@ -52,6 +52,30 @@ reports, and you reply "yes". At most two run per heartbeat, 25 can be active.
 The ✦ button in the panel shows what he remembers and what he has scheduled,
 and lets you edit memories or cancel jobs.
 
+## Social posts
+
+He drafts Facebook/Instagram posts; you approve them on the ▦ Posts screen and
+post them yourself. **Not connected to any social account** - there is no
+publish tool, and approving publishes nothing.
+
+Every draft goes through `jarvis-content` before you see it:
+
+1. **Lint** (code, free): banned AI-tell phrases, emoji/hashtag walls, client
+   names, and any number not listed in the draft's `facts` with a source.
+2. **Editor** (a second model, Opus 5.5 at medium effort): scores specific,
+   truthful, audience, hook, voice, clarity and card against the content brief
+   and your own approved posts and edits.
+3. **The bar**, in code: every score at least 7, average at least 8, no hard
+   fails. Anything less goes back to him with the fixes.
+
+Passing drafts get a branded 4:5 card (Poppins, black, #4797ff) rendered with
+resvg-wasm into the public `jarvis-content` bucket. Fonts, the renderer's wasm
+and the logo are served from this site (`assets/jarvis/`, OFL/MPL licences
+alongside), so a card never depends on a third-party CDN.
+
+The content brief lives in Jarvis settings. Edit a caption before approving
+and he gets the before/after as a voice example next time.
+
 ## Cost
 
 Every question is costed at list price and written to `jarvis_usage` - panel,

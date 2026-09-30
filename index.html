@@ -875,6 +875,7 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
       <button class="jv-mic admin-only-field" id="jv-settings" onclick="openJarvisSettings()" title="Jarvis settings">⚙</button>
       <button class="jv-mic admin-only-field" id="jv-log" onclick="openJarvisLog()" title="What Jarvis has done">☷</button>
       <button class="jv-mic admin-only-field" id="jv-mind" onclick="openJarvisMind()" title="What he remembers and has scheduled">✦</button>
+      <button class="jv-mic admin-only-field" id="jv-posts" onclick="openJarvisPosts()" title="Posts he has drafted">▦</button>
       <button class="jv-mic" id="jv-new" onclick="JV.reset()" title="New conversation">⟲</button>
       <button class="jv-mic" id="jv-hud-btn" onclick="JV.toggleHud()" title="Full screen">⬚</button>
       <button class="jv-mic" id="jv-writes" onclick="JV.toggleWrites()" title="Read-only">🔒</button>
@@ -2928,6 +2929,10 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
     </div>
     <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">Saved on <strong style="color:var(--ink2)">this device only</strong>, because which voices exist depends entirely on the phone or laptop you are on - a phone rarely has the same ones a desktop does. Auto prefers a British male voice and avoids the female ones; pick explicitly if it still gets it wrong.</p>
 
+    <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Content brief</div>
+    <textarea class="fi" id="js-brief" rows="6" maxlength="4000" style="width:100%;resize:vertical;font-size:12px;line-height:1.5" placeholder="Who the posts are for, how you sound, what never to say. Blank uses his default: Australian solar installers who buy leads; plain, direct, no hype; one idea per post; never name clients or invent numbers."></textarea>
+    <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">Read by him when he writes a post and by his editor when it checks one. The more specific, the less generic the posts.</p>
+
     <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">What he costs</div>
     <div id="js-spend" style="font-size:11.5px;color:var(--ink3);line-height:1.9">Loading…</div>
     <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">Anthropic API spend at list price, in US dollars - every question from the panel and by text, web searches included. Twilio texts and calls are billed separately and are not counted here.</p>
@@ -2938,6 +2943,24 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
     <div class="macts">
       <button class="btn" onclick="closeModal('m-jarvis-settings')">Cancel</button>
       <button class="btn btn-p" id="js-save-btn" onclick="saveJarvisSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Posts Jarvis has drafted -->
+<!-- Not connected to Facebook or Instagram on purpose: approving a post here
+     publishes nothing. You copy the caption, save the image and post it
+     yourself, then tick it off. -->
+<div class="overlay" id="m-jarvis-posts">
+  <div class="modal" style="max-width:720px">
+    <h2>▦ Posts</h2>
+    <div class="msub">Drafted by Jarvis, checked by his editor, posted by you</div>
+    <div id="jp-body" style="max-height:66vh;overflow-y:auto;margin:14px -4px 0;padding:0 4px">
+      <div style="color:var(--ink3);font-size:12px">Loading…</div>
+    </div>
+    <p style="font-size:10.5px;color:var(--ink3);margin:12px 0 0;line-height:1.6">Nothing here is connected to your accounts - approving publishes nothing. Edit the caption before approving and he learns from the difference. Ask him for a post in the panel or by text, or schedule them ("every Tuesday, draft a post from last week").</p>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-jarvis-posts')">Close</button>
     </div>
   </div>
 </div>
@@ -9433,6 +9456,7 @@ async function openJarvisSettings() {
   fillWebVoicePicker();
   const s = await loadBizSettings();
   setVal('js-number', s.jarvis_notify_number || '');
+  setVal('js-brief', s.jarvis_content_brief || '');
   setVal('js-from', s.jarvis_from_number || '');
   $('js-call-enabled').checked = s.jarvis_call_enabled === true;
   setVal('js-call-cap', s.jarvis_call_cap == null ? 3 : s.jarvis_call_cap);
@@ -9482,6 +9506,113 @@ async function loadJarvisStatus() {
     host.innerHTML = rows + foot;
   } catch (err) {
     host.textContent = 'Could not load status: ' + (err.message || err);
+  }
+}
+
+// ── Posts ──────────────────────────────────────────────────────────────────
+// Drafts, approvals and "posted" ticks go through gated RPCs; the images are
+// public files in the jarvis-content bucket so they open on a phone.
+const JP_STATUS = {
+  draft:    { label: 'Waiting for you', tone: 'var(--amb)' },
+  approved: { label: 'Approved - ready to post', tone: 'var(--acc)' },
+  posted:   { label: 'Posted', tone: 'var(--grn)' },
+};
+let jpPosts = [];
+
+async function openJarvisPosts() {
+  openModal('m-jarvis-posts');
+  await loadJarvisPosts();
+}
+
+async function loadJarvisPosts() {
+  const host = $('jp-body');
+  try {
+    const { data, error } = await db.rpc('jarvis_post_list', { p_limit: 40 });
+    if (error) throw error;
+    jpPosts = data || [];
+    if (!jpPosts.length) {
+      host.innerHTML = '<div style="color:var(--ink3);font-size:12px;padding:6px 0">No posts yet. Ask him: "draft a post about how fast our leads land".</div>';
+      return;
+    }
+    host.innerHTML = jpPosts.map(function (p) {
+      const st = JP_STATUS[p.status] || { label: p.status, tone: 'var(--ink3)' };
+      const facts = (p.facts || []).map(function (f) {
+        return '<li>' + jmEsc(f.claim) + ' <span style="color:var(--ink3)">(' + jmEsc(f.source) + ')</span></li>';
+      }).join('');
+      const img = p.image_url
+        ? '<a href="' + jmEsc(p.image_url) + '" target="_blank" rel="noopener"><img src="' + jmEsc(p.image_url) + '" alt="" style="width:100%;border-radius:8px;border:1px solid var(--bd);display:block"></a>'
+        : '<div style="aspect-ratio:4/5;border:1px dashed var(--bd);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink3)">No image</div>';
+      const editable = p.status === 'draft' || p.status === 'approved';
+      const btns = [];
+      if (p.status === 'draft') {
+        btns.push('<button class="btn btn-p btn-xs" type="button" onclick="approveJarvisPost(\'' + p.id + '\')">Approve</button>');
+        btns.push('<button class="btn btn-xs" type="button" onclick="setJarvisPostStatus(\'' + p.id + '\',\'rejected\')">Reject</button>');
+      } else {
+        if (p.status === 'approved') btns.push('<button class="btn btn-xs" type="button" onclick="approveJarvisPost(\'' + p.id + '\')">Save caption</button>');
+        btns.push('<button class="btn btn-xs" type="button" onclick="copyJarvisPost(\'' + p.id + '\')">Copy caption</button>');
+        if (p.image_url) btns.push('<button class="btn btn-xs" type="button" onclick="downloadJarvisPost(\'' + p.id + '\')">Download image</button>');
+        if (p.status === 'approved') btns.push('<button class="btn btn-p btn-xs" type="button" onclick="setJarvisPostStatus(\'' + p.id + '\',\'posted\')">Mark as posted</button>');
+      }
+      return '<div style="display:grid;grid-template-columns:minmax(120px,190px) 1fr;gap:14px;padding:14px 0;border-bottom:1px solid var(--bd)">' +
+        '<div>' + img + '</div>' +
+        '<div style="min-width:0">' +
+          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:11px;margin-bottom:6px">' +
+            '<b style="color:' + st.tone + '">' + st.label + '</b>' +
+            (p.editor_score != null ? '<span style="color:var(--ink3);font-family:var(--mono)">editor ' + p.editor_score + '/10</span>' : '') +
+            '<span style="color:var(--ink3)">' + new Date(p.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) + '</span>' +
+          '</div>' +
+          '<textarea class="fi" id="jp-cap-' + p.id + '" rows="7" maxlength="2200" style="width:100%;resize:vertical;font-size:12px;line-height:1.5"' + (editable ? '' : ' readonly') + '>' + jmEsc(p.caption) + '</textarea>' +
+          (facts ? '<details style="margin-top:6px;font-size:11px;color:var(--ink2)"><summary style="cursor:pointer;color:var(--ink3)">Facts behind it</summary><ul style="margin:6px 0 0 16px;line-height:1.6">' + facts + '</ul></details>' : '') +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">' + btns.join('') + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch (err) {
+    host.textContent = 'Could not load posts: ' + (err.message || err);
+  }
+}
+
+async function approveJarvisPost(id) {
+  const box = $('jp-cap-' + id);
+  const { error } = await db.rpc('jarvis_post_approve', { p_id: id, p_caption: box ? box.value : null });
+  if (error) { toast('Could not approve: ' + error.message, true); return; }
+  toast('Approved ✓ - copy the caption and save the image to post it');
+  loadJarvisPosts();
+}
+
+async function setJarvisPostStatus(id, status) {
+  if (status === 'rejected' && !confirm('Reject this draft?')) return;
+  const { error } = await db.rpc('jarvis_post_set_status', { p_id: id, p_status: status });
+  if (error) { toast('Could not update: ' + error.message, true); return; }
+  if (status === 'posted') toast('Marked as posted ✓');
+  loadJarvisPosts();
+}
+
+async function copyJarvisPost(id) {
+  const box = $('jp-cap-' + id);
+  try {
+    await navigator.clipboard.writeText(box ? box.value : '');
+    toast('Caption copied ✓');
+  } catch (_) {
+    if (box) { box.removeAttribute('readonly'); box.select(); }
+    toast('Select all and copy', true);
+  }
+}
+
+// Fetched as a blob: the download attribute is ignored across origins, and
+// the images live on the storage domain.
+async function downloadJarvisPost(id) {
+  const p = jpPosts.find(function (x) { return x.id === id; });
+  if (!p || !p.image_url) return;
+  try {
+    const blob = await (await fetch(p.image_url)).blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'quoteleads-post-' + id.slice(0, 8) + '.jpg';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+  } catch (_) {
+    window.open(p.image_url, '_blank', 'noopener');
   }
 }
 
@@ -9727,6 +9858,7 @@ async function saveJarvisSettings() {
 
     const patch = {
       jarvis_notify_number: raw || null,
+      jarvis_content_brief: $('js-brief').value.trim() || null,
       jarvis_from_number: $('js-from').value.trim() || null,
       jarvis_call_enabled: $('js-call-enabled').checked,
       jarvis_call_cap: (function () {

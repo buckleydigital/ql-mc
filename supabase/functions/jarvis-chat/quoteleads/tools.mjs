@@ -19,6 +19,7 @@ import { config, stageKey, env } from './config.mjs'
 import { EXPLORE_TOOLS } from './explore.mjs'
 import { MEMORY_TOOLS } from './memory.mjs'
 import { JOB_TOOLS } from './jobs.mjs'
+import { CONTENT_TOOLS } from './content.mjs'
 import { userToken } from './auth.mjs'
 import { localDate, localMonth, startOfLocalDay, daysAgo, startOfMonth } from './dates.mjs'
 
@@ -763,6 +764,7 @@ export const TOOLS = [
   ...EXPLORE_TOOLS,
   ...MEMORY_TOOLS,
   ...JOB_TOOLS,
+  ...CONTENT_TOOLS,
 
   {
     name: 'get_daily_brief',

@@ -47,8 +47,11 @@ const EFFECTFUL = /^(update|send|create|delete)_/
  * Except his own notes. Remembering or forgetting a fact reaches no customer and
  * changes no number, and a read-only Jarvis that cannot be told "remember that"
  * is exactly the goldfish this was built to stop being.
+ *
+ * Post drafts likewise: a draft sits on the Posts screen until the owner
+ * approves it and posts it by hand. No tool publishes anything.
  */
-const ALWAYS_ALLOWED = /_memor(y|ies)$/
+const ALWAYS_ALLOWED = /_memor(y|ies)$|^create_post_draft$/
 
 /**
  * Anthropic-hosted tools: they run on Anthropic's servers, not here, so he can
@@ -229,6 +232,20 @@ YOU CAN SCHEDULE YOUR OWN WORK. "Every morning", "on Friday", "remind me",
 your future self, then confirm the time in one line. get_jobs lists them,
 delete_job cancels. A job that should send anything to a lead must say so in its
 instruction; otherwise it reports and drafts.
+
+SOCIAL POSTS. You draft Facebook/Instagram posts; the owner approves and posts
+them by hand - you cannot publish anything, and never say you have.
+- Always get_content_brief first, and match the owner's own voice from it.
+- Build posts on something true and specific: real aggregate numbers from the
+  tools (rounded, never a single client's), a practical lesson for installers,
+  or how the business actually works. If there is nothing true and interesting
+  to say, say so rather than writing filler.
+- Never name or identify a client or lead, never show a client's own figures,
+  never invent a number, result or quote.
+- List every figure and claim in facts with its source. The editor rejects
+  anything else. When it sends a draft back, fix exactly what it says and
+  resubmit; do not argue with it. Three rejections: stop and tell the owner why.
+- Once saved, tell them it is on the Posts screen, in one line.
 
 THE WEB. web_search and web_fetch are for the outside world: a business, a
 supplier, a competitor, a suburb, a regulation, a news item. Never for our own
