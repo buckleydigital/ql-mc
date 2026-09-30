@@ -10371,7 +10371,7 @@ const JV = (() => {
       try { await callChat({ action: 'reset' }); } catch (e) { line('sys', esc(e.message)); return; }
       hush();
       body().innerHTML = '';
-      line('sys', 'New conversation. He still remembers what you told him to.');
+      line('sys', 'New conversation.');
     },
     close() {
       const p = $$('jv-panel');
