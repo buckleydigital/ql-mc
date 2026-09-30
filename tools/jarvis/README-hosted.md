@@ -36,6 +36,38 @@ Two kinds, both in the database, both service-role only
 He also has Anthropic's hosted `web_search` and `web_fetch` tools for anything
 outside the database, capped at five uses each per question.
 
+## Scheduled jobs
+
+He can schedule his own work: "every weekday at 8, text me the numbers",
+"Thursday, chase Sandford if they have not replied". `create_job` stores an
+instruction and a local time in `jarvis_jobs`; the 15-minute heartbeat
+(`jarvis-notify`) claims due jobs one at a time (`jarvis_claim_due_jobs`, which
+also moves each one's schedule on, so two heartbeats can never run the same job
+twice), sends each to `jarvis-chat` as `via: 'job'`, and texts you the report.
+
+Jobs obey the same quiet hours and daily text cap as alerts. A job sends an
+email or SMS to a lead only if its instruction says to; otherwise it drafts and
+reports, and you reply "yes". At most two run per heartbeat, 25 can be active.
+
+The ✦ button in the panel shows what he remembers and what he has scheduled,
+and lets you edit memories or cancel jobs.
+
+## Cost
+
+Every question is costed at list price and written to `jarvis_usage` - panel,
+SMS, scheduled jobs and the SMS fallback in `jarvis-reply`. Settings → What he
+costs shows today, this month, the average per question and last month.
+Anthropic spend only; Twilio is billed separately. Prices live in `PRICES` in
+`index.template.ts` - update them there if Anthropic's change.
+
+## Model
+
+`claude-opus-5-5` by default (`JARVIS_MODEL` overrides it). On Opus 5.5 a
+thinking block is bound to the exact conversation that produced it, and this
+thread changes between questions (memory in the system prompt, the read-only
+switch, trimming), so thinking is stripped from the stored thread after each
+question - `withoutThinking()` - and `drop_block` is set as a safety net.
+
 ## Deploy
 
 ```bash

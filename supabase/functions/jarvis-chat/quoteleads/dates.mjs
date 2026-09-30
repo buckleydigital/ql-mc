@@ -25,7 +25,7 @@ export function localDate(at = new Date()) {
 export const localMonth = (at = new Date()) => localDate(at).slice(0, 7)
 
 /** Minutes the zone is ahead of UTC at a given instant. */
-function offsetMinutes(at) {
+export function offsetMinutes(at) {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: tz(),
     hour12: false,

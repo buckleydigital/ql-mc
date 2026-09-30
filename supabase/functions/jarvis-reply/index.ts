@@ -40,8 +40,12 @@ async function answerFromContext(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-opus-5',
-        max_tokens: 300,
+        model: 'claude-opus-5-5',
+        // Thinking cannot be switched off on Opus 5.5, and it counts against
+        // max_tokens - a 300 cap could be spent thinking with no words left.
+        // The reply is still cut to 300 characters below.
+        max_tokens: 2048,
+        output_config: { effort: 'low' },
         system:
           'You are Jarvis, answering the business owner by SMS. Under 300 characters, ' +
           'plain text, no markdown, no greeting. Answer only from the context given. ' +
@@ -58,6 +62,25 @@ async function answerFromContext(
       return ''
     }
     const j = await res.json()
+    // Costed like everything else Jarvis does, so the spend panel is the whole
+    // bill. Opus 5.5 list price; no caching on this path.
+    try {
+      const u = j?.usage ?? {}
+      const input = Number(u.input_tokens ?? 0)
+      const output = Number(u.output_tokens ?? 0)
+      const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+      await db.from('jarvis_usage').insert({
+        channel: 'sms-fallback',
+        model: j?.model ?? 'claude-opus-5-5',
+        outcome: 'answered',
+        steps: 1,
+        input_tokens: input,
+        output_tokens: output,
+        cost_usd: Math.round(((input * 4 + output * 20) / 1e6) * 1e6) / 1e6,
+      })
+    } catch (err) {
+      console.warn('usage not recorded:', err instanceof Error ? err.message : err)
+    }
     return (j?.content ?? [])
       .filter((b: { type: string }) => b.type === 'text')
       .map((b: { text: string }) => b.text)
@@ -179,20 +202,17 @@ Deno.serve(async (req: Request) => {
       `NEVER kind:"info" - that is the first-contact email and these leads have had it. ` +
       `Do not write your own wording unless they dictate the words themselves.\n` +
       `6. After sending, confirm briefly who you contacted, by name.\n` +
-      `7. Anything that is not a follow-up they asked for: answer it, do not act on it.`
+      `7. Anything else that would change something: answer it, do not act on it. Two exceptions, ` +
+      `because they reach no client: if they tell you something to remember, create_memory; if they ` +
+      `ask for something later or on repeat ("every Monday", "remind me Friday"), create_job.`
 
     // Two ways to answer, and the difference is whether he can ACT.
     //
-    // jarvis-chat holds the tools, but it requires a real signed-in user and a
-    // text has none. Until that is resolved it declines this call, so there is
-    // a second path: answer from the context already gathered above, with no
-    // tools at all. That covers "what is open", "which client", "how many" -
-    // everything except changing something.
-    //
-    // Deliberately not worked around here. Getting the tools onto SMS means
-    // giving jarvis-chat a way to trust a caller with no user behind it, and
-    // that is a decision to make on purpose rather than to slip in as the
-    // side effect of wiring up a phone number.
+    // jarvis-chat holds the tools, memory and scheduling; it accepts this call
+    // as the SMS bridge after proving the bearer is service-role. If it fails,
+    // the fallback answers from the context already gathered above, with no
+    // tools - "what is open", "which client", "how many" - but cannot change
+    // anything.
     let answer = ''
     let acted = false
 

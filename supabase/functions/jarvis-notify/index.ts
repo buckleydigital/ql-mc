@@ -171,6 +171,65 @@ function inQuietHours(nowHHMM: string, start: string, end: string): boolean {
   return s > e ? (nowHHMM >= s || nowHHMM < e) : (nowHHMM >= s && nowHHMM < e)
 }
 
+// ── Scheduled jobs ─────────────────────────────────────────────────────────
+// Work Jarvis set for himself with create_job. Each due job goes to jarvis-chat
+// (via:'job'), which does it with his full tools and memory and returns a short
+// report; the report is texted here like any alert, so the same quiet hours and
+// daily cap apply, and a reply of "yes" reaches jarvis-reply with it as context.
+
+/** Stop claiming more jobs this heartbeat once this much time has gone. */
+const JOB_TIME_BUDGET_MS = 60_000
+const MAX_JOBS_PER_BEAT = 2
+
+type Job = { id: string; title: string; instruction: string; repeat: string }
+
+async function runJob(url: string, job: Job): Promise<string> {
+  try {
+    const res = await fetch(`${url}/functions/v1/jarvis-chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!}`,
+      },
+      body: JSON.stringify({
+        via: 'job',
+        allow_writes: true,
+        messages: [{
+          role: 'user',
+          content: `Scheduled job "${job.title}" (${job.repeat}) is due now.\n\nInstruction:\n${job.instruction}`,
+        }],
+      }),
+    })
+    const raw = await res.text()
+    let reply = ''
+    try { reply = String(JSON.parse(raw)?.reply ?? '') } catch { /* below */ }
+    if (!res.ok || !reply) return `I could not complete this job (${res.status}). ${raw.slice(0, 120)}`
+    return reply
+  } catch (err) {
+    return `I could not complete this job: ${err instanceof Error ? err.message : err}`
+  }
+}
+
+async function sendSms(to: string, from: string, body: string) {
+  const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')!
+  const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')!
+  const res = await fetch(
+    `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: 'Basic ' + btoa(accountSid + ':' + authToken),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ To: to, From: from, Body: body }).toString(),
+    },
+  )
+  const raw = await res.text()
+  let sid: string | null = null
+  try { sid = JSON.parse(raw).sid || null } catch { /* keep raw */ }
+  return { ok: res.ok, sid, raw }
+}
+
 Deno.serve(async (req: Request) => {
   // No public surface. The only callers are pg_cron (via pg_net) and a human
   // testing with the same key. Checked here rather than by verify_jwt, because
@@ -251,6 +310,38 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, scanned: pendingCount, sent: false, reason: 'daily_cap_reached', cap })
     }
 
+    // Jobs before alerts. Claimed one at a time so that a slow job leaves the
+    // rest queued for the next heartbeat instead of claimed and then dropped.
+    // Held (not claimed) through quiet hours and a spent cap, like alerts.
+    let jobsRun = 0
+    let sentSoFar = sentToday ?? 0
+    const jobFrom = s.jarvis_from_number || s.twilio_from_number || Deno.env.get('TWILIO_FROM_NUMBER') || ''
+    if (!dryRun && jobFrom) {
+      const started = Date.now()
+      while (jobsRun < MAX_JOBS_PER_BEAT && sentSoFar < cap && Date.now() - started < JOB_TIME_BUDGET_MS) {
+        const { data: claimed, error: jobErr } = await db.rpc('jarvis_claim_due_jobs', { p_limit: 1, p_tz: tz })
+        if (jobErr) { console.error('jarvis-notify: job claim failed:', jobErr.message); break }
+        const job = (claimed || [])[0] as Job | undefined
+        if (!job) break
+
+        const report = await runJob(url, job)
+        const text = `Jarvis - ${job.title}: ${report}`.slice(0, 640)
+        const sent = await sendSms(to, jobFrom, text)
+        await db.from('jarvis_notifications').insert({
+          channel: 'sms', to_number: to, tier: 'job', body: text,
+          twilio_sid: sent.sid,
+          status: sent.ok ? 'sent' : 'failed',
+          error: sent.ok ? null : sent.raw.slice(0, 500),
+        })
+        await db.from('jarvis_jobs').update({ last_result: report.slice(0, 2000) }).eq('id', job.id)
+        jobsRun++
+        if (sent.ok) sentSoFar++
+      }
+      if (sentSoFar >= cap) {
+        return json({ ok: true, scanned: pendingCount, sent: jobsRun > 0, jobs: jobsRun, reason: 'daily_cap_reached', cap })
+      }
+    }
+
     const { data: events } = await db
       .from('jarvis_events')
       .select('id, kind, tier, subject, payload')
@@ -261,7 +352,7 @@ Deno.serve(async (req: Request) => {
       .limit(20)
 
     const evs = (events || []) as Ev[]
-    if (!evs.length) return json({ ok: true, scanned: pendingCount, sent: false, reason: 'nothing_new' })
+    if (!evs.length) return json({ ok: true, scanned: pendingCount, sent: jobsRun > 0, jobs: jobsRun, reason: 'nothing_new' })
 
     // One message per run, never one per event - that is the difference between
     // a briefing and a phone going off six times in a row.
@@ -424,7 +515,7 @@ Deno.serve(async (req: Request) => {
 
     return json({
       ok: res.ok, scanned: pendingCount, sent: res.ok,
-      events: evs.length, twilio_sid: sid,
+      events: evs.length, twilio_sid: sid, jobs: jobsRun,
       ...(callSid ? { called: true, call_sid: callSid } : {}),
       ...(callError ? { call_error: callError } : {}),
       ...(res.ok ? {} : { error: raw.slice(0, 300) }),

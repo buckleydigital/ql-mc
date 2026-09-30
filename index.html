@@ -874,6 +874,7 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
       </div>
       <button class="jv-mic admin-only-field" id="jv-settings" onclick="openJarvisSettings()" title="Jarvis settings">⚙</button>
       <button class="jv-mic admin-only-field" id="jv-log" onclick="openJarvisLog()" title="What Jarvis has done">☷</button>
+      <button class="jv-mic admin-only-field" id="jv-mind" onclick="openJarvisMind()" title="What he remembers and has scheduled">✦</button>
       <button class="jv-mic" id="jv-new" onclick="JV.reset()" title="New conversation">⟲</button>
       <button class="jv-mic" id="jv-hud-btn" onclick="JV.toggleHud()" title="Full screen">⬚</button>
       <button class="jv-mic" id="jv-writes" onclick="JV.toggleWrites()" title="Read-only">🔒</button>
@@ -2927,12 +2928,44 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
     </div>
     <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">Saved on <strong style="color:var(--ink2)">this device only</strong>, because which voices exist depends entirely on the phone or laptop you are on - a phone rarely has the same ones a desktop does. Auto prefers a British male voice and avoids the female ones; pick explicitly if it still gets it wrong.</p>
 
+    <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">What he costs</div>
+    <div id="js-spend" style="font-size:11.5px;color:var(--ink3);line-height:1.9">Loading…</div>
+    <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">Anthropic API spend at list price, in US dollars - every question from the panel and by text, web searches included. Twilio texts and calls are billed separately and are not counted here.</p>
+
     <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">What he is watching</div>
     <div id="js-watch" style="font-size:11.5px;color:var(--ink3);line-height:1.9">Loading…</div>
 
     <div class="macts">
       <button class="btn" onclick="closeModal('m-jarvis-settings')">Cancel</button>
       <button class="btn btn-p" id="js-save-btn" onclick="saveJarvisSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- What Jarvis knows and has planned -->
+<!-- Everything that shapes what he does next without you asking: the facts he
+     carries into every conversation, and the work he has scheduled. Both are
+     his own notes, so both are editable here - you should never have to ask
+     him what he believes. -->
+<div class="overlay" id="m-jarvis-mind">
+  <div class="modal" style="max-width:660px">
+    <h2>✦ What he knows</h2>
+    <div class="msub">What he remembers in every conversation, and the work he has scheduled</div>
+
+    <div style="margin:16px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Scheduled</div>
+    <div id="jm-jobs" style="font-size:12px;color:var(--ink3)">Loading…</div>
+
+    <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Remembers</div>
+    <div style="display:flex;gap:8px;margin:8px 0 10px">
+      <input class="fi" id="jm-new" style="flex:1" maxlength="1000" placeholder="Tell him something to remember…" onkeydown="if(event.key==='Enter'){event.preventDefault();saveJarvisMemory(null)}">
+      <button class="btn btn-p" type="button" onclick="saveJarvisMemory(null)">Add</button>
+    </div>
+    <div id="jm-mems" style="max-height:40vh;overflow-y:auto;margin:0 -4px;padding:0 4px;font-size:12px;color:var(--ink3)">Loading…</div>
+
+    <p style="font-size:10.5px;color:var(--ink3);margin:12px 0 0;line-height:1.6">He adds to both himself when you tell him a preference or ask for something later. Anything wrong here is wrong in every answer he gives, so fix it or delete it.</p>
+
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-jarvis-mind')">Close</button>
     </div>
   </div>
 </div>
@@ -9422,6 +9455,7 @@ async function openJarvisSettings() {
   $('js-state').textContent = s.jarvis_notify_enabled ? '' : 'currently silent';
   openModal('m-jarvis-settings');
   loadJarvisStatus();
+  loadJarvisSpend();
 }
 
 // Counts only - jarvis_events itself stays unreadable from the browser.
@@ -9448,6 +9482,130 @@ async function loadJarvisStatus() {
     host.innerHTML = rows + foot;
   } catch (err) {
     host.textContent = 'Could not load status: ' + (err.message || err);
+  }
+}
+
+// ── What he knows ──────────────────────────────────────────────────────────
+// Memories and jobs live in service-role-only tables; these RPCs are the one
+// door in, gated to the people who run the business.
+const JM_REPEAT = { once: 'once', daily: 'every day', weekdays: 'weekdays', weekly: 'every week', monthly: 'every month' };
+let jmMemories = [];
+
+function jmEsc(t) { const d = document.createElement('div'); d.textContent = String(t == null ? '' : t); return d.innerHTML; }
+
+async function openJarvisMind() {
+  openModal('m-jarvis-mind');
+  await Promise.all([loadJarvisJobs(), loadJarvisMemories()]);
+}
+
+async function loadJarvisJobs() {
+  const host = $('jm-jobs');
+  try {
+    const { data, error } = await db.rpc('jarvis_job_list');
+    if (error) throw error;
+    const jobs = data || [];
+    if (!jobs.length) {
+      host.innerHTML = '<div style="padding:6px 0">Nothing scheduled. Try "every weekday at 8, text me the numbers".</div>';
+      return;
+    }
+    host.innerHTML = jobs.map(function (j) {
+      const next = j.next_run_at
+        ? new Date(j.next_run_at).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+        : '—';
+      return '<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--bd)">' +
+        '<div style="flex:1;min-width:0">' +
+          '<div><b style="color:var(--ink)">' + jmEsc(j.title) + '</b> <span style="font-family:var(--mono);font-size:10px">' +
+            jmEsc(JM_REPEAT[j.repeat] || j.repeat) + ' · next ' + jmEsc(next) + '</span></div>' +
+          '<div style="margin-top:2px;line-height:1.5;word-break:break-word">' + jmEsc(j.instruction) + '</div>' +
+          (j.last_result ? '<div style="margin-top:3px;font-size:11px;line-height:1.5;word-break:break-word">Last: ' + jmEsc(j.last_result.slice(0, 200)) + '</div>' : '') +
+        '</div>' +
+        '<button class="btn btn-xs" type="button" onclick="cancelJarvisJob(\'' + j.id + '\')">Cancel</button>' +
+      '</div>';
+    }).join('');
+  } catch (err) {
+    host.textContent = 'Could not load jobs: ' + (err.message || err);
+  }
+}
+
+async function cancelJarvisJob(id) {
+  if (!confirm('Cancel this scheduled job?')) return;
+  const { error } = await db.rpc('jarvis_job_cancel', { p_id: id });
+  if (error) { toast('Could not cancel: ' + error.message, true); return; }
+  loadJarvisJobs();
+}
+
+async function loadJarvisMemories() {
+  const host = $('jm-mems');
+  try {
+    const { data, error } = await db.rpc('jarvis_memory_list');
+    if (error) throw error;
+    jmMemories = data || [];
+    if (!jmMemories.length) {
+      host.innerHTML = '<div style="padding:6px 0">Nothing yet.</div>';
+      return;
+    }
+    host.innerHTML = jmMemories.map(function (m) {
+      return '<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--bd)">' +
+        '<input class="fi" style="flex:1;font-size:12px" maxlength="1000" value="' + jmEsc(m.content).replace(/"/g, '&quot;') + '" ' +
+          'data-id="' + m.id + '" onchange="saveJarvisMemory(this.dataset.id, this.value)">' +
+        '<button class="btn btn-xs" type="button" title="Forget" onclick="deleteJarvisMemory(\'' + m.id + '\')">✕</button>' +
+      '</div>';
+    }).join('');
+  } catch (err) {
+    host.textContent = 'Could not load memories: ' + (err.message || err);
+  }
+}
+
+async function saveJarvisMemory(id, value) {
+  const text = String(id ? value : $('jm-new').value).trim();
+  if (!text) return;
+  const { error } = await db.rpc('jarvis_memory_save', { p_id: id || null, p_content: text });
+  if (error) { toast('Could not save: ' + error.message, true); return; }
+  if (!id) $('jm-new').value = '';
+  toast(id ? 'Updated ✓' : 'He will remember that ✓');
+  loadJarvisMemories();
+}
+
+async function deleteJarvisMemory(id) {
+  const m = jmMemories.find(function (x) { return x.id === id; });
+  if (!confirm('Forget "' + (m ? m.content.slice(0, 80) : 'this') + '"?')) return;
+  const { error } = await db.rpc('jarvis_memory_delete', { p_id: id });
+  if (error) { toast('Could not delete: ' + error.message, true); return; }
+  loadJarvisMemories();
+}
+
+// Spend, as sums from jarvis_usage_summary() - the rows themselves stay
+// unreadable from the browser, same as jarvis_events.
+async function loadJarvisSpend() {
+  const host = $('js-spend');
+  if (!host) return;
+  const usd = function (n) {
+    n = Number(n || 0);
+    return 'US$' + n.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: n > 0 && n < 0.1 ? 3 : 2 });
+  };
+  const row = function (label, value, sub) {
+    return '<div style="display:flex;justify-content:space-between;gap:12px">' +
+      '<span>' + label + '</span><span><b style="color:var(--ink)">' + value + '</b>' +
+      (sub ? ' <span style="color:var(--ink3)">' + sub + '</span>' : '') + '</span></div>';
+  };
+  const qs = function (n) { n = Number(n || 0); return n + ' question' + (n === 1 ? '' : 's'); };
+  try {
+    const tz = ($('js-tz') && $('js-tz').value) || 'Australia/Sydney';
+    const { data, error } = await db.rpc('jarvis_usage_summary', { p_tz: tz });
+    if (error) throw error;
+    const d = data || {};
+    const m = d.month || {}, t = d.today || {}, l = d.last_month || {}, a = d.all_time || {};
+    if (!a.questions) { host.textContent = 'Nothing yet - costs are recorded from now on.'; return; }
+    host.innerHTML =
+      row('Today', usd(t.cost_usd), qs(t.questions)) +
+      row('This month', usd(m.cost_usd), qs(m.questions)) +
+      row('Average per question', usd(m.avg_per_question)) +
+      row('Web searches this month', String(m.web_searches || 0)) +
+      row('Last month', usd(l.cost_usd), qs(l.questions)) +
+      '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bd);color:var(--ink3)">' +
+      usd(a.cost_usd) + ' in total since ' + new Date(a.since).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) + '.</div>';
+  } catch (err) {
+    host.textContent = 'Could not load spend: ' + (err.message || err);
   }
 }
 

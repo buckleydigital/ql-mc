@@ -605,6 +605,135 @@ const MEMORY_TOOLS = [
   },
 ]
 
+// ─── jobs.mjs ────────────────────────────────────────────────────
+
+/**
+ * Jobs: work JARVIS schedules for himself.
+ *
+ * "Every weekday at 8 text me the numbers." "Thursday, chase Sandford if they
+ * have not replied." Before this he could only act while someone was talking to
+ * him. A job is an instruction plus a time; the heartbeat (jarvis-notify, every
+ * 15 minutes) claims the due ones, runs each through jarvis-chat with his full
+ * tools and memory, and texts the result to the owner.
+ *
+ * Times are LOCAL (config.timezone). The owner says "8am", not "22:00 UTC".
+ */
+
+
+const REPEATS = ['once', 'daily', 'weekdays', 'weekly', 'monthly']
+
+/** Cost guard: every active job is a model run on its schedule. */
+const MAX_ACTIVE_JOBS = 25
+
+/** A local wall-clock time as a UTC instant, correct across DST (two passes). */
+function localInstant(date, time) {
+  const guess = new Date(`${date}T${time}:00Z`)
+  const first = new Date(guess.getTime() - offsetMinutes(guess) * 60000)
+  return new Date(guess.getTime() - offsetMinutes(first) * 60000)
+}
+
+const localWhen = (iso) =>
+  iso
+    ? new Intl.DateTimeFormat('en-AU', {
+        timeZone: config.timezone, weekday: 'short', day: 'numeric', month: 'short',
+        hour: 'numeric', minute: '2-digit',
+      }).format(new Date(iso))
+    : null
+
+async function getJobs() {
+  const { rows } = await select(
+    'jarvis_jobs',
+    { select: 'id,title,instruction,repeat,next_run_at,last_run_at,last_result,runs', active: 'is.true', order: 'next_run_at.asc' },
+    { limit: 100 },
+  )
+  const jobs = rows.map((j) => ({ ...j, next_run_local: localWhen(j.next_run_at) }))
+  return {
+    summary: jobs.length
+      ? `${jobs.length} scheduled: ${jobs.slice(0, 3).map((j) => `${j.title} (${j.next_run_local})`).join('; ')}.`
+      : 'Nothing scheduled.',
+    jobs,
+  }
+}
+
+async function createJob({ title, instruction, date, time, repeat = 'once' } = {}) {
+  title = String(title ?? '').trim()
+  instruction = String(instruction ?? '').trim()
+  if (!title || !instruction) throw new Error('title and instruction are required')
+  if (!REPEATS.includes(repeat)) throw new Error(`repeat must be one of ${REPEATS.join(', ')}`)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date ?? ''))) throw new Error('date must be YYYY-MM-DD (local)')
+  if (!/^\d{2}:\d{2}$/.test(String(time ?? ''))) throw new Error('time must be HH:MM, 24-hour, local')
+
+  const at = localInstant(date, time)
+  if (Number.isNaN(at.getTime())) throw new Error('That date and time do not exist.')
+  if (at.getTime() < Date.now() - 60_000) {
+    throw new Error(`${date} ${time} has already passed (today is ${localDate()}). Pick a future time.`)
+  }
+
+  const { total } = await select('jarvis_jobs', { select: 'id', active: 'is.true' }, { limit: 1 })
+  if (total >= MAX_ACTIVE_JOBS) {
+    throw new Error(`There are already ${total} scheduled jobs, the limit. Cancel one first.`)
+  }
+
+  const [row] = await insert('jarvis_jobs', {
+    title: title.slice(0, 120),
+    instruction: instruction.slice(0, 2000),
+    repeat,
+    next_run_at: at.toISOString(),
+  })
+  return {
+    summary: `Scheduled "${row.title}" for ${localWhen(row.next_run_at)}${repeat === 'once' ? '' : `, then ${repeat}`}.`,
+    job: { id: row.id, title: row.title, repeat: row.repeat, next_run_local: localWhen(row.next_run_at) },
+  }
+}
+
+async function deleteJob({ job_id } = {}) {
+  if (!job_id) throw new Error('job_id is required - get it from get_jobs.')
+  // Deactivated rather than deleted, so its history stays readable.
+  const rows = await patch('jarvis_jobs', { id: `eq.${job_id}` }, { active: false })
+  if (!rows.length) return { summary: 'No job with that id.' }
+  return { summary: `Cancelled "${rows[0].title}".` }
+}
+
+const JOB_TOOLS = [
+  {
+    name: 'get_jobs',
+    description: 'List the jobs you have scheduled for yourself: what, when next, how often, and the last result. Returns the ids delete_job needs.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: getJobs,
+  },
+  {
+    name: 'create_job',
+    description:
+      'Schedule work for yourself to do later, once or on repeat - a report, a check, a follow-up. ' +
+      'When it comes due you will run it with all your tools and memory, and the result is texted to the owner. ' +
+      'Write the instruction as a complete brief to your future self: what to check or do, for whom, and what ' +
+      'to report. If it may send an email or SMS to a lead, say so explicitly in the instruction - a job only ' +
+      'sends to leads when its instruction says to. Times are local.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'Short name, e.g. "Morning numbers".' },
+        instruction: { type: 'string', description: 'The full brief for when it runs.' },
+        date: { type: 'string', description: 'First run date, YYYY-MM-DD, local.' },
+        time: { type: 'string', description: 'First run time, HH:MM 24-hour, local.' },
+        repeat: { type: 'string', enum: REPEATS, description: 'once (default), daily, weekdays, weekly or monthly.' },
+      },
+      required: ['title', 'instruction', 'date', 'time'],
+    },
+    handler: createJob,
+  },
+  {
+    name: 'delete_job',
+    description: 'Cancel a scheduled job. Takes the id from get_jobs.',
+    inputSchema: {
+      type: 'object',
+      properties: { job_id: { type: 'string', description: 'Job UUID, from get_jobs.' } },
+      required: ['job_id'],
+    },
+    handler: deleteJob,
+  },
+]
+
 // ─── tools.mjs ───────────────────────────────────────────────────
 
 /**
@@ -1364,6 +1493,7 @@ const str = (description) => ({ type: 'string', description })
 const TOOLS = [
   ...EXPLORE_TOOLS,
   ...MEMORY_TOOLS,
+  ...JOB_TOOLS,
 
   {
     name: 'get_daily_brief',
@@ -1655,6 +1785,60 @@ const SERVER_TOOLS = [
   { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 5 },
 ]
 
+/**
+ * List prices, US dollars per million tokens, for costing each question.
+ * `write` is the 5-minute cache write (1.25x input), `read` the cache read.
+ * Keyed by model-id prefix; a model not listed is costed at Claude Opus 5
+ * rates rather than at zero, so an unknown model over-reports, never hides.
+ */
+const PRICES: Record<string, { input: number; output: number; write: number; read: number }> = {
+  'claude-opus-5-5': { input: 4, output: 20, write: 5, read: 0.2 },
+  'claude-opus-5': { input: 5, output: 25, write: 6.25, read: 0.5 },
+  'claude-opus-4': { input: 5, output: 25, write: 6.25, read: 0.5 },
+  'claude-fable-5': { input: 10, output: 50, write: 12.5, read: 0.25 },
+  'claude-sonnet-5-5': { input: 2, output: 10, write: 2.5, read: 0.2 },
+  'claude-sonnet-5': { input: 2, output: 10, write: 2.5, read: 0.2 },
+  'claude-haiku-4-5': { input: 1, output: 5, write: 1.25, read: 0.1 },
+}
+const WEB_SEARCH_USD = 10 / 1000
+
+function priceFor(model: string) {
+  const key = Object.keys(PRICES)
+    .filter((k) => model.startsWith(k))
+    .sort((a, b) => b.length - a.length)[0]
+  return PRICES[key ?? 'claude-opus-5']
+}
+
+/** Running total for one question, across every step of the loop. */
+function newSpend() {
+  return {
+    steps: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0,
+    searches: 0, fetches: 0, cost: 0, models: new Set<string>(),
+  }
+}
+
+function addUsage(spend: ReturnType<typeof newSpend>, res: any) {
+  const u = res?.usage ?? {}
+  const model = String(res?.model ?? '')
+  const p = priceFor(model)
+  const input = Number(u.input_tokens ?? 0)
+  const output = Number(u.output_tokens ?? 0)
+  const read = Number(u.cache_read_input_tokens ?? 0)
+  const write = Number(u.cache_creation_input_tokens ?? 0)
+  const searches = Number(u.server_tool_use?.web_search_requests ?? 0)
+  spend.steps += 1
+  spend.input += input
+  spend.output += output
+  spend.cacheRead += read
+  spend.cacheWrite += write
+  spend.searches += searches
+  spend.fetches += Number(u.server_tool_use?.web_fetch_requests ?? 0)
+  if (model) spend.models.add(model)
+  spend.cost +=
+    (input * p.input + output * p.output + read * p.read + write * p.write) / 1e6 +
+    searches * WEB_SEARCH_USD
+}
+
 /** Rounds of tool use per question before he gives up. */
 const MAX_STEPS = 16
 
@@ -1678,6 +1862,26 @@ function trimHistory(messages: any[], max = MAX_HISTORY) {
   const start = out.findIndex(isQuestion)
   out = start === -1 ? [] : out.slice(start)
   return out
+}
+
+/**
+ * The thread as it is kept between questions: without the model's thinking.
+ *
+ * On Claude Opus 5.5 a thinking block is bound to the exact conversation that
+ * produced it - system prompt, tools, every earlier message. Between questions
+ * all three change here: the memory block in the system prompt grows, the
+ * read-only switch changes the tool list, and the thread is trimmed from the
+ * front. Replaying old thinking after any of that is a 400 on enforced
+ * accounts. Removing all of it is always allowed (it is a leading run), and
+ * costs nothing - earlier turns' thinking is not what the next answer needs.
+ * Within one question the loop keeps its thinking, as tool use requires.
+ */
+function withoutThinking(messages: any[]) {
+  return messages.map((m) => {
+    if (m.role !== 'assistant' || !Array.isArray(m.content)) return m
+    const content = m.content.filter((b: any) => b?.type !== 'thinking' && b?.type !== 'redacted_thinking')
+    return { ...m, content: content.length ? content : [{ type: 'text', text: '…' }] }
+  })
 }
 
 /** A stored transcript as lines a person can read: questions and answers only. */
@@ -1744,6 +1948,12 @@ carries across days, devices, texts and calls.
 - Use what you remember without being asked: if you know Dave prefers texts,
   suggest a text.
 
+YOU CAN SCHEDULE YOUR OWN WORK. "Every morning", "on Friday", "remind me",
+"if they have not replied by Thursday" -> create_job with a complete brief to
+your future self, then confirm the time in one line. get_jobs lists them,
+delete_job cancels. A job that should send anything to a lead must say so in its
+instruction; otherwise it reports and drafts.
+
 THE WEB. web_search and web_fetch are for the outside world: a business, a
 supplier, a competitor, a suburb, a regulation, a news item. Never for our own
 numbers, which are only ever from the tools above.
@@ -1756,6 +1966,35 @@ matched loosely; if more than one matched, ask which.`
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
+
+  // Declared outside the try so a question that errors halfway is still
+  // costed - the API calls it made before failing were billed all the same.
+  const spend = newSpend()
+  let channel = 'panel'
+  let spender: string | null = null
+  const recordUsage = async (outcome: string) => {
+    if (!spend.steps) return
+    try {
+      const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+      const { error } = await db.from('jarvis_usage').insert({
+        channel,
+        user_id: spender,
+        model: [...spend.models].join(', ') || null,
+        outcome,
+        steps: spend.steps,
+        input_tokens: spend.input,
+        output_tokens: spend.output,
+        cache_read_tokens: spend.cacheRead,
+        cache_write_tokens: spend.cacheWrite,
+        web_searches: spend.searches,
+        web_fetches: spend.fetches,
+        cost_usd: Math.round(spend.cost * 1e6) / 1e6,
+      })
+      if (error) console.error('jarvis-chat: usage not recorded:', error.message)
+    } catch (err) {
+      console.error('jarvis-chat: usage not recorded:', (err as Error).message)
+    }
+  }
 
   try {
     // Same gate as every other function here: a real signed-in user, or nothing.
@@ -1787,8 +2026,10 @@ Deno.serve(async (req: Request) => {
     // Jarvis's own number AND FROM the number in jarvis_notify_number. The
     // service key is not reachable from any browser, so nothing a client can
     // run reaches this branch.
+    // Scheduled jobs come in the same way, from jarvis-notify's heartbeat, and
+    // pass the same service-role capability test.
     let isBridge = false
-    if (body?.via === 'sms') {
+    if (body?.via === 'sms' || body?.via === 'job') {
       const caller = createClient(Deno.env.get('SUPABASE_URL')!, bearer)
       const { error: capErr } = await caller.from('jarvis_messages').select('id').limit(1)
       if (capErr) return json({ error: 'Unauthorized' }, 401)
@@ -1818,6 +2059,8 @@ Deno.serve(async (req: Request) => {
     // saved to jarvis_threads under the signed-in user, so a reload, a second
     // tab or a phone continues the same conversation.
     const userId = user?.id ?? null
+    channel = isBridge ? String(body.via) : 'panel'
+    spender = userId
     const threaded = !isBridge && !!userId && !Array.isArray(body.messages)
 
     const loadThread = async () => {
@@ -1829,7 +2072,7 @@ Deno.serve(async (req: Request) => {
       if (!threaded) return
       const { error } = await admin.from('jarvis_threads').upsert({
         user_id: userId,
-        messages: trimHistory(msgs),
+        messages: withoutThinking(trimHistory(msgs)),
         updated_at: new Date().toISOString(),
       })
       if (error) console.error('jarvis-chat: thread not saved:', error.message)
@@ -1848,7 +2091,7 @@ Deno.serve(async (req: Request) => {
     if (!apiKey) return json({ error: 'ANTHROPIC_API_KEY is not set' }, 500)
 
     let messages: any[] = threaded
-      ? await loadThread()
+      ? withoutThinking(await loadThread())
       : Array.isArray(body.messages) ? body.messages : []
     const text = String(body.text ?? '').trim()
     if (text) messages.push({ role: 'user', content: text })
@@ -1872,7 +2115,15 @@ Deno.serve(async (req: Request) => {
         type: 'text',
         text:
           `Today is ${localDate()} (${config.timezone}). ` +
-          `Channel: ${isBridge ? 'sms' : 'panel'}.\n\nWHAT YOU REMEMBER:\n${remembered}`,
+          `Channel: ${channel}.` +
+          (channel === 'job'
+            ? ' This is one of your scheduled jobs running unattended: nobody is watching this turn. Do the ' +
+              'job now, then write the report that will be texted to the owner - plain text, no markdown, ' +
+              'under 600 characters, leading with what matters. Send an email or SMS to a lead ONLY if the ' +
+              'job instruction explicitly says to; otherwise draft it and say in the report what you would ' +
+              'send, so they can reply yes.'
+            : '') +
+          `\n\nWHAT YOU REMEMBER:\n${remembered}`,
       },
     ]
 
@@ -1893,13 +2144,18 @@ Deno.serve(async (req: Request) => {
     // cannot bill indefinitely.
     for (let turn = 0; turn < MAX_STEPS; turn++) {
       const res = await client.beta.messages.create({
-        model: Deno.env.get('JARVIS_MODEL') ?? 'claude-opus-5',
+        model: Deno.env.get('JARVIS_MODEL') ?? 'claude-opus-5-5',
         max_tokens: 8192,
         system,
-        thinking: { type: 'adaptive' },
+        // drop_block: if a stored thread ever does carry thinking the model no
+        // longer accepts, drop that reasoning and answer rather than fail the
+        // whole question. withoutThinking() means it should never be needed.
+        thinking: { type: 'adaptive', block_binding: { prefix_mismatch_behavior: 'drop_block' } },
+        // Set explicitly: Opus 5.5 defaults to medium. He is spoken aloud and
+        // most questions are one lookup, so low keeps him quick and cheap.
         output_config: { effort: 'low' },
         // Routes around a safety refusal instead of returning nothing.
-        betas: ['server-side-fallback-2026-07-01'],
+        betas: ['server-side-fallback-2026-07-01', 'thinking-binding-controls-2026-08-01'],
         fallbacks: 'default',
         tools: [
           ...available.map((t) => ({
@@ -1912,6 +2168,7 @@ Deno.serve(async (req: Request) => {
         messages,
       })
 
+      addUsage(spend, res)
       messages.push({ role: 'assistant', content: res.content })
 
       // Record the hosted tools too, so the panel shows he went to the web.
@@ -1921,6 +2178,7 @@ Deno.serve(async (req: Request) => {
 
       if (res.stop_reason === 'refusal') {
         // Not saved: a refused turn in the stored thread would poison the next.
+        await recordUsage('refused')
         return json({ reply: 'I am unable to answer that.', tools: used }, 200)
       }
 
@@ -1936,6 +2194,7 @@ Deno.serve(async (req: Request) => {
           .join('')
           .trim()
         await saveThread(messages)
+        await recordUsage('answered')
         return json({ reply, tools: used, messages: threaded ? undefined : messages }, 200)
       }
 
@@ -1972,8 +2231,10 @@ Deno.serve(async (req: Request) => {
       messages.push({ role: 'assistant', content: [{ type: 'text', text: giveUp }] })
     }
     await saveThread(messages)
+    await recordUsage('too_many_steps')
     return json({ reply: giveUp, tools: used }, 200)
   } catch (err) {
+    await recordUsage('error')
     return json({ error: (err as Error).message }, 500)
   }
 })
