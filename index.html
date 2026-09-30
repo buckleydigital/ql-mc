@@ -874,6 +874,7 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
       </div>
       <button class="jv-mic admin-only-field" id="jv-settings" onclick="openJarvisSettings()" title="Jarvis settings">⚙</button>
       <button class="jv-mic admin-only-field" id="jv-log" onclick="openJarvisLog()" title="What Jarvis has done">☷</button>
+      <button class="jv-mic" id="jv-new" onclick="JV.reset()" title="New conversation">⟲</button>
       <button class="jv-mic" id="jv-hud-btn" onclick="JV.toggleHud()" title="Full screen">⬚</button>
       <button class="jv-mic" id="jv-writes" onclick="JV.toggleWrites()" title="Read-only">🔒</button>
       <button class="jv-mic" id="jv-speak" onclick="JV.toggleVoice()" title="Speak replies aloud">🔊</button>
@@ -9870,7 +9871,10 @@ document.addEventListener('keydown', (e) => {
 });
 
 const JV = (() => {
-  let history = [], busy = false, rec = null, micOn = false;
+  // The conversation itself lives server-side (jarvis_threads), so a reload
+  // or another device continues it. `restored` is whether this page has
+  // fetched it yet.
+  let restored = false, busy = false, rec = null, micOn = false;
   let voice = localStorage.getItem('ql_jarvis_voice') !== '0';
   // On by default. It was opt-in while the tools were unproven; the point of
   // the assistant is telling him to do things, and a switch you have to find
@@ -9964,17 +9968,15 @@ const JV = (() => {
           apikey: _ak,
           Authorization: 'Bearer ' + session.access_token,
         },
-        // The whole conversation goes back each turn, so follow-ups like
-        // "and last month?" resolve against what was already said.
-        body: JSON.stringify({ text, messages: history, allow_writes: writes }),
+        // Only the new question. jarvis-chat keeps the conversation and what
+        // he remembers, so follow-ups like "and last month?" resolve against
+        // what was said here, yesterday, or from your phone.
+        body: JSON.stringify({ text, allow_writes: writes }),
       });
 
       const out = await res.json();
       if (!res.ok || out.error) throw new Error(out.error || ('Request failed: ' + res.status));
 
-      // The function returns the full transcript, tool calls included, so the
-      // next turn continues from exactly what the model saw.
-      if (Array.isArray(out.messages)) history = out.messages;
       if (Array.isArray(out.tools) && out.tools.length) {
         const t = document.createElement('div');
         t.className = 'jv-tool';
@@ -10157,6 +10159,33 @@ const JV = (() => {
     b.classList.toggle('on', writes);
   }
 
+  async function callChat(payload) {
+    if (typeof db === 'undefined' || !db) throw new Error('Sign in first.');
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) throw new Error('Your session has expired — sign in again.');
+    const res = await fetch(_ep + '/functions/v1/jarvis-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: _ak, Authorization: 'Bearer ' + session.access_token },
+      body: JSON.stringify(payload),
+    });
+    const out = await res.json();
+    if (!res.ok || out.error) throw new Error(out.error || ('Request failed: ' + res.status));
+    return out;
+  }
+
+  // Put the saved conversation back on screen. Best effort: if it fails the
+  // panel still works, it just starts blank.
+  async function restore() {
+    if (restored) return;
+    restored = true;
+    try {
+      const { lines } = await callChat({ action: 'history' });
+      if (!Array.isArray(lines) || !lines.length) return;
+      body().innerHTML = '';
+      lines.forEach((l) => line(l.role === 'you' ? 'you' : 'jarvis', l.text));
+    } catch (_) { /* start blank */ }
+  }
+
   return {
     // The settings modal needs these; everything else about the voice stays
     // private to this module.
@@ -10168,13 +10197,23 @@ const JV = (() => {
       if (typeof IS_REP !== 'undefined' && IS_REP) return;
       $$('jv-panel').classList.add('open');
       if (!body().children.length) {
-        line('sys', 'Ask about leads, closes, revenue, spend, a client or your tasks.<br>Everything comes from this database.');
+        line('sys', 'Ask about leads, closes, revenue, spend, a client or your tasks.<br>Tell him to remember something and he will, everywhere.');
       }
+      restore();
       if (!window.SpeechRecognition && !window.webkitSpeechRecognition) $$('jv-mic').disabled = true;
       $$('jv-speak').textContent = voice ? '🔊' : '🔇';
       paintWrites();
       status('Ready', 'ready');
       $$('jv-input').focus();
+    },
+    // Start over. Clears the conversation, not what he remembers - facts saved
+    // with "remember" survive this on purpose.
+    async reset() {
+      if (busy) return;
+      try { await callChat({ action: 'reset' }); } catch (e) { line('sys', esc(e.message)); return; }
+      hush();
+      body().innerHTML = '';
+      line('sys', 'New conversation. He still remembers what you told him to.');
     },
     close() {
       const p = $$('jv-panel');
@@ -10228,7 +10267,6 @@ const JV = (() => {
         line('sys', 'Could not start the microphone: ' + (err?.message || err));
       }
     },
-    reset() { history = []; body().innerHTML = ''; this.open(); },
     ask
   };
 })();

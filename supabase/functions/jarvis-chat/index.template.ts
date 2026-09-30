@@ -43,6 +43,67 @@ const json = (body: unknown, status = 200) =>
 /** Tools that change something. Withheld unless the caller opts in. */
 const EFFECTFUL = /^(update|send|create|delete)_/
 
+/**
+ * Except his own notes. Remembering or forgetting a fact reaches no customer and
+ * changes no number, and a read-only Jarvis that cannot be told "remember that"
+ * is exactly the goldfish this was built to stop being.
+ */
+const ALWAYS_ALLOWED = /_memor(y|ies)$/
+
+/**
+ * Anthropic-hosted tools: they run on Anthropic's servers, not here, so he can
+ * look something up on the web - a supplier, a suburb, a competitor, an award
+ * rate - without this function fetching anything itself. Capped per turn so a
+ * curious question cannot run up a search bill.
+ */
+const SERVER_TOOLS = [
+  { type: 'web_search_20260209', name: 'web_search', max_uses: 5 },
+  { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 5 },
+]
+
+/** Rounds of tool use per question before he gives up. */
+const MAX_STEPS = 16
+
+/** How much of a panel conversation is kept. */
+const MAX_HISTORY = 40
+
+/**
+ * Keep the last `max` messages, starting on a real question.
+ *
+ * Cutting at an arbitrary index can leave a tool_result first, answering a
+ * tool_use that was cut off - and the API rejects the whole conversation. So
+ * after the cut, drop forward to the first user turn that is a question.
+ */
+function trimHistory(messages: any[], max = MAX_HISTORY) {
+  if (messages.length <= max) return messages
+  let out = messages.slice(-max)
+  const isQuestion = (m: any) =>
+    m?.role === 'user' &&
+    (typeof m.content === 'string' ||
+      (Array.isArray(m.content) && !m.content.some((b: any) => b?.type === 'tool_result')))
+  const start = out.findIndex(isQuestion)
+  out = start === -1 ? [] : out.slice(start)
+  return out
+}
+
+/** A stored transcript as lines a person can read: questions and answers only. */
+function readable(messages: any[]) {
+  const lines: { role: 'you' | 'jarvis'; text: string }[] = []
+  for (const m of messages) {
+    if (m.role === 'user' && typeof m.content === 'string') {
+      lines.push({ role: 'you', text: m.content })
+    } else if (m.role === 'assistant' && Array.isArray(m.content)) {
+      const text = m.content
+        .filter((b: any) => b?.type === 'text')
+        .map((b: any) => b.text)
+        .join('')
+        .trim()
+      if (text) lines.push({ role: 'jarvis', text })
+    }
+  }
+  return lines
+}
+
 const SYSTEM = `You are JARVIS, speaking to the person who runs QuoteLeads.
 
 You are spoken aloud, so length is the main constraint. Two sentences is the
@@ -71,6 +132,27 @@ contrast the two. Pay per lead is reported only when they name it.
 - A lead with no owner is handled by the person you are speaking to. It is never
   "unassigned".
 - Read money as words: "forty-one thousand dollars", not "AUD 41000".
+
+YOU ARE AN AGENT, NOT A SEARCH BOX. When asked to do something, do all of it:
+chain as many tools as the job takes, check your own work, and report what you
+did. Do not stop to ask permission for reads or lookups. If a request is vague,
+make the sensible call and say what you assumed. If something fails, try
+another way before reporting it.
+
+YOU HAVE A MEMORY. What you know appears below under WHAT YOU REMEMBER, and it
+carries across days, devices, texts and calls.
+- When they tell you a preference, a standing instruction, a fact about a
+  client, lead or rep, a goal, or say "remember", call create_memory at once,
+  one fact per call, written to make sense on its own later. Do not announce it
+  beyond a word like "Noted."
+- When a memory turns out wrong or stale, delete_memory it and save the fix.
+- Never save business numbers the tools can fetch; they go stale.
+- Use what you remember without being asked: if you know Dave prefers texts,
+  suggest a text.
+
+THE WEB. web_search and web_fetch are for the outside world: a business, a
+supplier, a competitor, a suburb, a regulation, a news item. Never for our own
+numbers, which are only ever from the tools above.
 
 BEFORE ANYTHING IRREVERSIBLE — sending an email or SMS, deleting a task — say
 what you are about to do and who it affects, and wait for them to confirm. Use
@@ -119,7 +201,7 @@ Deno.serve(async (req: Request) => {
       isBridge = true
     }
 
-    let user: { app_metadata?: Record<string, unknown> } | null = null
+    let user: { id?: string; app_metadata?: Record<string, unknown> } | null = null
     if (!isBridge) {
       const { data: { user: u }, error: authErr } = await admin.auth.getUser(bearer)
       if (authErr || !u) return json({ error: 'Unauthorized' }, 401)
@@ -136,20 +218,77 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Not available for this account.' }, 403)
     }
 
+    // ── The panel's conversation lives here, not in the browser ─────────────
+    // A caller that sends its own `messages` (the SMS bridge) owns its history.
+    // The panel sends only the new question; the thread is loaded from and
+    // saved to jarvis_threads under the signed-in user, so a reload, a second
+    // tab or a phone continues the same conversation.
+    const userId = user?.id ?? null
+    const threaded = !isBridge && !!userId && !Array.isArray(body.messages)
+
+    const loadThread = async () => {
+      const { data } = await admin
+        .from('jarvis_threads').select('messages').eq('user_id', userId).maybeSingle()
+      return Array.isArray(data?.messages) ? data.messages : []
+    }
+    const saveThread = async (msgs: unknown[]) => {
+      if (!threaded) return
+      const { error } = await admin.from('jarvis_threads').upsert({
+        user_id: userId,
+        messages: trimHistory(msgs),
+        updated_at: new Date().toISOString(),
+      })
+      if (error) console.error('jarvis-chat: thread not saved:', error.message)
+    }
+
+    if (body.action === 'history') {
+      if (!threaded) return json({ lines: [] })
+      return json({ lines: readable(await loadThread()) })
+    }
+    if (body.action === 'reset') {
+      if (threaded) await admin.from('jarvis_threads').delete().eq('user_id', userId)
+      return json({ ok: true })
+    }
+
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) return json({ error: 'ANTHROPIC_API_KEY is not set' }, 500)
 
-    const messages = Array.isArray(body.messages) ? body.messages : []
+    let messages: any[] = threaded
+      ? await loadThread()
+      : Array.isArray(body.messages) ? body.messages : []
     const text = String(body.text ?? '').trim()
     if (text) messages.push({ role: 'user', content: text })
     if (!messages.length) return json({ error: 'Nothing to answer' }, 400)
-    if (messages.length > 40) messages.splice(0, messages.length - 40)
+    messages = trimHistory(messages)
+
+    // What he remembers, read fresh every question so a fact saved by text is
+    // known in the panel a second later. Best effort: a memory table that is
+    // missing or down must not take the assistant with it.
+    let remembered = '(nothing yet)'
+    try {
+      const mems = await loadMemories()
+      if (mems.length) remembered = mems.map((m: { content: string }) => `- ${m.content}`).join('\n')
+    } catch (err) {
+      console.error('jarvis-chat: memory unavailable:', (err as Error).message)
+    }
+    const system = [
+      // Static first, so the prompt cache can hold it across questions.
+      { type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } },
+      {
+        type: 'text',
+        text:
+          `Today is ${localDate()} (${config.timezone}). ` +
+          `Channel: ${isBridge ? 'sms' : 'panel'}.\n\nWHAT YOU REMEMBER:\n${remembered}`,
+      },
+    ]
 
     // Writes are off unless the caller asks for them, mirroring the local
     // bridge's JARVIS_ALLOW_WRITES. A read-only session cannot be talked into
     // sending anything, because the tools are not on the list it is given.
     const allowWrites = body.allow_writes === true
-    const available = TOOLS.filter((t) => allowWrites || !EFFECTFUL.test(t.name))
+    const available = TOOLS.filter(
+      (t) => allowWrites || !EFFECTFUL.test(t.name) || ALWAYS_ALLOWED.test(t.name),
+    )
     const byName = new Map(available.map((t) => [t.name, t]))
 
     const client = new Anthropic({ apiKey })
@@ -158,29 +297,43 @@ Deno.serve(async (req: Request) => {
     // The agentic loop: ask, run whatever tools come back, ask again with the
     // results, until the model answers in words. Bounded so a confused turn
     // cannot bill indefinitely.
-    for (let turn = 0; turn < 8; turn++) {
+    for (let turn = 0; turn < MAX_STEPS; turn++) {
       const res = await client.beta.messages.create({
         model: Deno.env.get('JARVIS_MODEL') ?? 'claude-opus-5',
         max_tokens: 8192,
-        system: SYSTEM,
+        system,
         thinking: { type: 'adaptive' },
         output_config: { effort: 'low' },
         // Routes around a safety refusal instead of returning nothing.
         betas: ['server-side-fallback-2026-07-01'],
         fallbacks: 'default',
-        tools: available.map((t) => ({
-          name: t.name,
-          description: t.description,
-          input_schema: t.inputSchema,
-        })),
+        tools: [
+          ...available.map((t) => ({
+            name: t.name,
+            description: t.description,
+            input_schema: t.inputSchema,
+          })),
+          ...SERVER_TOOLS,
+        ],
         messages,
       })
 
       messages.push({ role: 'assistant', content: res.content })
 
+      // Record the hosted tools too, so the panel shows he went to the web.
+      for (const b of res.content as { type: string; name?: string }[]) {
+        if (b.type === 'server_tool_use' && b.name) used.push(b.name)
+      }
+
       if (res.stop_reason === 'refusal') {
+        // Not saved: a refused turn in the stored thread would poison the next.
         return json({ reply: 'I am unable to answer that.', tools: used }, 200)
       }
+
+      // The web tools run in a loop on Anthropic's side, which pauses after a
+      // while. Sending the transcript straight back resumes it - no extra user
+      // message, the trailing server_tool_use is what tells the API to carry on.
+      if (res.stop_reason === 'pause_turn') continue
 
       if (res.stop_reason !== 'tool_use') {
         const reply = res.content
@@ -188,7 +341,8 @@ Deno.serve(async (req: Request) => {
           .map((b: { text: string }) => b.text)
           .join('')
           .trim()
-        return json({ reply, tools: used, messages }, 200)
+        await saveThread(messages)
+        return json({ reply, tools: used, messages: threaded ? undefined : messages }, 200)
       }
 
       // Every tool_use block must come back in ONE user message, including the
@@ -217,7 +371,14 @@ Deno.serve(async (req: Request) => {
       messages.push({ role: 'user', content: results })
     }
 
-    return json({ reply: 'That took too many steps, sir.', tools: used }, 200)
+    // Close the turn in words so the saved thread stays a valid conversation
+    // and the next question does not land in the middle of a tool call.
+    const giveUp = 'That took too many steps, sir. Tell me which part to do first.'
+    if (messages[messages.length - 1]?.role === 'user') {
+      messages.push({ role: 'assistant', content: [{ type: 'text', text: giveUp }] })
+    }
+    await saveThread(messages)
+    return json({ reply: giveUp, tools: used }, 200)
   } catch (err) {
     return json({ error: (err as Error).message }, 500)
   }

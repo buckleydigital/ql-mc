@@ -17,6 +17,7 @@
 import { select, count, patch, insert, remove, invoke } from './db.mjs'
 import { config, stageKey, env } from './config.mjs'
 import { EXPLORE_TOOLS } from './explore.mjs'
+import { MEMORY_TOOLS } from './memory.mjs'
 import { userToken } from './auth.mjs'
 import { localDate, localMonth, startOfLocalDay, daysAgo, startOfMonth } from './dates.mjs'
 
@@ -691,6 +692,7 @@ const str = (description) => ({ type: 'string', description })
 
 export const TOOLS = [
   ...EXPLORE_TOOLS,
+  ...MEMORY_TOOLS,
 
   {
     name: 'get_daily_brief',

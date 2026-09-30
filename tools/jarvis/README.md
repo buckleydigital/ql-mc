@@ -78,6 +78,9 @@ credential (`*_key`, `*_token`, `*secret*`, `*password*`) comes back redacted.
 `find_lead`, `list_tasks`, `get_followups_due`, `get_delivery_failures`,
 `get_email_draft`.
 
+**Memory** — `get_memories`, `create_memory`, `delete_memory`: durable facts
+kept in `jarvis_memory`, shared with the hosted panel and SMS.
+
 **Writes** — `update_lead_stage`, `update_lead_followup`, `send_lead_email`,
 `send_lead_sms`, `create_task`, `update_task`, `delete_task`.
 

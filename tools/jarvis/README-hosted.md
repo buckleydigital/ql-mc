@@ -16,6 +16,26 @@ The Anthropic key is a Supabase secret. It is read server-side inside the
 function and never reaches the browser, so the page can be public without
 exposing it.
 
+## Memory
+
+Two kinds, both in the database, both service-role only
+(`20260930000001_jarvis_memory.sql`):
+
+- **`jarvis_memory`** — durable facts he has been told ("Dave at Sandford
+  prefers texts", "the goal this quarter is 60 closes"). Every question on every
+  channel — panel, SMS — reads them into the prompt, so a fact saved by text is
+  known in the panel a second later. He saves them himself with `create_memory`
+  when told a preference or asked to remember, and corrects them with
+  `delete_memory`. Business numbers are never memorised; they come from the
+  tools every time.
+- **`jarvis_threads`** — the panel conversation, one per signed-in user. The
+  browser sends only the new question; the function loads and saves the
+  transcript, so a reload or a phone carries on the same conversation. ⟲ in the
+  panel starts a new one without touching what he remembers.
+
+He also has Anthropic's hosted `web_search` and `web_fetch` tools for anything
+outside the database, capped at five uses each per question.
+
 ## Deploy
 
 ```bash
