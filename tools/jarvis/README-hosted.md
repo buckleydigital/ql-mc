@@ -70,8 +70,9 @@ Every draft goes through `jarvis-content` before you see it:
 
 Passing drafts get a branded 4:5 card (Poppins, black, #4797ff) rendered with
 resvg-wasm into the public `jarvis-content` bucket. Fonts, the renderer's wasm
-and the logo are served from this site (`assets/jarvis/`, OFL/MPL licences
-alongside), so a card never depends on a third-party CDN.
+and the logo are served from this site (`assets/jarvis/`; Poppins is OFL, its
+licence alongside; resvg-wasm 2.6.2 is MPL-2.0, unmodified), so a card never
+depends on a third-party CDN.
 
 The content brief lives in Jarvis settings. Edit a caption before approving
 and he gets the before/after as a voice example next time.
