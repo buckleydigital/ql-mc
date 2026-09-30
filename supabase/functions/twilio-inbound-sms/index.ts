@@ -36,6 +36,27 @@ function normalisePhone(raw: string): string {
   return p;
 }
 
+// Pass an opt-out change to ql-hq, which answers the agency number, so Don and
+// every ql-hq send respect it too. Best effort; logged if it fails.
+async function tellHqOptOut(phone: string, optedOut: boolean): Promise<void> {
+  const hq = Deno.env.get("QL_HQ_API_URL");
+  const secret = Deno.env.get("QL_MC_API_SECRET");
+  if (!hq || !secret) {
+    console.warn("QL_HQ_API_URL or QL_MC_API_SECRET not set - opt-out not passed to ql-hq");
+    return;
+  }
+  try {
+    const res = await fetch(`${hq.replace(/\/+$/, "")}/sync-from-mc`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-secret": secret },
+      body: JSON.stringify({ action: "set_sms_opt_out", phone, opted_out: optedOut, source: "sms-reply" }),
+    });
+    if (!res.ok) console.error(`set_sms_opt_out returned ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  } catch (err) {
+    console.error("set_sms_opt_out failed:", err instanceof Error ? err.message : err);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -130,6 +151,20 @@ Deno.serve(async (req: Request) => {
     const isStop = STOP_WORDS.has(kw);
     const isStart = START_WORDS.has(kw);
 
+    // Recorded against the NUMBER first, whoever it turns out to be - a sales
+    // lead, a pay-per-lead contact or a number we have never seen - and passed
+    // to ql-hq. The branches below still store the message and confirm.
+    if (isStop || isStart) {
+      const { error: optErr } = await db.rpc("sms_set_opt_out", {
+        p_phone: normFrom, p_opted_out: isStop, p_source: "sms-reply",
+      });
+      if (optErr) console.error("sms_set_opt_out failed:", optErr.message);
+      await tellHqOptOut(normFrom, isStop);
+    }
+    const optReply = isStop
+      ? "You have been unsubscribed and won't receive further messages. Reply START to opt back in."
+      : isStart ? "You're resubscribed. Reply STOP at any time to opt out." : undefined;
+
     // ── Sales-pipeline lead first (bulk SMS + Sales Conversations) ──────────────
     const { data: salesLeads } = await db
       .from("leads")
@@ -148,15 +183,8 @@ Deno.serve(async (req: Request) => {
         status: "received",
         direction: "inbound",
       });
-      if (isStop && !salesLead.sms_opted_out) {
-        await db.from("leads").update({ sms_opted_out: true, sms_opted_out_at: new Date().toISOString() }).eq("id", salesLead.id);
-        return twimlResponse("You have been unsubscribed and won't receive further messages. Reply START to opt back in.");
-      }
-      if (isStart && salesLead.sms_opted_out) {
-        await db.from("leads").update({ sms_opted_out: false, sms_opted_out_at: null }).eq("id", salesLead.id);
-        return twimlResponse("You're resubscribed. Reply STOP at any time to opt out.");
-      }
-      return twimlResponse();
+      // Already recorded above (register + lead flag); this is the confirmation.
+      return twimlResponse(optReply);
     }
 
     // Find the lead by their phone number in ppl_leads
@@ -180,7 +208,7 @@ Deno.serve(async (req: Request) => {
         status: "received",
         direction: "inbound",
       });
-      return twimlResponse();
+      return twimlResponse(optReply);
     }
 
     // Store the inbound message
@@ -195,7 +223,7 @@ Deno.serve(async (req: Request) => {
     });
 
     console.log(`Inbound SMS from ${from} (lead: ${lead.name}) stored.`);
-    return twimlResponse();
+    return twimlResponse(optReply);
   } catch (err) {
     console.error("twilio-inbound-sms error:", err);
     // Always return 200 to prevent Twilio retries

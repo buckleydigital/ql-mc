@@ -10165,6 +10165,11 @@ const JV = (() => {
   // or another device continues it. `restored` is whether this page has
   // fetched it yet.
   let restored = false, busy = false, rec = null, micOn = false;
+  // Whether the browser's recognizer is actually running. Not the same as
+  // micOn: after an error the button resets at once, but the recognizer keeps
+  // running until its own onend - and start() in that gap throws "recognition
+  // has already started". Only onend clears this.
+  let recRunning = false;
   let voice = localStorage.getItem('ql_jarvis_voice') !== '0';
   // On by default. It was opt-in while the tools were unproven; the point of
   // the assistant is telling him to do things, and a switch you have to find
@@ -10415,6 +10420,7 @@ const JV = (() => {
     r.onresult = (e) => ask(e.results[0][0].transcript);
 
     r.onend = () => {
+      recRunning = false;
       micOn = false; $$('jv-mic').classList.remove('on');
       // status() is what tells the HUD which state to draw, so it has to run
       // on the way down too - otherwise the reactor stays amber, still
@@ -10546,11 +10552,14 @@ const JV = (() => {
       if (!rec) rec = initMic();
       if (!rec) return;
       if (micOn) { rec.stop(); return; }
+      // Still winding down from the last attempt (typically after an error):
+      // cut it off, and let the next tap start clean.
+      if (recRunning) { try { rec.abort(); } catch (_) {} return; }
       hush();
       // start() throws if it is already running or the page has no gesture
       // behind it. Swallowing that was the other half of the mic looking dead.
       try {
-        rec.start(); micOn = true; $$('jv-mic').classList.add('on');
+        rec.start(); recRunning = true; micOn = true; $$('jv-mic').classList.add('on');
       } catch (err) {
         micOn = false;
         $$('jv-mic').classList.remove('on');

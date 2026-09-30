@@ -21,8 +21,10 @@ export function hasSendIdentity() {
 export async function userToken() {
   if (!hasSendIdentity()) {
     throw new Error(
-      'Sending requires a login: set QL_USER_EMAIL and QL_USER_PASSWORD. ' +
-        'The email and SMS functions attribute the send to that user.',
+      'Sending requires a login: add QL_USER_EMAIL and QL_USER_PASSWORD as Supabase ' +
+        'Edge Function secrets (Supabase dashboard, ql-mc project, Edge Functions > Secrets), ' +
+        'or to tools/jarvis/.env for the local bridge. Emails and texts are sent as that user, ' +
+        'and replies go to them.',
     )
   }
 

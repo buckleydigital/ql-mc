@@ -115,6 +115,25 @@ Deno.serve(async (req: Request) => {
     }
 
     const leadId = lead.id as string
+
+    // A STOP or START the lead gave ql-hq. The mirror used to copy only the
+    // words, so Mission Control could go on texting someone who had opted out.
+    // Recorded against the number here; not passed back to ql-hq, which is
+    // where it came from and has already recorded it.
+    const kw = (inbound_message || '').trim().toUpperCase().replace(/[.!,?]/g, '').replace(/\s+/g, ' ').trim()
+    const STOP = new Set(['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT', 'OPTOUT', 'OPT-OUT', 'OPT OUT'])
+    const START = new Set(['START', 'UNSTOP', 'RESUBSCRIBE', 'OPTIN', 'OPT-IN', 'OPT IN'])
+    if (STOP.has(kw) || START.has(kw)) {
+      const { error: optErr } = await supabase.rpc('sms_set_opt_out', {
+        p_phone: normPhone, p_opted_out: STOP.has(kw), p_source: 'ql-hq',
+      })
+      if (optErr) {
+        // Surfaced as a failure so ql-hq logs it: an opt-out that did not land
+        // is not something to swallow.
+        console.error('sms_set_opt_out failed:', optErr.message)
+        return json({ error: `opt-out not recorded: ${optErr.message}` }, 500)
+      }
+    }
     const nowIso = new Date().toISOString()
     const rows: Array<Record<string, unknown>> = []
 

@@ -967,7 +967,10 @@ export const TOOLS = [
   },
   {
     name: 'send_lead_sms',
-    description: 'Send an SMS to a lead through Twilio.',
+    description:
+      'Send an SMS to a lead through Twilio, from the agency number Don answers. ' +
+      '"Reply STOP to opt out" is added automatically - do not write it yourself. ' +
+      'A number that has opted out is refused by the server; tell the owner, never try another way to reach them by SMS.',
     inputSchema: {
       type: 'object',
       properties: { lead_id: str('Lead UUID, from find_lead.'), message: str('The message body.') },

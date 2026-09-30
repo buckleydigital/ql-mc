@@ -15,6 +15,36 @@ function normalisePhone(raw: string): string | null {
   return null;
 }
 
+// Every text Mission Control sends is commercial, so each carries a working
+// way to opt out (Spam Act 2003). Added here, in one place, so no sender - the
+// dashboard, bulk sends, Jarvis - can forget it. Skipped when the message
+// already mentions STOP, so it never appears twice.
+const OPT_OUT_FOOTER = "Reply STOP to opt out";
+const withOptOutFooter = (msg: string) =>
+  /\bstop\b/i.test(msg) ? msg : `${msg}\n\n${OPT_OUT_FOOTER}`;
+
+// Tell ql-hq what was sent, so Don - who answers replies on this number - has
+// it in the conversation history. Best effort: a failure here must never
+// affect the send, which has already happened.
+async function recordInHq(payload: Record<string, unknown>): Promise<void> {
+  const hq = Deno.env.get("QL_HQ_API_URL");
+  const secret = Deno.env.get("QL_MC_API_SECRET");
+  if (!hq || !secret) {
+    console.warn("QL_HQ_API_URL or QL_MC_API_SECRET not set - Don will not see this SMS");
+    return;
+  }
+  try {
+    const res = await fetch(`${hq.replace(/\/+$/, "")}/sync-from-mc`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-secret": secret },
+      body: JSON.stringify({ action: "record_outbound_sms", ...payload }),
+    });
+    if (!res.ok) console.error(`record_outbound_sms returned ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  } catch (err) {
+    console.error("record_outbound_sms failed:", err instanceof Error ? err.message : err);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -69,7 +99,7 @@ Deno.serve(async (req: Request) => {
     // Validate lead_id exists in the correct table
     const { data: lead } = await supabaseAdmin
       .from(isSales ? "leads" : "ppl_leads")
-      .select(isSales ? "id, sms_opted_out" : "id")
+      .select(isSales ? "id, name, company, sms_opted_out" : "id")
       .eq("id", lead_id)
       .single();
 
@@ -79,12 +109,27 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Never message a lead who has opted out (replied STOP) - legal requirement.
-    if (isSales && (lead as { sms_opted_out?: boolean }).sms_opted_out) {
-      return new Response(JSON.stringify({ error: "Lead has opted out of SMS (replied STOP). Message not sent.", opted_out: true }), {
+    // Never message a number that has opted out (replied STOP) - legal
+    // requirement. The register (sms_opt_outs) is checked for every send, sales
+    // and pay-per-lead alike, by the NUMBER being texted: an opt-out given to
+    // ql-hq, or before this lead existed, counts. Fails closed - if the check
+    // cannot run, nothing is sent.
+    const { data: regOptOut, error: regErr } = await supabaseAdmin.rpc("sms_is_opted_out", {
+      p_phone: normalisedTo,
+    });
+    const flagged = isSales && (lead as { sms_opted_out?: boolean }).sms_opted_out;
+    if (flagged || regOptOut === true || regErr) {
+      return new Response(JSON.stringify({
+        error: regErr
+          ? "Could not confirm this number has not opted out of SMS. Message not sent."
+          : "This number has opted out of SMS (replied STOP). Message not sent.",
+        opted_out: !regErr,
+      }), {
         status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const outbound = withOptOutFooter(message.trim());
 
     // Send SMS via Twilio
     const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID")!;
@@ -101,7 +146,7 @@ Deno.serve(async (req: Request) => {
     const params = new URLSearchParams();
     params.set("To", normalisedTo);
     params.set("From", fromNumber);
-    params.set("Body", message.trim());
+    params.set("Body", outbound);
 
     const res = await fetch(
       `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
@@ -130,12 +175,29 @@ Deno.serve(async (req: Request) => {
       await supabaseAdmin.from(smsTable).insert([{
         lead_id,
         to_number: normalisedTo,
-        message: message.trim(),
+        message: outbound,
         sent_by: user.email || user.id,
         twilio_sid: twilioSid,
         status: "delivered",
         direction: "outbound",
       }]);
+
+      // Sales texts go out on the agency number Don answers; give him the
+      // context. Pay-per-lead contacts are homeowners, not agency prospects,
+      // and are not added to the agency's CRM in ql-hq.
+      if (isSales) {
+        const hqCall = recordInHq({
+          phone: normalisedTo,
+          message: outbound,
+          lead_name: (lead as { name?: string }).name ?? null,
+          company: (lead as { company?: string }).company ?? null,
+          sent_by: user.email || user.id,
+          twilio_sid: twilioSid,
+        });
+        const rt = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime;
+        if (rt?.waitUntil) rt.waitUntil(hqCall);
+        else await hqCall;
+      }
 
       return new Response(
         JSON.stringify({ success: true, twilio_sid: twilioSid, error: null }),
@@ -145,7 +207,7 @@ Deno.serve(async (req: Request) => {
       await supabaseAdmin.from(smsTable).insert([{
         lead_id,
         to_number: normalisedTo,
-        message: message.trim(),
+        message: outbound,
         sent_by: user.email || user.id,
         twilio_sid: twilioSid,
         status: "failed",

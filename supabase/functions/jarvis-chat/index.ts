@@ -327,8 +327,10 @@ function hasSendIdentity() {
 async function userToken() {
   if (!hasSendIdentity()) {
     throw new Error(
-      'Sending requires a login: set QL_USER_EMAIL and QL_USER_PASSWORD. ' +
-        'The email and SMS functions attribute the send to that user.',
+      'Sending requires a login: add QL_USER_EMAIL and QL_USER_PASSWORD as Supabase ' +
+        'Edge Function secrets (Supabase dashboard, ql-mc project, Edge Functions > Secrets), ' +
+        'or to tools/jarvis/.env for the local bridge. Emails and texts are sent as that user, ' +
+        'and replies go to them.',
     )
   }
 
@@ -1819,7 +1821,10 @@ const TOOLS = [
   },
   {
     name: 'send_lead_sms',
-    description: 'Send an SMS to a lead through Twilio.',
+    description:
+      'Send an SMS to a lead through Twilio, from the agency number Don answers. ' +
+      '"Reply STOP to opt out" is added automatically - do not write it yourself. ' +
+      'A number that has opted out is refused by the server; tell the owner, never try another way to reach them by SMS.',
     inputSchema: {
       type: 'object',
       properties: { lead_id: str('Lead UUID, from find_lead.'), message: str('The message body.') },
