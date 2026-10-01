@@ -5615,7 +5615,7 @@ async function sendBroadcast(){
   for(let i=0;i<leads.length;i++){
     const l=leads[i];
     const msg=raw.replace(/\{\{\s*first_name\s*\}\}/gi,bcFirstName(l))+'\n\nReply STOP to opt out';
-    if(prog) prog.textContent=`Sending ${i+1} / ${leads.length}…  (${sent} sent, ${failed} failed${skipped?', '+skipped+' opted out':''})`;
+    if(prog) prog.textContent=`Sending ${i+1} / ${leads.length}…  (${sent} sent, ${failed} failed${skipped?', '+skipped+' skipped':''})`;
     try{
       const res=await fetch(`${_ep}/functions/v1/send-sms`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({to:l.phone,message:msg,lead_id:l.id,source:'sales'})});
       const d=await res.json().catch(()=>({}));
@@ -5630,7 +5630,7 @@ async function sendBroadcast(){
   try{
     await fetch(`${_ep}/functions/v1/sync-to-hq`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({action:'disable_ai',leads:leads.map(l=>({phone:l.phone,name:l.name||''}))})});
   }catch(e){ /* non-fatal */ }
-  if(prog) prog.textContent=`Done - ${sent} sent, ${failed} failed${skipped?', '+skipped+' opted out (skipped)':''}.`;
+  if(prog) prog.textContent=`Done - ${sent} sent, ${failed} failed${skipped?', '+skipped+' skipped (opted out, or already sent this message)':''}.`;
   btn.disabled=false;
   toast(`Bulk SMS complete: ${sent} sent, ${failed} failed`);
   updateBroadcastCount();

@@ -131,6 +131,24 @@ Deno.serve(async (req: Request) => {
 
     const outbound = withOptOutFooter(message.trim());
 
+    // Never the same message to the same number twice in 30 days - a resent
+    // bulk list, a retried request, a double-click. Claimed atomically before
+    // sending (outreach_claim, migration 20261001000001) and given back if
+    // Twilio rejects it. Fails closed, like the opt-out check.
+    const { data: claimed, error: claimErr } = await supabaseAdmin.rpc("outreach_claim", {
+      p_channel: "sms", p_recipient: normalisedTo, p_message: outbound, p_lead_id: isSales ? lead_id : null,
+    });
+    if (claimed !== true || claimErr) {
+      return new Response(JSON.stringify({
+        error: claimErr
+          ? "Could not check whether this message was already sent. Message not sent."
+          : "This exact message already went to this number in the last 30 days. Not sent again.",
+        duplicate: !claimErr,
+      }), {
+        status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Send SMS via Twilio
     const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID")!;
     const authToken = Deno.env.get("TWILIO_AUTH_TOKEN")!;
@@ -204,6 +222,10 @@ Deno.serve(async (req: Request) => {
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     } else {
+      // Not sent, so it may be tried again.
+      await supabaseAdmin.rpc("outreach_release", {
+        p_channel: "sms", p_recipient: normalisedTo, p_message: outbound,
+      });
       await supabaseAdmin.from(smsTable).insert([{
         lead_id,
         to_number: normalisedTo,

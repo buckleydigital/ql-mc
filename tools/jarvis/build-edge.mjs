@@ -26,7 +26,7 @@ const fn = join(root, 'supabase', 'functions', 'jarvis-chat')
 const src = join(fn, 'quoteleads')
 
 // Dependency order: each module may only use what is already above it.
-const MODULES = ['config.mjs', 'dates.mjs', 'db.mjs', 'auth.mjs', 'explore.mjs', 'memory.mjs', 'jobs.mjs', 'content.mjs', 'tools.mjs']
+const MODULES = ['config.mjs', 'dates.mjs', 'db.mjs', 'auth.mjs', 'explore.mjs', 'memory.mjs', 'jobs.mjs', 'content.mjs', 'outreach.mjs', 'tools.mjs']
 
 const declared = new Map()
 

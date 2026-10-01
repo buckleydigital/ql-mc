@@ -20,6 +20,7 @@ import { EXPLORE_TOOLS } from './explore.mjs'
 import { MEMORY_TOOLS } from './memory.mjs'
 import { JOB_TOOLS } from './jobs.mjs'
 import { CONTENT_TOOLS } from './content.mjs'
+import { OUTREACH_TOOLS } from './outreach.mjs'
 import { userToken } from './auth.mjs'
 import { localDate, localMonth, startOfLocalDay, daysAgo, startOfMonth } from './dates.mjs'
 
@@ -765,6 +766,7 @@ export const TOOLS = [
   ...MEMORY_TOOLS,
   ...JOB_TOOLS,
   ...CONTENT_TOOLS,
+  ...OUTREACH_TOOLS,
 
   {
     name: 'get_daily_brief',
@@ -948,7 +950,7 @@ export const TOOLS = [
   {
     name: 'send_lead_email',
     description:
-      'Send the info or follow-up email to a lead, using the app\'s own templates and logging. ' +
+      'Send the info or follow-up email to ONE lead, using the app\'s own templates and logging. For more than 3 leads use send_bulk_message. ' +
       'Pass subject and body ONLY when the person has asked for wording of their own - for ' +
       'example tailoring it to what was discussed on a call. Leave both out and the saved ' +
       'template is used, which is the right default. Read the wording back and get a yes ' +
@@ -968,9 +970,10 @@ export const TOOLS = [
   {
     name: 'send_lead_sms',
     description:
-      'Send an SMS to a lead through Twilio, from the agency number Don answers. ' +
+      'Send an SMS to ONE lead through Twilio, from the agency number Don answers. For more than 3 leads use send_bulk_message, never this in a loop. ' +
       '"Reply STOP to opt out" is added automatically - do not write it yourself. ' +
-      'A number that has opted out is refused by the server; tell the owner, never try another way to reach them by SMS.',
+      'A number that has opted out is refused by the server; tell the owner, never try another way to reach them by SMS. ' +
+      'The same message to the same number within 30 days is refused too - it was already sent.',
     inputSchema: {
       type: 'object',
       properties: { lead_id: str('Lead UUID, from find_lead.'), message: str('The message body.') },

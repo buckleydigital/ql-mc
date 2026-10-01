@@ -113,7 +113,11 @@ Deno.serve(async (req: Request) => {
     const text    = String(body.body ?? "").trim();
 
     if (!leadId) return json({ error: "lead_id is required" }, 400);
-    if (kind !== "info" && kind !== "followup") return json({ error: "kind must be info or followup" }, 400);
+    // campaign: a bulk email from Jarvis's outbox. Not the Send Info / Follow
+    // Up buttons, so it neither needs nor sets their once-only stamps.
+    if (kind !== "info" && kind !== "followup" && kind !== "campaign") {
+      return json({ error: "kind must be info, followup or campaign" }, 400);
+    }
     if (!subject) return json({ error: "Subject is required" }, 400);
     if (!text) return json({ error: "Body is required" }, 400);
     if (subject.length > 300) return json({ error: "Subject is too long" }, 400);
@@ -144,6 +148,17 @@ Deno.serve(async (req: Request) => {
       return json({ error: "The follow-up has already been sent" }, 409);
     }
 
+    // Never the same email to the same address twice in 30 days, whatever the
+    // kind - claimed atomically before sending, given back if Resend rejects it.
+    // Fails closed.
+    const { data: claimed, error: claimErr } = await admin.rpc("outreach_claim", {
+      p_channel: "email", p_recipient: to, p_message: `${subject}\n${text}`, p_lead_id: leadId,
+    });
+    if (claimErr) return json({ error: "Could not check whether this email was already sent. Not sent." }, 409);
+    if (claimed !== true) {
+      return json({ error: "This exact email already went to this address in the last 30 days. Not sent again.", duplicate: true }, 409);
+    }
+
     // Reply-To: the rep's own address, so the answer lands with whoever sent it.
     const { data: rep } = await admin
       .from("sales_reps")
@@ -172,7 +187,13 @@ Deno.serve(async (req: Request) => {
       rep?.reply_to_email || rep?.email || bset?.sales_reply_to_email || user.email || "",
     ).trim();
     const apiKey    = Deno.env.get("RESEND_API_KEY");
-    if (!fromEmail || !apiKey) return json({ error: "Email is not configured" }, 500);
+    const release = () => admin.rpc("outreach_release", {
+      p_channel: "email", p_recipient: to, p_message: `${subject}\n${text}`,
+    });
+    if (!fromEmail || !apiKey) {
+      await release();
+      return json({ error: "Email is not configured" }, 500);
+    }
 
     // Sent on the verified domain, under the rep's name, replying to the rep.
     const fromName = repName ? `${repName} at QuoteLeads` : "QuoteLeads";
@@ -193,15 +214,21 @@ Deno.serve(async (req: Request) => {
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) {
       console.error("resend error:", res.status, JSON.stringify(payload));
+      await release();
       return json({ error: "The email provider rejected the message" }, 502);
     }
 
     // Only now does the lead get stamped, so a failed send leaves the button live.
-    const stamp = kind === "info"
-      ? { info_sent_at: new Date().toISOString(), info_sent_by: user.id }
-      : { followup_sent_at: new Date().toISOString(), followup_sent_by: user.id };
-    const { error: updErr } = await admin.from("leads").update(stamp).eq("id", leadId);
-    if (updErr) console.error("lead stamp failed after send:", updErr.message);
+    const now = new Date().toISOString();
+    const stamp: Record<string, string> = kind === "info"
+      ? { info_sent_at: now, info_sent_by: user.id }
+      : kind === "followup"
+        ? { followup_sent_at: now, followup_sent_by: user.id }
+        : {};
+    if (Object.keys(stamp).length) {
+      const { error: updErr } = await admin.from("leads").update(stamp).eq("id", leadId);
+      if (updErr) console.error("lead stamp failed after send:", updErr.message);
+    }
 
     await admin.from("sales_email_log").insert({
       lead_id: leadId, kind, to_email: to, reply_to: replyTo || null,
@@ -209,7 +236,7 @@ Deno.serve(async (req: Request) => {
       via: viaJarvis ? "jarvis" : null,
     });
 
-    return json({ ok: true, to, reply_to: replyTo || null, sent_at: stamp.info_sent_at ?? stamp.followup_sent_at });
+    return json({ ok: true, to, reply_to: replyTo || null, sent_at: now });
   } catch (err) {
     console.error("send-sales-email error:", err);
     return json({ error: "Internal server error" }, 500);

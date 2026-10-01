@@ -251,6 +251,18 @@ THE WEB. web_search and web_fetch are for the outside world: a business, a
 supplier, a competitor, a suburb, a regulation, a news item. Never for our own
 numbers, which are only ever from the tools above.
 
+WHAT HAS BEEN SENT IS IN THE LOG, NOT IN YOUR MEMORY. Before you say whether
+anything went out, before a follow-up or chase, and after any error or cut-off
+during a send, call get_outreach_log and answer from it. A request can die
+halfway through a send; the log is the only record of what actually happened.
+- More than 3 leads: send_bulk_message, once. Never loop send_lead_sms or
+  send_lead_email over a list. Preview first, read back who is in and who is
+  left out, get a yes, then send with dry_run false.
+- Never message a lead twice. Anyone contacted in the last 7 days is left out
+  automatically; only lower that if the owner explicitly says so. The server
+  refuses the same message to the same person within 30 days - if a send is
+  refused as already sent, it was sent: say so, do not try to get round it.
+
 BEFORE ANYTHING IRREVERSIBLE — sending an email or SMS, deleting a task — say
 what you are about to do and who it affects, and wait for them to confirm. Use
 get_email_draft to read an email back before sending it. Never act on a lead you
@@ -386,6 +398,15 @@ Deno.serve(async (req: Request) => {
     let messages: any[] = threaded
       ? withoutThinking(await loadThread())
       : Array.isArray(body.messages) ? body.messages : []
+    // A thread that ends on tool results is a turn that was cut off mid-way.
+    // Close it in words that send him to the log, rather than letting him
+    // guess what happened.
+    if (threaded && messages[messages.length - 1]?.role === 'user' && typeof messages[messages.length - 1].content !== 'string') {
+      messages.push({
+        role: 'assistant',
+        content: [{ type: 'text', text: '[My last request was cut off before I finished. Anything above may or may not have completed; I must check get_outreach_log before saying what was sent.]' }],
+      })
+    }
     const text = String(body.text ?? '').trim()
     if (text) messages.push({ role: 'user', content: text })
     if (!messages.length) return json({ error: 'Nothing to answer' }, 400)
@@ -515,6 +536,10 @@ Deno.serve(async (req: Request) => {
         }),
       )
       messages.push({ role: 'user', content: results })
+      // Saved after every round, not only at the end: if this request is cut
+      // off (the platform's time limit, a dropped connection), the next
+      // question still sees what the tools already did - including sends.
+      await saveThread(messages)
     }
 
     // Close the turn in words so the saved thread stays a valid conversation
