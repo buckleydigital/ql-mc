@@ -483,6 +483,30 @@ td strong{font-weight:500}
 .overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;backdrop-filter:blur(10px);padding:16px}
 .overlay.open{display:flex}
 .overlay.stacked{z-index:520}
+/* Cold outreach screen */
+#m-outreach .modal{max-width:760px}
+.or-niche{padding:14px 0;border-bottom:1px solid var(--bd)}
+.or-head{display:flex;align-items:center;gap:10px}
+.or-head label.or-name{display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;flex:1;min-width:0}
+.or-head label.or-name input{width:18px;height:18px;margin:0;flex:0 0 auto}
+.or-head .or-dt{font-size:11px;color:var(--ink3);margin:0;white-space:nowrap}
+.or-head .or-dt input{width:64px;display:inline-block;padding:5px 6px;margin-left:4px}
+.or-stats{font-size:11px;color:var(--ink3);margin:4px 0 0 26px}
+.or-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-top:10px}
+.or-sup-row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.or-sup-item{display:flex;gap:10px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--bd)}
+.or-sup-item .v{font-family:var(--mono);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:700px){
+  #m-outreach{padding:8px}
+  #m-outreach .modal{max-height:94vh;padding:18px 16px}
+  /* iOS zooms into any field under 16px when it is tapped */
+  #m-outreach .fi{font-size:16px}
+  .or-save{width:100%;padding:10px;font-size:13px}
+  .or-sup-row > *{flex:1 1 100% !important}
+  .or-sup-row .btn{padding:10px}
+  .or-sup-item{flex-wrap:wrap;gap:2px 10px}
+  .or-sup-item .v{flex-basis:100%}
+}
 .modal{
   background:var(--s1);border:1px solid var(--bd2);
   border-radius:var(--r3);
@@ -2952,23 +2976,23 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
      finds or sends anything yet; switching a niche on only marks it as one
      Jarvis may build batches for once those stages exist. -->
 <div class="overlay" id="m-outreach">
-  <div class="modal" style="max-width:760px">
+  <div class="modal">
     <h2>⌖ Cold outreach</h2>
     <div class="msub">Niches to prospect, and who must never be contacted</div>
-    <div id="or-niches" style="max-height:52vh;overflow-y:auto;margin:14px -4px 0;padding:0 4px">
+    <div id="or-niches" style="margin-top:6px">
       <div style="color:var(--ink3);font-size:12px">Loading…</div>
     </div>
 
     <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Do not contact</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-      <div class="frow" style="flex:0 0 110px;margin:0"><label class="flabel">Type</label>
+    <div class="or-sup-row">
+      <div class="frow" style="flex:0 0 130px;margin:0"><label class="flabel">Type</label>
         <select class="fi" id="or-sup-kind"><option value="email">Email</option><option value="domain">Website / domain</option><option value="phone">Phone</option></select>
       </div>
       <div class="frow" style="flex:1;min-width:180px;margin:0"><label class="flabel">Value</label><input class="fi" id="or-sup-value" placeholder="name@business.com.au, business.com.au or 04…"></div>
       <div class="frow" style="flex:1;min-width:140px;margin:0"><label class="flabel">Note (optional)</label><input class="fi" id="or-sup-note"></div>
       <button class="btn btn-p" type="button" onclick="addSuppression()">Add</button>
     </div>
-    <div id="or-sup-list" style="max-height:22vh;overflow-y:auto;margin-top:10px;font-size:11.5px"></div>
+    <div id="or-sup-list" style="max-height:30vh;overflow-y:auto;margin-top:10px;font-size:11.5px"></div>
     <p style="font-size:10.5px;color:var(--ink3);margin:10px 0 0;line-height:1.6">One list for everything: cold email, pipeline emails and texts all check it. Unsubscribes and bounces land here automatically once sending is live, and stay - they are the recipient's choice. Anyone already in your pipeline, a client, or opted out of SMS is never cold-contacted.</p>
     <div class="macts">
       <button class="btn" onclick="closeModal('m-outreach')">Close</button>
@@ -9549,24 +9573,22 @@ async function loadOutreachNiches() {
       const stats = total
         ? OR_STATUS.filter(function (s) { return c[s[0]]; }).map(function (s) { return c[s[0]] + ' ' + s[1]; }).join(' · ')
         : 'No prospects yet';
-      return '<div style="padding:12px 0;border-bottom:1px solid var(--bd)">' +
-        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
-          '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0">' +
-            '<input type="checkbox" id="or-en-' + n.key + '"' + (n.enabled ? ' checked' : '') + ' style="width:auto;margin:0">' +
-            '<b style="font-size:13px">' + jmEsc(n.label) + '</b></label>' +
-          '<span style="font-size:11px;color:var(--ink3);flex:1">' + jmEsc(stats) + '</span>' +
-          '<label style="font-size:11px;color:var(--ink3);margin:0">per day ' +
-            '<input class="fi" type="number" min="0" max="300" id="or-dt-' + n.key + '" value="' + Number(n.daily_target) + '" style="width:64px;display:inline-block;padding:4px 6px"></label>' +
+      return '<div class="or-niche">' +
+        '<div class="or-head">' +
+          '<label class="or-name"><input type="checkbox" id="or-en-' + n.key + '"' + (n.enabled ? ' checked' : '') + '>' +
+            '<b style="font-size:13.5px">' + jmEsc(n.label) + '</b></label>' +
+          '<label class="or-dt">per day<input class="fi" type="number" inputmode="numeric" min="0" max="300" id="or-dt-' + n.key + '" value="' + Number(n.daily_target) + '"></label>' +
         '</div>' +
-        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-top:8px">' +
+        '<div class="or-stats">' + jmEsc(stats) + '</div>' +
+        '<div class="or-grid">' +
           '<div class="frow" style="margin:0"><label class="flabel">Regions (comma separated, blank = nationwide)</label>' +
             '<input class="fi" id="or-rg-' + n.key + '" value="' + orAttr((n.regions || []).join(', ')) + '" placeholder="QLD, Newcastle NSW"></div>' +
           '<div class="frow" style="margin:0"><label class="flabel">Search terms (comma separated)</label>' +
             '<input class="fi" id="or-st-' + n.key + '" value="' + orAttr((n.search_terms || []).join(', ')) + '"></div>' +
         '</div>' +
         '<div class="frow" style="margin:8px 0 0"><label class="flabel">Offer - what we pitch this niche, in plain words</label>' +
-          '<textarea class="fi" id="or-of-' + n.key + '" rows="2" style="width:100%;resize:vertical;font-size:12px" placeholder="e.g. Exclusive, pre-qualified roofing leads in your area, pay per lead, no lock-in">' + jmEsc(n.offer || '') + '</textarea></div>' +
-        '<div style="margin-top:8px"><button class="btn btn-p btn-xs" type="button" onclick="saveOutreachNiche(\'' + n.key + '\')">Save ' + jmEsc(n.label) + '</button></div>' +
+          '<textarea class="fi" id="or-of-' + n.key + '" rows="2" style="width:100%;resize:vertical" placeholder="e.g. Exclusive, pre-qualified roofing leads in your area, pay per lead, no lock-in">' + jmEsc(n.offer || '') + '</textarea></div>' +
+        '<div style="margin-top:10px"><button class="btn btn-p btn-xs or-save" type="button" onclick="saveOutreachNiche(\'' + n.key + '\')">Save ' + jmEsc(n.label) + '</button></div>' +
       '</div>';
     }).join('');
   } catch (err) {
@@ -9597,8 +9619,8 @@ async function loadSuppressions() {
     const rows = data || [];
     host.innerHTML = rows.length
       ? rows.map(function (r) {
-          return '<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--bd)">' +
-            '<span style="font-family:var(--mono);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">' + jmEsc(r.value) + '</span>' +
+          return '<div class="or-sup-item">' +
+            '<span class="v">' + jmEsc(r.value) + '</span>' +
             '<span style="color:var(--ink3)">' + jmEsc(r.kind) + '</span>' +
             '<span style="color:var(--ink2)">' + jmEsc(r.reason.replace(/_/g, ' ')) + '</span>' +
             '<span style="color:var(--ink3)">' + new Date(r.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) + '</span>' +
