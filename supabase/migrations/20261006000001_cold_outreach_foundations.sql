@@ -394,26 +394,15 @@ begin
 end;
 $$;
 
--- Only an entry added by hand can be removed. An unsubscribe, bounce or
--- complaint is the recipient's decision (or the mail system's), not ours.
-create or replace function public.suppression_remove(p_id uuid)
-returns void language plpgsql security definer set search_path = public as $$
-begin
-  perform public.jarvis_assert_operator();
-  delete from public.contact_suppressions where id = p_id and reason = 'manual';
-  if not found then
-    raise exception 'Only entries added by hand can be removed.' using errcode = '42501';
-  end if;
-end;
-$$;
+-- Removing an entry is deliberately not exposed to the dashboard. An
+-- unsubscribe, bounce or complaint is the recipient's decision, not ours; a
+-- hand-added entry that was a mistake is rare enough to remove by hand.
 
 revoke all on function public.outreach_niche_list()                                             from public, anon;
 revoke all on function public.outreach_niche_update(text, boolean, int, text[], text[], text)   from public, anon;
 revoke all on function public.suppression_list(int)                                             from public, anon;
 revoke all on function public.suppression_add(text, text, text)                                 from public, anon;
-revoke all on function public.suppression_remove(uuid)                                          from public, anon;
 grant execute on function public.outreach_niche_list()                                           to authenticated;
 grant execute on function public.outreach_niche_update(text, boolean, int, text[], text[], text) to authenticated;
 grant execute on function public.suppression_list(int)                                           to authenticated;
 grant execute on function public.suppression_add(text, text, text)                               to authenticated;
-grant execute on function public.suppression_remove(uuid)                                        to authenticated;

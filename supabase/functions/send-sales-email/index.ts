@@ -148,6 +148,15 @@ Deno.serve(async (req: Request) => {
       return json({ error: "The follow-up has already been sent" }, 409);
     }
 
+    // The shared do-not-contact list (migration 20261006000001): an address or
+    // business domain that unsubscribed from cold email, bounced, or was
+    // blocked by hand is never emailed from here either. Fails closed.
+    const { data: suppressed, error: supErr } = await admin.rpc("contact_is_suppressed", { p_email: to });
+    if (supErr) return json({ error: "Could not check the do-not-contact list. Not sent." }, 409);
+    if (suppressed === true) {
+      return json({ error: "This address is on the do-not-contact list. Not sent.", suppressed: true }, 409);
+    }
+
     // Never the same email to the same address twice in 30 days, whatever the
     // kind - claimed atomically before sending, given back if Resend rejects it.
     // Fails closed.

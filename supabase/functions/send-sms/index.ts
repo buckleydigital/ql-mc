@@ -129,6 +129,22 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // The shared do-not-contact list, on top of the SMS opt-out register above:
+    // a number blocked from cold outreach or by hand is not texted either.
+    const { data: suppressed, error: supErr } = await supabaseAdmin.rpc("contact_is_suppressed", {
+      p_phone: normalisedTo,
+    });
+    if (suppressed === true || supErr) {
+      return new Response(JSON.stringify({
+        error: supErr
+          ? "Could not check the do-not-contact list. Message not sent."
+          : "This number is on the do-not-contact list. Message not sent.",
+        suppressed: !supErr,
+      }), {
+        status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const outbound = withOptOutFooter(message.trim());
 
     // Never the same message to the same number twice in 30 days - a resent

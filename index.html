@@ -876,6 +876,7 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
       <button class="jv-mic admin-only-field" id="jv-log" onclick="openJarvisLog()" title="What Jarvis has done">☷</button>
       <button class="jv-mic admin-only-field" id="jv-mind" onclick="openJarvisMind()" title="What he remembers and has scheduled">✦</button>
       <button class="jv-mic admin-only-field" id="jv-posts" onclick="openJarvisPosts()" title="Posts he has drafted">▦</button>
+      <button class="jv-mic admin-only-field" id="jv-outreach" onclick="openOutreach()" title="Cold outreach: niches and do-not-contact list">⌖</button>
       <button class="jv-mic" id="jv-new" onclick="JV.reset()" title="New conversation">⟲</button>
       <button class="jv-mic" id="jv-hud-btn" onclick="JV.toggleHud()" title="Full screen">⬚</button>
       <button class="jv-mic" id="jv-writes" onclick="JV.toggleWrites()" title="Read-only">🔒</button>
@@ -2941,6 +2942,36 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
     <p style="font-size:10.5px;color:var(--ink3);margin:12px 0 0;line-height:1.6">Nothing here is connected to your accounts - approving publishes nothing. Edit the caption before approving and he learns from the difference. Ask him for a post in the panel or by text, or schedule them ("every Tuesday, draft a post from last week").</p>
     <div class="macts">
       <button class="btn" onclick="closeModal('m-jarvis-posts')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cold outreach -->
+<!-- Stage 1 of cold outreach: which niches are switched on, what each one is
+     searched for and offered, and the shared do-not-contact list. Nothing here
+     finds or sends anything yet; switching a niche on only marks it as one
+     Jarvis may build batches for once those stages exist. -->
+<div class="overlay" id="m-outreach">
+  <div class="modal" style="max-width:760px">
+    <h2>⌖ Cold outreach</h2>
+    <div class="msub">Niches to prospect, and who must never be contacted</div>
+    <div id="or-niches" style="max-height:52vh;overflow-y:auto;margin:14px -4px 0;padding:0 4px">
+      <div style="color:var(--ink3);font-size:12px">Loading…</div>
+    </div>
+
+    <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Do not contact</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+      <div class="frow" style="flex:0 0 110px;margin:0"><label class="flabel">Type</label>
+        <select class="fi" id="or-sup-kind"><option value="email">Email</option><option value="domain">Website / domain</option><option value="phone">Phone</option></select>
+      </div>
+      <div class="frow" style="flex:1;min-width:180px;margin:0"><label class="flabel">Value</label><input class="fi" id="or-sup-value" placeholder="name@business.com.au, business.com.au or 04…"></div>
+      <div class="frow" style="flex:1;min-width:140px;margin:0"><label class="flabel">Note (optional)</label><input class="fi" id="or-sup-note"></div>
+      <button class="btn btn-p" type="button" onclick="addSuppression()">Add</button>
+    </div>
+    <div id="or-sup-list" style="max-height:22vh;overflow-y:auto;margin-top:10px;font-size:11.5px"></div>
+    <p style="font-size:10.5px;color:var(--ink3);margin:10px 0 0;line-height:1.6">One list for everything: cold email, pipeline emails and texts all check it. Unsubscribes and bounces land here automatically once sending is live, and stay - they are the recipient's choice. Anyone already in your pipeline, a client, or opted out of SMS is never cold-contacted.</p>
+    <div class="macts">
+      <button class="btn" onclick="closeModal('m-outreach')">Close</button>
     </div>
   </div>
 </div>
@@ -9492,6 +9523,105 @@ const JP_STATUS = {
   posted:   { label: 'Posted', tone: 'var(--grn)' },
 };
 let jpPosts = [];
+
+// ── Cold outreach: niches + do-not-contact ────────────────────────────────
+const OR_STATUS = [
+  ['new', 'found'], ['verified', 'verified'], ['qualified', 'qualified'], ['contacted', 'contacted'],
+  ['replied', 'replied'], ['interested', 'interested'], ['blocked', 'blocked'], ['rejected', 'not a fit'],
+];
+let orNiches = [];
+const orAttr = function (v) { return jmEsc(v).replace(/"/g, '&quot;'); };
+
+async function openOutreach() {
+  openModal('m-outreach');
+  await Promise.all([loadOutreachNiches(), loadSuppressions()]);
+}
+
+async function loadOutreachNiches() {
+  const host = $('or-niches');
+  try {
+    const { data, error } = await db.rpc('outreach_niche_list');
+    if (error) throw error;
+    orNiches = data || [];
+    host.innerHTML = orNiches.map(function (n) {
+      const c = n.counts || {};
+      const total = Object.values(c).reduce(function (a, b) { return a + Number(b || 0); }, 0);
+      const stats = total
+        ? OR_STATUS.filter(function (s) { return c[s[0]]; }).map(function (s) { return c[s[0]] + ' ' + s[1]; }).join(' · ')
+        : 'No prospects yet';
+      return '<div style="padding:12px 0;border-bottom:1px solid var(--bd)">' +
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+          '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0">' +
+            '<input type="checkbox" id="or-en-' + n.key + '"' + (n.enabled ? ' checked' : '') + ' style="width:auto;margin:0">' +
+            '<b style="font-size:13px">' + jmEsc(n.label) + '</b></label>' +
+          '<span style="font-size:11px;color:var(--ink3);flex:1">' + jmEsc(stats) + '</span>' +
+          '<label style="font-size:11px;color:var(--ink3);margin:0">per day ' +
+            '<input class="fi" type="number" min="0" max="300" id="or-dt-' + n.key + '" value="' + Number(n.daily_target) + '" style="width:64px;display:inline-block;padding:4px 6px"></label>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-top:8px">' +
+          '<div class="frow" style="margin:0"><label class="flabel">Regions (comma separated, blank = nationwide)</label>' +
+            '<input class="fi" id="or-rg-' + n.key + '" value="' + orAttr((n.regions || []).join(', ')) + '" placeholder="QLD, Newcastle NSW"></div>' +
+          '<div class="frow" style="margin:0"><label class="flabel">Search terms (comma separated)</label>' +
+            '<input class="fi" id="or-st-' + n.key + '" value="' + orAttr((n.search_terms || []).join(', ')) + '"></div>' +
+        '</div>' +
+        '<div class="frow" style="margin:8px 0 0"><label class="flabel">Offer - what we pitch this niche, in plain words</label>' +
+          '<textarea class="fi" id="or-of-' + n.key + '" rows="2" style="width:100%;resize:vertical;font-size:12px" placeholder="e.g. Exclusive, pre-qualified roofing leads in your area, pay per lead, no lock-in">' + jmEsc(n.offer || '') + '</textarea></div>' +
+        '<div style="margin-top:8px"><button class="btn btn-p btn-xs" type="button" onclick="saveOutreachNiche(\'' + n.key + '\')">Save ' + jmEsc(n.label) + '</button></div>' +
+      '</div>';
+    }).join('');
+  } catch (err) {
+    host.textContent = 'Could not load niches: ' + (err.message || err);
+  }
+}
+
+async function saveOutreachNiche(key) {
+  const split = function (v) { return String(v || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); };
+  const { error } = await db.rpc('outreach_niche_update', {
+    p_key: key,
+    p_enabled: $('or-en-' + key).checked,
+    p_daily_target: parseInt($('or-dt-' + key).value, 10) || 0,
+    p_regions: split($('or-rg-' + key).value),
+    p_search_terms: split($('or-st-' + key).value),
+    p_offer: $('or-of-' + key).value,
+  });
+  if (error) { toast('Could not save: ' + error.message, true); return; }
+  toast('Saved ✓');
+  loadOutreachNiches();
+}
+
+async function loadSuppressions() {
+  const host = $('or-sup-list');
+  try {
+    const { data, error } = await db.rpc('suppression_list', { p_limit: 200 });
+    if (error) throw error;
+    const rows = data || [];
+    host.innerHTML = rows.length
+      ? rows.map(function (r) {
+          return '<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--bd)">' +
+            '<span style="font-family:var(--mono);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">' + jmEsc(r.value) + '</span>' +
+            '<span style="color:var(--ink3)">' + jmEsc(r.kind) + '</span>' +
+            '<span style="color:var(--ink2)">' + jmEsc(r.reason.replace(/_/g, ' ')) + '</span>' +
+            '<span style="color:var(--ink3)">' + new Date(r.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) + '</span>' +
+          '</div>';
+        }).join('')
+      : '<div style="color:var(--ink3)">Nobody on the list yet.</div>';
+  } catch (err) {
+    host.textContent = 'Could not load the list: ' + (err.message || err);
+  }
+}
+
+async function addSuppression() {
+  const value = $('or-sup-value').value.trim();
+  if (!value) { toast('Enter an email, domain or phone', true); return; }
+  const { error } = await db.rpc('suppression_add', {
+    p_kind: $('or-sup-kind').value, p_value: value, p_note: $('or-sup-note').value.trim() || null,
+  });
+  if (error) { toast('Could not add: ' + error.message, true); return; }
+  $('or-sup-value').value = ''; $('or-sup-note').value = '';
+  toast('Added to do-not-contact ✓');
+  loadSuppressions();
+  loadOutreachNiches();
+}
 
 async function openJarvisPosts() {
   openModal('m-jarvis-posts');
