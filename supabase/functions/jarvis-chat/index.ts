@@ -588,7 +588,7 @@ const MEMORY_TOOLS = [
       type: 'object',
       properties: {
         content: { type: 'string', description: 'The fact, as a complete sentence.' },
-        source: { type: 'string', description: 'Optional: panel, sms or call.' },
+        source: { type: 'string', description: 'Optional: panel or sms.' },
       },
       required: ['content'],
     },
@@ -2363,7 +2363,7 @@ make the sensible call and say what you assumed. If something fails, try
 another way before reporting it.
 
 YOU HAVE A MEMORY. What you know appears below under WHAT YOU REMEMBER, and it
-carries across days, devices, texts and calls.
+carries across days, devices and texts.
 - When they tell you a preference, a standing instruction, a fact about a
   client, lead or rep, a goal, or say "remember", call create_memory at once,
   one fact per call, written to make sense on its own later. Do not announce it

@@ -84,24 +84,6 @@ function describe(e: Ev): string {
   }
 }
 
-// Spoken, not written. A phone call gets one or two sentences, said twice with
-// a pause - people miss the first seconds answering, and there is no scrollback
-// on a voice call. Punctuation is doing real work here: it is what makes the
-// difference between a readout and a sentence.
-function speakable(lines: string[], extra: number): string {
-  const body = lines.join(' ')
-  const tail = extra > 0 ? ` And ${extra} more ${extra === 1 ? 'item' : 'items'} waiting.` : ''
-  return `Sir. ${body}${tail}`
-}
-
-// TwiML is XML, so anything interpolated into it has to be escaped or a client
-// named "Smith & Sons" truncates the call.
-function xmlEscape(v: string): string {
-  return v.replace(/[<>&"']/g, (c) => (
-    { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c] as string
-  ))
-}
-
 // Refresh the mirror of Don's on/off state.
 //
 // Don's config lives in ql-hq. A watcher is a SELECT, and a SELECT cannot make
@@ -266,7 +248,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: s } = await db
       .from('business_settings')
-      .select('jarvis_notify_number, jarvis_notify_enabled, jarvis_timezone, jarvis_quiet_start, jarvis_quiet_end, jarvis_daily_sms_cap, twilio_from_number, jarvis_from_number, jarvis_call_enabled, jarvis_call_cap, jarvis_call_voice')
+      .select('jarvis_notify_number, jarvis_notify_enabled, jarvis_timezone, jarvis_quiet_start, jarvis_quiet_end, jarvis_daily_sms_cap, twilio_from_number, jarvis_from_number')
       .limit(1).maybeSingle()
 
     // The mirror first, then the scan: jarvis_scan() reads don_enabled, so
@@ -301,9 +283,7 @@ Deno.serve(async (req: Request) => {
     const { count: sentToday } = await db
       .from('jarvis_notifications')
       .select('id', { count: 'exact', head: true })
-      // Texts only. A call is logged here too and is always accompanied by a
-      // text, so counting both would burn the SMS cap at twice the rate and
-      // silence him after five urgent events instead of ten.
+      // Texts only: older rows include phone calls, which no longer exist.
       .eq('channel', 'sms')
       .eq('status', 'sent').gte('created_at', since)
     if ((sentToday ?? 0) >= cap) {
@@ -402,111 +382,8 @@ Deno.serve(async (req: Request) => {
       error: res.ok ? null : raw.slice(0, 500),
     })
 
-    // ── The phone call ────────────────────────────────────────────────────
-    // Urgent only, and never instead of the text: the SMS is the record you
-    // can re-read, the call is the interrupt. Quiet hours already returned
-    // above, so reaching here means it is a reasonable hour to ring.
-    //
-    // Two-way, but only just: he says the thing, listens once, and hangs up.
-    // Twilio's own speech recognition does the listening (see the Gather
-    // below), so there is still no media stream and no realtime audio here.
-    // One turn is the right amount - the point is to say "chase Sandford and
-    // Everlite" and get on with your day, not to hold a conversation.
-    let callSid: string | null = null
-    let callError: string | null = null
-    if (res.ok && tier === 'urgent' && s.jarvis_call_enabled === true) {
-      const callCap = Number(s.jarvis_call_cap ?? 3)
-      const { count: callsToday } = await db
-        .from('jarvis_notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('channel', 'call').eq('status', 'sent').gte('created_at', since)
-
-      // He must never ring a client. That is true by construction today - `to`
-      // is read from jarvis_notify_number and nothing else writes it, and no
-      // tool he has can dial at all - but "true by construction" quietly stops
-      // being true the first time someone refactors this block.
-      //
-      // So it is asserted rather than assumed: the number about to be dialled
-      // is compared against the configured owner number immediately before the
-      // call goes out. A mismatch means something upstream is wrong, and the
-      // right response to that is no call at all.
-      const ownerCheck = normalisePhone(s.jarvis_notify_number || '')
-      if (!ownerCheck || to !== ownerCheck) {
-        console.error('refusing to dial: destination is not the configured owner number')
-        return json({ ok: true, scanned: pendingCount, sent: true, called: false, reason: 'dial_guard' })
-      }
-
-      if (callCap > 0 && (callsToday ?? 0) < callCap) {
-        const voice = String(s.jarvis_call_voice || 'Polly.Brian-Neural')
-        const line = speakable(shown.map(describe), extra)
-        const spoken = xmlEscape(line)
-
-        // Twilio's own Polly neural voice, which is included in the call price
-        // and needs no second provider to be reachable for the call to happen.
-        //
-        // Said twice with a pause between, because the first seconds of an
-        // answered call are spent saying "hello".
-        //
-        // Then it listens, rather than hanging up on you.
-        //
-        // <Gather input="speech"> is the whole trick: Twilio does the speech
-        // recognition itself and posts the transcript to jarvis-voice-reply, so
-        // there is no media stream, no websocket and no realtime audio to run.
-        // speechTimeout="auto" ends the turn when you stop talking instead of
-        // after a fixed count, which is the difference between a conversation
-        // and a countdown.
-        //
-        // The whole message is said once inside the Gather, so talking over it
-        // is allowed - barge-in is what makes it feel like a person rather than
-        // an answering machine. If nothing is said, the Gather falls through to
-        // the goodbye after it.
-        const askLine = 'Anything you would like me to do?'
-        const gatherBody =
-          `<Say voice="${xmlEscape(voice)}" language="en-GB">${spoken}</Say>` +
-          `<Say voice="${xmlEscape(voice)}" language="en-GB">${xmlEscape(askLine)}</Say>`
-
-        const replyUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/jarvis-voice-reply`
-        const twiml =
-          `<Response><Pause length="1"/>` +
-          `<Gather input="speech" language="en-AU" speechTimeout="auto" ` +
-          `action="${xmlEscape(replyUrl)}" method="POST">` +
-          gatherBody +
-          `</Gather>` +
-          // Reached only when nothing was said: repeat once, then let them go.
-          `<Say voice="${xmlEscape(voice)}" language="en-GB">${spoken}</Say>` +
-          `<Say voice="${xmlEscape(voice)}" language="en-GB">Details are in your messages. Goodbye.</Say>` +
-          `</Response>`
-
-        const callRes = await fetch(
-          `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: 'Basic ' + btoa(accountSid + ':' + authToken),
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({ To: to, From: from, Twiml: twiml }).toString(),
-          },
-        )
-        const callRaw = await callRes.text()
-        try { callSid = JSON.parse(callRaw).sid || null } catch { /* keep raw */ }
-        if (!callRes.ok) callError = callRaw.slice(0, 300)
-
-        await db.from('jarvis_notifications').insert({
-          channel: 'call', to_number: to, tier,
-          body: line,
-          event_ids: evs.map((e) => e.id),
-          twilio_sid: callSid,
-          status: callRes.ok ? 'sent' : 'failed',
-          error: callRes.ok ? null : callRaw.slice(0, 500),
-        })
-      }
-    }
-
     // Only mark them spoken if the text actually left. A failed send that
     // silently burns the events is how you find out about a problem never.
-    // The call is deliberately not part of this test: the SMS is the delivery
-    // that counts, and a failed call must not re-announce everything next run.
     if (res.ok) {
       await db.from('jarvis_events')
         .update({ notified_at: new Date().toISOString() })
@@ -516,8 +393,6 @@ Deno.serve(async (req: Request) => {
     return json({
       ok: res.ok, scanned: pendingCount, sent: res.ok,
       events: evs.length, twilio_sid: sid, jobs: jobsRun,
-      ...(callSid ? { called: true, call_sid: callSid } : {}),
-      ...(callError ? { call_error: callError } : {}),
       ...(res.ok ? {} : { error: raw.slice(0, 300) }),
     })
   } catch (err) {

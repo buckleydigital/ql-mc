@@ -72,7 +72,7 @@ export const MEMORY_TOOLS = [
       type: 'object',
       properties: {
         content: { type: 'string', description: 'The fact, as a complete sentence.' },
-        source: { type: 'string', description: 'Optional: panel, sms or call.' },
+        source: { type: 'string', description: 'Optional: panel or sms.' },
       },
       required: ['content'],
     },
