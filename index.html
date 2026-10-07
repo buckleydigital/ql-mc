@@ -506,6 +506,9 @@ td strong{font-weight:500}
 .or-filters .fi.grow{flex:1;min-width:200px}
 .or-sub{font-size:11px;color:var(--ink3)}
 .or-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:16px 18px}
+.or-run-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.or-run-item{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;padding:7px 0;border-top:1px solid var(--bd);font-size:12px;color:var(--ink2)}
+.or-run-item .when{color:var(--ink3);font-family:var(--mono);font-size:11px;min-width:92px}
 .or-sup-row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
 .or-sup-item{display:flex;gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--bd);font-size:12px}
 .or-sup-item:last-child{border-bottom:none}
@@ -517,6 +520,7 @@ td strong{font-weight:500}
   .or-niche,.or-card{padding:14px}
   #panel-outreach .fi,#panel-outreach-prospects .fi,#panel-outreach-dnc .fi{font-size:16px}
   .or-save{width:100%;padding:10px;font-size:13px}
+  #or-run-btn{width:100%;padding:11px;font-size:13px}
   .or-filters .fi{flex:1 1 100%;min-width:0}
   .or-sup-row > *{flex:1 1 100% !important}
   .or-sup-row .btn{padding:10px}
@@ -1523,15 +1527,26 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
           <div class="kpi"><div class="klabel">Prospects Found</div><div class="kval blu" id="or-k-found">-</div><div class="ksub" id="or-k-found-sub">all time</div></div>
           <div class="kpi"><div class="klabel">Replies</div><div class="kval" id="or-k-replies">-</div><div class="ksub" id="or-k-replies-sub">from contacted</div></div>
         </div>
+        <div class="or-card or-run mb4">
+          <div class="or-run-head">
+            <div style="flex:1;min-width:0">
+              <b style="font-size:14px">Today's search</b>
+              <div class="or-sub" id="or-run-status" style="margin-top:3px">Loading...</div>
+            </div>
+            <button class="btn btn-p" id="or-run-btn" type="button" onclick="runOutreachSearch()">▶ Run today's search</button>
+          </div>
+          <p class="or-sub" style="margin:10px 0 0;line-height:1.6">Nothing runs on its own. Each press searches Google for the niches switched on, reads their websites for a published email and verifies it - a few cents to about a dollar. It never sends anything.</p>
+          <div id="or-runs" style="margin-top:8px"></div>
+        </div>
         <div class="sl">Niches <div class="sl-line"></div></div>
         <div class="or-niches" id="or-niches"><div class="empty">Loading...</div></div>
         <div class="sl">How it runs <div class="sl-line"></div></div>
         <div class="or-steps">
           <div class="or-step done"><span class="st">Ready</span><b>1 · Niches &amp; safeguards</b>Niches on or off, and one do-not-contact list every sender checks.</div>
-          <div class="or-step"><span class="st">Next</span><b>2 · Find &amp; verify</b>Businesses found daily per niche, with where each email was published, then verified.</div>
-          <div class="or-step"><span class="st">Later</span><b>3 · Qualify &amp; personalise</b>Each one scored for fit and given an opener written for them.</div>
+          <div class="or-step done"><span class="st">Ready</span><b>2 · Find &amp; verify</b>Press Run: businesses found per niche, with where each email was published, then verified.</div>
+          <div class="or-step"><span class="st">Next</span><b>3 · Qualify &amp; personalise</b>Each one scored for fit and given an opener written for them.</div>
           <div class="or-step"><span class="st">Later</span><b>4 · Send &amp; replies</b>Warmed inboxes send the batch you approve; replies come back here.</div>
-          <div class="or-step"><span class="st">Later</span><b>5 · Daily run</b>Jarvis builds the batch each morning and texts you to approve it.</div>
+          <div class="or-step"><span class="st">Later</span><b>5 · Daily batch</b>On the days you run it, Jarvis builds the batch and you approve it before anything sends.</div>
         </div>
       </div>
 
@@ -9655,6 +9670,7 @@ async function loadOutreach() {
     return;
   }
   renderOutreachKpis();
+  loadOutreachRuns();
   host.innerHTML = orNiches.map(function (n) {
     const c = n.counts || {};
     const total = Object.values(c).reduce(function (a, b) { return a + Number(b || 0); }, 0);
@@ -9684,6 +9700,56 @@ async function loadOutreach() {
       '</div>' +
     '</div>';
   }).join('') || '<div class="empty">No niches set up.</div>';
+}
+
+// Finding costs money, so it runs only when pressed, never on a schedule.
+let orRunPoll = null;
+async function loadOutreachRuns() {
+  const status = $('or-run-status'), btn = $('or-run-btn'), host = $('or-runs');
+  if (!status) return;
+  const { data, error } = await db.rpc('outreach_run_list', { p_limit: 5 });
+  if (error) { status.textContent = 'Could not load runs: ' + error.message; return; }
+  const runs = data || [];
+  const going = runs.find(function (r) { return !r.finished_at && Date.now() - new Date(r.started_at).getTime() < 15 * 60000; });
+  const today = new Date().toLocaleDateString('en-AU');
+  const ranToday = runs.some(function (r) { return new Date(r.started_at).toLocaleDateString('en-AU') === today; });
+  const live = orNiches.filter(function (n) { return n.enabled && n.daily_target > 0; });
+  btn.disabled = !!going || !live.length;
+  btn.textContent = going ? 'Running…' : (ranToday ? '▶ Run again' : "▶ Run today's search");
+  status.textContent = going
+    ? 'Running now - finding, reading websites and verifying. This page updates itself.'
+    : !live.length ? 'Switch a niche on below to run a search.'
+    : ranToday ? 'Already run today. Running again tops up any niche still short of its target.'
+    : 'Not run today. Up to ' + live.reduce(function (a, n) { return a + Number(n.daily_target); }, 0) + ' new prospects across ' + live.length + ' niche' + (live.length > 1 ? 's' : '') + '.';
+  host.innerHTML = runs.map(function (r) {
+    const when = new Date(r.started_at).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+    const parts = [r.found + ' found', r.emails + ' with email', r.verified + ' verified'];
+    if (r.blocked) parts.push(r.blocked + ' blocked');
+    if (r.invalid) parts.push(r.invalid + ' bad email');
+    const errs = (r.errors || []).length;
+    return '<div class="or-run-item"><span class="when">' + jmEsc(when) + '</span>' +
+      '<span style="flex:1;min-width:180px">' + (r.finished_at ? '' : '<b style="color:var(--acc)">running · </b>') + jmEsc(parts.join(' · ')) + '</span>' +
+      (errs ? '<span style="color:var(--amb)" title="' + orAttr((r.errors || []).join('\n')) + '">' + errs + ' problem' + (errs > 1 ? 's' : '') + '</span>' : '') +
+    '</div>';
+  }).join('');
+  clearTimeout(orRunPoll);
+  if (going && $('panel-outreach').classList.contains('active')) {
+    orRunPoll = setTimeout(function () { loadOutreach(); }, 6000);
+  }
+}
+
+async function runOutreachSearch() {
+  const live = orNiches.filter(function (n) { return n.enabled && n.daily_target > 0; });
+  if (!live.length) { toast('Switch a niche on first', true); return; }
+  const n = live.reduce(function (a, x) { return a + Number(x.daily_target); }, 0);
+  if (!confirm('Search for up to ' + n + ' new prospects in ' + live.map(function (x) { return x.label; }).join(', ') +
+    '?\n\nCosts a few cents to about a dollar (Google searches and email checks). Nothing is sent.')) return;
+  const btn = $('or-run-btn');
+  btn.disabled = true; btn.textContent = 'Starting…';
+  const { error } = await db.rpc('outreach_run_now');
+  if (error) { toast('Could not start: ' + error.message, true); btn.disabled = false; loadOutreachRuns(); return; }
+  toast('Search started ✓');
+  setTimeout(loadOutreach, 2500);
 }
 
 function renderOutreachKpis() {
