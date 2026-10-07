@@ -4788,11 +4788,10 @@ async function loadCrmLtv() {
     db.from('managed_order_log').select('client_id,amount'),
   ]);
   if (cR.error || pR.error || mR.error) { setText('crm-ltv', '-'); setText('crm-ltv-sub', 'could not load'); return; }
-  const bizOf = {}, types = {}, total = {};
+  const bizOf = {}, total = {};
   (cR.data || []).forEach(c => {
     const biz = String(c.company_name || c.id).toLowerCase().replace(/[^a-z0-9]/g, '') || c.id;
     bizOf[c.id] = biz;
-    (types[biz] = types[biz] || new Set()).add(c.type === 'managed' ? 'managed' : 'ppl');
     if (c.type === 'managed') {
       let months = []; try { months = JSON.parse(c.active_months || '[]'); } catch (e) {}
       total[biz] = (total[biz] || 0) + (Array.isArray(months) ? months.length : 0) * Number(c.management_fee || 0);
@@ -4804,10 +4803,9 @@ async function loadCrmLtv() {
   const billed = Object.keys(total).filter(b => total[b] > 0);
   const avg = arr => arr.length ? arr.reduce((a, b) => a + total[b], 0) / arr.length : 0;
   const money = v => '$' + Math.round(v).toLocaleString('en-AU');
-  const mg = billed.filter(b => types[b].has('managed')), pp = billed.filter(b => !types[b].has('managed'));
   setText('crm-ltv', billed.length ? money(avg(billed)) : '-');
   setText('crm-ltv-sub', billed.length
-    ? billed.length + ' businesses · ' + [mg.length && 'Managed ' + money(avg(mg)), pp.length && 'PPL only ' + money(avg(pp))].filter(Boolean).join(' · ')
+    ? billed.length + ' businesses'
     : 'no billed clients yet');
 }
 
@@ -4866,15 +4864,14 @@ function renderCRM() {
   setText('crm-rate',allLeads.length>0?Math.round(won/allLeads.length*100)+'%':'-');
   setText('crm-rate-sub',decidedAll>0?Math.round(won/decidedAll*100)+'% of decided':'');
   // Average deal value of closes with a value entered (as entered, incl. GST),
-  // split by kind of deal. Admin only: the card is hidden from reps.
+  // Admin only: the card is hidden from reps.
   if (!IS_REP) {
     const valued = allLeads.filter(l => l.stage === 'closed_won' && Number(l.value) > 0);
     const avg = arr => arr.length ? arr.reduce((a, l) => a + Number(l.value), 0) / arr.length : 0;
     const money = v => '$' + Math.round(v).toLocaleString('en-AU');
-    const mg = valued.filter(l => l.lead_type === 'managed'), pp = valued.filter(l => l.lead_type !== 'managed');
     setText('crm-avgwon', valued.length ? money(avg(valued)) : '-');
     setText('crm-avgwon-sub', valued.length
-      ? [mg.length && 'Managed ' + money(avg(mg)), pp.length && 'PPL ' + money(avg(pp))].filter(Boolean).join(' · ') + ' · inc GST'
+      ? valued.length + ' closes · inc GST'
       : (won ? 'no values entered' : ''));
   }
   const staleLeads=pipeline.filter(l=>{
