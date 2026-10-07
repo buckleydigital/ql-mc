@@ -661,6 +661,31 @@ td strong{font-weight:600}
 .bnbtn-icon svg{width:19px;height:19px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .bnbtn-lbl{font-size:var(--fs-xs);font-weight:500;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* ═══ LOADING ═══ */
+/* A thin bar along the top while any data request is in flight. */
+#ql-progress{position:fixed;top:0;left:0;height:2px;width:0;background:var(--acc);z-index:10001;opacity:0;pointer-events:none;
+  transition:width .3s ease,opacity .35s ease;box-shadow:0 0 8px color-mix(in srgb,var(--acc) 60%,transparent)}
+#ql-progress.on{opacity:1}
+/* First load only: grey placeholders where numbers and cards will land, so
+   the page has its shape straight away instead of sitting blank. */
+@keyframes ql-shimmer{0%{background-position:100% 50%}100%{background-position:0 50%}}
+body.is-loading .kval,body.is-loading .kcards:empty::before,body.is-loading .kcards:empty::after{
+  background:linear-gradient(90deg,var(--s3) 25%,var(--s4) 40%,var(--s3) 60%);background-size:300% 100%;
+  animation:ql-shimmer 1.4s ease-in-out infinite}
+body.is-loading .kval{color:transparent !important;border-radius:6px;width:72px;max-width:60%}
+body.is-loading .ksub:not(:empty){visibility:hidden}
+body.is-loading .kcards:empty::before,body.is-loading .kcards:empty::after{content:'';display:block;height:86px;border-radius:var(--r)}
+body.is-loading .kcards:empty::after{height:64px;opacity:.6}
+/* When the data lands it fades in rather than snapping on. */
+@keyframes ql-fade{from{opacity:0}to{opacity:1}}
+body.just-loaded .kval,body.just-loaded .kcard,body.just-loaded tbody tr,body.just-loaded .task-item{animation:ql-fade .35s ease-out}
+.panel.active{animation:ql-fade .18s ease-out}
+@media(prefers-reduced-motion:reduce){
+  #ql-progress{transition:none}
+  body.is-loading .kval,body.is-loading .kcards:empty::before,body.is-loading .kcards:empty::after{animation:none}
+  body.just-loaded .kval,body.just-loaded .kcard,body.just-loaded tbody tr,body.just-loaded .task-item,.panel.active{animation:none}
+}
+
 /* ═══ TOAST ═══ */
 #ql-toast{
   position:fixed;bottom:68px;right:14px;z-index:9999;
@@ -885,6 +910,7 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
 <body>
 
 <!-- ═══ LOGIN ═══ -->
+<div id="ql-progress" role="progressbar" aria-label="Loading" aria-hidden="true"></div>
 <div id="login-screen">
   <div class="login-box">
     <div class="login-mark">◆</div>
@@ -3514,6 +3540,43 @@ const AVG_WEEKS_PER_MONTH = 4.33; // average weeks in a month (52/12)
 const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 
 let db, currentUser;
+
+// ── Loading bar ──
+// Every request (Supabase queries, edge functions) goes through fetch, so
+// wrapping it once covers the whole app. The bar waits 150ms before showing,
+// so quick background refreshes don't flash it, creeps towards 90% while
+// requests are open, then fills and fades when the last one finishes.
+const QLProgress = (() => {
+  let open = 0, width = 0, showTimer = null, creep = null, hideTimer = null;
+  const bar = () => document.getElementById('ql-progress');
+  const set = w => { width = w; const b = bar(); if (b) b.style.width = w + '%'; };
+  function show() {
+    const b = bar(); if (!b) return;
+    clearTimeout(hideTimer);
+    b.style.transition = 'none'; set(0); void b.offsetWidth; b.style.transition = '';
+    b.classList.add('on'); set(18);
+    clearInterval(creep);
+    creep = setInterval(() => { if (width < 90) set(width + (90 - width) * 0.12); }, 220);
+  }
+  function finish() {
+    clearTimeout(showTimer); showTimer = null;
+    clearInterval(creep); creep = null;
+    const b = bar(); if (!b || !b.classList.contains('on')) return;
+    set(100);
+    hideTimer = setTimeout(() => { b.classList.remove('on'); setTimeout(() => { if (!open) set(0); }, 350); }, 220);
+  }
+  return {
+    start() { open++; if (open === 1 && !showTimer && !creep) showTimer = setTimeout(() => { showTimer = null; if (open) show(); }, 150); },
+    done() { open = Math.max(0, open - 1); if (!open) finish(); },
+  };
+})();
+if (window.fetch && !window.fetch.__ql) {
+  const _fetch = window.fetch.bind(window);
+  const tracked = (...args) => { QLProgress.start(); return _fetch(...args).finally(() => QLProgress.done()); };
+  tracked.__ql = true;
+  window.fetch = tracked;
+}
+let firstLoadDone = false;
 let IS_REP = false;   // true when the logged-in account_type is 'sales_rep'
 
 // ── Impersonation: admin views the dashboard AS a rep, with real RLS-scoped
@@ -3740,7 +3803,19 @@ function initSupabase() {
         }
 
         applyRoleUI();
-        if (IS_REP) loadRepView(); else loadRepCache().then(loadAll);
+        // First load shows placeholders until everything is in; later auth
+        // events (token refresh) reload quietly behind the top bar.
+        const first = !firstLoadDone;
+        firstLoadDone = true;
+        if (first) document.body.classList.add('is-loading');
+        Promise.resolve(IS_REP ? loadRepView() : loadRepCache().then(loadAll))
+          .catch(() => {})
+          .finally(() => {
+            if (!first) return;
+            document.body.classList.remove('is-loading');
+            document.body.classList.add('just-loaded');
+            setTimeout(() => document.body.classList.remove('just-loaded'), 600);
+          });
         setTimeout(updateBnavPadding, 300);
       } else {
         currentUser = null;
