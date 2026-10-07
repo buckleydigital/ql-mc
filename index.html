@@ -328,6 +328,7 @@ body::after {
 .kg.c4{grid-template-columns:repeat(4,1fr)}
 .kg.c3{grid-template-columns:repeat(3,1fr)}
 .kg.c2{grid-template-columns:1fr 1fr}
+.kg.kg-fit{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
 .kpi{
   background:var(--s1);border:1px solid var(--bd);
   border-radius:var(--r2);padding:16px 18px;
@@ -1129,17 +1130,19 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
           </select>
           <span id="crm-repview-stats" style="font-size:11px;color:var(--acc);font-family:var(--mono)"></span>
         </div>
-        <div class="kg c4 mb4 rep-stat-strip" style="display:none">
+        <div class="kg kg-fit mb4 rep-stat-strip" style="display:none">
           <div class="kpi"><div class="klabel">Calls Taken</div><div class="kval blu" id="rep-calls">-</div></div>
           <div class="kpi"><div class="klabel">Pickup Rate</div><div class="kval" id="rep-pickup">-</div></div>
           <div class="kpi"><div class="klabel">Close Rate</div><div class="kval grn" id="rep-close">-</div><div class="ksub" id="rep-close-sub"></div></div>
           <div class="kpi"><div class="klabel">My Open Leads</div><div class="kval" id="rep-open">-</div></div>
+          <div class="kpi"><div class="klabel">Avg Commission / Close</div><div class="kval grn" id="rep-comm">-</div><div class="ksub" id="rep-comm-sub"></div></div>
         </div>
-        <div class="kg c4 mb4">
+        <div class="kg kg-fit mb4">
           <div class="kpi"><div class="klabel">Total Leads</div><div class="kval blu" id="crm-total">-</div></div>
           <div class="kpi"><div class="klabel">In Progress</div><div class="kval" id="crm-active">-</div></div>
           <div class="kpi"><div class="klabel">Closed Won</div><div class="kval grn" id="crm-won">-</div></div>
           <div class="kpi"><div class="klabel">Win Rate</div><div class="kval" id="crm-rate">-</div><div class="ksub" id="crm-rate-sub"></div></div>
+          <div class="kpi admin-only-field"><div class="klabel">Avg Won Deal</div><div class="kval grn" id="crm-avgwon">-</div><div class="ksub" id="crm-avgwon-sub"></div></div>
         </div>
         <div class="sl">Pipeline <div class="sl-line"></div></div>
         <div class="kanban-wrap"><div class="kanban" id="crm-kanban"></div></div>
@@ -4785,6 +4788,16 @@ async function loadRepStats() {
   setText('rep-close-sub', decided ? Math.round(won / decided * 100) + '% of decided' : '');
   setText('rep-open', open);
 
+  // Their commission per close: deal value less GST, times their rate in
+  // Pay Rates. Worked out by the database so pay rates stay private.
+  const { data: comm } = await db.rpc('rep_commission_summary');
+  if (comm && comm.rep) {
+    const money = v => '$' + Number(v || 0).toLocaleString('en-AU', { maximumFractionDigits: 0 });
+    setText('rep-comm', comm.priced ? money(comm.average) : '-');
+    const gaps = [comm.no_value && comm.no_value + ' without a value yet', comm.no_rate && comm.no_rate + ' without a rate'].filter(Boolean).join(', ');
+    setText('rep-comm-sub', (comm.priced ? money(comm.total) + ' from ' + comm.priced + ' close' + (comm.priced === 1 ? '' : 's') : 'no priced closes yet') + (gaps ? ' · ' + gaps : ''));
+  }
+
   const { data: logs } = await db.from('lead_contact_log').select('contact_type, outcome');
   const calls = (logs || []).filter(l => l.contact_type === 'call');
   const answered = calls.filter(l => l.outcome !== 'no_answer').length;
@@ -4820,6 +4833,18 @@ function renderCRM() {
   setText('crm-won',won);
   setText('crm-rate',allLeads.length>0?Math.round(won/allLeads.length*100)+'%':'-');
   setText('crm-rate-sub',decidedAll>0?Math.round(won/decidedAll*100)+'% of decided':'');
+  // Average deal value of closes with a value entered (as entered, incl. GST),
+  // split by kind of deal. Admin only: the card is hidden from reps.
+  if (!IS_REP) {
+    const valued = allLeads.filter(l => l.stage === 'closed_won' && Number(l.value) > 0);
+    const avg = arr => arr.length ? arr.reduce((a, l) => a + Number(l.value), 0) / arr.length : 0;
+    const money = v => '$' + Math.round(v).toLocaleString('en-AU');
+    const mg = valued.filter(l => l.lead_type === 'managed'), pp = valued.filter(l => l.lead_type !== 'managed');
+    setText('crm-avgwon', valued.length ? money(avg(valued)) : '-');
+    setText('crm-avgwon-sub', valued.length
+      ? [mg.length && 'Managed ' + money(avg(mg)), pp.length && 'PPL ' + money(avg(pp))].filter(Boolean).join(' · ') + ' · inc GST'
+      : (won ? 'no values entered' : ''));
+  }
   const staleLeads=pipeline.filter(l=>{
     if (['closed_won','closed_lost'].includes(l.stage)) return false;
     if (l.contactable===false) return false;
@@ -9815,7 +9840,7 @@ async function loadOutreach() {
           '<input class="fi" id="or-st-' + n.key + '" value="' + orAttr((n.search_terms || []).join(', ')) + '"></div>' +
       '</div>' +
       '<div class="frow" style="margin:8px 0 0"><label class="flabel">Offer - what we pitch this niche, in plain words</label>' +
-        '<textarea class="fi" id="or-of-' + n.key + '" rows="2" style="width:100%;resize:vertical" placeholder="e.g. Exclusive, pre-qualified ' + orAttr(n.label.toLowerCase()) + ' leads in your area, pay per lead, no lock-in">' + jmEsc(n.offer || '') + '</textarea></div>' +
+        '<textarea class="fi" id="or-of-' + n.key + '" rows="2" style="width:100%;resize:vertical" placeholder="e.g. We run your Facebook and Google ads so homeowners in your area call you for ' + orAttr(n.label.toLowerCase()) + ' work - you see every enquiry and what it cost">' + jmEsc(n.offer || '') + '</textarea></div>' +
       '<div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
         '<button class="btn btn-p btn-sm or-save" type="button" onclick="saveOutreachNiche(\'' + n.key + '\')">Save</button>' +
         '<span class="or-sub">Comma-separate regions and search terms.</span>' +
@@ -10067,14 +10092,14 @@ const OR_NICHE_WORD = { solar: 'solar', hvac: 'air con', renovations: 'renovatio
 function defaultSequence(n) {
   const word = OR_NICHE_WORD[n.key] || n.label.toLowerCase();
   const offer = (n.offer && n.offer.trim()) ||
-    ('We send exclusive homeowner enquiries for ' + word + ' jobs in your area - you only pay for the leads you get, and there is no lock-in contract.');
+    ('We run Facebook and Google ads for ' + word + ' businesses, so homeowners around {suburb} come to you asking for quotes - you see every enquiry and what it cost.');
   return [
     { subject: 'Homeowner ' + word + ' jobs in {suburb}', delay_days: 0,
       body: 'Hi {first_name},\n\n{opener}\n\n' + offer + '\n\nWould it be worth a quick chat this week?\n\nCheers,\n{sender}' },
     { subject: '', delay_days: 3,
-      body: 'Hi {first_name},\n\nJust bumping this in case it got buried. Happy to send through an example of what a ' + word + ' lead from around {suburb} looks like, so you can judge for yourself.\n\n{sender}' },
+      body: 'Hi {first_name},\n\nJust bumping this in case it got buried. Happy to show you the kind of ' + word + ' ads we run and the enquiries they bring in around {suburb}, so you can judge for yourself.\n\n{sender}' },
     { subject: '', delay_days: 4,
-      body: 'Hi {first_name},\n\nLast note from me. If more homeowner jobs are not a priority right now, no worries at all. If they are, just reply "yes" and I will send the details.\n\n{sender}' },
+      body: 'Hi {first_name},\n\nLast note from me. If more homeowner jobs are not a priority right now, no worries at all. If they are, just reply "yes" and I will send through how it works and what it costs.\n\n{sender}' },
   ];
 }
 

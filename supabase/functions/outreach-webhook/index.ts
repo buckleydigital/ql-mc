@@ -121,7 +121,7 @@ async function toPipeline(db: SupabaseClient, p: Prospect, reply: string, unibox
       phone: p.phone,
       stage: 'new_lead',
       source: 'cold_email',
-      lead_type: 'ppl',
+      lead_type: 'managed',   // cold email is aimed at managed advertising clients
       niche: p.niche_key,
       suburb: p.suburb,
       state: p.state,

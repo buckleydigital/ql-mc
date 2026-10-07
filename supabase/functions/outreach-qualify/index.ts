@@ -102,10 +102,10 @@ async function pageText(url: string): Promise<string | null> {
 
 // ── Asking Claude ───────────────────────────────────────────────────────────
 
-const SYSTEM = `You qualify Australian trade businesses as prospects for QuoteLeads, which sells exclusive, pre-qualified homeowner leads to tradies.
+const SYSTEM = `You qualify Australian trade businesses as prospects for QuoteLeads, which runs managed advertising for tradies: we build and run their Facebook and Google ads to bring in homeowner enquiries, for a monthly management fee on top of their ad spend.
 
 For the business described, decide:
-- fit_score (integer 0-10): how likely this business is to buy homeowner leads in the given niche. High: sells and installs for homeowners (residential), in the niche, a small-to-medium local operator that wants more jobs. Low: commercial or industrial only, wholesale or supply only, a manufacturer, a franchise head office, a directory, a business outside the niche, or a site that gives no sign of trading.
+- fit_score (integer 0-10): how likely this business is to become a managed advertising client in the given niche. High: sells and installs for homeowners (residential), in the niche, an established local operator - a real website, several services or service areas, a team or years of trading - with the capacity to take more jobs and the size to afford an ad budget. Lower: a one-person operation with no sign of capacity, a business that already shows heavy in-house marketing, or one too small to fund ads. Low: commercial or industrial only, wholesale or supply only, a manufacturer, a franchise head office, a directory, a business outside the niche, or a site that gives no sign of trading.
 - reason: one plain sentence saying why, naming what the site shows.
 - opener: the first line of a cold email to them. One sentence, under 30 words, Australian English. It must refer to something specific and true from their website - a service, an area they cover, how long they have been going, a recent project - so it could only have been written to them. No flattery, no exclamation marks, no "I hope this finds you well", no claims about QuoteLeads, no mention of how their details were found. If nothing specific is on the page, write a plain line about the service they offer in their area.
 - contact_name: the first name of the owner or the person to address, only if the website names them as such; otherwise null.
@@ -158,7 +158,7 @@ async function judge(
       fallbacks: 'default',
       messages: [{
         role: 'user',
-        content: `Niche: ${p.niche}\nWhat we offer this niche: ${p.offer || 'exclusive homeowner leads in their area, pay per lead'}\n` +
+        content: `Niche: ${p.niche}\nWhat we offer this niche: ${p.offer || 'we run their Facebook and Google ads to bring in homeowner enquiries, for a monthly management fee'}\n` +
           `Business: ${p.business_name}, ${where}\n\n${site}`,
       }],
     })
