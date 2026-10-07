@@ -5,8 +5,8 @@
  * once finding and verifying are done. For each verified prospect not yet
  * scored, this reads the business's website and asks Claude for
  *
- *   - a fit score, 0-10: does this business sell jobs to homeowners in the
- *     niche, at a size where bought leads make sense?
+ *   - a fit score, 0-10: does this residential trade business fit the
+ *     Branded Lead Gen System (see SYSTEM), at a size that can fund it?
  *   - the reason, in one line;
  *   - an opening line written for that business, from something actually on
  *     its site.
@@ -102,10 +102,12 @@ async function pageText(url: string): Promise<string | null> {
 
 // ── Asking Claude ───────────────────────────────────────────────────────────
 
-const SYSTEM = `You qualify Australian trade businesses as prospects for QuoteLeads, which runs managed advertising for tradies: we build and run their Facebook and Google ads to bring in homeowner enquiries, for a monthly management fee on top of their ad spend.
+const SYSTEM = `You qualify Australian home improvement trade businesses as prospects for QuoteLeads.
+
+What QuoteLeads sells (for your judgement only - never repeat it in the opener): the Branded Lead Gen System, built into the tradie's own business. Meta and Google ad campaigns on their own accounts under their brand, a branded survey funnel that pre-qualifies homeowners, and an AI SMS reply to every enquiry within seconds. The leads are exclusive to them, never shared, and they own all of it. A one-off build (from $2,500 + GST), live in 24-48 hours, ad spend paid directly to Meta and Google from about $50 a day, optional monthly management, no lock-in.
 
 For the business described, decide:
-- fit_score (integer 0-10): how likely this business is to become a managed advertising client in the given niche. High: sells and installs for homeowners (residential), in the niche, an established local operator - a real website, several services or service areas, a team or years of trading - with the capacity to take more jobs and the size to afford an ad budget. Lower: a one-person operation with no sign of capacity, a business that already shows heavy in-house marketing, or one too small to fund ads. Low: commercial or industrial only, wholesale or supply only, a manufacturer, a franchise head office, a directory, a business outside the niche, or a site that gives no sign of trading.
+- fit_score (integer 0-10): how good a fit this business is for that system in the given niche. High: installs or builds for homeowners (residential), in the niche, an established local operator - a real website, a team or years of trading, several services or service areas - with room to take more jobs and the size to fund a build and an ad budget. A sign they rely on shared lead marketplaces, referrals or word of mouth is a plus. Lower: a one-person operation with no sign of capacity, or a business already running a large in-house marketing operation. Low: commercial or industrial only, wholesale or supply only, a manufacturer, a franchise head office, a directory, a business outside the niche, or a site that gives no sign of trading.
 - reason: one plain sentence saying why, naming what the site shows.
 - opener: the first line of a cold email to them. One sentence, under 30 words, Australian English. It must refer to something specific and true from their website - a service, an area they cover, how long they have been going, a recent project - so it could only have been written to them. No flattery, no exclamation marks, no "I hope this finds you well", no claims about QuoteLeads, no mention of how their details were found. If nothing specific is on the page, write a plain line about the service they offer in their area.
 - contact_name: the first name of the owner or the person to address, only if the website names them as such; otherwise null.
@@ -158,7 +160,7 @@ async function judge(
       fallbacks: 'default',
       messages: [{
         role: 'user',
-        content: `Niche: ${p.niche}\nWhat we offer this niche: ${p.offer || 'we run their Facebook and Google ads to bring in homeowner enquiries, for a monthly management fee'}\n` +
+        content: `Niche: ${p.niche}\nWhat we offer this niche: ${p.offer || 'the Branded Lead Gen System: exclusive homeowner leads from their own ad accounts and branded funnel, live in 24-48 hours, no lock-in'}\n` +
           `Business: ${p.business_name}, ${where}\n\n${site}`,
       }],
     })

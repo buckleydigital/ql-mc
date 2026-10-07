@@ -9840,7 +9840,7 @@ async function loadOutreach() {
           '<input class="fi" id="or-st-' + n.key + '" value="' + orAttr((n.search_terms || []).join(', ')) + '"></div>' +
       '</div>' +
       '<div class="frow" style="margin:8px 0 0"><label class="flabel">Offer - what we pitch this niche, in plain words</label>' +
-        '<textarea class="fi" id="or-of-' + n.key + '" rows="2" style="width:100%;resize:vertical" placeholder="e.g. We run your Facebook and Google ads so homeowners in your area call you for ' + orAttr(n.label.toLowerCase()) + ' work - you see every enquiry and what it cost">' + jmEsc(n.offer || '') + '</textarea></div>' +
+        '<textarea class="fi" id="or-of-' + n.key + '" rows="2" style="width:100%;resize:vertical" placeholder="e.g. Your own branded lead system for ' + orAttr(n.label.toLowerCase()) + ' - exclusive leads from your own ad accounts, live in 48 hours, no lock-in">' + jmEsc(n.offer || '') + '</textarea></div>' +
       '<div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
         '<button class="btn btn-p btn-sm or-save" type="button" onclick="saveOutreachNiche(\'' + n.key + '\')">Save</button>' +
         '<span class="or-sub">Comma-separate regions and search terms.</span>' +
@@ -10092,14 +10092,14 @@ const OR_NICHE_WORD = { solar: 'solar', hvac: 'air con', renovations: 'renovatio
 function defaultSequence(n) {
   const word = OR_NICHE_WORD[n.key] || n.label.toLowerCase();
   const offer = (n.offer && n.offer.trim()) ||
-    ('We run Facebook and Google ads for ' + word + ' businesses, so homeowners around {suburb} come to you asking for quotes - you see every enquiry and what it cost.');
+    ('We build a lead system into ' + word + ' businesses: ads on your own Facebook and Google accounts, your own branded quote form, and a text back to every enquiry within seconds. The leads come to you only - never shared - and you own all of it.');
   return [
-    { subject: 'Homeowner ' + word + ' jobs in {suburb}', delay_days: 0,
-      body: 'Hi {first_name},\n\n{opener}\n\n' + offer + '\n\nWould it be worth a quick chat this week?\n\nCheers,\n{sender}' },
+    { subject: word.charAt(0).toUpperCase() + word.slice(1) + ' leads in {suburb}', delay_days: 0,
+      body: 'Hi {first_name},\n\n{opener}\n\n' + offer + '\n\nMost are live within 48 hours, with no lock-in. Worth a quick chat?\n\nCheers,\n{sender}' },
     { subject: '', delay_days: 3,
-      body: 'Hi {first_name},\n\nJust bumping this in case it got buried. Happy to show you the kind of ' + word + ' ads we run and the enquiries they bring in around {suburb}, so you can judge for yourself.\n\n{sender}' },
+      body: 'Hi {first_name},\n\nQuick one - where does most of your work come from at the moment: referrals, or the shared lead sites? If it is the shared sites, the difference with ours is that every enquiry goes to you and nobody else.\n\n{sender}' },
     { subject: '', delay_days: 4,
-      body: 'Hi {first_name},\n\nLast note from me. If more homeowner jobs are not a priority right now, no worries at all. If they are, just reply "yes" and I will send through how it works and what it costs.\n\n{sender}' },
+      body: 'Hi {first_name},\n\nLast one from me. If you would like to see what it looks like for a ' + word + ' business around {suburb} - the ad, the quote form and what a lead comes through with - just reply "show me" and I will send it over.\n\n{sender}' },
   ];
 }
 
