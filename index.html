@@ -692,6 +692,15 @@ td strong{font-weight:500}
 .jv-status{font-family:var(--mono);font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.07em}
 
 .jv-body{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:11px}
+/* What he has to tell you, in place of the texts he used to send. */
+.jv-unread{position:absolute;top:-3px;right:-4px;background:var(--red);color:#fff;border-radius:8px;font-size:8px;padding:0 4px;font-family:var(--mono);font-weight:700;line-height:1.6}
+.jv-inbox{border-bottom:1px solid var(--bd);padding:10px 14px;max-height:38vh;overflow-y:auto;flex-shrink:0}
+.jv-inbox-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3)}
+.jv-note{display:flex;gap:9px;padding:8px 10px;margin-bottom:6px;border:1px solid var(--bd);border-left:3px solid var(--acc);border-radius:var(--r);background:var(--s2);font-size:12px;line-height:1.5}
+.jv-note.urgent{border-left-color:var(--red)}
+.jv-note.job{border-left-color:var(--grn)}
+.jv-note .t{flex:1;min-width:0;white-space:pre-wrap;word-break:break-word;color:var(--ink)}
+.jv-note .w{font-family:var(--mono);font-size:9.5px;color:var(--ink3);margin-top:3px}
 .jv-msg{font-size:12.5px;line-height:1.55;max-width:92%;white-space:pre-wrap;word-break:break-word}
 .jv-msg.you{align-self:flex-end;background:var(--acc);color:#fff;padding:7px 11px;border-radius:var(--r) var(--r) 2px var(--r)}
 .jv-msg.jarvis{align-self:flex-start;color:var(--ink)}
@@ -877,7 +886,7 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
     <span id="clock"></span>
     <span class="uname-chip" id="uname"></span>
     <button class="ibtn" id="alert-tray-btn" onclick="toggleAlertTray()" title="Alerts" style="position:relative">🔔<span id="alert-tray-badge" style="display:none;position:absolute;top:-2px;right:-2px;background:var(--red);color:#fff;border-radius:8px;font-size:8px;padding:0 4px;font-family:var(--mono);font-weight:700;line-height:1.6">0</span></button>
-    <button class="ibtn" id="jv-btn" onclick="JV.toggle()" title="JARVIS" style="position:relative">◈<span id="jv-dot" class="jv-dot"></span></button>
+    <button class="ibtn" id="jv-btn" onclick="JV.toggle()" title="JARVIS" style="position:relative">◈<span id="jv-dot" class="jv-dot"></span><span id="jv-unread" class="jv-unread" style="display:none">0</span></button>
     <button class="ibtn" id="theme-btn" onclick="toggleTheme()" title="Toggle theme">◐</button>
     <button class="ibtn" onclick="doLogout()" title="Sign out">⎋</button>
   </div>
@@ -934,6 +943,7 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
       <button class="jv-mic" id="jv-speak" onclick="JV.toggleVoice()" title="Speak replies aloud">🔊</button>
       <button class="btn btn-xs" onclick="JV.close()">✕</button>
     </div>
+    <div class="jv-inbox admin-only-field" id="jv-inbox" style="display:none"></div>
     <div class="jv-body" id="jv-body"></div>
     <div class="jv-foot">
       <textarea id="jv-input" rows="1" placeholder="Ask about the numbers…" onkeydown="JV.key(event)"></textarea>
@@ -3009,21 +3019,11 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
 <div class="overlay" id="m-jarvis-settings">
   <div class="modal" style="max-width:520px">
     <h2>◈ Jarvis</h2>
-    <div class="msub">What he watches, and when he is allowed to interrupt you</div>
+    <div class="msub">What he watches, and how he tells you</div>
 
     <div style="margin:16px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Alerts</div>
-    <div class="frow"><label class="flabel">Text me on</label><input class="fi" id="js-number" placeholder="0412 345 678" type="tel"></div>
-    <div class="frow" style="margin-top:10px"><label class="flabel">Jarvis sends from</label><input class="fi" id="js-from" placeholder="Leave blank to use the main SMS number" type="tel"></div>
-    <p style="font-size:10.5px;color:var(--ink3);margin:4px 0 0;line-height:1.6">Give Jarvis his own Twilio number if you want to reply to him - Twilio allows one inbound webhook per number, and the main one is already pointed at the client agents. Point the new number's webhook at <code style="font-family:var(--mono);font-size:10px">twilio-inbound-sms</code> on this project. Blank means he sends from the main number and replies go nowhere.</p>
-    <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
-      <input type="checkbox" id="js-enabled" style="width:auto;margin:0">
-      <label for="js-enabled" style="font-size:12px;color:var(--ink2);cursor:pointer;margin:0">Alerts on</label>
-      <span id="js-state" style="margin-left:auto;font-size:10.5px;color:var(--ink3)"></span>
-    </div>
-    <p style="font-size:11px;color:var(--ink3);margin:8px 0 0;line-height:1.6">He only ever texts this number. Clients are never messaged from here.</p>
-
-    <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">When he may interrupt</div>
-    <div class="frow"><label class="flabel">Timezone</label>
+    <p style="font-size:11px;color:var(--ink3);margin:0;line-height:1.6">He no longer texts. Anything he spots, and the result of every job he runs, appears at the top of the Jarvis panel, with a red count on the ◈ button until you have seen it. A text to his number shows up there too, and he replies in the panel, not by SMS.</p>
+    <div class="frow" style="margin-top:10px"><label class="flabel">Timezone (for his scheduled jobs)</label>
       <select class="fi" id="js-tz">
         <option value="Australia/Sydney">Sydney / Melbourne / Canberra / Hobart (AEST, daylight saving)</option>
         <option value="Australia/Brisbane">Brisbane / QLD (AEST, no daylight saving)</option>
@@ -3032,12 +3032,6 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
         <option value="Australia/Perth">Perth / WA (AWST)</option>
       </select>
     </div>
-    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
-      <div class="frow" style="flex:1;min-width:110px"><label class="flabel">Quiet from</label><input class="fi" id="js-quiet-start" type="time"></div>
-      <div class="frow" style="flex:1;min-width:110px"><label class="flabel">Quiet until</label><input class="fi" id="js-quiet-end" type="time"></div>
-      <div class="frow" style="flex:1;min-width:110px"><label class="flabel">Max texts / day</label><input class="fi" id="js-cap" type="number" min="0" max="100" step="1"></div>
-    </div>
-    <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">Quiet hours hold a message rather than dropping it - anything found overnight arrives when they end. Daylight saving is handled for you. The daily cap is the hard backstop: whatever goes wrong, he cannot exceed it.</p>
 
     <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Voice in this browser</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
@@ -3054,7 +3048,7 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
 
     <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">What he costs</div>
     <div id="js-spend" style="font-size:11.5px;color:var(--ink3);line-height:1.9">Loading…</div>
-    <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">Anthropic API spend at list price, in US dollars - every question from the panel and by text, web searches included. Twilio texts are billed separately and are not counted here.</p>
+    <p style="font-size:10.5px;color:var(--ink3);margin-top:6px;line-height:1.6">Anthropic API spend at list price, in US dollars - every question from the panel and every scheduled job, web searches included.</p>
 
     <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">What he is watching</div>
     <div id="js-watch" style="font-size:11.5px;color:var(--ink3);line-height:1.9">Loading…</div>
@@ -3883,6 +3877,7 @@ async function loadAll() {
   await loadTaskLeadDropdowns();
   loadFileContent();
   loadAlerts();
+  loadJarvisInbox();
 }
 
 async function populateTestLeadNiches() {
@@ -9582,10 +9577,7 @@ function fillWebVoicePicker() {
 async function openJarvisSettings() {
   fillWebVoicePicker();
   const s = await loadBizSettings();
-  setVal('js-number', s.jarvis_notify_number || '');
   setVal('js-brief', s.jarvis_content_brief || '');
-  setVal('js-from', s.jarvis_from_number || '');
-  $('js-enabled').checked = s.jarvis_notify_enabled === true;
   // A zone set by hand is added rather than silently falling back, so opening
   // and saving this form cannot quietly relocate someone.
   const tz = s.jarvis_timezone || 'Australia/Sydney';
@@ -9594,10 +9586,6 @@ async function openJarvisSettings() {
     tzSel.add(new Option(tz, tz));
   }
   tzSel.value = tz;
-  setVal('js-quiet-start', String(s.jarvis_quiet_start || '20:00').slice(0, 5));
-  setVal('js-quiet-end', String(s.jarvis_quiet_end || '07:30').slice(0, 5));
-  setVal('js-cap', s.jarvis_daily_sms_cap == null ? 10 : s.jarvis_daily_sms_cap);
-  $('js-state').textContent = s.jarvis_notify_enabled ? '' : 'currently silent';
   openModal('m-jarvis-settings');
   loadJarvisStatus();
   loadJarvisSpend();
@@ -9620,9 +9608,9 @@ async function loadJarvisStatus() {
     const last = data && data.last_sent_at;
     const foot = '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bd);color:var(--ink3)">' +
       (queued
-        ? '<b style="color:var(--amb)">' + queued + '</b> waiting to be sent.'
-        : 'Nothing waiting to be sent.') +
-      (last ? ' Last text ' + fmtWhen(last) + '.' : ' He has not texted yet.') +
+        ? '<b style="color:var(--amb)">' + queued + '</b> waiting for his next check.'
+        : 'Nothing waiting.') +
+      (last ? ' Last told you ' + fmtWhen(last) + '.' : '') +
       '</div>';
     host.innerHTML = rows + foot;
   } catch (err) {
@@ -9880,6 +9868,43 @@ async function addSuppression() {
   loadSuppressions();
 }
 
+// ── His notes ───────────────────────────────────────────────────────────────
+// What he used to text: new alerts and job results, now left in the panel.
+// Checked every minute while the dashboard is open; a note stays at the top
+// of the panel, and counted on the ◈ button, until you mark it seen.
+let jvInboxTimer = null;
+async function loadJarvisInbox() {
+  clearTimeout(jvInboxTimer);
+  if (typeof IS_REP !== 'undefined' && IS_REP) return;
+  jvInboxTimer = setTimeout(loadJarvisInbox, 60000);
+  const host = $('jv-inbox'), badge = $('jv-unread');
+  if (!host || !badge) return;
+  const { data, error } = await db.rpc('jarvis_inbox', { p_limit: 20 });
+  if (error) return;   // not an operator, or offline: show nothing
+  const rows = (data || []).filter(function (n) { return !n.read_at; });
+  const unread = rows.length ? Number(rows[0].unread) : 0;
+  badge.textContent = unread > 99 ? '99+' : String(unread);
+  badge.style.display = unread ? '' : 'none';
+  if (!rows.length) { host.style.display = 'none'; host.innerHTML = ''; return; }
+  host.style.display = '';
+  host.innerHTML =
+    '<div class="jv-inbox-head"><span style="flex:1">' + unread + ' new from Jarvis</span>' +
+      '<button class="btn btn-xs" type="button" onclick="markJarvisInbox(null)">Mark all seen</button></div>' +
+    rows.map(function (n) {
+      return '<div class="jv-note ' + jmEsc(n.tier) + '">' +
+        '<div style="flex:1;min-width:0"><div class="t">' + jmEsc(n.body) + '</div>' +
+          '<div class="w">' + (n.tier === 'job' ? 'Job · ' : n.tier === 'urgent' ? 'Urgent · ' : '') + jmEsc(fmtWhen(n.created_at)) + '</div></div>' +
+        '<button class="btn btn-xs" type="button" title="Seen" onclick="markJarvisInbox([\'' + n.id + '\'])">✓</button>' +
+      '</div>';
+    }).join('');
+}
+
+async function markJarvisInbox(ids) {
+  const { error } = await db.rpc('jarvis_inbox_read', { p_ids: ids });
+  if (error) { toast('Could not mark seen: ' + error.message, true); return; }
+  loadJarvisInbox();
+}
+
 async function openJarvisPosts() {
   openModal('m-jarvis-posts');
   await loadJarvisPosts();
@@ -10120,6 +10145,7 @@ let _jlRows = [];
 
 const JARVIS_LOG_KINDS = {
   spotted:        { icon: '\u25CB', label: 'Spotted',      tone: 'var(--ink3)' },
+  told_you:       { icon: '\u25C9', label: 'Told you',     tone: 'var(--acc)'  },
   texted_you:     { icon: '\u2709', label: 'Texted you',   tone: 'var(--acc)'  },
   called_you:     { icon: '\u260E', label: 'Called you',   tone: 'var(--acc)'  },
   you_said:       { icon: '\u203A', label: 'You said',     tone: 'var(--ink2)' },
@@ -10206,26 +10232,11 @@ async function saveJarvisSettings() {
   const btn = $('js-save-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
-    // Checked here as well as in the function: alerts switched on against a
-    // number that cannot receive them is a setting that looks saved and then
-    // silently never fires, which is worse than a rejected save.
-    const raw = $('js-number').value.trim();
-    const on = $('js-enabled').checked;
-    if (on && !/^(\+?61|0)4[0-9\s\-().]{8,}$/.test(raw)) {
-      throw new Error('Enter a valid Australian mobile, or switch alerts off.');
-    }
-    const capRaw = parseInt($('js-cap').value, 10);
-    const cap = Number.isFinite(capRaw) ? Math.min(100, Math.max(0, capRaw)) : 10;
-
+    // The SMS settings (number, quiet hours, daily cap) are left as they are:
+    // nothing reads them since he stopped texting.
     const patch = {
-      jarvis_notify_number: raw || null,
       jarvis_content_brief: $('js-brief').value.trim() || null,
-      jarvis_from_number: $('js-from').value.trim() || null,
-      jarvis_notify_enabled: on,
       jarvis_timezone: $('js-tz').value || 'Australia/Sydney',
-      jarvis_quiet_start: $('js-quiet-start').value || '20:00',
-      jarvis_quiet_end: $('js-quiet-end').value || '07:30',
-      jarvis_daily_sms_cap: cap,
     };
 
     const existing = await db.from('business_settings').select('id').limit(1).single();
@@ -10237,7 +10248,7 @@ async function saveJarvisSettings() {
       ({ error } = await db.from('business_settings').insert(patch));
     }
     if (error) throw error;
-    toast(on ? 'Jarvis will text you ✓' : 'Jarvis saved - alerts off');
+    toast('Jarvis saved ✓');
     closeModal('m-jarvis-settings');
   } catch (err) {
     toast('Save failed: ' + err.message, true);
@@ -10847,6 +10858,7 @@ const JV = (() => {
     open() {
       if (typeof IS_REP !== 'undefined' && IS_REP) return;
       $$('jv-panel').classList.add('open');
+      if (typeof loadJarvisInbox === 'function') loadJarvisInbox();
       if (!body().children.length) {
         line('sys', 'Ask about leads, closes, revenue, spend, a client or your tasks.<br>Tell him to remember something and he will, everywhere.');
       }

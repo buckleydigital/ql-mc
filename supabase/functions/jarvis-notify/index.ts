@@ -1,16 +1,14 @@
 /**
  * jarvis-notify - the heartbeat.
  *
- * Runs on a schedule, asks the watchers what is wrong, and texts one message
- * about anything new. This is what turns Jarvis from something you open into
- * something that speaks first.
+ * Runs on a schedule, asks the watchers what is wrong, and leaves one note in
+ * the Jarvis panel about anything new. This is what turns Jarvis from
+ * something you open into something that speaks first.
  *
- * Not reusing send-sms, deliberately: that function requires a lead_id it
- * validates against leads/ppl_leads, and a user bearer token. Jarvis texting
- * the owner has neither - there is no lead, and no human is logged in when the
- * cron fires. Sharing it would have meant loosening the checks that stop a
- * client SMS going to the wrong person, so this owns its own send path and
- * borrows only the Twilio credentials and the AU number rules.
+ * It used to text the owner. Since 7 Oct it does not (migration
+ * 20261007000004): the same message is written to jarvis_notifications with
+ * channel 'panel' and shown, unread, in the dashboard. No Twilio, so no SMS
+ * credits, and no quiet hours or daily cap - an unread note waits quietly.
  *
  * Composition is deliberately deterministic rather than a Claude call. These
  * are factual alerts about money and clients; a model paraphrasing "3 overdue"
@@ -27,15 +25,6 @@ const json = (body: unknown, status = 200) =>
     headers: { 'Content-Type': 'application/json' },
   })
 
-// Same rules as send-sms: AU mobiles only, in the format Twilio expects.
-function normalisePhone(raw: string): string | null {
-  let p = (raw || '').replace(/[\s\-().]/g, '')
-  if (p.startsWith('04')) p = '+61' + p.slice(1)
-  else if (p.startsWith('614') && !p.startsWith('+')) p = '+' + p
-  else if (p.startsWith('61') && !p.startsWith('+')) p = '+' + p
-  return /^\+614[0-9]{8}$/.test(p) ? p : null
-}
-
 type Ev = {
   id: string
   kind: string
@@ -45,8 +34,7 @@ type Ev = {
 }
 
 // Jarvis's voice. One line per event, shortest thing that still tells you what
-// to do. Anything longer stops being glanceable on a lock screen, which is the
-// only place these are ever read.
+// to do, so a note reads at a glance.
 function describe(e: Ev): string {
   const who = e.subject || 'Unnamed'
   switch (e.kind) {
@@ -130,34 +118,10 @@ async function syncDonState(db: any): Promise<void> {
   }
 }
 
-// Wall-clock time where the person is, not where the server is. A cron running
-// in UTC must not get to decide that 4am Sydney is a reasonable hour.
-function localHHMM(tz: string, now = new Date()): string {
-  try {
-    return new Intl.DateTimeFormat('en-AU', {
-      timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false,
-    }).format(now)
-  } catch {
-    return new Intl.DateTimeFormat('en-AU', {
-      timeZone: 'Australia/Sydney', hour: '2-digit', minute: '2-digit', hour12: false,
-    }).format(now)
-  }
-}
-
-// Quiet hours normally wrap midnight (20:00 -> 07:30), so this is an OR across
-// the wrap rather than a plain between.
-function inQuietHours(nowHHMM: string, start: string, end: string): boolean {
-  const s = (start || '20:00').slice(0, 5)
-  const e = (end || '07:30').slice(0, 5)
-  if (s === e) return false
-  return s > e ? (nowHHMM >= s || nowHHMM < e) : (nowHHMM >= s && nowHHMM < e)
-}
-
 // ── Scheduled jobs ─────────────────────────────────────────────────────────
 // Work Jarvis set for himself with create_job. Each due job goes to jarvis-chat
 // (via:'job'), which does it with his full tools and memory and returns a short
-// report; the report is texted here like any alert, so the same quiet hours and
-// daily cap apply, and a reply of "yes" reaches jarvis-reply with it as context.
+// report; the report is left in the panel like any alert.
 
 /** Stop claiming more jobs this heartbeat once this much time has gone. */
 const JOB_TIME_BUDGET_MS = 60_000
@@ -192,26 +156,6 @@ async function runJob(url: string, job: Job): Promise<string> {
   }
 }
 
-async function sendSms(to: string, from: string, body: string) {
-  const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')!
-  const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')!
-  const res = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: 'Basic ' + btoa(accountSid + ':' + authToken),
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({ To: to, From: from, Body: body }).toString(),
-    },
-  )
-  const raw = await res.text()
-  let sid: string | null = null
-  try { sid = JSON.parse(raw).sid || null } catch { /* keep raw */ }
-  return { ok: res.ok, sid, raw }
-}
-
 Deno.serve(async (req: Request) => {
   // No public surface. The only callers are pg_cron (via pg_net) and a human
   // testing with the same key. Checked here rather than by verify_jwt, because
@@ -242,83 +186,42 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}))
-    // dry_run exercises the whole path and reports what it WOULD send, so the
-    // first live test cannot put a real text on a real phone.
+    // dry_run reports what it WOULD leave in the panel, and writes nothing.
     const dryRun = body?.dry_run === true
 
     const { data: s } = await db
-      .from('business_settings')
-      .select('jarvis_notify_number, jarvis_notify_enabled, jarvis_timezone, jarvis_quiet_start, jarvis_quiet_end, jarvis_daily_sms_cap, twilio_from_number, jarvis_from_number')
-      .limit(1).maybeSingle()
+      .from('business_settings').select('jarvis_timezone').limit(1).maybeSingle()
+    const tz = s?.jarvis_timezone || 'Australia/Sydney'
 
     // The mirror first, then the scan: jarvis_scan() reads don_enabled, so
     // refreshing it afterwards would leave every run reasoning about the
     // previous heartbeat's answer.
     await syncDonState(db)
 
-    // Refresh the facts first. Worth doing even when he cannot speak: the event
-    // table stays current, so the panel and the first message after quiet hours
-    // both describe now rather than whenever he was last allowed to talk.
     const { data: pendingCount, error: scanErr } = await db.rpc('jarvis_apply_scan')
     if (scanErr) return json({ error: `scan failed: ${scanErr.message}` }, 500)
 
-    if (!s?.jarvis_notify_enabled) return json({ ok: true, scanned: pendingCount, sent: false, reason: 'disabled' })
-
-    const to = normalisePhone(s.jarvis_notify_number || '')
-    if (!to) return json({ ok: true, scanned: pendingCount, sent: false, reason: 'no_valid_number' })
-
-    const tz = s.jarvis_timezone || 'Australia/Sydney'
-    if (inQuietHours(localHHMM(tz), String(s.jarvis_quiet_start), String(s.jarvis_quiet_end))) {
-      // Held, not dropped. notified_at stays null so it goes out at 07:30
-      // instead of being silently swallowed overnight.
-      return json({ ok: true, scanned: pendingCount, sent: false, reason: 'quiet_hours' })
-    }
-
-    // The cap counts real sends in the last 24h. This is the one guard that
-    // holds when everything else is wrong, so it is checked against what was
-    // actually delivered rather than against anything the scan believes.
-    const cap = Number(s.jarvis_daily_sms_cap ?? 10)
-    if (cap <= 0) return json({ ok: true, scanned: pendingCount, sent: false, reason: 'cap_zero' })
-    const since = new Date(Date.now() - 24 * 3600_000).toISOString()
-    const { count: sentToday } = await db
-      .from('jarvis_notifications')
-      .select('id', { count: 'exact', head: true })
-      // Texts only: older rows include phone calls, which no longer exist.
-      .eq('channel', 'sms')
-      .eq('status', 'sent').gte('created_at', since)
-    if ((sentToday ?? 0) >= cap) {
-      return json({ ok: true, scanned: pendingCount, sent: false, reason: 'daily_cap_reached', cap })
-    }
+    const note = (tier: string, text: string, eventIds: string[] = []) =>
+      db.from('jarvis_notifications').insert({
+        channel: 'panel', to_number: 'panel', tier, body: text, event_ids: eventIds, status: 'sent',
+      })
 
     // Jobs before alerts. Claimed one at a time so that a slow job leaves the
     // rest queued for the next heartbeat instead of claimed and then dropped.
-    // Held (not claimed) through quiet hours and a spent cap, like alerts.
     let jobsRun = 0
-    let sentSoFar = sentToday ?? 0
-    const jobFrom = s.jarvis_from_number || s.twilio_from_number || Deno.env.get('TWILIO_FROM_NUMBER') || ''
-    if (!dryRun && jobFrom) {
+    if (!dryRun) {
       const started = Date.now()
-      while (jobsRun < MAX_JOBS_PER_BEAT && sentSoFar < cap && Date.now() - started < JOB_TIME_BUDGET_MS) {
+      while (jobsRun < MAX_JOBS_PER_BEAT && Date.now() - started < JOB_TIME_BUDGET_MS) {
         const { data: claimed, error: jobErr } = await db.rpc('jarvis_claim_due_jobs', { p_limit: 1, p_tz: tz })
         if (jobErr) { console.error('jarvis-notify: job claim failed:', jobErr.message); break }
         const job = (claimed || [])[0] as Job | undefined
         if (!job) break
 
         const report = await runJob(url, job)
-        const text = `Jarvis - ${job.title}: ${report}`.slice(0, 640)
-        const sent = await sendSms(to, jobFrom, text)
-        await db.from('jarvis_notifications').insert({
-          channel: 'sms', to_number: to, tier: 'job', body: text,
-          twilio_sid: sent.sid,
-          status: sent.ok ? 'sent' : 'failed',
-          error: sent.ok ? null : sent.raw.slice(0, 500),
-        })
+        const { error: noteErr } = await note('job', `${job.title}: ${report}`.slice(0, 2000))
+        if (noteErr) console.error('jarvis-notify: job note failed:', noteErr.message)
         await db.from('jarvis_jobs').update({ last_result: report.slice(0, 2000) }).eq('id', job.id)
         jobsRun++
-        if (sent.ok) sentSoFar++
-      }
-      if (sentSoFar >= cap) {
-        return json({ ok: true, scanned: pendingCount, sent: jobsRun > 0, jobs: jobsRun, reason: 'daily_cap_reached', cap })
       }
     }
 
@@ -332,68 +235,31 @@ Deno.serve(async (req: Request) => {
       .limit(20)
 
     const evs = (events || []) as Ev[]
-    if (!evs.length) return json({ ok: true, scanned: pendingCount, sent: jobsRun > 0, jobs: jobsRun, reason: 'nothing_new' })
+    if (!evs.length) return json({ ok: true, scanned: pendingCount, noted: jobsRun > 0, jobs: jobsRun, reason: 'nothing_new' })
 
-    // One message per run, never one per event - that is the difference between
-    // a briefing and a phone going off six times in a row.
+    // One note per run, never one per event - a briefing, not six pings.
+    // Urgent ones first; the panel has room for all of them.
     const urgent = evs.filter((e) => e.tier === 'urgent')
     const rest = evs.filter((e) => e.tier !== 'urgent')
-    const lead = urgent.length ? urgent : rest
-    const shown = lead.slice(0, 3)
-    const extra = evs.length - shown.length
-
-    let text = shown.map(describe).join('\n')
-    if (extra > 0) text += `\n+${extra} more waiting.`
-    const bodyText = `Jarvis: ${text}`.slice(0, 480)
+    const text = [...urgent, ...rest].map(describe).join('\n')
     const tier = urgent.length ? 'urgent' : 'notable'
 
     if (dryRun) {
-      return json({ ok: true, scanned: pendingCount, sent: false, reason: 'dry_run', would_send: bodyText, to, events: evs.length })
+      return json({ ok: true, scanned: pendingCount, noted: false, reason: 'dry_run', would_note: text, events: evs.length })
     }
 
-    const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')!
-    const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')!
-    // His own number when he has one, so replies reach him rather than the
-    // client agents' webhook; the main number until then, which still sends.
-    const from = s.jarvis_from_number || s.twilio_from_number || Deno.env.get('TWILIO_FROM_NUMBER') || ''
-    if (!from) return json({ error: 'no Twilio from-number configured' }, 500)
-
-    const params = new URLSearchParams({ To: to, From: from, Body: bodyText })
-    const res = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: 'Basic ' + btoa(accountSid + ':' + authToken),
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: params.toString(),
-      },
-    )
-    const raw = await res.text()
-    let sid: string | null = null
-    try { sid = JSON.parse(raw).sid || null } catch { /* keep raw for the log */ }
-
-    await db.from('jarvis_notifications').insert({
-      channel: 'sms', to_number: to, tier, body: bodyText,
-      event_ids: evs.map((e) => e.id),
-      twilio_sid: sid,
-      status: res.ok ? 'sent' : 'failed',
-      error: res.ok ? null : raw.slice(0, 500),
-    })
-
-    // Only mark them spoken if the text actually left. A failed send that
-    // silently burns the events is how you find out about a problem never.
-    if (res.ok) {
+    const { error: noteErr } = await note(tier, text, evs.map((e) => e.id))
+    // Only mark them told if the note was saved. A failed write that silently
+    // burns the events is how you find out about a problem never.
+    if (!noteErr) {
       await db.from('jarvis_events')
         .update({ notified_at: new Date().toISOString() })
         .in('id', evs.map((e) => e.id))
     }
 
     return json({
-      ok: res.ok, scanned: pendingCount, sent: res.ok,
-      events: evs.length, twilio_sid: sid, jobs: jobsRun,
-      ...(res.ok ? {} : { error: raw.slice(0, 300) }),
+      ok: !noteErr, scanned: pendingCount, noted: !noteErr, events: evs.length, jobs: jobsRun,
+      ...(noteErr ? { error: noteErr.message } : {}),
     })
   } catch (err) {
     console.error('jarvis-notify error:', err)

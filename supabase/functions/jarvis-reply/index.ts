@@ -1,15 +1,13 @@
 /**
- * jarvis-reply - answering a text you sent him.
+ * jarvis-reply - a text you sent him.
  *
- * Split out from twilio-inbound-sms for one hard reason: Twilio gives a webhook
- * about fifteen seconds before it gives up, and the Claude tool loop can run
- * well past that when it has to look something up. So the webhook stores the
- * message, kicks this off without waiting, and answers Twilio immediately. The
- * reply comes back as a fresh outbound SMS rather than as the webhook response.
+ * Jarvis used to answer texts by text. Since 7 Oct he talks only in the
+ * dashboard (migration 20261007000004), to save SMS credits: a text to his
+ * number is saved as a message and shown in the Jarvis panel, where you can
+ * ask him properly. Nothing is sent back by SMS.
  *
- * The side effect is that he can take half a minute to answer a hard question,
- * which is the right trade - a late answer beats a truncated one, and it is how
- * texting a person works anyway.
+ * Called by twilio-inbound-sms, which has already checked the text came to
+ * Jarvis's number from the owner's.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -17,85 +15,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
-// The no-tools answer: everything he already knows, put into a sentence.
-//
-// This is the fallback when the tool-holding function will not take the call,
-// and it is genuinely useful on its own - most replies to an alert are "which
-// one", "how long", "what else is open", all answerable from the context that
-// came with the alert. What it cannot do is change anything, and it says so
-// rather than pretending.
-async function answerFromContext(
-  question: string,
-  context: Record<string, unknown>,
-  history: Array<{ role: string; content: string }>,
-): Promise<string> {
-  const key = Deno.env.get('ANTHROPIC_API_KEY')
-  if (!key) return ''
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-5-5',
-        // Thinking cannot be switched off on Opus 5.5, and it counts against
-        // max_tokens - a 300 cap could be spent thinking with no words left.
-        // The reply is still cut to 300 characters below.
-        max_tokens: 2048,
-        output_config: { effort: 'low' },
-        system:
-          'You are Jarvis, answering the business owner by SMS. Under 300 characters, ' +
-          'plain text, no markdown, no greeting. Answer only from the context given. ' +
-          'You currently cannot change anything - if asked to act, say so in one short ' +
-          'sentence and tell them to use the panel. Never invent a number or a name.',
-        messages: [
-          ...history.slice(-4),
-          { role: 'user', content: `Context: ${JSON.stringify(context)}\n\nThey said: ${question}` },
-        ],
-      }),
-    })
-    if (!res.ok) {
-      console.warn('anthropic fallback failed:', res.status, (await res.text()).slice(0, 200))
-      return ''
-    }
-    const j = await res.json()
-    // Costed like everything else Jarvis does, so the spend panel is the whole
-    // bill. Opus 5.5 list price; no caching on this path.
-    try {
-      const u = j?.usage ?? {}
-      const input = Number(u.input_tokens ?? 0)
-      const output = Number(u.output_tokens ?? 0)
-      const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
-      await db.from('jarvis_usage').insert({
-        channel: 'sms-fallback',
-        model: j?.model ?? 'claude-opus-5-5',
-        outcome: 'answered',
-        steps: 1,
-        input_tokens: input,
-        output_tokens: output,
-        cost_usd: Math.round(((input * 4 + output * 20) / 1e6) * 1e6) / 1e6,
-      })
-    } catch (err) {
-      console.warn('usage not recorded:', err instanceof Error ? err.message : err)
-    }
-    return (j?.content ?? [])
-      .filter((b: { type: string }) => b.type === 'text')
-      .map((b: { text: string }) => b.text)
-      .join('')
-      .trim()
-  } catch (err) {
-    console.warn('answerFromContext error:', err instanceof Error ? err.message : err)
-    return ''
-  }
-}
-
 Deno.serve(async (req: Request) => {
   // Same capability test as jarvis-notify: prove the caller holds a key that
-  // can read a table only service_role can read, rather than comparing against
-  // an env var whose value the runtime does not always agree about.
+  // can read a table only service_role can read.
   const auth = (req.headers.get('Authorization') || '').replace('Bearer ', '').trim()
   if (!auth) return json({ error: 'unauthorized' }, 401)
 
@@ -108,167 +30,31 @@ Deno.serve(async (req: Request) => {
 
   try {
     const { from, body: text } = await req.json().catch(() => ({}))
-    const question = String(text ?? '').trim()
-    if (!question) return json({ ok: true, reason: 'empty' })
+    const said = String(text ?? '').trim()
+    if (!said) return json({ ok: true, reason: 'empty' })
 
     const { data: s } = await db
       .from('business_settings')
-      .select('jarvis_from_number, jarvis_notify_number, twilio_from_number')
+      .select('jarvis_from_number, jarvis_notify_number')
       .limit(1).maybeSingle()
 
-    // Only ever answers the owner's own number. The webhook checks this too;
-    // it is repeated here because this function can be called directly and a
-    // reply that goes to whoever asked would leak the whole business.
+    // Only the owner's own number counts. The webhook checks this too; it is
+    // repeated here because this function can be called directly.
     const owner = String(s?.jarvis_notify_number ?? '').replace(/[\s\-().]/g, '')
     const sender = String(from ?? '').replace(/[\s\-().]/g, '')
     const ownerE164 = owner.startsWith('0') ? '+61' + owner.slice(1) : owner
-    if (!ownerE164 || sender !== ownerE164) {
-      return json({ ok: true, reason: 'not_the_owner' })
-    }
-
-    // What he last raised, so "sort it" and "which one" resolve to something.
-    // Only open events and only the last message: an SMS reply is about the
-    // thing that just buzzed, not about the whole history.
-    const { data: lastNote } = await db
-      .from('jarvis_notifications')
-      .select('body, created_at')
-      .eq('channel', 'sms').eq('status', 'sent')
-      .order('created_at', { ascending: false }).limit(1).maybeSingle()
-
-    const { data: openEvents } = await db
-      .from('jarvis_events')
-      .select('kind, subject, tier, payload')
-      .is('resolved_at', null)
-      .order('first_seen_at', { ascending: true }).limit(10)
-
-    // lead_id travels with each item on purpose. "Follow up with Sandford" has
-    // to resolve to exactly one lead, and making him search by name invites the
-    // one mistake that matters here - emailing the wrong company.
-    const context = {
-      last_alert: lastNote?.body ?? null,
-      last_alert_at: lastNote?.created_at ?? null,
-      open_items: (openEvents || []).map((e: Record<string, unknown>) => {
-        const p = (e.payload ?? {}) as Record<string, unknown>
-        return {
-          kind: e.kind,
-          subject: e.subject,
-          tier: e.tier,
-          ...(p.lead_id ? { lead_id: p.lead_id } : {}),
-          ...(p.client_id ? { client_id: p.client_id } : {}),
-          ...(p.days ? { days: p.days } : {}),
-        }
-      }),
-    }
+    if (!ownerE164 || sender !== ownerE164) return json({ ok: true, reason: 'not_the_owner' })
 
     await db.from('jarvis_messages').insert({
-      direction: 'inbound', body: question,
+      direction: 'inbound', body: said,
       from_number: sender, to_number: s?.jarvis_from_number ?? null,
-      context,
+      context: { answered: 'panel' },
     })
-
-    // Recent turns, so a two-message exchange is a conversation rather than
-    // two unrelated questions. Kept short: SMS threads are not transcripts.
-    const { data: recent } = await db
-      .from('jarvis_messages')
-      .select('direction, body')
-      .order('created_at', { ascending: false }).limit(8)
-    const history = (recent || []).reverse().map((m: { direction: string; body: string }) => ({
-      role: m.direction === 'inbound' ? 'user' : 'assistant',
-      content: m.body,
-    }))
-
-    // The rules that make "chase Sandford" safe to act on.
-    //
-    // The hard one is the third: act on exactly who was named and nobody else.
-    // The open items are right there in the context, so the tempting failure is
-    // helpfulness - being asked to chase two and chasing the other eleven
-    // because they were also overdue. That is the one mistake that cannot be
-    // taken back, since it reaches real clients.
-    //
-    // "All" is the exception and gets a confirmation, because the difference
-    // between two emails and thirteen is worth one extra text.
-    const preamble =
-      `You are answering by SMS, so keep it under 300 characters, plain text, no markdown.\n` +
-      `Open items you raised, with their ids: ${JSON.stringify(context)}\n` +
-      `Rules:\n` +
-      `1. Match what they name against the subjects above and use that item's lead_id. ` +
-      `Partial names are fine ("Sandford" means "Sandford Electrical").\n` +
-      `2. Act on EXACTLY the ones they name. Never include an item they did not ` +
-      `name, however overdue it is.\n` +
-      `3. If they say "all" or "everyone", do NOT send yet - reply with how many ` +
-      `that is and ask them to confirm. Send only after they confirm.\n` +
-      `4. If a name matches nothing or matches more than one, ask which, and send nothing.\n` +
-      `5. Use the saved follow-up template: call send_lead_email with kind:"followup". ` +
-      `NEVER kind:"info" - that is the first-contact email and these leads have had it. ` +
-      `Do not write your own wording unless they dictate the words themselves.\n` +
-      `6. After sending, confirm briefly who you contacted, by name.\n` +
-      `7. Anything else that would change something: answer it, do not act on it. Two exceptions, ` +
-      `because they reach no client: if they tell you something to remember, create_memory; if they ` +
-      `ask for something later or on repeat ("every Monday", "remind me Friday"), create_job.`
-
-    // Two ways to answer, and the difference is whether he can ACT.
-    //
-    // jarvis-chat holds the tools, memory and scheduling; it accepts this call
-    // as the SMS bridge after proving the bearer is service-role. If it fails,
-    // the fallback answers from the context already gathered above, with no
-    // tools - "what is open", "which client", "how many" - but cannot change
-    // anything.
-    let answer = ''
-    let acted = false
-
-    const chatRes = await fetch(`${url}/functions/v1/jarvis-chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!}`,
-      },
-      body: JSON.stringify({
-        // Marks this as the SMS bridge. jarvis-chat then proves the bearer is
-        // service-role by using it, rather than taking this flag on trust.
-        via: 'sms',
-        messages: [{ role: 'user', content: preamble }, ...history],
-        allow_writes: true,
-      }),
+    await db.from('jarvis_notifications').insert({
+      channel: 'panel', to_number: 'panel', tier: 'notable', status: 'sent',
+      body: `You texted me: "${said.slice(0, 400)}". I only reply here now - ask me in this panel.`,
     })
-    if (chatRes.ok) {
-      const chatRaw = await chatRes.text()
-      // jarvis-chat answers { reply, tools, messages }.
-      try { answer = String(JSON.parse(chatRaw)?.reply ?? '') } catch { /* falls through */ }
-      if (answer) acted = true
-    }
-
-    if (!answer) answer = await answerFromContext(question, context, history)
-    if (!answer) answer = 'I could not put that into words. Try the panel.'
-
-    const reply = answer.slice(0, 300)
-
-    const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')!
-    const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')!
-    const fromNum = s?.jarvis_from_number || s?.twilio_from_number || ''
-    const sendRes = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: 'Basic ' + btoa(accountSid + ':' + authToken),
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({ To: ownerE164, From: fromNum, Body: reply }).toString(),
-      },
-    )
-    const sendRaw = await sendRes.text()
-    let sid: string | null = null
-    try { sid = JSON.parse(sendRaw).sid || null } catch { /* keep raw */ }
-
-    await db.from('jarvis_messages').insert({
-      direction: 'outbound', body: reply,
-      from_number: fromNum, to_number: ownerE164,
-      twilio_sid: sid,
-      handled_at: new Date().toISOString(),
-      error: sendRes.ok ? null : sendRaw.slice(0, 400),
-    })
-
-    return json({ ok: sendRes.ok, replied: reply.length, twilio_sid: sid, with_tools: acted })
+    return json({ ok: true, replied: false, noted: true })
   } catch (err) {
     console.error('jarvis-reply error:', err)
     return json({ error: err instanceof Error ? err.message : 'Internal server error' }, 500)
