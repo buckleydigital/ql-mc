@@ -1140,6 +1140,7 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
           <div class="kpi"><div class="klabel">Closed Won</div><div class="kval grn" id="crm-won">-</div></div>
           <div class="kpi"><div class="klabel">Win Rate</div><div class="kval" id="crm-rate">-</div><div class="ksub" id="crm-rate-sub"></div></div>
           <div class="kpi admin-only-field"><div class="klabel">Avg Won Deal</div><div class="kval grn" id="crm-avgwon">-</div><div class="ksub" id="crm-avgwon-sub"></div></div>
+          <div class="kpi admin-only-field"><div class="klabel">Avg Client LTV</div><div class="kval grn" id="crm-ltv">-</div><div class="ksub" id="crm-ltv-sub"></div></div>
         </div>
         <div class="sl">Pipeline <div class="sl-line"></div></div>
         <div class="kanban-wrap"><div class="kanban" id="crm-kanban"></div></div>
@@ -4768,7 +4769,41 @@ async function loadCRM(resetPage) {
   crmAllLeads = curCrmRange ? (tableR.data || []) : crmPipelineLeads;
   if (!IS_REP) populateCrmRepView();
   renderCRM();
+  if (!IS_REP) loadCrmLtv();
   if (IS_REP) loadRepStats();
+}
+
+// Average lifetime value per client, all time - the same sums as Financials:
+// a managed client's logged orders (build fee, setup...) plus months active x
+// management fee; a PPL client's lead orders (leads x price). Clients with
+// nothing billed yet are left out rather than averaged in as $0. Admin only.
+async function loadCrmLtv() {
+  const [cR, pR, mR] = await Promise.all([
+    db.from('clients').select('id,type,management_fee,active_months'),
+    db.from('ppl_order_log').select('client_id,leads_qty,lead_price'),
+    db.from('managed_order_log').select('client_id,amount'),
+  ]);
+  if (cR.error || pR.error || mR.error) { setText('crm-ltv', '-'); setText('crm-ltv-sub', 'could not load'); return; }
+  const total = {};
+  const add = (id, v) => { if (id && v) total[id] = (total[id] || 0) + Number(v); };
+  (pR.data || []).forEach(o => add(o.client_id, (o.leads_qty || 0) * (o.lead_price || 0)));
+  (mR.data || []).forEach(o => add(o.client_id, o.amount || 0));
+  const type = {};
+  (cR.data || []).forEach(c => {
+    type[c.id] = c.type;
+    if (c.type === 'managed') {
+      let months = []; try { months = JSON.parse(c.active_months || '[]'); } catch (e) {}
+      add(c.id, (Array.isArray(months) ? months.length : 0) * (c.management_fee || 0));
+    }
+  });
+  const ids = Object.keys(total).filter(id => total[id] > 0 && type[id]);
+  const avg = arr => arr.length ? arr.reduce((a, id) => a + total[id], 0) / arr.length : 0;
+  const money = v => '$' + Math.round(v).toLocaleString('en-AU');
+  const mg = ids.filter(id => type[id] === 'managed'), pp = ids.filter(id => type[id] !== 'managed');
+  setText('crm-ltv', ids.length ? money(avg(ids)) : '-');
+  setText('crm-ltv-sub', ids.length
+    ? [mg.length && 'Managed ' + money(avg(mg)) + ' (' + mg.length + ')', pp.length && 'PPL ' + money(avg(pp)) + ' (' + pp.length + ')'].filter(Boolean).join(' · ')
+    : 'no billed clients yet');
 }
 
 // Rep performance strip: close rate, open leads, commission per close.
