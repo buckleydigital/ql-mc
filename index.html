@@ -506,6 +506,23 @@ td strong{font-weight:500}
 .or-filters .fi.grow{flex:1;min-width:200px}
 .or-sub{font-size:11px;color:var(--ink3)}
 #or-pr-table td{white-space:normal}
+.or-bitem{display:flex;gap:12px;padding:12px 14px;border:1px solid var(--bd);border-radius:var(--r2);background:var(--s1);margin-bottom:8px}
+.or-bitem.off{opacity:.55}
+.or-bitem input[type=checkbox]{width:18px;height:18px;margin:3px 0 0;flex:0 0 auto}
+.or-bitem .main{flex:1;min-width:0}
+.or-bitem textarea{width:100%;font-size:12px;margin-top:6px;resize:vertical}
+.or-preview{white-space:pre-wrap;font-size:12px;line-height:1.55;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;margin-top:8px;color:var(--ink2)}
+.or-batch-bar{position:sticky;bottom:0;display:flex;gap:8px;align-items:center;padding:12px 14px;margin-top:10px;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r2);box-shadow:0 -6px 20px rgba(0,0,0,.25);z-index:5}
+.or-step-ed{border-top:1px solid var(--bd);padding-top:10px;margin-top:10px}
+.or-step-ed .hd{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;color:var(--ink3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.or-step-ed textarea{width:100%;resize:vertical;font-size:12.5px;line-height:1.5}
+.or-acct{display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--bd);font-size:12px;flex-wrap:wrap}
+.or-acct:last-child{border-bottom:none}
+.or-acct .e{font-family:var(--mono);flex:1;min-width:180px}
+.or-pill{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:9px;background:var(--s2);color:var(--ink3)}
+.or-pill.good{background:color-mix(in srgb,var(--grn) 16%,transparent);color:var(--grn)}
+.or-pill.warn{background:color-mix(in srgb,var(--amb) 16%,transparent);color:var(--amb)}
+.or-pill.bad{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red)}
 #or-pr-table td:first-child{max-width:300px}
 #or-pr-table td:nth-child(5){max-width:230px}
 .or-opener{font-size:11.5px;color:var(--ink2);font-style:italic;margin-top:5px;line-height:1.45}
@@ -527,6 +544,12 @@ td strong{font-weight:500}
   #panel-outreach .fi,#panel-outreach-prospects .fi,#panel-outreach-dnc .fi{font-size:16px}
   .or-save{width:100%;padding:10px;font-size:13px}
   #or-run-btn{width:100%;padding:11px;font-size:13px}
+  .or-bitem{padding:10px 12px}
+  .or-batch-bar{flex-wrap:wrap}
+  .or-batch-bar #or-batch-btn{flex:1 1 100%;padding:11px}
+  #panel-outreach-batch .fi,#panel-outreach-sending .fi{font-size:16px}
+  #panel-outreach-sending .ph-right{width:100%}
+  #panel-outreach-sending .ph-right .btn{flex:1}
   .or-filters .fi{flex:1 1 100%;min-width:0}
   .or-sup-row > *{flex:1 1 100% !important}
   .or-sup-row .btn{padding:10px}
@@ -1562,7 +1585,7 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
           <div class="or-step done"><span class="st">Ready</span><b>1 · Niches &amp; safeguards</b>Niches on or off, and one do-not-contact list every sender checks.</div>
           <div class="or-step done"><span class="st">Ready</span><b>2 · Find &amp; verify</b>Press Run: businesses found per niche, with where each email was published, then verified.</div>
           <div class="or-step done"><span class="st">Ready</span><b>3 · Qualify &amp; personalise</b>Each one scored for fit from its website and given an opening line written for them. 6/10 and up is ready for review.</div>
-          <div class="or-step"><span class="st">Next</span><b>4 · Send &amp; replies</b>Warmed inboxes send the batch you approve; replies come back here.</div>
+          <div class="or-step done"><span class="st">Ready</span><b>4 · Send &amp; replies</b>Approve each sequence and today's batch; Instantly sends from your warmed inboxes, and replies, bounces and unsubscribes come back here.</div>
           <div class="or-step"><span class="st">Later</span><b>5 · Daily batch</b>On the days you run it, Jarvis builds the batch and you approve it before anything sends.</div>
         </div>
       </div>
@@ -1584,6 +1607,63 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
           </table>
         </div>
         <div id="or-pr-pager" style="margin-top:10px"></div>
+      </div>
+
+      <!-- Today's batch: the only place cold email is sent from. Each prospect
+           is checked again by outreach_batch_approve when you press Approve. -->
+      <div class="panel" id="panel-outreach-batch">
+        <div class="ph">
+          <div class="ph-left"><h1>Today's Batch</h1><p>Ready-for-review prospects, best first. Nothing sends until you approve.</p></div>
+          <div class="ph-right"><button class="btn btn-sm" onclick="loadBatch()">↻ Refresh</button></div>
+        </div>
+        <div id="or-batch-note" class="or-sub" style="margin-bottom:12px"></div>
+        <div id="or-batch-list"><div class="empty">Loading...</div></div>
+        <div class="or-batch-bar" id="or-batch-bar" style="display:none">
+          <span id="or-batch-count" style="flex:1">0 selected</span>
+          <button class="btn btn-sm" type="button" onclick="batchSelect(false)">Clear</button>
+          <button class="btn btn-p" id="or-batch-btn" type="button" onclick="approveBatch()">Approve &amp; send</button>
+        </div>
+      </div>
+
+      <!-- Sending: Instantly connection, sender details, sequences per niche. -->
+      <div class="panel" id="panel-outreach-sending">
+        <div class="ph">
+          <div class="ph-left"><h1>Sending</h1><p>Inboxes, who the emails are from, and what each niche is sent</p></div>
+          <div class="ph-right">
+            <button class="btn btn-sm" onclick="loadSending()">↻ Refresh</button>
+            <button class="btn btn-p btn-sm" id="or-sync-btn" onclick="syncInstantly()">⇅ Sync to Instantly</button>
+          </div>
+        </div>
+
+        <div class="sl">Instantly <div class="sl-line"></div></div>
+        <div class="or-card mb4" id="or-conn"><div class="empty">Checking Instantly…</div></div>
+
+        <div class="sl">Sender <div class="sl-line"></div></div>
+        <div class="or-card mb4">
+          <div class="or-grid">
+            <div class="frow" style="margin:0"><label class="flabel">Your name (signs the emails)</label><input class="fi" id="os-name" placeholder="Jack"></div>
+            <div class="frow" style="margin:0"><label class="flabel">Business name</label><input class="fi" id="os-biz" placeholder="QuoteLeads"></div>
+          </div>
+          <div class="frow" style="margin:8px 0 0"><label class="flabel">Postal address (required in every commercial email)</label><input class="fi" id="os-addr" placeholder="PO Box 123, Maroochydore QLD 4558"></div>
+          <div class="or-grid">
+            <div class="frow" style="margin:0"><label class="flabel">Send from</label><input class="fi" id="os-from" type="time"></div>
+            <div class="frow" style="margin:0"><label class="flabel">Send until</label><input class="fi" id="os-to" type="time"></div>
+            <div class="frow" style="margin:0"><label class="flabel">Timezone</label>
+              <select class="fi" id="os-tz"><option value="Australia/Brisbane">Brisbane (QLD)</option><option value="Australia/Melbourne">Sydney / Melbourne</option><option value="Australia/Adelaide">Adelaide</option><option value="Australia/Darwin">Darwin</option><option value="Australia/Perth">Perth</option></select></div>
+            <div class="frow" style="margin:0"><label class="flabel">Emails a day per niche</label><input class="fi" id="os-limit" type="number" inputmode="numeric" min="1" max="500"></div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-p btn-sm or-save" type="button" onclick="saveSender()">Save sender</button>
+            <span class="or-sub">Monday to Friday only. Every email ends with your name, business, address and "reply unsubscribe".</span>
+          </div>
+        </div>
+
+        <div class="sl">Sequences <div class="sl-line"></div></div>
+        <p class="or-sub" style="margin:-4px 0 12px;line-height:1.6">Placeholders: <code>{first_name}</code> (or "there"), <code>{company}</code>, <code>{suburb}</code>, <code>{opener}</code> (the line written for them), <code>{sender}</code>. Leave a follow-up's subject blank to send it as a reply in the same thread. Any edit needs approving again before it is synced.</p>
+        <div class="or-niches" id="or-seqs"><div class="empty">Loading...</div></div>
+
+        <div class="sl">What Instantly reported <div class="sl-line"></div></div>
+        <div class="or-card" id="or-events"><div class="empty">Loading...</div></div>
       </div>
 
       <div class="panel" id="panel-outreach-dnc">
@@ -3679,6 +3759,8 @@ const PANEL_GROUPS = {
   outreach: {label:'Cold Outreach', members:[
     {panel:'outreach',           label:'Overview'},
     {panel:'outreach-prospects', label:'Prospects'},
+    {panel:'outreach-batch',     label:"Today's Batch"},
+    {panel:'outreach-sending',   label:'Sending'},
     {panel:'outreach-dnc',       label:'Do Not Contact'}
   ]},
   salesreps: {label:'Team', members:[
@@ -3828,6 +3910,8 @@ function nav(panel, el) {
   if (panel === 'outreach') loadOutreach();
   if (panel === 'outreach-prospects') loadProspects();
   if (panel === 'outreach-dnc') loadSuppressions();
+  if (panel === 'outreach-batch') loadBatch();
+  if (panel === 'outreach-sending') loadSending();
 }
 
 // ── Role-based UI ───────────────────────────────────────────────────────────
@@ -9916,6 +10000,346 @@ async function markJarvisInbox(ids) {
   const { error } = await db.rpc('jarvis_inbox_read', { p_ids: ids });
   if (error) { toast('Could not mark seen: ' + error.message, true); return; }
   loadJarvisInbox();
+}
+
+// ── Cold outreach: sending (stage 4) ──────────────────────────────────────
+// outreach-send talks to Instantly; it is called with the signed-in session
+// and checks the caller is an operator, like every outreach RPC.
+async function orSend(action, extra) {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) throw new Error('Not logged in');
+  const res = await fetch(_ep + '/functions/v1/outreach-send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+    body: JSON.stringify(Object.assign({ action: action }, extra || {})),
+  });
+  const body = await res.json().catch(function () { return {}; });
+  if (!res.ok || body.ok === false) throw new Error(body.error || ('outreach-send ' + res.status));
+  return body;
+}
+
+const OR_NICHE_WORD = { solar: 'solar', hvac: 'air con', renovations: 'renovation', roofing: 'roofing' };
+
+/** A sensible first draft for a niche that has no sequence yet. */
+function defaultSequence(n) {
+  const word = OR_NICHE_WORD[n.key] || n.label.toLowerCase();
+  const offer = (n.offer && n.offer.trim()) ||
+    ('We send exclusive homeowner enquiries for ' + word + ' jobs in your area - you only pay for the leads you get, and there is no lock-in contract.');
+  return [
+    { subject: 'Homeowner ' + word + ' jobs in {suburb}', delay_days: 0,
+      body: 'Hi {first_name},\n\n{opener}\n\n' + offer + '\n\nWould it be worth a quick chat this week?\n\nCheers,\n{sender}' },
+    { subject: '', delay_days: 3,
+      body: 'Hi {first_name},\n\nJust bumping this in case it got buried. Happy to send through an example of what a ' + word + ' lead from around {suburb} looks like, so you can judge for yourself.\n\n{sender}' },
+    { subject: '', delay_days: 4,
+      body: 'Hi {first_name},\n\nLast note from me. If more homeowner jobs are not a priority right now, no worries at all. If they are, just reply "yes" and I will send the details.\n\n{sender}' },
+  ];
+}
+
+let orSender = null;
+let orCampaigns = [];
+
+/** The email as a prospect would read it (the footer is added by Instantly sync). */
+function renderEmail(text, p) {
+  return String(text || '')
+    .replace(/\{first_name\}/g, (p && p.contact_name) || 'there')
+    .replace(/\{company\}/g, (p && p.business_name) || 'your business')
+    .replace(/\{suburb\}/g, (p && p.suburb) || 'your area')
+    .replace(/\{opener\}/g, (p && p.opener) || '')
+    .replace(/\{sender\}/g, (orSender && orSender.sender_name) || '[your name]');
+}
+function senderFooter() {
+  const s = orSender || {};
+  return '\n\n--\n' + (s.sender_name || '[your name]') + ', ' + (s.business_name || 'QuoteLeads') + '\n' +
+    (s.postal_address || '[postal address]') + '\nNot for you? Reply "unsubscribe" and you will not hear from us again.';
+}
+
+async function loadSending() {
+  const [setR, campR] = await Promise.all([db.rpc('outreach_settings_get'), db.rpc('outreach_campaign_list')]);
+  if (setR.error) { toast('Could not load sending settings: ' + setR.error.message, true); return; }
+  orSender = setR.data || {};
+  orCampaigns = campR.data || [];
+  setVal('os-name', orSender.sender_name || '');
+  setVal('os-biz', orSender.business_name || 'QuoteLeads');
+  setVal('os-addr', orSender.postal_address || '');
+  setVal('os-from', orSender.send_from || '08:30');
+  setVal('os-to', orSender.send_to || '16:30');
+  setVal('os-tz', orSender.timezone || 'Australia/Brisbane');
+  setVal('os-limit', orSender.daily_limit || 30);
+  renderSequences();
+  loadOutreachEvents();
+  loadConnection();
+}
+
+async function loadConnection() {
+  const host = $('or-conn');
+  host.innerHTML = '<div class="empty">Checking Instantly…</div>';
+  let st;
+  try { st = await orSend('status'); }
+  catch (err) { host.innerHTML = '<div class="empty" style="color:var(--red)">' + jmEsc(err.message) + '</div>'; return; }
+  const accts = st.accounts || [];
+  const pill = function (t) {
+    const cls = /active|warming/.test(t) ? 'good' : /paused|maintenance/.test(t) ? 'warn' : 'bad';
+    return '<span class="or-pill ' + cls + '">' + jmEsc(t) + '</span>';
+  };
+  host.innerHTML =
+    '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">' +
+      '<span class="or-pill good">Connected</span><b>' + jmEsc(st.workspace || 'Instantly') + '</b>' +
+      '<span class="or-sub">' + (st.webhook ? 'Replies and bounces report back here.' : 'Reporting back is set up on the first Sync.') + '</span></div>' +
+    (accts.length
+      ? '<div class="or-sub" style="margin-bottom:4px">Tick the inboxes that send. Only warmed inboxes should send - give new ones 2-3 weeks.</div>' +
+        accts.map(function (a) {
+          return '<label class="or-acct"><input type="checkbox" class="os-acct" value="' + orAttr(a.email) + '"' + (a.selected ? ' checked' : '') + ' style="width:18px;height:18px;margin:0">' +
+            '<span class="e">' + jmEsc(a.email) + '</span>' + pill(a.state) + pill(a.warmup) +
+            (a.warmup_score != null ? '<span class="or-sub">warm-up score ' + Number(a.warmup_score) + '</span>' : '') + '</label>';
+        }).join('')
+      : '<div class="or-sub" style="line-height:1.6">No inboxes in Instantly yet. Add your sending inboxes there (Email Accounts → Add), turn warm-up on, and they will appear here to tick.</div>');
+}
+
+async function saveSender() {
+  const accounts = Array.prototype.map.call(document.querySelectorAll('.os-acct:checked'), function (c) { return c.value; });
+  const patch = {
+    sender_name: $('os-name').value, business_name: $('os-biz').value, postal_address: $('os-addr').value,
+    send_from: $('os-from').value, send_to: $('os-to').value, timezone: $('os-tz').value,
+    daily_limit: parseInt($('os-limit').value, 10) || 30,
+  };
+  if (document.querySelectorAll('.os-acct').length) patch.sending_accounts = accounts;
+  const { error } = await db.rpc('outreach_settings_update', { p: patch });
+  if (error) { toast('Could not save: ' + error.message, true); return; }
+  toast('Sender saved ✓ - press Sync to update Instantly');
+  const { data } = await db.rpc('outreach_settings_get'); orSender = data || orSender;
+}
+
+function seqStepsFor(n) {
+  const steps = Array.isArray(n.sequence) && n.sequence.length ? n.sequence : defaultSequence(n);
+  return steps.map(function (s) { return { subject: s.subject || '', body: s.body || '', delay_days: Number(s.delay_days || 0) }; });
+}
+
+function renderSequences() {
+  const host = $('or-seqs');
+  host.innerHTML = orCampaigns.map(function (n) {
+    const steps = seqStepsFor(n);
+    const written = Array.isArray(n.sequence) && n.sequence.length;
+    const state = n.sequence_approved_at
+      ? '<span class="or-pill good">Approved</span>'
+      : written ? '<span class="or-pill warn">Draft - not approved</span>' : '<span class="or-pill">Suggested draft</span>';
+    const camp = n.instantly_campaign_id
+      ? '<span class="or-pill ' + (n.campaign_state === 'active' ? 'good' : 'warn') + '">Instantly: ' + jmEsc(n.campaign_state || 'synced') + '</span>'
+      : '<span class="or-pill">Not in Instantly yet</span>';
+    const stats = n.contacted ? (n.contacted + ' emailed · ' + n.replied + ' replied · ' + n.interested + ' interested' + (n.queued ? ' · ' + n.queued + ' queued' : '')) : (n.queued ? n.queued + ' queued' : 'Nobody emailed yet');
+    return '<div class="or-niche' + (n.sequence_approved_at ? ' on' : '') + '" data-seq="' + orAttr(n.key) + '">' +
+      '<div class="or-head"><b style="font-size:14px;flex:1">' + jmEsc(n.label) + '</b>' + state + '</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">' + camp + '<span class="or-sub">' + jmEsc(stats) + '</span></div>' +
+      steps.map(function (st, i) {
+        return '<div class="or-step-ed" data-i="' + i + '">' +
+          '<div class="hd"><span style="flex:1">Email ' + (i + 1) + '</span>' +
+            (i ? '<label style="margin:0;text-transform:none;letter-spacing:0">wait <input class="fi sq-delay" type="number" inputmode="numeric" min="1" max="30" value="' + (st.delay_days || 3) + '" style="width:58px;display:inline-block;padding:4px 6px"> days</label>' : '') +
+            (steps.length > 1 ? '<button class="btn btn-xs" type="button" title="Remove this email" onclick="seqRemove(\'' + n.key + '\',' + i + ')">✕</button>' : '') +
+          '</div>' +
+          '<input class="fi sq-subject" placeholder="' + (i ? 'Blank = reply in the same thread' : 'Subject') + '" value="' + orAttr(st.subject) + '">' +
+          '<textarea class="fi sq-body" rows="7" style="margin-top:6px">' + jmEsc(st.body) + '</textarea>' +
+        '</div>';
+      }).join('') +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">' +
+        (steps.length < 4 ? '<button class="btn btn-sm" type="button" onclick="seqAdd(\'' + n.key + '\')">+ Email</button>' : '') +
+        '<button class="btn btn-sm" type="button" onclick="seqPreview(\'' + n.key + '\')">Preview</button>' +
+        '<button class="btn btn-sm" type="button" onclick="seqSave(\'' + n.key + '\',false)">Save draft</button>' +
+        '<button class="btn btn-p btn-sm" type="button" onclick="seqSave(\'' + n.key + '\',true)">Approve</button>' +
+        (n.instantly_campaign_id ? (n.campaign_state === 'active'
+          ? '<button class="btn btn-sm" type="button" onclick="campaignState(\'' + n.key + '\',\'pause\')">Pause sending</button>'
+          : '<button class="btn btn-sm" type="button" onclick="campaignState(\'' + n.key + '\',\'resume\')">Resume sending</button>') : '') +
+      '</div>' +
+      '<div class="or-preview" id="sq-prev-' + n.key + '" style="display:none"></div>' +
+    '</div>';
+  }).join('') || '<div class="empty">No niches.</div>';
+}
+
+function readSteps(key) {
+  const card = document.querySelector('[data-seq="' + key + '"]');
+  return Array.prototype.map.call(card.querySelectorAll('.or-step-ed'), function (el, i) {
+    const d = el.querySelector('.sq-delay');
+    return { subject: el.querySelector('.sq-subject').value.trim(), body: el.querySelector('.sq-body').value.trim(), delay_days: i ? (parseInt(d && d.value, 10) || 3) : 0 };
+  });
+}
+function seqKeep(key, steps) {
+  const n = orCampaigns.find(function (c) { return c.key === key; });
+  n.sequence = steps; n.sequence_approved_at = null;
+  renderSequences();
+}
+function seqAdd(key) {
+  const steps = readSteps(key);
+  steps.push({ subject: '', delay_days: 3, body: 'Hi {first_name},\n\n\n\n{sender}' });
+  seqKeep(key, steps);
+}
+function seqRemove(key, i) {
+  const steps = readSteps(key); steps.splice(i, 1); seqKeep(key, steps);
+}
+async function seqPreview(key) {
+  const box = $('sq-prev-' + key);
+  if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+  const { data } = await db.rpc('outreach_batch_candidates', { p_limit: 50 });
+  const sample = (data || []).find(function (p) { return p.niche_key === key; }) ||
+    { contact_name: 'Sam', business_name: 'Example Solar Co', suburb: 'Maroochydore', opener: '(the line written for them goes here)' };
+  const steps = readSteps(key);
+  let day = 0;
+  box.textContent = steps.map(function (st, i) {
+    day += i ? st.delay_days : 0;
+    return '── Email ' + (i + 1) + (i ? ' · day ' + day : ' · day 0') + ' ──\nSubject: ' + (st.subject ? renderEmail(st.subject, sample) : '(same thread)') +
+      '\n\n' + renderEmail(st.body, sample) + senderFooter();
+  }).join('\n\n\n');
+  box.style.display = '';
+}
+async function seqSave(key, approve) {
+  const steps = readSteps(key);
+  if (approve && !steps.some(function (s) { return /\{opener\}/.test(s.body); }) &&
+      !confirm('None of these emails uses {opener}, the line written for each business. Approve anyway?')) return;
+  const { error } = await db.rpc('outreach_sequence_save', { p_key: key, p_steps: steps, p_approve: !!approve });
+  if (error) { toast('Could not save: ' + error.message, true); return; }
+  toast(approve ? 'Approved ✓ - press Sync to Instantly' : 'Draft saved');
+  const { data } = await db.rpc('outreach_campaign_list'); orCampaigns = data || orCampaigns;
+  renderSequences();
+}
+
+async function syncInstantly() {
+  const btn = $('or-sync-btn');
+  btn.disabled = true; btn.textContent = 'Syncing…';
+  try {
+    const r = await orSend('sync');
+    const lines = Object.keys(r.campaigns || {}).map(function (k) {
+      const n = orCampaigns.find(function (c) { return c.key === k; });
+      return (n ? n.label : k) + ': ' + r.campaigns[k];
+    });
+    toast('Synced ✓ ' + (lines.length ? lines.join(' · ') : 'no approved sequences yet'));
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = '⇅ Sync to Instantly';
+    loadSending();
+  }
+}
+
+async function campaignState(key, to) {
+  try { await orSend(to, { niche: key }); toast(to === 'pause' ? 'Sending paused' : 'Sending resumed'); }
+  catch (err) { toast(err.message, true); }
+  const { data } = await db.rpc('outreach_campaign_list'); orCampaigns = data || orCampaigns;
+  renderSequences();
+}
+
+async function loadOutreachEvents() {
+  const host = $('or-events');
+  const { data, error } = await db.rpc('outreach_event_list', { p_limit: 40 });
+  if (error) { host.innerHTML = '<div class="empty">' + jmEsc(error.message) + '</div>'; return; }
+  const rows = data || [];
+  host.innerHTML = rows.length ? rows.map(function (e) {
+    return '<div class="or-sup-item" style="flex-wrap:wrap">' +
+      '<span class="or-sub" style="min-width:90px">' + jmEsc(fmtWhen(e.received_at)) + '</span>' +
+      '<b style="font-size:12px">' + jmEsc(String(e.event_type).replace(/_/g, ' ')) + '</b>' +
+      '<span style="flex:1;min-width:160px">' + jmEsc(e.business_name || e.lead_email || '') + '</span>' +
+      '<span class="or-sub">' + jmEsc(e.handled || '') + '</span>' +
+      (e.body && /repl/.test(e.event_type) ? '<div class="or-preview" style="flex-basis:100%;margin-top:4px">' + jmEsc(e.body) + '</div>' : '') +
+    '</div>';
+  }).join('') : '<div class="empty">Nothing yet. Sends, replies, bounces and unsubscribes show here once campaigns run.</div>';
+}
+
+// ── Today's batch ─────────────────────────────────────────────────────────
+let orBatch = [];
+async function loadBatch() {
+  const host = $('or-batch-list'), note = $('or-batch-note');
+  const [candR, campR, setR] = await Promise.all([
+    db.rpc('outreach_batch_candidates', { p_limit: 300 }), db.rpc('outreach_campaign_list'), db.rpc('outreach_settings_get'),
+  ]);
+  if (candR.error) { host.innerHTML = '<div class="empty">' + jmEsc(candR.error.message) + '</div>'; return; }
+  orBatch = candR.data || [];
+  orCampaigns = campR.data || [];
+  orSender = setR.data || orSender;
+  if (!orNiches.length) { const nr = await db.rpc('outreach_niche_list'); orNiches = nr.data || []; }
+  const byKey = Object.fromEntries(orCampaigns.map(function (c) { return [c.key, c]; }));
+  const targets = Object.fromEntries((orNiches.length ? orNiches : []).map(function (n) { return [n.key, Number(n.daily_target || 25)]; }));
+  const ready = orCampaigns.filter(function (c) { return c.sequence_approved_at && c.instantly_campaign_id; });
+  note.innerHTML = ready.length
+    ? 'Sending for: ' + ready.map(function (c) { return '<b>' + jmEsc(c.label) + '</b>'; }).join(', ') + '. Each niche\'s best ' +
+      'prospects are ticked up to its daily target.'
+    : 'No niche is ready to send yet: write and approve its sequence, then Sync, on the <a href="#" onclick="nav(\'outreach-sending\');return false" style="color:var(--acc)">Sending</a> tab.';
+  if (!orBatch.length) {
+    host.innerHTML = '<div class="empty">Nobody ready for review. Run today\'s search on the Overview tab.</div>';
+    $('or-batch-bar').style.display = 'none';
+    return;
+  }
+  const taken = {};
+  host.innerHTML = orBatch.map(function (p) {
+    const c = byKey[p.niche_key] || {};
+    taken[p.niche_key] = (taken[p.niche_key] || 0) + 1;
+    const on = p.sequence_ready && taken[p.niche_key] <= (targets[p.niche_key] || 25);
+    const first = (Array.isArray(c.sequence) && c.sequence[0]) || null;
+    return '<div class="or-bitem' + (p.sequence_ready ? '' : ' off') + '" data-id="' + p.id + '">' +
+      '<input type="checkbox" class="ob-pick" value="' + p.id + '"' + (on ? ' checked' : '') + (p.sequence_ready ? '' : ' disabled') + ' onchange="batchCount()">' +
+      '<div class="main">' +
+        '<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">' +
+          '<span class="or-fit' + (Number(p.fit_score) >= 6 ? ' good' : '') + '">' + Number(p.fit_score || 0) + '/10</span>' +
+          '<strong>' + jmEsc(p.business_name) + '</strong>' +
+          '<span class="or-sub">' + jmEsc([c.label, [p.suburb, p.state].filter(Boolean).join(' ')].filter(Boolean).join(' · ')) + '</span>' +
+        '</div>' +
+        '<div class="or-sub" style="margin-top:2px">' + jmEsc(p.email || '') + (p.contact_name ? ' · ' + jmEsc(p.contact_name) : '') +
+          (p.email_source_url ? ' · <a href="' + orAttr(p.email_source_url) + '" target="_blank" rel="noopener" style="color:inherit">published here ↗</a>' : '') + '</div>' +
+        '<div class="or-sub" style="margin-top:2px">' + jmEsc(String(p.status_reason || '').replace(/^\d+\/10:\s*/, '')) + '</div>' +
+        '<textarea class="fi ob-opener" rows="2" placeholder="Opening line" onchange="saveOpener(\'' + p.id + '\',this.value)">' + jmEsc(p.opener || '') + '</textarea>' +
+        (first ? '<button class="btn btn-xs" type="button" style="margin-top:6px" onclick="batchPreview(\'' + p.id + '\')">Preview email</button><div class="or-preview" id="ob-prev-' + p.id + '" style="display:none"></div>' : '') +
+      '</div></div>';
+  }).join('');
+  $('or-batch-bar').style.display = '';
+  batchCount();
+}
+
+function batchCount() {
+  const n = document.querySelectorAll('.ob-pick:checked').length;
+  setText('or-batch-count', n + ' selected');
+  $('or-batch-btn').disabled = !n;
+  $('or-batch-btn').textContent = n ? 'Approve & send ' + n : 'Approve & send';
+}
+function batchSelect(on) {
+  document.querySelectorAll('.ob-pick:not(:disabled)').forEach(function (c) { c.checked = on; });
+  batchCount();
+}
+async function saveOpener(id, v) {
+  const { error } = await db.rpc('prospect_set_opener', { p_id: id, p_opener: v });
+  if (error) { toast('Could not save the line: ' + error.message, true); return; }
+  const p = orBatch.find(function (x) { return x.id === id; }); if (p) p.opener = v;
+}
+function batchPreview(id) {
+  const box = $('ob-prev-' + id);
+  if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+  const p = orBatch.find(function (x) { return x.id === id; });
+  const c = orCampaigns.find(function (x) { return x.key === p.niche_key; });
+  const st = c.sequence[0];
+  box.textContent = 'Subject: ' + renderEmail(st.subject, p) + '\n\n' + renderEmail(st.body, p) + senderFooter();
+  box.style.display = '';
+}
+
+async function approveBatch() {
+  const ids = Array.prototype.map.call(document.querySelectorAll('.ob-pick:checked'), function (c) { return c.value; });
+  if (!ids.length) return;
+  if (!confirm('Send the sequence to ' + ids.length + ' business' + (ids.length === 1 ? '' : 'es') + '?\n\n' +
+    'Each is checked once more against the do-not-contact list, the pipeline and your clients. The first emails go out through Instantly over your sending hours.')) return;
+  const btn = $('or-batch-btn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const { data, error } = await db.rpc('outreach_batch_approve', { p_ids: ids });
+    if (error) throw error;
+    const skipped = (data && data.skipped) || [];
+    let msg = (data.queued || 0) + ' approved';
+    if (data.queued) {
+      const r = await orSend('push');
+      const res = r.results || {};
+      const uploaded = Object.values(res).reduce(function (a, v) { return a + (typeof v === 'object' && v ? Number(v.uploaded || 0) : 0); }, 0);
+      const problems = Object.keys(res).filter(function (k) { return typeof res[k] === 'string'; }).map(function (k) { return k + ': ' + res[k]; });
+      msg += ' · ' + uploaded + ' in Instantly' + (problems.length ? ' · ' + problems.join('; ') : '');
+    }
+    if (skipped.length) msg += ' · ' + skipped.length + ' skipped (' + skipped.slice(0, 3).map(function (s) { return s.business + ': ' + s.reason; }).join('; ') + (skipped.length > 3 ? '…' : '') + ')';
+    toast(msg);
+  } catch (err) {
+    toast('Could not send: ' + (err.message || err), true);
+  } finally {
+    loadBatch();
+  }
 }
 
 async function openJarvisPosts() {
