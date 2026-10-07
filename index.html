@@ -1131,8 +1131,6 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
           <span id="crm-repview-stats" style="font-size:11px;color:var(--acc);font-family:var(--mono)"></span>
         </div>
         <div class="kg kg-fit mb4 rep-stat-strip" style="display:none">
-          <div class="kpi"><div class="klabel">Calls Taken</div><div class="kval blu" id="rep-calls">-</div></div>
-          <div class="kpi"><div class="klabel">Pickup Rate</div><div class="kval" id="rep-pickup">-</div></div>
           <div class="kpi"><div class="klabel">Close Rate</div><div class="kval grn" id="rep-close">-</div><div class="ksub" id="rep-close-sub"></div></div>
           <div class="kpi"><div class="klabel">My Open Leads</div><div class="kval" id="rep-open">-</div></div>
           <div class="kpi"><div class="klabel">Avg Commission / Close</div><div class="kval grn" id="rep-comm">-</div><div class="ksub" id="rep-comm-sub"></div></div>
@@ -4774,7 +4772,7 @@ async function loadCRM(resetPage) {
   if (IS_REP) loadRepStats();
 }
 
-// Rep performance strip: calls taken, pickup rate, close rate, open leads.
+// Rep performance strip: close rate, open leads, commission per close.
 // All data here is already RLS-scoped to the rep's own assigned leads.
 async function loadRepStats() {
   const leads = crmPipelineLeads || [];
@@ -4798,11 +4796,6 @@ async function loadRepStats() {
     setText('rep-comm-sub', (comm.priced ? money(comm.total) + ' from ' + comm.priced + ' close' + (comm.priced === 1 ? '' : 's') : 'no priced closes yet') + (gaps ? ' · ' + gaps : ''));
   }
 
-  const { data: logs } = await db.from('lead_contact_log').select('contact_type, outcome');
-  const calls = (logs || []).filter(l => l.contact_type === 'call');
-  const answered = calls.filter(l => l.outcome !== 'no_answer').length;
-  setText('rep-calls', calls.length);
-  setText('rep-pickup', calls.length ? Math.round(answered / calls.length * 100) + '%' : '-');
 }
 function renderCRM() {
   let allLeads = crmAllLeads;           // table + KPIs (date-filtered)
