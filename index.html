@@ -483,29 +483,53 @@ td strong{font-weight:500}
 .overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;backdrop-filter:blur(10px);padding:16px}
 .overlay.open{display:flex}
 .overlay.stacked{z-index:520}
-/* Cold outreach screen */
-#m-outreach .modal{max-width:760px}
-.or-niche{padding:14px 0;border-bottom:1px solid var(--bd)}
+/* Cold outreach section */
+.or-niches{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:14px}
+.or-niche{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:16px 18px}
+.or-niche.on{border-color:color-mix(in srgb,var(--grn) 45%,var(--bd))}
 .or-head{display:flex;align-items:center;gap:10px}
 .or-head label.or-name{display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;flex:1;min-width:0}
 .or-head label.or-name input{width:18px;height:18px;margin:0;flex:0 0 auto}
 .or-head .or-dt{font-size:11px;color:var(--ink3);margin:0;white-space:nowrap}
 .or-head .or-dt input{width:64px;display:inline-block;padding:5px 6px;margin-left:4px}
+.or-live{font-size:9.5px;font-family:var(--mono);padding:2px 7px;border-radius:10px;background:var(--s2);color:var(--ink3);text-transform:uppercase;letter-spacing:.06em}
+.or-niche.on .or-live{background:color-mix(in srgb,var(--grn) 16%,transparent);color:var(--grn)}
 .or-stats{font-size:11px;color:var(--ink3);margin:4px 0 0 26px}
-.or-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-top:10px}
+.or-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:12px}
+.or-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.or-step{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:12px 14px;font-size:11.5px;color:var(--ink2);line-height:1.5}
+.or-step b{display:block;font-size:12.5px;color:var(--ink);margin-bottom:3px}
+.or-step .st{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3)}
+.or-step.done .st{color:var(--grn)}
+.or-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.or-filters .fi{width:auto;min-width:150px}
+.or-filters .fi.grow{flex:1;min-width:200px}
+.or-sub{font-size:11px;color:var(--ink3)}
+.or-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:16px 18px}
 .or-sup-row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
-.or-sup-item{display:flex;gap:10px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--bd)}
+.or-sup-item{display:flex;gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--bd);font-size:12px}
+.or-sup-item:last-child{border-bottom:none}
 .or-sup-item .v{font-family:var(--mono);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:700px){
-  #m-outreach{padding:8px}
-  #m-outreach .modal{max-height:94vh;padding:18px 16px}
-  /* iOS zooms into any field under 16px when it is tapped */
-  #m-outreach .fi{font-size:16px}
+  .or-niches{grid-template-columns:1fr}
+  #panel-outreach .kg.c4{grid-template-columns:1fr 1fr;gap:10px}
+  #panel-outreach .kpi{padding:12px 14px}
+  .or-niche,.or-card{padding:14px}
+  #panel-outreach .fi,#panel-outreach-prospects .fi,#panel-outreach-dnc .fi{font-size:16px}
   .or-save{width:100%;padding:10px;font-size:13px}
+  .or-filters .fi{flex:1 1 100%;min-width:0}
   .or-sup-row > *{flex:1 1 100% !important}
   .or-sup-row .btn{padding:10px}
   .or-sup-item{flex-wrap:wrap;gap:2px 10px}
   .or-sup-item .v{flex-basis:100%}
+  /* Prospects read as cards on a phone: no sideways scrolling table. */
+  #or-pr-table{width:100%}
+  #or-pr-table thead{display:none}
+  #or-pr-table tbody tr{display:block;padding:10px 14px;border-bottom:1px solid var(--bd)}
+  #or-pr-table tbody td{display:block;padding:2px 0;border:none}
+  #or-pr-table tbody td.empty{padding:28px 0}
+  #or-pr-table tbody tr:hover td{background:none}
+}
 }
 .modal{
   background:var(--s1);border:1px solid var(--bd2);
@@ -900,7 +924,6 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
       <button class="jv-mic admin-only-field" id="jv-log" onclick="openJarvisLog()" title="What Jarvis has done">☷</button>
       <button class="jv-mic admin-only-field" id="jv-mind" onclick="openJarvisMind()" title="What he remembers and has scheduled">✦</button>
       <button class="jv-mic admin-only-field" id="jv-posts" onclick="openJarvisPosts()" title="Posts he has drafted">▦</button>
-      <button class="jv-mic admin-only-field" id="jv-outreach" onclick="openOutreach()" title="Cold outreach: niches and do-not-contact list">⌖</button>
       <button class="jv-mic" id="jv-new" onclick="JV.reset()" title="New conversation">⟲</button>
       <button class="jv-mic" id="jv-hud-btn" onclick="JV.toggleHud()" title="Full screen">⬚</button>
       <button class="jv-mic" id="jv-writes" onclick="JV.toggleWrites()" title="Read-only">🔒</button>
@@ -963,6 +986,15 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
           </button>
           <button class="navbtn" data-panel="leads" onclick="nav('leads',this)">
             <span class="ni"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>PPL Lead Distribution
+          </button>
+        </div>
+
+        <div class="sb-divider"></div>
+
+        <div class="sb-group">
+          <span class="sb-group-label">Growth</span>
+          <button class="navbtn" data-panel="outreach" onclick="nav('outreach',this)">
+            <span class="ni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></svg></span>Cold Outreach
           </button>
         </div>
 
@@ -1475,6 +1507,72 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
 
       <!-- ══ PPL CONVERSATIONS ══ -->
       <!-- ══ SALES CONVERSATIONS ══ -->
+      <!-- ══ COLD OUTREACH ══ -->
+      <!-- Which niches Jarvis prospects, who he has found, and who must never be
+           contacted. Nothing here sends anything: finding, verifying and
+           sending arrive in later stages, and every daily batch waits for
+           approval. -->
+      <div class="panel" id="panel-outreach">
+        <div class="ph">
+          <div class="ph-left"><h1>Cold Outreach</h1><p>Daily prospecting by niche, approved by you before anything sends</p></div>
+          <div class="ph-right"><button class="btn btn-sm" onclick="loadOutreach()">↻ Refresh</button></div>
+        </div>
+        <div class="kg c4 mb4">
+          <div class="kpi"><div class="klabel">Niches Live</div><div class="kval grn" id="or-k-live">-</div><div class="ksub" id="or-k-live-sub">of 4</div></div>
+          <div class="kpi"><div class="klabel">Daily Target</div><div class="kval" id="or-k-target">-</div><div class="ksub">prospects / day, live niches</div></div>
+          <div class="kpi"><div class="klabel">Prospects Found</div><div class="kval blu" id="or-k-found">-</div><div class="ksub" id="or-k-found-sub">all time</div></div>
+          <div class="kpi"><div class="klabel">Replies</div><div class="kval" id="or-k-replies">-</div><div class="ksub" id="or-k-replies-sub">from contacted</div></div>
+        </div>
+        <div class="sl">Niches <div class="sl-line"></div></div>
+        <div class="or-niches" id="or-niches"><div class="empty">Loading...</div></div>
+        <div class="sl">How it runs <div class="sl-line"></div></div>
+        <div class="or-steps">
+          <div class="or-step done"><span class="st">Ready</span><b>1 · Niches &amp; safeguards</b>Niches on or off, and one do-not-contact list every sender checks.</div>
+          <div class="or-step"><span class="st">Next</span><b>2 · Find &amp; verify</b>Businesses found daily per niche, with where each email was published, then verified.</div>
+          <div class="or-step"><span class="st">Later</span><b>3 · Qualify &amp; personalise</b>Each one scored for fit and given an opener written for them.</div>
+          <div class="or-step"><span class="st">Later</span><b>4 · Send &amp; replies</b>Warmed inboxes send the batch you approve; replies come back here.</div>
+          <div class="or-step"><span class="st">Later</span><b>5 · Daily run</b>Jarvis builds the batch each morning and texts you to approve it.</div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-outreach-prospects">
+        <div class="ph">
+          <div class="ph-left"><h1>Prospects</h1><p>Every business found, and where it is up to</p></div>
+          <div class="ph-right"><button class="btn btn-sm" onclick="loadProspects()">↻ Refresh</button></div>
+        </div>
+        <div class="or-filters">
+          <select class="fi" id="or-pr-niche" onchange="orPrPage=0;loadProspects()"><option value="">All niches</option></select>
+          <select class="fi" id="or-pr-status" onchange="orPrPage=0;loadProspects()"><option value="">Any status</option></select>
+          <input class="fi grow" id="or-pr-q" type="search" placeholder="Search business, email, website or suburb" oninput="orPrSearch()">
+        </div>
+        <div class="twrap">
+          <table id="or-pr-table">
+            <thead><tr><th>Business</th><th>Niche</th><th>Email</th><th>Location</th><th>Status</th><th>Found</th></tr></thead>
+            <tbody id="or-pr-tbody"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
+          </table>
+        </div>
+        <div id="or-pr-pager" style="margin-top:10px"></div>
+      </div>
+
+      <div class="panel" id="panel-outreach-dnc">
+        <div class="ph">
+          <div class="ph-left"><h1>Do Not Contact</h1><p>One list every email and text checks before it sends</p></div>
+          <div class="ph-right"><button class="btn btn-sm" onclick="loadSuppressions()">↻ Refresh</button></div>
+        </div>
+        <div class="or-card mb4">
+          <div class="or-sup-row">
+            <div class="frow" style="flex:0 0 150px;margin:0"><label class="flabel">Type</label>
+              <select class="fi" id="or-sup-kind"><option value="email">Email</option><option value="domain">Website / domain</option><option value="phone">Phone</option></select>
+            </div>
+            <div class="frow" style="flex:2;min-width:200px;margin:0"><label class="flabel">Value</label><input class="fi" id="or-sup-value" placeholder="name@business.com.au, business.com.au or 04…"></div>
+            <div class="frow" style="flex:1;min-width:160px;margin:0"><label class="flabel">Note (optional)</label><input class="fi" id="or-sup-note"></div>
+            <button class="btn btn-p" type="button" onclick="addSuppression()">Add</button>
+          </div>
+          <p class="or-sub" style="margin:12px 0 0;line-height:1.6">Cold email, pipeline emails and texts all check this list. Unsubscribes and bounces land here automatically once sending is live, and stay - they are the recipient's choice. Anyone already in your pipeline, a client, or opted out of SMS is never cold-contacted, without needing to be added here.</p>
+        </div>
+        <div class="or-card" id="or-sup-list"><div class="empty">Loading...</div></div>
+      </div>
+
       <div class="panel" id="panel-sales-conv">
         <div class="ph">
           <div class="ph-left"><h1>Sales Conversations</h1><p>Inbound &amp; outbound SMS threads with sales pipeline leads</p></div>
@@ -1838,6 +1936,7 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
     <button class="bnbtn" data-panel="ppl" onclick="nav('managed',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></span><span class="bnbtn-lbl">Clients</span></button>
     <button class="bnbtn" data-panel="finance" onclick="nav('finance',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></span><span class="bnbtn-lbl">Finance</span></button>
     <button class="bnbtn" data-panel="files" onclick="nav('files',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg></span><span class="bnbtn-lbl">Files</span></button>
+    <button class="bnbtn" data-panel="outreach" onclick="nav('outreach',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></svg></span><span class="bnbtn-lbl">Outreach</span></button>
     <button class="bnbtn" data-panel="salesreps" onclick="nav('salesreps',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0M16 4a3.5 3.5 0 010 7M18 20a6.5 6.5 0 00-3-5.5"/></svg></span><span class="bnbtn-lbl">Team</span></button>
   </div>
 </div><!-- /app -->
@@ -2970,36 +3069,6 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
   </div>
 </div>
 
-<!-- Cold outreach -->
-<!-- Stage 1 of cold outreach: which niches are switched on, what each one is
-     searched for and offered, and the shared do-not-contact list. Nothing here
-     finds or sends anything yet; switching a niche on only marks it as one
-     Jarvis may build batches for once those stages exist. -->
-<div class="overlay" id="m-outreach">
-  <div class="modal">
-    <h2>⌖ Cold outreach</h2>
-    <div class="msub">Niches to prospect, and who must never be contacted</div>
-    <div id="or-niches" style="margin-top:6px">
-      <div style="color:var(--ink3);font-size:12px">Loading…</div>
-    </div>
-
-    <div style="margin:18px 0 6px;font-family:var(--mono);font-size:8.5px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--bd);padding-bottom:7px">Do not contact</div>
-    <div class="or-sup-row">
-      <div class="frow" style="flex:0 0 130px;margin:0"><label class="flabel">Type</label>
-        <select class="fi" id="or-sup-kind"><option value="email">Email</option><option value="domain">Website / domain</option><option value="phone">Phone</option></select>
-      </div>
-      <div class="frow" style="flex:1;min-width:180px;margin:0"><label class="flabel">Value</label><input class="fi" id="or-sup-value" placeholder="name@business.com.au, business.com.au or 04…"></div>
-      <div class="frow" style="flex:1;min-width:140px;margin:0"><label class="flabel">Note (optional)</label><input class="fi" id="or-sup-note"></div>
-      <button class="btn btn-p" type="button" onclick="addSuppression()">Add</button>
-    </div>
-    <div id="or-sup-list" style="max-height:30vh;overflow-y:auto;margin-top:10px;font-size:11.5px"></div>
-    <p style="font-size:10.5px;color:var(--ink3);margin:10px 0 0;line-height:1.6">One list for everything: cold email, pipeline emails and texts all check it. Unsubscribes and bounces land here automatically once sending is live, and stay - they are the recipient's choice. Anyone already in your pipeline, a client, or opted out of SMS is never cold-contacted.</p>
-    <div class="macts">
-      <button class="btn" onclick="closeModal('m-outreach')">Close</button>
-    </div>
-  </div>
-</div>
-
 <!-- What Jarvis knows and has planned -->
 <!-- Everything that shapes what he does next without you asking: the facts he
      carries into every conversation, and the work he has scheduled. Both are
@@ -3591,6 +3660,11 @@ const PANEL_GROUPS = {
     {panel:'emailtpl',   label:'Email Templates', adminOnly:true},
     {panel:'sentmail',   label:'Sent Emails'}
   ]},
+  outreach: {label:'Cold Outreach', members:[
+    {panel:'outreach',           label:'Overview'},
+    {panel:'outreach-prospects', label:'Prospects'},
+    {panel:'outreach-dnc',       label:'Do Not Contact'}
+  ]},
   salesreps: {label:'Team', members:[
     {panel:'salesreps', label:'Sales Reps'},
     {panel:'team',      label:'Team Members'},
@@ -3735,6 +3809,9 @@ function nav(panel, el) {
   if (panel === 'salesreps') loadReps();
   if (panel === 'team') loadTeam();
   if (panel === 'payrates') loadPayRates();
+  if (panel === 'outreach') loadOutreach();
+  if (panel === 'outreach-prospects') loadProspects();
+  if (panel === 'outreach-dnc') loadSuppressions();
 }
 
 // ── Role-based UI ───────────────────────────────────────────────────────────
@@ -9548,52 +9625,84 @@ const JP_STATUS = {
 };
 let jpPosts = [];
 
-// ── Cold outreach: niches + do-not-contact ────────────────────────────────
+// ── Cold outreach: niches, prospects, do-not-contact ──────────────────────
+// Statuses in the order a prospect moves through them, with the words shown.
 const OR_STATUS = [
-  ['new', 'found'], ['verified', 'verified'], ['qualified', 'qualified'], ['contacted', 'contacted'],
-  ['replied', 'replied'], ['interested', 'interested'], ['blocked', 'blocked'], ['rejected', 'not a fit'],
+  ['new', 'found'], ['enriched', 'enriched'], ['verified', 'verified'], ['qualified', 'ready for review'],
+  ['queued', 'queued'], ['contacted', 'contacted'], ['replied', 'replied'], ['interested', 'interested'],
+  ['converted', 'became a lead'], ['not_interested', 'not interested'], ['unsubscribed', 'unsubscribed'],
+  ['bounced', 'bounced'], ['blocked', 'blocked'], ['rejected', 'not a fit'],
 ];
+const OR_STATUS_LABEL = Object.fromEntries(OR_STATUS);
+const OR_STATUS_COLOR = {
+  qualified: 'var(--acc)', contacted: 'var(--acc)', replied: 'var(--amb)', interested: 'var(--grn)',
+  converted: 'var(--grn)', blocked: 'var(--red)', bounced: 'var(--red)', unsubscribed: 'var(--red)',
+};
 let orNiches = [];
+let orPrPage = 0;
+let orPrTimer = null;
 const orAttr = function (v) { return jmEsc(v).replace(/"/g, '&quot;'); };
+const orDate = function (d) { return d ? new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : '-'; };
 
-async function openOutreach() {
-  openModal('m-outreach');
-  await Promise.all([loadOutreachNiches(), loadSuppressions()]);
-}
-
-async function loadOutreachNiches() {
+async function loadOutreach() {
   const host = $('or-niches');
   try {
     const { data, error } = await db.rpc('outreach_niche_list');
     if (error) throw error;
     orNiches = data || [];
-    host.innerHTML = orNiches.map(function (n) {
-      const c = n.counts || {};
-      const total = Object.values(c).reduce(function (a, b) { return a + Number(b || 0); }, 0);
-      const stats = total
-        ? OR_STATUS.filter(function (s) { return c[s[0]]; }).map(function (s) { return c[s[0]] + ' ' + s[1]; }).join(' · ')
-        : 'No prospects yet';
-      return '<div class="or-niche">' +
-        '<div class="or-head">' +
-          '<label class="or-name"><input type="checkbox" id="or-en-' + n.key + '"' + (n.enabled ? ' checked' : '') + '>' +
-            '<b style="font-size:13.5px">' + jmEsc(n.label) + '</b></label>' +
-          '<label class="or-dt">per day<input class="fi" type="number" inputmode="numeric" min="0" max="300" id="or-dt-' + n.key + '" value="' + Number(n.daily_target) + '"></label>' +
-        '</div>' +
-        '<div class="or-stats">' + jmEsc(stats) + '</div>' +
-        '<div class="or-grid">' +
-          '<div class="frow" style="margin:0"><label class="flabel">Regions (comma separated, blank = nationwide)</label>' +
-            '<input class="fi" id="or-rg-' + n.key + '" value="' + orAttr((n.regions || []).join(', ')) + '" placeholder="QLD, Newcastle NSW"></div>' +
-          '<div class="frow" style="margin:0"><label class="flabel">Search terms (comma separated)</label>' +
-            '<input class="fi" id="or-st-' + n.key + '" value="' + orAttr((n.search_terms || []).join(', ')) + '"></div>' +
-        '</div>' +
-        '<div class="frow" style="margin:8px 0 0"><label class="flabel">Offer - what we pitch this niche, in plain words</label>' +
-          '<textarea class="fi" id="or-of-' + n.key + '" rows="2" style="width:100%;resize:vertical" placeholder="e.g. Exclusive, pre-qualified roofing leads in your area, pay per lead, no lock-in">' + jmEsc(n.offer || '') + '</textarea></div>' +
-        '<div style="margin-top:10px"><button class="btn btn-p btn-xs or-save" type="button" onclick="saveOutreachNiche(\'' + n.key + '\')">Save ' + jmEsc(n.label) + '</button></div>' +
-      '</div>';
-    }).join('');
   } catch (err) {
-    host.textContent = 'Could not load niches: ' + (err.message || err);
+    host.innerHTML = '<div class="empty">Could not load niches: ' + jmEsc(err.message || err) + '</div>';
+    return;
   }
+  renderOutreachKpis();
+  host.innerHTML = orNiches.map(function (n) {
+    const c = n.counts || {};
+    const total = Object.values(c).reduce(function (a, b) { return a + Number(b || 0); }, 0);
+    const stats = total
+      ? OR_STATUS.filter(function (s) { return c[s[0]]; }).map(function (s) { return c[s[0]] + ' ' + s[1]; }).join(' · ')
+      : 'No prospects yet';
+    return '<div class="or-niche' + (n.enabled ? ' on' : '') + '" id="or-card-' + n.key + '">' +
+      '<div class="or-head">' +
+        '<label class="or-name"><input type="checkbox" id="or-en-' + n.key + '"' + (n.enabled ? ' checked' : '') +
+          ' onchange="$(\'or-card-' + n.key + '\').classList.toggle(\'on\',this.checked)">' +
+          '<b style="font-size:14px">' + jmEsc(n.label) + '</b></label>' +
+        '<span class="or-live">' + (n.enabled ? 'On' : 'Off') + '</span>' +
+        '<label class="or-dt">per day<input class="fi" type="number" inputmode="numeric" min="0" max="300" id="or-dt-' + n.key + '" value="' + Number(n.daily_target) + '"></label>' +
+      '</div>' +
+      '<div class="or-stats">' + jmEsc(stats) + '</div>' +
+      '<div class="or-grid">' +
+        '<div class="frow" style="margin:0"><label class="flabel">Regions (blank = nationwide)</label>' +
+          '<input class="fi" id="or-rg-' + n.key + '" value="' + orAttr((n.regions || []).join(', ')) + '" placeholder="QLD, Newcastle NSW"></div>' +
+        '<div class="frow" style="margin:0"><label class="flabel">Search terms</label>' +
+          '<input class="fi" id="or-st-' + n.key + '" value="' + orAttr((n.search_terms || []).join(', ')) + '"></div>' +
+      '</div>' +
+      '<div class="frow" style="margin:8px 0 0"><label class="flabel">Offer - what we pitch this niche, in plain words</label>' +
+        '<textarea class="fi" id="or-of-' + n.key + '" rows="2" style="width:100%;resize:vertical" placeholder="e.g. Exclusive, pre-qualified ' + orAttr(n.label.toLowerCase()) + ' leads in your area, pay per lead, no lock-in">' + jmEsc(n.offer || '') + '</textarea></div>' +
+      '<div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+        '<button class="btn btn-p btn-sm or-save" type="button" onclick="saveOutreachNiche(\'' + n.key + '\')">Save</button>' +
+        '<span class="or-sub">Comma-separate regions and search terms.</span>' +
+      '</div>' +
+    '</div>';
+  }).join('') || '<div class="empty">No niches set up.</div>';
+}
+
+function renderOutreachKpis() {
+  const live = orNiches.filter(function (n) { return n.enabled; });
+  const sum = function (keys) {
+    return orNiches.reduce(function (a, n) {
+      const c = n.counts || {};
+      return a + (keys ? keys : Object.keys(c)).reduce(function (b, k) { return b + Number(c[k] || 0); }, 0);
+    }, 0);
+  };
+  const contacted = sum(['contacted', 'replied', 'interested', 'not_interested', 'unsubscribed', 'bounced', 'converted']);
+  const replies = sum(['replied', 'interested', 'not_interested', 'converted']);
+  setText('or-k-live', live.length);
+  setText('or-k-live-sub', 'of ' + orNiches.length + ' niches');
+  setText('or-k-target', live.reduce(function (a, n) { return a + Number(n.daily_target || 0); }, 0));
+  setText('or-k-found', sum(null));
+  setText('or-k-found-sub', sum(['qualified']) + ' ready for review');
+  setText('or-k-replies', replies);
+  setText('or-k-replies-sub', contacted ? Math.round(100 * replies / contacted) + '% of ' + contacted + ' contacted' : 'none contacted yet');
 }
 
 async function saveOutreachNiche(key) {
@@ -9608,13 +9717,73 @@ async function saveOutreachNiche(key) {
   });
   if (error) { toast('Could not save: ' + error.message, true); return; }
   toast('Saved ✓');
-  loadOutreachNiches();
+  loadOutreach();
+}
+
+function orPrSearch() {
+  clearTimeout(orPrTimer);
+  orPrTimer = setTimeout(function () { orPrPage = 0; loadProspects(); }, 300);
+}
+
+async function loadProspects() {
+  const tb = $('or-pr-tbody');
+  const nicheSel = $('or-pr-niche'), statusSel = $('or-pr-status');
+  // Fill the filters once; the niche list may not be loaded yet.
+  if (nicheSel.options.length <= 1) {
+    if (!orNiches.length) {
+      const { data } = await db.rpc('outreach_niche_list');
+      orNiches = data || [];
+    }
+    nicheSel.innerHTML = '<option value="">All niches</option>' +
+      orNiches.map(function (n) { return '<option value="' + orAttr(n.key) + '">' + jmEsc(n.label) + '</option>'; }).join('');
+  }
+  if (statusSel.options.length <= 1) {
+    statusSel.innerHTML = '<option value="">Any status</option>' +
+      OR_STATUS.map(function (s) { return '<option value="' + s[0] + '">' + jmEsc(s[1]) + '</option>'; }).join('');
+  }
+  const labels = Object.fromEntries(orNiches.map(function (n) { return [n.key, n.label]; }));
+  try {
+    const { data, error } = await db.rpc('prospect_list', {
+      p_niche: nicheSel.value || null, p_status: statusSel.value || null, p_search: $('or-pr-q').value || null,
+      p_limit: PAGE_SIZE, p_offset: orPrPage * PAGE_SIZE,
+    });
+    if (error) throw error;
+    const rows = data || [];
+    if (!rows.length) {
+      const filtered = nicheSel.value || statusSel.value || $('or-pr-q').value.trim();
+      tb.innerHTML = '<tr><td colspan="6" class="empty">' + (filtered
+        ? 'No prospects match.'
+        : 'No prospects yet. Jarvis starts finding them once a niche is switched on and finding is connected.') + '</td></tr>';
+      $('or-pr-pager').innerHTML = '';
+      return;
+    }
+    tb.innerHTML = rows.map(function (r) {
+      const site = r.website ? '<div class="or-sub">' + jmEsc(r.website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')) + '</div>' : '';
+      const who = r.contact_name ? '<div class="or-sub">' + jmEsc(r.contact_name + (r.contact_role ? ', ' + r.contact_role : '')) + '</div>' : '';
+      const verdict = r.email_verdict ? ' <span class="or-sub">· ' + jmEsc(r.email_verdict) + '</span>' : '';
+      const src = r.email_source_url ? '<div class="or-sub"><a href="' + orAttr(r.email_source_url) + '" target="_blank" rel="noopener" style="color:inherit">where it was published ↗</a></div>' : '';
+      const place = [r.suburb, r.state].filter(Boolean).join(' ');
+      const col = OR_STATUS_COLOR[r.status] || 'var(--ink2)';
+      return '<tr>' +
+        '<td><strong>' + jmEsc(r.business_name) + '</strong>' + site + who + '</td>' +
+        '<td>' + jmEsc(labels[r.niche_key] || r.niche_key) + '</td>' +
+        '<td>' + (r.email ? '<span style="font-family:var(--mono);font-size:12px">' + jmEsc(r.email) + '</span>' + verdict + src : '<span class="or-sub">no email yet</span>') + '</td>' +
+        '<td>' + jmEsc(place || '-') + '</td>' +
+        '<td><span style="color:' + col + ';font-weight:500">' + jmEsc(OR_STATUS_LABEL[r.status] || r.status) + '</span>' +
+          (r.status_reason ? '<div class="or-sub">' + jmEsc(r.status_reason) + '</div>' : '') + '</td>' +
+        '<td class="or-sub">' + orDate(r.found_at) + '</td>' +
+      '</tr>';
+    }).join('');
+    renderPager('or-pr-pager', orPrPage, Number(rows[0].total), function (p) { orPrPage = p; loadProspects(); });
+  } catch (err) {
+    tb.innerHTML = '<tr><td colspan="6" class="empty">Could not load prospects: ' + jmEsc(err.message || err) + '</td></tr>';
+  }
 }
 
 async function loadSuppressions() {
   const host = $('or-sup-list');
   try {
-    const { data, error } = await db.rpc('suppression_list', { p_limit: 200 });
+    const { data, error } = await db.rpc('suppression_list', { p_limit: 500 });
     if (error) throw error;
     const rows = data || [];
     host.innerHTML = rows.length
@@ -9623,12 +9792,13 @@ async function loadSuppressions() {
             '<span class="v">' + jmEsc(r.value) + '</span>' +
             '<span style="color:var(--ink3)">' + jmEsc(r.kind) + '</span>' +
             '<span style="color:var(--ink2)">' + jmEsc(r.reason.replace(/_/g, ' ')) + '</span>' +
-            '<span style="color:var(--ink3)">' + new Date(r.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) + '</span>' +
+            (r.note ? '<span class="or-sub">' + jmEsc(r.note) + '</span>' : '') +
+            '<span style="color:var(--ink3)">' + orDate(r.created_at) + '</span>' +
           '</div>';
         }).join('')
-      : '<div style="color:var(--ink3)">Nobody on the list yet.</div>';
+      : '<div class="empty">Nobody on the list yet.</div>';
   } catch (err) {
-    host.textContent = 'Could not load the list: ' + (err.message || err);
+    host.innerHTML = '<div class="empty">Could not load the list: ' + jmEsc(err.message || err) + '</div>';
   }
 }
 
@@ -9642,7 +9812,6 @@ async function addSuppression() {
   $('or-sup-value').value = ''; $('or-sup-note').value = '';
   toast('Added to do-not-contact ✓');
   loadSuppressions();
-  loadOutreachNiches();
 }
 
 async function openJarvisPosts() {
