@@ -1641,10 +1641,10 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
         <div class="sl">Sender <div class="sl-line"></div></div>
         <div class="or-card mb4">
           <div class="or-grid">
-            <div class="frow" style="margin:0"><label class="flabel">Your name (signs the emails)</label><input class="fi" id="os-name" placeholder="Jack"></div>
+            <div class="frow" style="margin:0"><label class="flabel">Sign-off name (optional)</label><input class="fi" id="os-name" placeholder="Blank signs as the business"></div>
             <div class="frow" style="margin:0"><label class="flabel">Business name</label><input class="fi" id="os-biz" placeholder="QuoteLeads"></div>
           </div>
-          <div class="frow" style="margin:8px 0 0"><label class="flabel">Postal address (required in every commercial email)</label><input class="fi" id="os-addr" placeholder="PO Box 123, Maroochydore QLD 4558"></div>
+          <div class="frow" style="margin:8px 0 0"><label class="flabel">Contact details (required - ABN, phone or website)</label><input class="fi" id="os-addr" placeholder="ABN 12 345 678 901 · quoteleads.com.au"></div>
           <div class="or-grid">
             <div class="frow" style="margin:0"><label class="flabel">Send from</label><input class="fi" id="os-from" type="time"></div>
             <div class="frow" style="margin:0"><label class="flabel">Send until</label><input class="fi" id="os-to" type="time"></div>
@@ -1654,7 +1654,7 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
           </div>
           <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
             <button class="btn btn-p btn-sm or-save" type="button" onclick="saveSender()">Save sender</button>
-            <span class="or-sub">Monday to Friday only. Every email ends with your name, business, address and "reply unsubscribe".</span>
+            <span class="or-sub">Monday to Friday only. Every email ends with the business name, these contact details and "reply unsubscribe" - what the Spam Act asks for.</span>
           </div>
         </div>
 
@@ -10045,12 +10045,12 @@ function renderEmail(text, p) {
     .replace(/\{company\}/g, (p && p.business_name) || 'your business')
     .replace(/\{suburb\}/g, (p && p.suburb) || 'your area')
     .replace(/\{opener\}/g, (p && p.opener) || '')
-    .replace(/\{sender\}/g, (orSender && orSender.sender_name) || '[your name]');
+    .replace(/\{sender\}/g, (orSender && (orSender.sender_name || orSender.business_name)) || 'QuoteLeads');
 }
 function senderFooter() {
   const s = orSender || {};
-  return '\n\n--\n' + (s.sender_name || '[your name]') + ', ' + (s.business_name || 'QuoteLeads') + '\n' +
-    (s.postal_address || '[postal address]') + '\nNot for you? Reply "unsubscribe" and you will not hear from us again.';
+  return '\n\n--\n' + (s.business_name || 'QuoteLeads') + ' · ' + (s.postal_address || '[contact details]') +
+    '\nNot for you? Reply "unsubscribe" and you will not hear from us again.';
 }
 
 async function loadSending() {

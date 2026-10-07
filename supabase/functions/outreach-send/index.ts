@@ -16,9 +16,10 @@
  * Called from the dashboard with the user's session (operators only, checked
  * by jarvis_assert_operator), or with the service-role key.
  *
- * Every email carries the Spam Act essentials: who it is from, how to reach
- * them, and a working unsubscribe (reply "unsubscribe" - handled by
- * outreach-webhook - plus the one-click unsubscribe header).
+ * Every email carries the Spam Act essentials: who it is from (the business
+ * name), how to reach them (the contact details - ABN, phone or website - kept
+ * in outreach_settings.postal_address), and a working unsubscribe (reply
+ * "unsubscribe" - handled by outreach-webhook - plus the one-click header).
  */
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -90,11 +91,11 @@ function toInstantly(text: string, s: Settings, html: boolean): string {
     .replace(/\{company\}/g, '{{companyName}}')
     .replace(/\{suburb\}/g, '{{suburb}}')
     .replace(/\{opener\}/g, '{{personalization}}')
-    .replace(/\{sender\}/g, html ? esc(s.sender_name ?? '') : (s.sender_name ?? ''))
+    .replace(/\{sender\}/g, html ? esc(s.sender_name || s.business_name) : (s.sender_name || s.business_name))
 }
 
 function footer(s: Settings): string {
-  return '<br/><br/>--<br/>' + esc(`${s.sender_name}, ${s.business_name}`) + '<br/>' + esc(s.postal_address ?? '') +
+  return '<br/><br/>--<br/>' + esc(`${s.business_name} · ${s.postal_address ?? ''}`) +
     '<br/>Not for you? Reply "unsubscribe" and you will not hear from us again.'
 }
 
@@ -207,8 +208,8 @@ async function syncBlocklist(db: SupabaseClient): Promise<number> {
 async function sync(db: SupabaseClient) {
   const s = await loadSettings(db)
   const missing = [
-    !s.sender_name && 'your name',
-    !s.postal_address && 'a postal address',
+    !s.business_name && 'the business name',
+    !s.postal_address && 'contact details (ABN, phone or website)',
     !s.sending_accounts.length && 'at least one sending inbox',
   ].filter(Boolean)
   if (missing.length) return { ok: false, error: `Fill in ${missing.join(', ')} under Sender first - every email must say who it is from.` }
