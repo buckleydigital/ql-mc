@@ -547,7 +547,9 @@ td strong{font-weight:500}
   .or-bitem{padding:10px 12px}
   .or-batch-bar{flex-wrap:wrap}
   .or-batch-bar #or-batch-btn{flex:1 1 100%;padding:11px}
-  #panel-outreach-batch .fi,#panel-outreach-sending .fi{font-size:16px}
+  #panel-outreach-batch .fi,#panel-outreach-sending .fi,#panel-outreach-stats .fi{font-size:16px}
+  #panel-outreach-stats .kg.c4{grid-template-columns:1fr 1fr;gap:10px}
+  #panel-outreach-stats .kpi{padding:12px 14px}
   #panel-outreach-sending .ph-right{width:100%}
   #panel-outreach-sending .ph-right .btn{flex:1}
   .or-filters .fi{flex:1 1 100%;min-width:0}
@@ -1664,6 +1666,45 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
 
         <div class="sl">What Instantly reported <div class="sl-line"></div></div>
         <div class="or-card" id="or-events"><div class="empty">Loading...</div></div>
+      </div>
+
+      <!-- Stats: our own funnel (works from day one) plus Instantly's numbers
+           and inbox health once campaigns run. -->
+      <div class="panel" id="panel-outreach-stats">
+        <div class="ph">
+          <div class="ph-left"><h1>Outreach Stats</h1><p>From search to signed client, per niche</p></div>
+          <div class="ph-right">
+            <select class="fi" id="ost-days" onchange="loadOutreachStats()" style="width:auto">
+              <option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="">All time</option>
+            </select>
+            <button class="btn btn-sm" onclick="loadOutreachStats()">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="kg c4 mb4">
+          <div class="kpi"><div class="klabel">Businesses Emailed</div><div class="kval blu" id="ost-emailed">-</div><div class="ksub" id="ost-emailed-sub">-</div></div>
+          <div class="kpi"><div class="klabel">Reply Rate</div><div class="kval" id="ost-reply">-</div><div class="ksub" id="ost-reply-sub">-</div></div>
+          <div class="kpi"><div class="klabel">Interested</div><div class="kval grn" id="ost-int">-</div><div class="ksub" id="ost-int-sub">-</div></div>
+          <div class="kpi"><div class="klabel">Won</div><div class="kval grn" id="ost-won">-</div><div class="ksub" id="ost-won-sub">-</div></div>
+        </div>
+        <div class="chart-card mb4">
+          <div class="chart-title" style="display:flex;align-items:center;gap:8px">
+            <span style="flex:1">Emailed and replies per day</span>
+            <button class="btn btn-xs" type="button" onclick="toggleDailyTable()" id="ost-tbl-btn">Table</button>
+          </div>
+          <div class="chart-body" id="ost-chart-wrap"><canvas id="chart-outreach-daily"></canvas></div>
+          <div id="ost-daily-table" style="display:none"></div>
+        </div>
+        <div class="sl">Funnel by niche <div class="sl-line"></div></div>
+        <div class="twrap mb4">
+          <table id="ost-funnel">
+            <thead><tr><th>Niche</th><th>Found</th><th>Had email</th><th>Verified</th><th>Qualified</th><th>Emailed</th><th>Replied</th><th>Interested</th><th>Won</th><th>Bounced</th></tr></thead>
+            <tbody id="ost-funnel-body"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="sl">In Instantly <div class="sl-line"></div></div>
+        <div class="or-card mb4" id="ost-instantly"><div class="empty">Loading...</div></div>
+        <div class="sl">Cost of finding <div class="sl-line"></div></div>
+        <div class="or-card" id="ost-spend"><div class="empty">Loading...</div></div>
       </div>
 
       <div class="panel" id="panel-outreach-dnc">
@@ -3761,6 +3802,7 @@ const PANEL_GROUPS = {
     {panel:'outreach-prospects', label:'Prospects'},
     {panel:'outreach-batch',     label:"Today's Batch"},
     {panel:'outreach-sending',   label:'Sending'},
+    {panel:'outreach-stats',     label:'Stats'},
     {panel:'outreach-dnc',       label:'Do Not Contact'}
   ]},
   salesreps: {label:'Team', members:[
@@ -3912,6 +3954,7 @@ function nav(panel, el) {
   if (panel === 'outreach-dnc') loadSuppressions();
   if (panel === 'outreach-batch') loadBatch();
   if (panel === 'outreach-sending') loadSending();
+  if (panel === 'outreach-stats') loadOutreachStats();
 }
 
 // ── Role-based UI ───────────────────────────────────────────────────────────
@@ -10340,6 +10383,117 @@ async function approveBatch() {
   } finally {
     loadBatch();
   }
+}
+
+// ── Cold outreach: stats ──────────────────────────────────────────────────
+let ostChart = null;
+let ostDaily = [];
+const ostPct = function (a, b) { return b ? Math.round((1000 * a) / b) / 10 + '%' : '-'; };
+const ostMoney = function (v) { return '$' + Math.round(Number(v || 0)).toLocaleString('en-AU'); };
+
+async function loadOutreachStats() {
+  const raw = $('ost-days').value;
+  const days = raw ? parseInt(raw, 10) : null;
+  const [fR, dR, sR] = await Promise.all([
+    db.rpc('outreach_funnel', { p_days: days }),
+    db.rpc('outreach_daily', { p_days: days || 90 }),
+    db.rpc('outreach_spend', { p_days: days }),
+  ]);
+  if (fR.error) { $('ost-funnel-body').innerHTML = '<tr><td colspan="10" class="empty">' + jmEsc(fR.error.message) + '</td></tr>'; return; }
+  const rows = fR.data || [];
+  const sum = function (k) { return rows.reduce(function (a, r) { return a + Number(r[k] || 0); }, 0); };
+  const T = { found: sum('found'), emailed: sum('emailed'), replied: sum('replied'), interested: sum('interested'), won: sum('won'), won_value: sum('won_value'), qualified: sum('qualified') };
+
+  setText('ost-emailed', T.emailed);
+  setText('ost-emailed-sub', T.qualified + ' qualified · ' + T.found + ' found');
+  setText('ost-reply', T.emailed ? ostPct(T.replied, T.emailed) : '-');
+  setText('ost-reply-sub', T.replied + ' replied');
+  setText('ost-int', T.interested);
+  setText('ost-int-sub', T.emailed ? ostPct(T.interested, T.emailed) + ' of emailed' : 'none yet');
+  setText('ost-won', T.won);
+  setText('ost-won-sub', T.won ? ostMoney(T.won_value) + ' closed' : 'none yet');
+
+  const cell = function (n, of) {
+    return '<td>' + Number(n) + (of != null && Number(of) ? '<div class="or-sub">' + ostPct(n, of) + '</div>' : '') + '</td>';
+  };
+  $('ost-funnel-body').innerHTML = rows.map(function (r) {
+    return '<tr><td><strong>' + jmEsc(r.label) + '</strong></td>' +
+      cell(r.found) + cell(r.with_email, r.found) + cell(r.verified, r.with_email) + cell(r.qualified, r.verified) +
+      cell(r.emailed, r.qualified) + cell(r.replied, r.emailed) + cell(r.interested, r.emailed) +
+      '<td>' + Number(r.won) + (Number(r.won) ? '<div class="or-sub">' + ostMoney(r.won_value) + '</div>' : '') + '</td>' +
+      '<td>' + Number(r.bounced) + (Number(r.emailed) ? '<div class="or-sub" style="color:' + (r.bounced / r.emailed > 0.03 ? 'var(--red)' : 'var(--ink3)') + '">' + ostPct(r.bounced, r.emailed) + '</div>' : '') + '</td></tr>';
+  }).join('') || '<tr><td colspan="10" class="empty">No niches.</td></tr>';
+
+  ostDaily = dR.data || [];
+  drawOutreachDaily();
+
+  const sp = sR.data || {};
+  $('ost-spend').innerHTML = '<div class="or-sub" style="line-height:1.7">' +
+    Number(sp.runs || 0) + ' searches run · ' + Number(sp.searches || 0) + ' Google searches · ' +
+    Number(sp.verified || 0) + ' emails checked · AI scoring US$' + Number(sp.ai_cost_usd || 0).toFixed(2) +
+    (T.interested ? ' · about US$' + (Number(sp.ai_cost_usd || 0) / T.interested).toFixed(2) + ' of AI per interested reply' : '') + '</div>';
+
+  loadInstantlyStats(days);
+}
+
+function drawOutreachDaily() {
+  const canvas = $('chart-outreach-daily');
+  if (!canvas || typeof Chart === 'undefined') return;
+  if (ostChart) ostChart.destroy();
+  const labels = ostDaily.map(function (d) { return new Date(d.day + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }); });
+  ostChart = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Emailed', data: ostDaily.map(function (d) { return Number(d.emailed); }), backgroundColor: CHART.cat1, hoverBackgroundColor: CHART.hover(CHART.cat1), borderWidth: 0, borderRadius: 4, borderSkipped: false, categoryPercentage: .7, barPercentage: .82 },
+        { label: 'Replies', data: ostDaily.map(function (d) { return Number(d.replies); }), backgroundColor: CHART.cat2, hoverBackgroundColor: CHART.hover(CHART.cat2), borderWidth: 0, borderRadius: 4, borderSkipped: false, categoryPercentage: .7, barPercentage: .82 },
+      ],
+    },
+    options: chartBase({ plugins: { legend: chartLegend() }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }),
+  });
+  $('ost-daily-table').innerHTML = '<div class="twrap" style="margin-top:10px;max-height:260px;overflow-y:auto"><table><thead><tr><th>Day</th><th>Emailed</th><th>Replies</th><th>Interested</th></tr></thead><tbody>' +
+    ostDaily.slice().reverse().map(function (d) { return '<tr><td>' + jmEsc(d.day) + '</td><td>' + Number(d.emailed) + '</td><td>' + Number(d.replies) + '</td><td>' + Number(d.interested) + '</td></tr>'; }).join('') +
+    '</tbody></table></div>';
+}
+
+function toggleDailyTable() {
+  const t = $('ost-daily-table'), c = $('ost-chart-wrap'), b = $('ost-tbl-btn');
+  const showTable = t.style.display === 'none';
+  t.style.display = showTable ? '' : 'none';
+  c.style.display = showTable ? 'none' : '';
+  b.textContent = showTable ? 'Chart' : 'Table';
+}
+
+async function loadInstantlyStats(days) {
+  const host = $('ost-instantly');
+  host.innerHTML = '<div class="empty">Asking Instantly…</div>';
+  let r;
+  try { r = await orSend('stats', { days: days }); }
+  catch (err) { host.innerHTML = '<div class="empty" style="color:var(--red)">' + jmEsc(err.message) + '</div>'; return; }
+  const camps = r.campaigns || [], accts = r.accounts || [];
+  const pill = function (t) {
+    const cls = /active|warming/.test(t) ? 'good' : /paused|draft|maintenance|completed/.test(t) ? 'warn' : 'bad';
+    return '<span class="or-pill ' + cls + '">' + jmEsc(t) + '</span>';
+  };
+  host.innerHTML =
+    (camps.length
+      ? camps.map(function (c) {
+          const bounce = c.contacted ? c.bounced / c.contacted : 0;
+          return '<div class="or-acct"><b style="min-width:130px">' + jmEsc(c.label) + '</b>' + pill(c.state) +
+            '<span class="or-sub" style="flex:1;min-width:220px">' + Number(c.sent) + ' emails sent to ' + Number(c.contacted) + ' · ' +
+              Number(c.replies) + ' replies (' + ostPct(c.replies, c.contacted) + ') · ' + Number(c.unsubscribed) + ' unsubscribed · ' +
+              '<span style="color:' + (bounce > 0.03 ? 'var(--red)' : 'inherit') + '">' + Number(c.bounced) + ' bounced (' + ostPct(c.bounced, c.contacted) + ')</span>' +
+              (c.opportunities ? ' · ' + Number(c.opportunities) + ' opportunities' : '') + '</span></div>';
+        }).join('')
+      : '<div class="or-sub">No campaigns yet - they appear here after the first Sync on the Sending tab.</div>') +
+    '<div class="or-sub" style="margin:10px 0 6px">A niche pauses itself if more than 3% of a week\'s emails bounce (once 20 have gone), and Jarvis tells you.</div>' +
+    (accts.length
+      ? accts.map(function (a) {
+          return '<div class="or-acct"><span class="e">' + jmEsc(a.email) + '</span>' + pill(a.state) + pill(a.warmup) +
+            (a.warmup_score != null ? '<span class="or-sub">warm-up score ' + Number(a.warmup_score) + '</span>' : '') + '</div>';
+        }).join('')
+      : '<div class="or-sub">No inboxes connected in Instantly yet.</div>');
 }
 
 async function openJarvisPosts() {

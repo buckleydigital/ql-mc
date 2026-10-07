@@ -12,6 +12,9 @@
  *               their niche's campaign, re-checking the do-not-contact list
  *               one last time, and starts the campaign.
  *   pause / resume { niche } - stop or restart a niche's campaign.
+ *   stats { days } - Instantly's own numbers per niche campaign (sent,
+ *               replies, bounces, unsubscribes, opportunities) and inbox
+ *               health, for the Stats tab. Read-only.
  *
  * Called from the dashboard with the user's session (operators only, checked
  * by jarvis_assert_operator), or with the service-role key.
@@ -297,6 +300,48 @@ async function push(db: SupabaseClient) {
   return { ok: true, results: out }
 }
 
+type Analytics = {
+  campaign_id: string; campaign_status?: number; leads_count?: number; contacted_count?: number; emails_sent_count?: number
+  reply_count_unique?: number; reply_count_automatic_unique?: number; bounced_count?: number; unsubscribed_count?: number
+  total_opportunities?: number; total_opportunity_value?: number
+}
+
+async function stats(db: SupabaseClient, days: number | null) {
+  const { data } = await db.from('outreach_niches').select('key, label, instantly_campaign_id').not('instantly_campaign_id', 'is', null)
+  const niches = (data ?? []) as { key: string; label: string; instantly_campaign_id: string }[]
+  const out: Record<string, unknown>[] = []
+  if (niches.length) {
+    // Every campaign in the workspace, matched to ours below: simpler than
+    // relying on how the API wants a list of ids.
+    const q = new URLSearchParams()
+    if (days) {
+      q.set('start_date', new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10))
+      q.set('end_date', new Date().toISOString().slice(0, 10))
+    }
+    const rows = await ig<Analytics[]>('GET', `/campaigns/analytics?${q}`)
+    const byId = new Map((Array.isArray(rows) ? rows : []).map((r) => [r.campaign_id, r]))
+    for (const n of niches) {
+      const r = byId.get(n.instantly_campaign_id)
+      out.push({
+        niche_key: n.key, label: n.label,
+        state: r ? (CAMPAIGN_STATE[String(r.campaign_status)] ?? String(r.campaign_status)) : 'not found',
+        leads: r?.leads_count ?? 0, contacted: r?.contacted_count ?? 0, sent: r?.emails_sent_count ?? 0,
+        replies: r?.reply_count_unique ?? 0, auto_replies: r?.reply_count_automatic_unique ?? 0,
+        bounced: r?.bounced_count ?? 0, unsubscribed: r?.unsubscribed_count ?? 0,
+        opportunities: r?.total_opportunities ?? 0, opportunity_value: r?.total_opportunity_value ?? 0,
+      })
+    }
+  }
+  const acc = await ig<{ items?: Record<string, unknown>[] }>('GET', '/accounts?limit=100')
+  const accounts = (acc.items ?? []).map((a) => ({
+    email: String(a.email ?? ''),
+    state: ACCOUNT_STATE[String(a.status)] ?? String(a.status ?? ''),
+    warmup: WARMUP_STATE[String(a.warmup_status)] ?? String(a.warmup_status ?? ''),
+    warmup_score: a.stat_warmup_score ?? null,
+  }))
+  return { ok: true, campaigns: out, accounts }
+}
+
 async function setState(db: SupabaseClient, key: string, to: 'pause' | 'activate') {
   const { data } = await db.from('outreach_niches').select('instantly_campaign_id').eq('key', key).single()
   const id = (data as { instantly_campaign_id: string | null } | null)?.instantly_campaign_id
@@ -325,7 +370,7 @@ Deno.serve(async (req: Request) => {
   const bearer = (req.headers.get('Authorization') ?? '').replace('Bearer ', '').trim()
   if (!bearer || !(await authorised(bearer))) return json({ error: 'Unauthorized' }, 401)
 
-  const input = await req.json().catch(() => ({})) as { action?: string; niche?: string }
+  const input = await req.json().catch(() => ({})) as { action?: string; niche?: string; days?: number | null }
   const db = createClient(URL_, SERVICE)
   try {
     switch (input.action) {
@@ -334,6 +379,7 @@ Deno.serve(async (req: Request) => {
       case 'push': return json(await push(db))
       case 'pause': return json(await setState(db, String(input.niche ?? ''), 'pause'))
       case 'resume': return json(await setState(db, String(input.niche ?? ''), 'activate'))
+      case 'stats': return json(await stats(db, input.days ? Math.min(365, Math.max(1, Number(input.days))) : null))
       default: return json({ error: 'Unknown action' }, 400)
     }
   } catch (err) {
