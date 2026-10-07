@@ -338,10 +338,7 @@ body::after {
 [data-theme="light"] .kpi{box-shadow:0 1px 2px rgba(16,24,40,.05),0 4px 14px rgba(16,24,40,.05)}
 .kpi:hover{border-color:var(--bd2)}
 .klabel{font-size:12px;color:var(--ink2);margin-bottom:11px;font-weight:500;}
-.kpi-private{cursor:pointer;user-select:none}
-.kmask{display:none;font-family:var(--mono);font-size:25px;font-weight:600;line-height:1;color:var(--ink3);letter-spacing:2px}
-.kpi-private.masked .kmask{display:block}
-.kpi-private.masked .kval,.kpi-private.masked .ksub{display:none}
+.kpi-private.masked{display:none}
 .kval{font-family:var(--mono);font-size:25px;font-weight:600;letter-spacing:-.6px;line-height:1;color:var(--ink)}
 .kval.blu{color:var(--acc)}
 .kval.red{color:var(--red)}
@@ -1132,6 +1129,7 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
             <option value="">Everyone</option>
           </select>
           <span id="crm-repview-stats" style="font-size:11px;color:var(--acc);font-family:var(--mono)"></span>
+          <button class="btn btn-xs" id="crm-private-btn" style="margin-left:auto" onclick="togglePrivateKpis()">Show deal value &amp; LTV</button>
         </div>
         <div class="kg kg-fit mb4 rep-stat-strip" style="display:none">
           <div class="kpi"><div class="klabel">Close Rate</div><div class="kval grn" id="rep-close">-</div><div class="ksub" id="rep-close-sub"></div></div>
@@ -1143,8 +1141,8 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
           <div class="kpi"><div class="klabel">In Progress</div><div class="kval" id="crm-active">-</div></div>
           <div class="kpi"><div class="klabel">Closed Won</div><div class="kval grn" id="crm-won">-</div></div>
           <div class="kpi"><div class="klabel">Win Rate</div><div class="kval" id="crm-rate">-</div><div class="ksub" id="crm-rate-sub"></div></div>
-          <div class="kpi admin-only-field kpi-private masked" onclick="togglePrivateKpis()" title="Click to show or hide"><div class="klabel">Avg Won Deal</div><div class="kmask">•••••</div><div class="kval grn" id="crm-avgwon">-</div><div class="ksub" id="crm-avgwon-sub"></div></div>
-          <div class="kpi admin-only-field kpi-private masked" onclick="togglePrivateKpis()" title="Click to show or hide"><div class="klabel">Avg Client LTV</div><div class="kmask">•••••</div><div class="kval grn" id="crm-ltv">-</div><div class="ksub" id="crm-ltv-sub"></div></div>
+          <div class="kpi admin-only-field kpi-private masked"><div class="klabel">Avg Won Deal</div><div class="kval grn" id="crm-avgwon">-</div><div class="ksub" id="crm-avgwon-sub"></div></div>
+          <div class="kpi admin-only-field kpi-private masked"><div class="klabel">Avg Client LTV</div><div class="kval grn" id="crm-ltv">-</div><div class="ksub" id="crm-ltv-sub"></div></div>
         </div>
         <div class="sl">Pipeline <div class="sl-line"></div></div>
         <div class="kanban-wrap"><div class="kanban" id="crm-kanban"></div></div>
@@ -4785,10 +4783,12 @@ async function loadCRM(resetPage) {
 // case, spaces and punctuation. Businesses with nothing billed are left out.
 // It is only as complete as the records: a managed month not ticked is a
 // month not counted. Admin only.
-// Avg Won Deal and Avg Client LTV start hidden on every load; clicking either
-// card shows or hides both.
+// The Avg Won Deal and Avg Client LTV cards start hidden on every load; the
+// button beside "View as rep" shows or hides both.
 function togglePrivateKpis() {
-  document.querySelectorAll('.kpi-private').forEach(k => k.classList.toggle('masked'));
+  let shown = false;
+  document.querySelectorAll('.kpi-private').forEach(k => { shown = !k.classList.toggle('masked'); });
+  setText('crm-private-btn', shown ? 'Hide deal value & LTV' : 'Show deal value & LTV');
 }
 
 async function loadCrmLtv() {
