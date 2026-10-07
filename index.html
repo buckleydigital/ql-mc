@@ -505,6 +505,12 @@ td strong{font-weight:500}
 .or-filters .fi{width:auto;min-width:150px}
 .or-filters .fi.grow{flex:1;min-width:200px}
 .or-sub{font-size:11px;color:var(--ink3)}
+#or-pr-table td{white-space:normal}
+#or-pr-table td:first-child{max-width:300px}
+#or-pr-table td:nth-child(5){max-width:230px}
+.or-opener{font-size:11.5px;color:var(--ink2);font-style:italic;margin-top:5px;line-height:1.45}
+.or-fit{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:1px 6px;border-radius:9px;background:var(--s2);color:var(--ink3);margin-right:4px}
+.or-fit.good{background:color-mix(in srgb,var(--grn) 16%,transparent);color:var(--grn)}
 .or-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:16px 18px}
 .or-run-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .or-run-item{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;padding:7px 0;border-top:1px solid var(--bd);font-size:12px;color:var(--ink2)}
@@ -528,6 +534,7 @@ td strong{font-weight:500}
   .or-sup-item .v{flex-basis:100%}
   /* Prospects read as cards on a phone: no sideways scrolling table. */
   #or-pr-table{width:100%}
+  #or-pr-table td{max-width:none}
   #or-pr-table thead{display:none}
   #or-pr-table tbody tr{display:block;padding:10px 14px;border-bottom:1px solid var(--bd)}
   #or-pr-table tbody td{display:block;padding:2px 0;border:none}
@@ -1417,7 +1424,7 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
         <div class="twrap">
           <table>
             <thead><tr><th>Client</th><th>Stage</th><th>Waiting on</th><th>Overdue</th><th>Blocked</th><th>Progress</th></tr></thead>
-            <tbody id="mg-stuck-tbody"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
+            <tbody id="mg-stuck-tbody"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
 
@@ -1545,7 +1552,7 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
             </div>
             <button class="btn btn-p" id="or-run-btn" type="button" onclick="runOutreachSearch()">▶ Run today's search</button>
           </div>
-          <p class="or-sub" style="margin:10px 0 0;line-height:1.6">Nothing runs on its own. Each press searches Google for the niches switched on, reads their websites for a published email and verifies it - a few cents to about a dollar. It never sends anything.</p>
+          <p class="or-sub" style="margin:10px 0 0;line-height:1.6">Nothing runs on its own. Each press searches Google for the niches switched on, reads their websites for a published email and verifies it, then has Claude score each one for fit and write its opening line. Roughly US$1-2 for a full day of 35 (searches, checks and AI together). It never sends anything.</p>
           <div id="or-runs" style="margin-top:8px"></div>
         </div>
         <div class="sl">Niches <div class="sl-line"></div></div>
@@ -1554,8 +1561,8 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
         <div class="or-steps">
           <div class="or-step done"><span class="st">Ready</span><b>1 · Niches &amp; safeguards</b>Niches on or off, and one do-not-contact list every sender checks.</div>
           <div class="or-step done"><span class="st">Ready</span><b>2 · Find &amp; verify</b>Press Run: businesses found per niche, with where each email was published, then verified.</div>
-          <div class="or-step"><span class="st">Next</span><b>3 · Qualify &amp; personalise</b>Each one scored for fit and given an opener written for them.</div>
-          <div class="or-step"><span class="st">Later</span><b>4 · Send &amp; replies</b>Warmed inboxes send the batch you approve; replies come back here.</div>
+          <div class="or-step done"><span class="st">Ready</span><b>3 · Qualify &amp; personalise</b>Each one scored for fit from its website and given an opening line written for them. 6/10 and up is ready for review.</div>
+          <div class="or-step"><span class="st">Next</span><b>4 · Send &amp; replies</b>Warmed inboxes send the batch you approve; replies come back here.</div>
           <div class="or-step"><span class="st">Later</span><b>5 · Daily batch</b>On the days you run it, Jarvis builds the batch and you approve it before anything sends.</div>
         </div>
       </div>
@@ -1572,8 +1579,8 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
         </div>
         <div class="twrap">
           <table id="or-pr-table">
-            <thead><tr><th>Business</th><th>Niche</th><th>Email</th><th>Location</th><th>Status</th><th>Found</th></tr></thead>
-            <tbody id="or-pr-tbody"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
+            <thead><tr><th>Business</th><th>Niche</th><th>Email</th><th>Location</th><th>Status</th></tr></thead>
+            <tbody id="or-pr-tbody"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
         <div id="or-pr-pager" style="margin-top:10px"></div>
@@ -1632,7 +1639,7 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
                 <th></th>
               </tr>
             </thead>
-            <tbody id="sales-conv-tbody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+            <tbody id="sales-conv-tbody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1849,7 +1856,7 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
         <div class="twrap">
           <table>
             <thead><tr><th>Category</th><th>Description</th><th>Amount</th><th>Type</th><th>Date</th><th></th></tr></thead>
-            <tbody id="exp-tbody"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
+            <tbody id="exp-tbody"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
         <div class="sl" style="margin-top:16px">Subscriptions <div class="sl-line"></div><button class="btn btn-xs btn-p" style="margin-left:8px" onclick="openAddSub()">+ Add</button></div>
@@ -6263,8 +6270,8 @@ function renderFulfilStuck(rows, err) {
   const tb=$('mg-stuck-tbody'); if(!tb) return;
   // A missing view means the migration has not run yet. Say that rather than
   // showing an empty table that reads as "nothing is stuck".
-  if (err) { tb.innerHTML=`<tr><td colspan="6" class="empty">Fulfilment mirror not available yet (${esc(err.message)})</td></tr>`; return; }
-  if (!rows.length) { tb.innerHTML='<tr><td colspan="6" class="empty">Nothing overdue or blocked.</td></tr>'; return; }
+  if (err) { tb.innerHTML=`<tr><td colspan="5" class="empty">Fulfilment mirror not available yet (${esc(err.message)})</td></tr>`; return; }
+  if (!rows.length) { tb.innerHTML='<tr><td colspan="5" class="empty">Nothing overdue or blocked.</td></tr>'; return; }
   tb.innerHTML=rows.map(r=>{
     const hrs=r.hours_overdue||0;
     const late=hrs<=0?'-':hrs>=48?Math.round(hrs/24)+'d':hrs+'h';
@@ -7283,7 +7290,7 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
     }
   }
   const tb=$('exp-tbody');
-  if (!expenses.length) { tb.innerHTML='<tr><td colspan="6" class="empty">No expenses for this period.</td></tr>'; }
+  if (!expenses.length) { tb.innerHTML='<tr><td colspan="5" class="empty">No expenses for this period.</td></tr>'; }
   else { tb.innerHTML=expenses.map(e=>`<tr><td>${esc(e.category||'-')}</td><td>${esc(e.description||'-')}</td><td>${fmt(e.amount)}</td><td><span class="badge ${e.type==='fixed'?'bg-blu':'bg-amb'}">${e.type||'variable'}</span></td><td style="font-family:var(--mono);font-size:10px">${e.date||'-'}</td><td style="white-space:nowrap"><button class="btn btn-xs" onclick="editExpense('${esc(String(e.id))}')">Edit</button> <button class="btn btn-xs" style="color:var(--red)" onclick="deleteExpense('${esc(String(e.id))}')">Delete</button></td></tr>`).join(''); }
   renderRevenueChart(pplRev,mgRetainerRev,mgCustomRev,expenses,pplSp,agSp);renderCplChart(spendLog);
 }
@@ -9107,7 +9114,7 @@ function copyConvWebhook() {
 
 async function loadConversations() {
   const tbody = $('conv-tbody');
-  if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty">Loading…</td></tr>';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="empty">Loading…</td></tr>';
 
   // Fetch webhook URL from business_settings (authenticated, never in page source)
   try {
@@ -9169,7 +9176,7 @@ async function loadConversations() {
     }
 
     if (!threads.length) {
-      if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty">No SMS conversations yet. Send an SMS from PPL Lead Distribution to start a thread.</td></tr>';
+      if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="empty">No SMS conversations yet. Send an SMS from PPL Lead Distribution to start a thread.</td></tr>';
       return;
     }
 
@@ -9211,7 +9218,7 @@ async function deleteConversation(leadId, name) {
 
 async function loadSalesConversations() {
   const tbody = $('sales-conv-tbody');
-  if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty">Loading…</td></tr>';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="empty">Loading…</td></tr>';
 
   try {
     const { data: biz } = await db.from('business_settings').select('twilio_webhook_url').limit(1).maybeSingle();
@@ -9256,7 +9263,7 @@ async function loadSalesConversations() {
     setText('sales-conv-outbound-count', totalOutbound);
 
     if (!threads.length) {
-      if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty">No SMS conversations yet. Send an SMS from a sales pipeline lead to start a thread.</td></tr>';
+      if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="empty">No SMS conversations yet. Send an SMS from a sales pipeline lead to start a thread.</td></tr>';
       return;
     }
 
@@ -9712,6 +9719,8 @@ async function loadOutreachRuns() {
   host.innerHTML = runs.map(function (r) {
     const when = new Date(r.started_at).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
     const parts = [r.found + ' found', r.emails + ' with email', r.verified + ' verified'];
+    if (r.qualified || r.not_fit) parts.push(r.qualified + ' ready for review', r.not_fit + ' not a fit');
+    if (Number(r.ai_cost_usd) > 0) parts.push('AI US$' + Number(r.ai_cost_usd).toFixed(2));
     if (r.blocked) parts.push(r.blocked + ' blocked');
     if (r.invalid) parts.push(r.invalid + ' bad email');
     const errs = (r.errors || []).length;
@@ -9731,7 +9740,7 @@ async function runOutreachSearch() {
   if (!live.length) { toast('Switch a niche on first', true); return; }
   const n = live.reduce(function (a, x) { return a + Number(x.daily_target); }, 0);
   if (!confirm('Search for up to ' + n + ' new prospects in ' + live.map(function (x) { return x.label; }).join(', ') +
-    '?\n\nCosts a few cents to about a dollar (Google searches and email checks). Nothing is sent.')) return;
+    '?\n\nCosts roughly US$1-2 for a full day (Google searches, email checks, and Claude scoring each one). Nothing is sent.')) return;
   const btn = $('or-run-btn');
   btn.disabled = true; btn.textContent = 'Starting…';
   const { error } = await db.rpc('outreach_run_now');
@@ -9805,7 +9814,7 @@ async function loadProspects() {
     const rows = data || [];
     if (!rows.length) {
       const filtered = nicheSel.value || statusSel.value || $('or-pr-q').value.trim();
-      tb.innerHTML = '<tr><td colspan="6" class="empty">' + (filtered
+      tb.innerHTML = '<tr><td colspan="5" class="empty">' + (filtered
         ? 'No prospects match.'
         : 'No prospects yet. Jarvis starts finding them once a niche is switched on and finding is connected.') + '</td></tr>';
       $('or-pr-pager').innerHTML = '';
@@ -9818,19 +9827,23 @@ async function loadProspects() {
       const src = r.email_source_url ? '<div class="or-sub"><a href="' + orAttr(r.email_source_url) + '" target="_blank" rel="noopener" style="color:inherit">where it was published ↗</a></div>' : '';
       const place = [r.suburb, r.state].filter(Boolean).join(' ');
       const col = OR_STATUS_COLOR[r.status] || 'var(--ink2)';
+      // Stage 3 writes "8/10: reason"; the score gets its own badge.
+      const fit = r.fit_score == null ? '' :
+        '<span class="or-fit' + (Number(r.fit_score) >= 6 ? ' good' : '') + '">' + Number(r.fit_score) + '/10</span> ';
+      const why = String(r.status_reason || '').replace(/^\d+\/10:\s*/, '');
+      const opener = r.opener ? '<div class="or-opener">“' + jmEsc(r.opener) + '”</div>' : '';
       return '<tr>' +
-        '<td><strong>' + jmEsc(r.business_name) + '</strong>' + site + who + '</td>' +
+        '<td><strong>' + jmEsc(r.business_name) + '</strong>' + site + who + opener + '</td>' +
         '<td>' + jmEsc(labels[r.niche_key] || r.niche_key) + '</td>' +
         '<td>' + (r.email ? '<span style="font-family:var(--mono);font-size:12px">' + jmEsc(r.email) + '</span>' + verdict + src : '<span class="or-sub">no email yet</span>') + '</td>' +
-        '<td>' + jmEsc(place || '-') + '</td>' +
-        '<td><span style="color:' + col + ';font-weight:500">' + jmEsc(OR_STATUS_LABEL[r.status] || r.status) + '</span>' +
-          (r.status_reason ? '<div class="or-sub">' + jmEsc(r.status_reason) + '</div>' : '') + '</td>' +
-        '<td class="or-sub">' + orDate(r.found_at) + '</td>' +
+        '<td>' + jmEsc(place || '-') + '<div class="or-sub">found ' + orDate(r.found_at) + '</div></td>' +
+        '<td>' + fit + '<span style="color:' + col + ';font-weight:500">' + jmEsc(OR_STATUS_LABEL[r.status] || r.status) + '</span>' +
+          (why ? '<div class="or-sub">' + jmEsc(why) + '</div>' : '') + '</td>' +
       '</tr>';
     }).join('');
     renderPager('or-pr-pager', orPrPage, Number(rows[0].total), function (p) { orPrPage = p; loadProspects(); });
   } catch (err) {
-    tb.innerHTML = '<tr><td colspan="6" class="empty">Could not load prospects: ' + jmEsc(err.message || err) + '</td></tr>';
+    tb.innerHTML = '<tr><td colspan="5" class="empty">Could not load prospects: ' + jmEsc(err.message || err) + '</td></tr>';
   }
 }
 

@@ -18,6 +18,9 @@
  *   3. Verify  - MillionVerifier. Bad addresses are rejected here, so they
  *                never reach a sending inbox.
  *
+ * Then the run is handed to outreach-qualify (stage 3), which scores the
+ * verified prospects and closes the run.
+ *
  * Saving goes through prospect_add and the prospects trigger, which blocks
  * anyone in the pipeline, a client, opted out of SMS or on the do-not-contact
  * list. Nothing is sent from here.
@@ -464,16 +467,25 @@ async function run(db: SupabaseClient, bearer: string, runId: string, hop: numbe
     searches: sum('searches'), found: sum('found'), blocked: sum('blocked'), emails: sum('emails'),
     no_email: sum('no_email'), verified: sum('verified'), invalid: sum('invalid'),
     errors: [...((c.errors as string[]) ?? []), ...stats.errors].slice(-20),
-    ...(chain ? {} : { finished_at: new Date().toISOString(), note: more ? 'stopped for today with work left' : null }),
+    // Not finished here: stage 3 (outreach-qualify) takes the run on and
+    // closes it once the verified prospects are scored.
+    ...(chain ? {} : { note: more ? 'search stopped for today with work left' : null }),
   }).eq('id', runId)
 
   console.log(`outreach-find ${runId} hop ${hop}: ${JSON.stringify({ ...stats, errors: stats.errors.length })}${chain ? ', continuing' : ''}`)
-  if (chain) {
-    await fetch(`${URL_}/functions/v1/outreach-find`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${bearer}` },
-      body: JSON.stringify({ action: 'run', trigger: 'continue', run_id: runId, hop: hop + 1 }),
-    }).catch((e) => console.error('outreach-find: continue failed:', e))
+  const next = chain
+    ? { fn: 'outreach-find', body: { action: 'run', trigger: 'continue', run_id: runId, hop: hop + 1 } }
+    : { fn: 'outreach-qualify', body: { action: 'run', run_id: runId } }
+  const ok = await fetch(`${URL_}/functions/v1/${next.fn}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${bearer}` },
+    body: JSON.stringify(next.body),
+  }).then((r) => r.ok).catch((e) => { console.error(`outreach-find: ${next.fn} failed:`, e); return false })
+  // Nothing picked the run up: close it, so the dashboard does not show it running.
+  if (!ok) {
+    await db.from('outreach_runs').update({
+      finished_at: new Date().toISOString(), errors: [...((c.errors as string[]) ?? []), ...stats.errors, `could not start ${next.fn}`].slice(-20),
+    }).eq('id', runId)
   }
 }
 
