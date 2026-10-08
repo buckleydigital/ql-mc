@@ -282,7 +282,7 @@ a{color:inherit;text-decoration:none}
 
 /* ═══ CONTENT ═══ */
 .content{flex:1;overflow-y:auto;background:var(--bg)}
-.panel{display:none;padding:24px 28px 40px;min-height:100%;max-width:1600px}
+.panel{display:none;padding:24px 28px 40px;min-height:100%;max-width:1600px;margin:0 auto}
 .panel.active{display:block}
 
 /* ═══ PAGE HEADER ═══ */
@@ -356,8 +356,10 @@ code{font-family:var(--code);font-size:.92em;background:var(--s3);border:1px sol
 
 /* ═══ KANBAN ═══ */
 .kanban-wrap{overflow-x:auto;padding-bottom:8px;margin-bottom:14px}
-.kanban{display:flex;gap:14px;min-width:max-content;align-items:flex-start}
-.kcol{width:250px;flex-shrink:0;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r2);padding:10px;display:flex;flex-direction:column}
+.kanban{display:flex;gap:14px;align-items:flex-start}
+/* Columns share the row when it is wide enough and scroll once they hit
+   their floor, so a wide screen shows every stage instead of clipping one. */
+.kcol{flex:1 0 220px;min-width:0;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r2);padding:10px;display:flex;flex-direction:column}
 .kcolh{
   display:flex;align-items:center;justify-content:space-between;
   padding:2px 4px 12px;
@@ -731,6 +733,14 @@ body.just-loaded .kval,body.just-loaded .kcard,body.just-loaded tbody tr,body.ju
   .uname-chip,.tb-sep{display:none}
   .ibtn{width:34px;height:34px;flex-shrink:0}
   #alert-tray{left:10px !important;right:10px !important;width:auto !important;max-width:none !important}
+}
+@media(max-width:700px){
+  /* One stage per screen with the next just showing, snapping column to
+     column. The strip runs to the screen edges so cards are not cut off by
+     the panel padding mid-swipe. */
+  .kanban-wrap{margin:0 -16px 14px;padding:0 16px 8px;scroll-snap-type:x mandatory;scroll-padding:0 16px;-webkit-overflow-scrolling:touch}
+  .kanban{gap:10px}
+  .kcol{flex:0 0 calc(100vw - 72px);scroll-snap-align:start}
 }
 @media(max-width:340px){.kg.c6,.kg.c5,.kg.c4,.kg.c3,.kg.c2{grid-template-columns:1fr}}
 @media(max-width:700px){.kg{gap:10px}.kpi{padding:14px}.kval{font-size:22px}}
