@@ -186,7 +186,6 @@ a{color:inherit;text-decoration:none}
 .tb-mark.tb-mark-light{display:none}
 [data-theme="light"] .tb-mark.tb-mark-dark{display:none}
 [data-theme="light"] .tb-mark.tb-mark-light{display:block}
-.tb-name{font-size:var(--fs-md);font-weight:600;letter-spacing:-.2px;color:var(--ink);white-space:nowrap}
 .tb-sep{width:1px;height:14px;background:var(--bd2);flex-shrink:0}
 .tb-sp{flex:1}
 .live-pill{
@@ -733,9 +732,6 @@ body.just-loaded .kval,body.just-loaded .kcard,body.just-loaded tbody tr,body.ju
   .ibtn{width:34px;height:34px;flex-shrink:0}
   #alert-tray{left:10px !important;right:10px !important;width:auto !important;max-width:none !important}
 }
-@media(max-width:360px){
-  .tb-name{display:none}
-}
 @media(max-width:340px){.kg.c6,.kg.c5,.kg.c4,.kg.c3,.kg.c2{grid-template-columns:1fr}}
 @media(max-width:700px){.kg{gap:10px}.kpi{padding:14px}.kval{font-size:22px}}
 
@@ -961,7 +957,6 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
          readers, or the name would be announced twice. -->
     <img class="tb-mark tb-mark-dark" src="./quoteleads-logo-white.png" alt="QuoteLeads">
     <img class="tb-mark tb-mark-light" src="./quoteleads-logo-black.png" alt="" aria-hidden="true">
-    <span class="tb-name">Mission Control</span>
     <div class="tb-sep"></div>
     <div class="tb-sp"></div>
     <div class="live-pill"><div class="ldot"></div>LIVE</div>
@@ -1037,10 +1032,10 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
     <!-- SIDEBAR -->
     <div class="sidebar">
       <div class="sb-header">
-        <!-- No brand block here at all. The topbar carries the logo and the
-             words "Mission Control" a few pixels above, so repeating both is
-             the same lockup twice - which reads as a rendering fault rather
-             than as branding. The sidebar starts at the status line. -->
+        <!-- No brand block here at all. The topbar carries the logo a few
+             pixels above, so repeating it is the same lockup twice - which
+             reads as a rendering fault rather than as branding. The sidebar
+             starts at the status line. -->
         <div class="sb-status">
           <div class="sb-status-dot"></div>
           All systems live
