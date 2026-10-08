@@ -671,6 +671,27 @@ td strong{font-weight:600}
   input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea{font-size:16px !important}
 }
 
+/* ═══ PHONE TYPE ═══ */
+/* Text runs a step smaller on phones. The scale tokens cover most of it; the
+   rest are fixed sizes in rules and inline styles, so those are stepped down
+   here too. Text boxes are left alone - they must stay at 16px (see above). */
+@media(max-width:700px){
+  :root{--fs-xs:10.5px;--fs-sm:11.5px;--fs-base:12px;--fs-md:13px;--fs-lg:15px;--fs-xl:18px;--fs-2xl:22px}
+  table{font-size:12.5px}
+  .chart-stat .kval{font-size:15px}
+  .ld-client-val{font-size:19px}
+  .modal h2{font-size:16px}
+  .login-box p,.or-step b,.or-preview,.or-acct,.or-run-item,.or-sup-item,.jv-note{font-size:12px}
+  .or-save,#or-run-btn,.topbar .ibtn{font-size:13px}
+  :not(input):not(select):not(textarea)[style*="font-size:12px"]{font-size:11.5px !important}
+  :not(input):not(select):not(textarea)[style*="font-size:13px"]{font-size:12px !important}
+  :not(input):not(select):not(textarea)[style*="font-size:14px"]{font-size:13px !important}
+  :not(input):not(select):not(textarea)[style*="font-size:15px"]{font-size:14px !important}
+  :not(input):not(select):not(textarea)[style*="font-size:16px"]{font-size:15px !important}
+  :not(input):not(select):not(textarea)[style*="font-size:18px"]{font-size:16px !important}
+  :not(input):not(select):not(textarea)[style*="font-size:22px"]{font-size:19px !important}
+}
+
 /* ═══ LOADING ═══ */
 /* A thin bar along the top while any data request is in flight. */
 #ql-progress{position:fixed;top:0;left:0;height:2px;width:0;background:var(--acc);z-index:10001;opacity:0;pointer-events:none;
@@ -720,7 +741,7 @@ body.just-loaded .kval,body.just-loaded .kcard,body.just-loaded tbody tr,body.ju
   .bnav{display:flex}
   .panel{padding:16px 16px calc(var(--bnav-h, 200px) + 40px + env(safe-area-inset-bottom,0px))}
   .fi,.fs,.fta,.qinput{font-size:16px}
-  .ph-left h1{font-size:20px}
+  .ph-left h1{font-size:18px}
   .kg.c6,.kg.c5,.kg.c4,.kg.c3{grid-template-columns:1fr 1fr}
   .task-grid{grid-template-columns:1fr}
   .g2{grid-template-columns:1fr}
@@ -743,7 +764,7 @@ body.just-loaded .kval,body.just-loaded .kcard,body.just-loaded tbody tr,body.ju
   .kcol{flex:0 0 calc(100vw - 72px);scroll-snap-align:start}
 }
 @media(max-width:340px){.kg.c6,.kg.c5,.kg.c4,.kg.c3,.kg.c2{grid-template-columns:1fr}}
-@media(max-width:700px){.kg{gap:10px}.kpi{padding:14px}.kval{font-size:22px}}
+@media(max-width:700px){.kg{gap:10px}.kpi{padding:14px}.kval{font-size:19px}}
 
 /* ══ LEAD DISTRIBUTION ══ */
 .ld-client-grid{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px}
