@@ -11,6 +11,7 @@
 // =============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { noEmDash } from "../_shared/no-em-dash.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,7 +21,7 @@ const corsHeaders = {
 function twimlResponse(msg?: string): Response {
   // Return an empty TwiML response (no auto-reply)
   const body = msg
-    ? `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${msg}</Message></Response>`
+    ? `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${noEmDash(msg)}</Message></Response>`
     : `<?xml version="1.0" encoding="UTF-8"?><Response></Response>`;
   return new Response(body, {
     status: 200,
