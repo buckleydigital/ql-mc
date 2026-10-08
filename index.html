@@ -662,6 +662,14 @@ td strong{font-weight:600}
 .bnbtn-icon svg{width:19px;height:19px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .bnbtn-lbl{font-size:var(--fs-xs);font-weight:500;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* ═══ TOUCH SCREENS ═══ */
+/* iPhone Safari zooms in when you tap a text box under 16px and does not zoom
+   back out, which leaves the app half off the screen. Many boxes set their own
+   smaller size inline, so this has to win over those. */
+@media (pointer:coarse){
+  input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea{font-size:16px !important}
+}
+
 /* ═══ LOADING ═══ */
 /* A thin bar along the top while any data request is in flight. */
 #ql-progress{position:fixed;top:0;left:0;height:2px;width:0;background:var(--acc);z-index:10001;opacity:0;pointer-events:none;
@@ -718,6 +726,15 @@ body.just-loaded .kval,body.just-loaded .kcard,body.just-loaded tbody tr,body.ju
   .ph{flex-direction:column}
   .ph-right{width:100%}
   #clock,.live-pill{display:none}
+  /* The top bar must never be wider than the phone: anything wider makes
+     Safari widen the whole page and you have to zoom out. */
+  .topbar{padding:0 10px;gap:6px;min-width:0;overflow:hidden}
+  .uname-chip,.tb-sep{display:none}
+  .ibtn{width:34px;height:34px;flex-shrink:0}
+  #alert-tray{left:10px !important;right:10px !important;width:auto !important;max-width:none !important}
+}
+@media(max-width:360px){
+  .tb-name{display:none}
 }
 @media(max-width:340px){.kg.c6,.kg.c5,.kg.c4,.kg.c3,.kg.c2{grid-template-columns:1fr}}
 @media(max-width:700px){.kg{gap:10px}.kpi{padding:14px}.kval{font-size:22px}}
@@ -740,7 +757,11 @@ body.just-loaded .kval,body.just-loaded .kcard,body.just-loaded tbody tr,body.ju
 
 #jv-panel{position:fixed;top:42px;right:0;bottom:0;width:390px;max-width:100vw;background:var(--s1);border-left:1px solid var(--bd2);box-shadow:-8px 0 28px rgba(0,0,0,.35);z-index:9998;display:none;flex-direction:column}
 #jv-panel.open{display:flex}
-@media(max-width:700px){#jv-panel{width:100vw;top:0}}
+@media(max-width:700px){#jv-panel{width:100vw;top:0}
+  /* Title on its own line, the eight buttons on the line below. */
+  .jv-head{flex-wrap:wrap;row-gap:10px}
+  .jv-head > div[style*="flex:1"]{flex:1 1 calc(100% - 40px)}
+}
 
 .jv-head{display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid var(--bd)}
 .jv-reactor{width:22px;height:22px;border-radius:50%;border:2px solid var(--acc);position:relative;flex:none;opacity:.5;transition:opacity .3s}
