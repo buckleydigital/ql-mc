@@ -107,7 +107,7 @@ function retainerMonths(client) {
 
 /**
  * Revenue is not a table. The `revenue` table exists in the schema but nothing
- * writes to it — the app computes revenue from three sources, and so does this
+ * writes to it - the app computes revenue from three sources, and so does this
  * (loadFinance / renderFinance in index.html):
  *
  *   pay-per-lead   ppl_order_log, leads_qty x lead_price
@@ -169,7 +169,7 @@ async function getRevenueVsGoal({ month } = {}) {
  * Two sources, and they work differently:
  *
  *   - campaign_spend_log is the pay-per-lead source of truth, keyed by a
- *     YYYY-MM `period`. Monthly granularity — there is no daily figure.
+ *     YYYY-MM `period`. Monthly granularity - there is no daily figure.
  *   - ad_spend_daily.spend for account_type 'agency' is CUMULATIVE year to
  *     date, not that day's spend. Spend for a period is the latest row in it
  *     minus the latest row before it. Summing those rows, as an obvious
@@ -493,7 +493,7 @@ async function getCloses({ month } = {}) {
   const names = new Map(reps.rows.map((r) => [r.user_id, r.name || r.email]))
   // `leads` has no closed_at column, so a win is dated by when it last moved.
   // That is exact for a lead closed and left alone, and drifts only if a won
-  // lead is edited in a later month — worth saying out loud rather than hiding.
+  // lead is edited in a later month - worth saying out loud rather than hiding.
   const won = rows.rows.filter((r) => isWon(r.stage))
   const inMonth = won.filter((r) => (r.updated_at || r.created_at) >= from)
   const inPrior = won.filter((r) => {
@@ -651,7 +651,7 @@ async function repIdentity() {
 
 /**
  * Render an email from the saved template, exactly as mergeTemplate() in
- * index.html does — same table, same single-brace placeholders.
+ * index.html does - same table, same single-brace placeholders.
  */
 async function composeEmail(lead_id, kind) {
   const [{ rows: leads }, { rows: templates }, me] = await Promise.all([
@@ -726,7 +726,7 @@ async function sendLeadSms({ lead_id, message } = {}) {
 }
 
 async function updateTask({ task_id, done, title, assigned_to, due_date, priority, notes } = {}) {
-  if (!task_id) throw new Error('task_id is required — get it from list_tasks')
+  if (!task_id) throw new Error('task_id is required - get it from list_tasks')
 
   const patchBody = { updated_at: new Date().toISOString() }
   for (const [k, v] of Object.entries({ done, title, assigned_to, due_date, priority, notes })) {
@@ -745,7 +745,7 @@ async function updateTask({ task_id, done, title, assigned_to, due_date, priorit
 async function deleteTask({ task_id } = {}) {
   // By id only, never by title: a loose match plus a misheard sentence is how
   // the wrong task gets deleted, and there is nothing to undo it with.
-  if (!task_id) throw new Error('task_id is required — get it from list_tasks')
+  if (!task_id) throw new Error('task_id is required - get it from list_tasks')
   const rows = await remove('tasks', { id: `eq.${task_id}` })
   if (!rows.length) throw new Error(`No task with id ${task_id}`)
   return ok(`${rows[0].title} is deleted.`, { deleted: rows[0] })
@@ -777,14 +777,14 @@ export const TOOLS = [
   },
   {
     name: 'get_leads_today',
-    description: 'Sales pipeline leads that arrived today, with yesterday and the seven-day average for comparison, broken down by source. Sales pipeline only — use get_ppl_summary for pay-per-lead.',
+    description: 'Sales pipeline leads that arrived today, with yesterday and the seven-day average for comparison, broken down by source. Sales pipeline only - use get_ppl_summary for pay-per-lead.',
     inputSchema: { type: 'object', properties: {} },
     handler: getLeadsToday,
   },
   {
     name: 'get_lead_totals',
     description:
-      'Lead counts for every period at once — today, yesterday, the last seven days, month to date, all time — for BOTH the sales pipeline (the `leads` table) and pay-per-lead (`ppl_leads`). Answers "how many leads today", "how many in our sales pipeline" and "how many pay per lead leads".',
+      'Lead counts for every period at once - today, yesterday, the last seven days, month to date, all time - for BOTH the sales pipeline (the `leads` table) and pay-per-lead (`ppl_leads`). Answers "how many leads today", "how many in our sales pipeline" and "how many pay per lead leads".',
     inputSchema: { type: 'object', properties: {} },
     handler: getLeadTotals,
   },
@@ -1002,7 +1002,7 @@ export const TOOLS = [
   {
     name: 'delete_task',
     description:
-      'Permanently delete a task. There is no undo. Requires the task id from list_tasks — never delete from a name match alone, and confirm with the user first.',
+      'Permanently delete a task. There is no undo. Requires the task id from list_tasks - never delete from a name match alone, and confirm with the user first.',
     inputSchema: {
       type: 'object',
       properties: { task_id: str('Task UUID, from list_tasks.') },

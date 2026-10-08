@@ -1,5 +1,5 @@
 /**
- * jarvis-chat — the brain, server-side.
+ * jarvis-chat - the brain, server-side.
  *
  * The local bridge runs Claude Code on a laptop, which means JARVIS only works
  * at that desk, while that process is running. This function is the hosted
@@ -17,7 +17,7 @@
  *     node tools/jarvis/build-edge.mjs
  *
  * It is one self-contained file because this project's deploy ships only the
- * entrypoint — a local import of a sibling file does not survive bundling,
+ * entrypoint - a local import of a sibling file does not survive bundling,
  * which is why every other function here is a single file too. The modules in
  * quoteleads/ remain the editable source, and are what the MCP server imports
  * for the local bridge, so both brains run the same code.
@@ -263,7 +263,10 @@ halfway through a send; the log is the only record of what actually happened.
   refuses the same message to the same person within 30 days - if a send is
   refused as already sent, it was sent: say so, do not try to get round it.
 
-BEFORE ANYTHING IRREVERSIBLE — sending an email or SMS, deleting a task — say
+NO DASHES. Never put an em dash or an en dash in anything you write: emails,
+texts, posts, drafts, replies. Use a full stop, a comma or a plain hyphen.
+
+BEFORE ANYTHING IRREVERSIBLE - sending an email or SMS, deleting a task - say
 what you are about to do and who it affects, and wait for them to confirm. Use
 get_email_draft to read an email back before sending it. Never act on a lead you
 matched loosely; if more than one matched, ask which.`
@@ -349,7 +352,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Reps are scoped to their own leads in this app; JARVIS answers across the
-    // whole business — revenue, margin, ad spend, every client, every rep's
+    // whole business - revenue, margin, ad spend, every client, every rep's
     // numbers. account_type lives in app_metadata, which only the service role
     // can write, so it cannot be forged by the caller. This is the real
     // restriction: hiding the button in the UI is a convenience, not a control.
@@ -513,7 +516,7 @@ Deno.serve(async (req: Request) => {
       }
 
       // Every tool_use block must come back in ONE user message, including the
-      // failures — dropping one ends the conversation mid-turn.
+      // failures - dropping one ends the conversation mid-turn.
       const calls = res.content.filter((b: { type: string }) => b.type === 'tool_use')
       const results = await Promise.all(
         calls.map(async (call: { id: string; name: string; input: unknown }) => {

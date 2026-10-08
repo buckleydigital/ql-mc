@@ -2,7 +2,7 @@
  * Configuration for the QuoteLeads MCP server.
  *
  * Everything comes from the environment, because this server is launched by
- * JARVIS's bridge (or any MCP client) rather than by a person — there is no
+ * JARVIS's bridge (or any MCP client) rather than by a person - there is no
  * prompt to answer and no file to pick. Start it with `node --env-file=.env`
  * or set the variables in the MCP client's `env` block.
  */
@@ -63,7 +63,7 @@ export const config = {
 
   /**
    * Stage vocabulary. `leads.stage` is free text, so which values count as won
-   * or dead is a business fact, not a schema fact — it belongs in config where
+   * or dead is a business fact, not a schema fact - it belongs in config where
    * it can change without a code edit.
    */
   // The live vocabulary: closed_won, closed_lost, proposal, no_answer,
@@ -72,7 +72,7 @@ export const config = {
   deadStages: list('QL_DEAD_STAGES', 'closed_lost,lost,dead,disqualified'),
 
   /**
-   * A lead with no owner_id is not unassigned — it is handled by the operator
+   * A lead with no owner_id is not unassigned - it is handled by the operator
    * running this assistant. Naming that makes the rep table complete instead
    * of showing most of the pipeline as nobody's.
    */

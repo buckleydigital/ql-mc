@@ -2,7 +2,7 @@
  * A user session for the edge functions.
  *
  * `send-sales-email` and `send-sms` both verify the caller with
- * `auth.getUser(token)` and then attribute the send to that user — the rep's
+ * `auth.getUser(token)` and then attribute the send to that user - the rep's
  * name and reply-to address come out of the session. A service-role key is not
  * a user token and fails that check, so the sending tools need a real login.
  *

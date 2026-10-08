@@ -57,7 +57,7 @@ const out = shell.replace(
   '/* __QUOTELEADS_TOOLS__ */',
   [
     '// ══════════════════════════════════════════════════════════════════',
-    '//  GENERATED — do not edit below this line.',
+    '//  GENERATED - do not edit below this line.',
     '//  Source: supabase/functions/jarvis-chat/quoteleads/*.mjs',
     '//  Rebuild: node tools/jarvis/build-edge.mjs',
     '// ══════════════════════════════════════════════════════════════════',

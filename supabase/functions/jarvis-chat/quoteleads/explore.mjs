@@ -2,7 +2,7 @@
  * The open-ended half of the server.
  *
  * The curated tools answer the questions that get asked every day, fast and
- * correctly. These two answer everything else — because the assistant is only
+ * correctly. These two answer everything else - because the assistant is only
  * as good as the data it can reach, and a fixed tool list quietly turns every
  * unanticipated question into "I have no record of that".
  *
@@ -131,7 +131,7 @@ export const EXPLORE_TOOLS = [
   {
     name: 'query_table',
     description:
-      'Read any table with filters — the general-purpose fallback for questions the other tools do not answer. Filters are PostgREST expressions keyed by column: {"stage":"eq.won","value":"gte.5000","created_at":"gte.2026-08-01","suburb":"ilike.*brisbane*"}. Prefer a purpose-built tool when one fits; it is faster and already knows the business rules.',
+      'Read any table with filters - the general-purpose fallback for questions the other tools do not answer. Filters are PostgREST expressions keyed by column: {"stage":"eq.won","value":"gte.5000","created_at":"gte.2026-08-01","suburb":"ilike.*brisbane*"}. Prefer a purpose-built tool when one fits; it is faster and already knows the business rules.',
     inputSchema: {
       type: 'object',
       properties: {

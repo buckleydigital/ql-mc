@@ -4,7 +4,7 @@
  * Every timestamp in the database is timestamptz (UTC), but "how many leads
  * today" means the local business day. In Australia that is 10-11 hours ahead
  * of UTC, so a naive UTC day boundary reports yesterday's number for the whole
- * working morning — the one bug guaranteed to make the assistant untrusted.
+ * working morning - the one bug guaranteed to make the assistant untrusted.
  */
 
 import { config } from './config.mjs'

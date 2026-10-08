@@ -120,7 +120,7 @@ function lint(caption: string, card: Card, facts: Fact[], clientNames: string[])
   const tags = caption.match(/#\w+/g) ?? []
   if (tags.length > 3) problems.push(`${tags.length} hashtags. Three at most.`)
   if ((all.match(/!/g) ?? []).length > 1) problems.push('More than one exclamation mark. Let the content carry it.')
-  if ((all.match(/—/g) ?? []).length > 1) problems.push('Several em dashes - a machine-writing tell. Use full stops.')
+  if (/[\u2013\u2014]/.test(all)) problems.push('Uses an em or en dash. Never use them: a full stop, a comma or a plain hyphen instead.')
 
   // Every number must be one he can point to. Normalised so "1,200" matches
   // "1200", and checked against the facts' text as written.
@@ -181,6 +181,7 @@ Score each 1-10:
 - hook: the first line earns the second. Questions like "Want more leads?" and restating the topic score 3 or less.
 - voice: matches the brief and the owner's own approved posts and edits. Hype, corporate filler, or anything that reads machine-written scores 4 or less.
 - clarity: one idea, no padding, short sentences, easy on a phone.
+- Any em dash or en dash is an issue: say to replace it with a full stop, a comma or a plain hyphen.
 - card: the image text reads in two seconds and adds something the caption does not just repeat.
 
 hard_fails: anything that must never be published - an invented or unsupported number, result or testimonial; a client or lead named or identifiable; a promise of outcomes; anything misleading. Empty if none.
@@ -309,7 +310,7 @@ export function cardSvg(card: Card, logo: string) {
     parts.push(lines(q.lines, y, q.size, q.size * 1.3, 'font-weight="600" fill="#ffffff"'))
     y += q.lines.length * q.size * 1.3 + 30
     if (card.attribution) {
-      parts.push(`<text x="${X}" y="${y}" font-size="32" font-weight="500" fill="${ACCENT}">${esc(`— ${card.attribution}`)}</text>`)
+      parts.push(`<text x="${X}" y="${y}" font-size="32" font-weight="500" fill="${ACCENT}">${esc(`- ${card.attribution}`)}</text>`)
       y += 70
     }
   } else {

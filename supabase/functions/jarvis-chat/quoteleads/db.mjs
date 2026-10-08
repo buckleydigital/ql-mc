@@ -2,7 +2,7 @@
  * The data layer: PostgREST over fetch, plus edge-function invocation.
  *
  * No @supabase/supabase-js on purpose. This server has zero dependencies, so
- * `node server.mjs` runs it on any machine with Node 20 — no install step, no
+ * `node server.mjs` runs it on any machine with Node 20 - no install step, no
  * lockfile, nothing to drift out of date on a laptop that only ever runs it
  * through JARVIS.
  */

@@ -1,5 +1,5 @@
 /**
- * jarvis-chat — the brain, server-side.
+ * jarvis-chat - the brain, server-side.
  *
  * The local bridge runs Claude Code on a laptop, which means JARVIS only works
  * at that desk, while that process is running. This function is the hosted
@@ -17,7 +17,7 @@
  *     node tools/jarvis/build-edge.mjs
  *
  * It is one self-contained file because this project's deploy ships only the
- * entrypoint — a local import of a sibling file does not survive bundling,
+ * entrypoint - a local import of a sibling file does not survive bundling,
  * which is why every other function here is a single file too. The modules in
  * quoteleads/ remain the editable source, and are what the MCP server imports
  * for the local bridge, so both brains run the same code.
@@ -27,7 +27,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Anthropic from 'npm:@anthropic-ai/sdk@0.115.0'
 
 // ══════════════════════════════════════════════════════════════════
-//  GENERATED — do not edit below this line.
+//  GENERATED - do not edit below this line.
 //  Source: supabase/functions/jarvis-chat/quoteleads/*.mjs
 //  Rebuild: node tools/jarvis/build-edge.mjs
 // ══════════════════════════════════════════════════════════════════
@@ -38,7 +38,7 @@ import Anthropic from 'npm:@anthropic-ai/sdk@0.115.0'
  * Configuration for the QuoteLeads MCP server.
  *
  * Everything comes from the environment, because this server is launched by
- * JARVIS's bridge (or any MCP client) rather than by a person — there is no
+ * JARVIS's bridge (or any MCP client) rather than by a person - there is no
  * prompt to answer and no file to pick. Start it with `node --env-file=.env`
  * or set the variables in the MCP client's `env` block.
  */
@@ -99,7 +99,7 @@ const config = {
 
   /**
    * Stage vocabulary. `leads.stage` is free text, so which values count as won
-   * or dead is a business fact, not a schema fact — it belongs in config where
+   * or dead is a business fact, not a schema fact - it belongs in config where
    * it can change without a code edit.
    */
   // The live vocabulary: closed_won, closed_lost, proposal, no_answer,
@@ -108,7 +108,7 @@ const config = {
   deadStages: list('QL_DEAD_STAGES', 'closed_lost,lost,dead,disqualified'),
 
   /**
-   * A lead with no owner_id is not unassigned — it is handled by the operator
+   * A lead with no owner_id is not unassigned - it is handled by the operator
    * running this assistant. Naming that makes the rep table complete instead
    * of showing most of the pipeline as nobody's.
    */
@@ -126,7 +126,7 @@ const config = {
  * Every timestamp in the database is timestamptz (UTC), but "how many leads
  * today" means the local business day. In Australia that is 10-11 hours ahead
  * of UTC, so a naive UTC day boundary reports yesterday's number for the whole
- * working morning — the one bug guaranteed to make the assistant untrusted.
+ * working morning - the one bug guaranteed to make the assistant untrusted.
  */
 
 
@@ -202,7 +202,7 @@ const startOfMonth = (at = new Date()) =>
  * The data layer: PostgREST over fetch, plus edge-function invocation.
  *
  * No @supabase/supabase-js on purpose. This server has zero dependencies, so
- * `node server.mjs` runs it on any machine with Node 20 — no install step, no
+ * `node server.mjs` runs it on any machine with Node 20 - no install step, no
  * lockfile, nothing to drift out of date on a laptop that only ever runs it
  * through JARVIS.
  */
@@ -309,7 +309,7 @@ async function invoke(fn, body, { token } = {}) {
  * A user session for the edge functions.
  *
  * `send-sales-email` and `send-sms` both verify the caller with
- * `auth.getUser(token)` and then attribute the send to that user — the rep's
+ * `auth.getUser(token)` and then attribute the send to that user - the rep's
  * name and reply-to address come out of the session. A service-role key is not
  * a user token and fails that check, so the sending tools need a real login.
  *
@@ -365,7 +365,7 @@ async function userToken() {
  * The open-ended half of the server.
  *
  * The curated tools answer the questions that get asked every day, fast and
- * correctly. These two answer everything else — because the assistant is only
+ * correctly. These two answer everything else - because the assistant is only
  * as good as the data it can reach, and a fixed tool list quietly turns every
  * unanticipated question into "I have no record of that".
  *
@@ -493,7 +493,7 @@ const EXPLORE_TOOLS = [
   {
     name: 'query_table',
     description:
-      'Read any table with filters — the general-purpose fallback for questions the other tools do not answer. Filters are PostgREST expressions keyed by column: {"stage":"eq.won","value":"gte.5000","created_at":"gte.2026-08-01","suburb":"ilike.*brisbane*"}. Prefer a purpose-built tool when one fits; it is faster and already knows the business rules.',
+      'Read any table with filters - the general-purpose fallback for questions the other tools do not answer. Filters are PostgREST expressions keyed by column: {"stage":"eq.won","value":"gte.5000","created_at":"gte.2026-08-01","suburb":"ilike.*brisbane*"}. Prefer a purpose-built tool when one fits; it is faster and already knows the business rules.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1252,7 +1252,7 @@ function retainerMonths(client) {
 
 /**
  * Revenue is not a table. The `revenue` table exists in the schema but nothing
- * writes to it — the app computes revenue from three sources, and so does this
+ * writes to it - the app computes revenue from three sources, and so does this
  * (loadFinance / renderFinance in index.html):
  *
  *   pay-per-lead   ppl_order_log, leads_qty x lead_price
@@ -1314,7 +1314,7 @@ async function getRevenueVsGoal({ month } = {}) {
  * Two sources, and they work differently:
  *
  *   - campaign_spend_log is the pay-per-lead source of truth, keyed by a
- *     YYYY-MM `period`. Monthly granularity — there is no daily figure.
+ *     YYYY-MM `period`. Monthly granularity - there is no daily figure.
  *   - ad_spend_daily.spend for account_type 'agency' is CUMULATIVE year to
  *     date, not that day's spend. Spend for a period is the latest row in it
  *     minus the latest row before it. Summing those rows, as an obvious
@@ -1638,7 +1638,7 @@ async function getCloses({ month } = {}) {
   const names = new Map(reps.rows.map((r) => [r.user_id, r.name || r.email]))
   // `leads` has no closed_at column, so a win is dated by when it last moved.
   // That is exact for a lead closed and left alone, and drifts only if a won
-  // lead is edited in a later month — worth saying out loud rather than hiding.
+  // lead is edited in a later month - worth saying out loud rather than hiding.
   const won = rows.rows.filter((r) => isWon(r.stage))
   const inMonth = won.filter((r) => (r.updated_at || r.created_at) >= from)
   const inPrior = won.filter((r) => {
@@ -1796,7 +1796,7 @@ async function repIdentity() {
 
 /**
  * Render an email from the saved template, exactly as mergeTemplate() in
- * index.html does — same table, same single-brace placeholders.
+ * index.html does - same table, same single-brace placeholders.
  */
 async function composeEmail(lead_id, kind) {
   const [{ rows: leads }, { rows: templates }, me] = await Promise.all([
@@ -1871,7 +1871,7 @@ async function sendLeadSms({ lead_id, message } = {}) {
 }
 
 async function updateTask({ task_id, done, title, assigned_to, due_date, priority, notes } = {}) {
-  if (!task_id) throw new Error('task_id is required — get it from list_tasks')
+  if (!task_id) throw new Error('task_id is required - get it from list_tasks')
 
   const patchBody = { updated_at: new Date().toISOString() }
   for (const [k, v] of Object.entries({ done, title, assigned_to, due_date, priority, notes })) {
@@ -1890,7 +1890,7 @@ async function updateTask({ task_id, done, title, assigned_to, due_date, priorit
 async function deleteTask({ task_id } = {}) {
   // By id only, never by title: a loose match plus a misheard sentence is how
   // the wrong task gets deleted, and there is nothing to undo it with.
-  if (!task_id) throw new Error('task_id is required — get it from list_tasks')
+  if (!task_id) throw new Error('task_id is required - get it from list_tasks')
   const rows = await remove('tasks', { id: `eq.${task_id}` })
   if (!rows.length) throw new Error(`No task with id ${task_id}`)
   return ok(`${rows[0].title} is deleted.`, { deleted: rows[0] })
@@ -1922,14 +1922,14 @@ const TOOLS = [
   },
   {
     name: 'get_leads_today',
-    description: 'Sales pipeline leads that arrived today, with yesterday and the seven-day average for comparison, broken down by source. Sales pipeline only — use get_ppl_summary for pay-per-lead.',
+    description: 'Sales pipeline leads that arrived today, with yesterday and the seven-day average for comparison, broken down by source. Sales pipeline only - use get_ppl_summary for pay-per-lead.',
     inputSchema: { type: 'object', properties: {} },
     handler: getLeadsToday,
   },
   {
     name: 'get_lead_totals',
     description:
-      'Lead counts for every period at once — today, yesterday, the last seven days, month to date, all time — for BOTH the sales pipeline (the `leads` table) and pay-per-lead (`ppl_leads`). Answers "how many leads today", "how many in our sales pipeline" and "how many pay per lead leads".',
+      'Lead counts for every period at once - today, yesterday, the last seven days, month to date, all time - for BOTH the sales pipeline (the `leads` table) and pay-per-lead (`ppl_leads`). Answers "how many leads today", "how many in our sales pipeline" and "how many pay per lead leads".',
     inputSchema: { type: 'object', properties: {} },
     handler: getLeadTotals,
   },
@@ -2147,7 +2147,7 @@ const TOOLS = [
   {
     name: 'delete_task',
     description:
-      'Permanently delete a task. There is no undo. Requires the task id from list_tasks — never delete from a name match alone, and confirm with the user first.',
+      'Permanently delete a task. There is no undo. Requires the task id from list_tasks - never delete from a name match alone, and confirm with the user first.',
     inputSchema: {
       type: 'object',
       properties: { task_id: str('Task UUID, from list_tasks.') },
@@ -2409,7 +2409,10 @@ halfway through a send; the log is the only record of what actually happened.
   refuses the same message to the same person within 30 days - if a send is
   refused as already sent, it was sent: say so, do not try to get round it.
 
-BEFORE ANYTHING IRREVERSIBLE — sending an email or SMS, deleting a task — say
+NO DASHES. Never put an em dash or an en dash in anything you write: emails,
+texts, posts, drafts, replies. Use a full stop, a comma or a plain hyphen.
+
+BEFORE ANYTHING IRREVERSIBLE - sending an email or SMS, deleting a task - say
 what you are about to do and who it affects, and wait for them to confirm. Use
 get_email_draft to read an email back before sending it. Never act on a lead you
 matched loosely; if more than one matched, ask which.`
@@ -2495,7 +2498,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Reps are scoped to their own leads in this app; JARVIS answers across the
-    // whole business — revenue, margin, ad spend, every client, every rep's
+    // whole business - revenue, margin, ad spend, every client, every rep's
     // numbers. account_type lives in app_metadata, which only the service role
     // can write, so it cannot be forged by the caller. This is the real
     // restriction: hiding the button in the UI is a convenience, not a control.
@@ -2659,7 +2662,7 @@ Deno.serve(async (req: Request) => {
       }
 
       // Every tool_use block must come back in ONE user message, including the
-      // failures — dropping one ends the conversation mid-turn.
+      // failures - dropping one ends the conversation mid-turn.
       const calls = res.content.filter((b: { type: string }) => b.type === 'tool_use')
       const results = await Promise.all(
         calls.map(async (call: { id: string; name: string; input: unknown }) => {
