@@ -1,6 +1,3 @@
--- NOT YET APPLIED: waiting on approval, because it deletes cron run history.
--- Apply with apply_migration once approved, then remove this line.
---
 -- cron.job_run_details was never cleared (12,000 rows, 15 MB - more than half
 -- the database). Keep three days of history, trimmed nightly at 03:17 UTC.
 
