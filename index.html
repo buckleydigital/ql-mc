@@ -846,65 +846,75 @@ body.just-loaded .kval,body.just-loaded .kcard,body.just-loaded tbody tr,body.ju
   color:var(--hud);
 }
 #jv-panel.hud::after{
-  /* Scanline wash. Low contrast on purpose - readable first, atmospheric second. */
+  /* Edge vignette, so the eye lands on the core and the corners fall away. */
   content:'';position:absolute;inset:0;pointer-events:none;z-index:3;
-  background:repeating-linear-gradient(to bottom,rgba(95,216,255,.045) 0 1px,transparent 1px 3px);
-  mix-blend-mode:screen;
+  background:radial-gradient(ellipse 75% 70% at 50% 46%,transparent 55%,rgba(0,0,0,.55) 100%);
 }
 
-/* The backdrop holds the reactor and the readouts; the conversation sits over
+/* The backdrop holds the core and the readouts; the conversation sits over
    it. display:none keeps the whole thing out of the DOM's way in panel mode. */
 #jv-hud{display:none;position:absolute;inset:0;overflow:hidden;z-index:0}
 #jv-panel.hud #jv-hud{display:block}
 
-/* ── Arc reactor ── */
+/* Perspective floor: a grid laid back towards a horizon behind the core.
+   Pure CSS, drifts slowly toward you so the room never looks frozen. */
+.hud-floor{position:absolute;left:-50%;right:-50%;bottom:-8%;height:58%;overflow:hidden;
+  transform:perspective(520px) rotateX(64deg);transform-origin:50% 0;
+  -webkit-mask:linear-gradient(to bottom,transparent 0,#000 35%,#000 70%,transparent 100%);
+          mask:linear-gradient(to bottom,transparent 0,#000 35%,#000 70%,transparent 100%);
+  opacity:.7}
+.hud-floor::before{content:'';position:absolute;inset:0;
+  background:
+    linear-gradient(to right,rgba(95,216,255,.13) 1px,transparent 1px) 0 0/64px 64px,
+    linear-gradient(to bottom,rgba(95,216,255,.13) 1px,transparent 1px) 0 0/64px 64px}
+/* A soft horizon glow where the floor meets the dark. */
+.hud-horizon{position:absolute;left:0;right:0;top:56%;height:2px;
+  background:radial-gradient(ellipse at center,rgba(95,216,255,.35),transparent 70%);
+  filter:blur(1px)}
+
+/* ── The core ──
+   Drawn on a canvas by HUD_FX: a particle sphere, orbits and a spectrum ring,
+   all driven by the same body[data-jv] state the panel already sets. */
 .hud-core{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);
-  width:min(46vh,380px);height:min(46vh,380px);pointer-events:none}
-.hud-ring{position:absolute;inset:0;border-radius:50%;border:1px solid var(--hud-faint)}
-.hud-ring.r2{inset:9%;border-color:var(--hud-dim);border-style:dashed;
-  animation:hud-spin 26s linear infinite}
-.hud-ring.r3{inset:19%;border-width:2px;border-color:transparent;
-  border-top-color:var(--hud);border-right-color:var(--hud-dim);
-  animation:hud-spin 8s linear infinite}
-.hud-ring.r4{inset:29%;border-color:var(--hud-faint);
-  animation:hud-spin 14s linear infinite reverse}
-/* Tick marks: a conic gradient masked to a thin band beats 60 DOM nodes. */
-.hud-ticks{position:absolute;inset:4%;border-radius:50%;
-  background:repeating-conic-gradient(var(--hud-dim) 0deg 1.1deg,transparent 1.1deg 6deg);
-  -webkit-mask:radial-gradient(circle,transparent 0 46%,#000 46% 50%,transparent 50%);
-          mask:radial-gradient(circle,transparent 0 46%,#000 46% 50%,transparent 50%);
-  animation:hud-spin 60s linear infinite}
-.hud-orb{position:absolute;inset:36%;border-radius:50%;
-  background:radial-gradient(circle at 50% 42%,#eafbff 0%,var(--hud) 34%,rgba(24,132,178,.5) 68%,transparent 74%);
-  box-shadow:0 0 44px rgba(95,216,255,.55),0 0 110px rgba(95,216,255,.28),inset 0 0 26px rgba(255,255,255,.35);
-  animation:hud-breathe 3.6s ease-in-out infinite}
-.hud-core-label{position:absolute;left:50%;top:calc(50% + min(26vh,215px));transform:translateX(-50%);
-  font-family:var(--mono);font-size:9.5px;letter-spacing:.42em;color:var(--hud-dim);
-  text-transform:uppercase;white-space:nowrap}
+  width:min(64vh,620px);height:min(64vh,620px);pointer-events:none;will-change:transform}
+.hud-core canvas{width:100%;height:100%;display:block;position:relative}
+.hud-core::before{content:'';position:absolute;inset:4%;border-radius:50%;
+  background:radial-gradient(circle,var(--glow,rgba(95,216,255,.2)) 0%,transparent 62%);
+  transition:background .4s}
 
-/* State is driven by the same status() the panel already calls, so the reactor
-   cannot drift out of step with what he is actually doing. */
-body[data-jv="busy"]      #jv-panel.hud .hud-orb{animation-duration:.85s}
-body[data-jv="busy"]      #jv-panel.hud .hud-ring.r3{animation-duration:1.7s}
-body[data-jv="listening"] #jv-panel.hud .hud-orb{
-  background:radial-gradient(circle at 50% 42%,#fff0d8 0%,var(--hud-warm) 34%,rgba(178,110,24,.5) 68%,transparent 74%);
-  box-shadow:0 0 46px rgba(255,181,71,.6),0 0 120px rgba(255,181,71,.3)}
-body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-warm)}
+/* State pill under the core. */
+.hud-core-label{position:absolute;left:50%;top:calc(44% + min(31vh,300px));transform:translateX(-50%);
+  display:flex;align-items:center;gap:9px;padding:6px 14px 6px 12px;border-radius:999px;
+  border:1px solid var(--hud-faint);background:rgba(4,18,30,.55);backdrop-filter:blur(6px);
+  font-family:var(--mono);font-size:10px;letter-spacing:.32em;color:rgba(190,235,255,.8);
+  text-transform:uppercase;white-space:nowrap;z-index:2}
+.hud-core-label::before{content:'';width:6px;height:6px;border-radius:50%;
+  background:var(--hud);box-shadow:0 0 10px var(--hud);animation:hud-blink 2.4s ease-in-out infinite}
+body[data-jv="busy"]      .hud-core-label::before{background:#a993ff;box-shadow:0 0 10px #a993ff;animation-duration:.7s}
+body[data-jv="listening"] .hud-core-label::before{background:var(--hud-warm);box-shadow:0 0 10px var(--hud-warm);animation-duration:1s}
+body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:0 0 10px #ff5d6c}
 
-/* ── Readouts ── */
-.hud-col{position:absolute;top:13%;width:min(23vw,250px);z-index:2;
-  font-family:var(--mono);font-size:10.5px;line-height:1.5}
+/* ── Readouts ──
+   Glass cards with a lit top edge, rather than bare text on the dark. */
+.hud-col{position:absolute;top:12%;width:min(22vw,250px);z-index:2;
+  font-family:var(--mono);font-size:10.5px;line-height:1.5;
+  padding:14px 16px 12px;border-radius:12px;
+  background:linear-gradient(180deg,rgba(14,40,60,.42),rgba(4,14,24,.32));
+  border:1px solid rgba(95,216,255,.14);backdrop-filter:blur(10px);
+  box-shadow:0 20px 50px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.04)}
+.hud-col::before{content:'';position:absolute;left:16px;right:16px;top:-1px;height:1px;
+  background:linear-gradient(90deg,transparent,var(--hud),transparent);opacity:.8}
 .hud-col.left{left:4vw}
 .hud-col.right{right:4vw;text-align:right}
-.hud-h{font-size:8.5px;letter-spacing:.24em;color:var(--hud-dim);text-transform:uppercase;
-  border-bottom:1px solid var(--hud-faint);padding-bottom:6px;margin-bottom:10px}
-.hud-row{display:flex;justify-content:space-between;gap:12px;padding:3.5px 0;color:rgba(190,235,255,.72)}
+.hud-h{font-size:8.5px;letter-spacing:.28em;color:var(--hud-dim);text-transform:uppercase;
+  padding-bottom:8px;margin-bottom:6px;border-bottom:1px solid var(--hud-faint)}
+.hud-row{display:flex;justify-content:space-between;gap:12px;padding:4px 0;color:rgba(190,235,255,.72)}
 .hud-col.right .hud-row{flex-direction:row-reverse}
-.hud-row b{color:var(--hud);font-weight:500}
-.hud-row.warn b{color:var(--hud-warm)}
+.hud-row b{color:var(--hud);font-weight:500;font-variant-numeric:tabular-nums}
+.hud-row.warn b{color:var(--hud-warm);text-shadow:0 0 10px rgba(255,181,71,.45)}
 
 /* Corner brackets - the cheapest thing that reads as "targeting system". */
-.hud-br{position:absolute;width:26px;height:26px;border:1px solid var(--hud-dim);z-index:2}
+.hud-br{position:absolute;width:22px;height:22px;border:1.5px solid var(--hud-dim);z-index:2;opacity:.7}
 .hud-br.tl{top:14px;left:14px;border-right:0;border-bottom:0}
 .hud-br.tr{top:14px;right:14px;border-left:0;border-bottom:0}
 .hud-br.bl{bottom:14px;left:14px;border-right:0;border-top:0}
@@ -938,20 +948,23 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
 #jv-panel.hud #jv-input::placeholder{color:var(--hud-dim)}
 #jv-panel.hud #jv-input:focus{border-color:var(--hud);box-shadow:0 0 16px rgba(95,216,255,.26)}
 
-@keyframes hud-spin{to{transform:rotate(360deg)}}
-@keyframes hud-breathe{0%,100%{opacity:.82;transform:scale(1)}50%{opacity:1;transform:scale(1.045)}}
+@keyframes hud-blink{0%,100%{opacity:1}50%{opacity:.35}}
 
 /* Small screens: the reactor becomes a backdrop rather than the subject, and
    the side readouts would crowd the text off the screen, so they go. */
 @media(max-width:820px){
   .hud-col{display:none}
-  .hud-core{width:74vw;height:74vw;top:38%;opacity:.5}
+  .hud-core{width:88vw;height:88vw;top:36%;opacity:.55}
+  /* The title gets its own row; the buttons wrap beneath it instead of
+     sitting on top of it. */
+  #jv-panel.hud .jv-head{flex-wrap:wrap;row-gap:10px;padding:14px 16px}
+  #jv-panel.hud .jv-head > div:nth-child(2){flex:1 0 calc(100% - 40px)!important}
   .hud-core-label{display:none}
 }
 /* Anyone who has asked their machine to stop animating gets a still reactor
    rather than a spinning one. It still reads correctly; it just holds place. */
 @media(prefers-reduced-motion:reduce){
-  #jv-panel.hud .hud-ring,#jv-panel.hud .hud-ticks,#jv-panel.hud .hud-orb{animation:none}
+  #jv-panel.hud .hud-core-label::before{animation:none}
 }
 
 </style>
@@ -1015,14 +1028,8 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
       <div class="hud-br tl"></div><div class="hud-br tr"></div>
       <div class="hud-br bl"></div><div class="hud-br br"></div>
 
-      <div class="hud-core">
-        <div class="hud-ticks"></div>
-        <div class="hud-ring r1"></div>
-        <div class="hud-ring r2"></div>
-        <div class="hud-ring r3"></div>
-        <div class="hud-ring r4"></div>
-        <div class="hud-orb"></div>
-      </div>
+      <div class="hud-floor"></div><div class="hud-horizon"></div>
+      <div class="hud-core"><canvas id="hud-canvas"></canvas></div>
       <div class="hud-core-label" id="hud-label">SYSTEM NOMINAL</div>
 
       <div class="hud-col left">
@@ -11386,6 +11393,207 @@ document.addEventListener('keydown', (e) => {
   if (p && p.classList.contains('hud')) { e.preventDefault(); JV.toggleHud(); }
 });
 
+/* ── HUD core ──────────────────────────────────────────────────────────────
+   The full-screen centrepiece, on one canvas: a breathing particle sphere, a
+   lit nucleus, three tilted orbits with satellites, and a spectrum ring.
+
+   It keeps no state of its own. Each frame it reads body[data-jv] (set by
+   JV's status()) and body[data-jv-speaking], and eases its colour and energy
+   towards what those say, so it can only ever show what he is really doing.
+   pulse() is a kick from speech, one per spoken word.
+
+   Runs only while the HUD is open and the tab is visible. Reduced motion gets
+   a still core that still changes colour with state. */
+const HUD_FX = (() => {
+  const STATES = {
+    idle:      { c: [95, 216, 255],  e: .16, spin: .10 },
+    ready:     { c: [95, 216, 255],  e: .20, spin: .12 },
+    busy:      { c: [169, 147, 255], e: .62, spin: .55 },
+    listening: { c: [255, 181, 71],  e: .48, spin: .18 },
+    speaking:  { c: [140, 236, 255], e: .50, spin: .22 },
+    err:       { c: [255, 93, 108],  e: .22, spin: .06 },
+  };
+  const N = 640, BARS = 120;
+  const pts = [];
+  for (let i = 0; i < N; i++) {             // Fibonacci sphere: even, no clumps
+    const y = 1 - (i / (N - 1)) * 2, r = Math.sqrt(1 - y * y), th = i * 2.399963;
+    pts.push([Math.cos(th) * r, y, Math.sin(th) * r, Math.random()]);
+  }
+  const spec = new Float32Array(BARS), specT = new Float32Array(BARS);
+  const ORBITS = [
+    { tilt: 1.15, yaw: .2,  r: 1.32, sp: .55, ph: 0 },
+    { tilt: .45,  yaw: 1.9, r: 1.46, sp: -.38, ph: 2.1 },
+    { tilt: 1.75, yaw: 3.4, r: 1.6,  sp: .27, ph: 4.2 },
+  ];
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let cv, ctx, W = 0, raf = 0, timer = 0, running = false;
+  let t = 0, last = 0, rot = 0, kick = 0, lastHalo = '';
+  let col = STATES.idle.c.slice(), energy = STATES.idle.e, spin = STATES.idle.spin;
+
+  function size() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const box = cv.getBoundingClientRect();
+    W = Math.max(1, Math.round(box.width * dpr));
+    if (cv.width !== W) { cv.width = W; cv.height = W; }
+  }
+
+  function state() {
+    const b = document.body.dataset;
+    if (b.jvSpeaking === '1' && b.jv !== 'listening') return STATES.speaking;
+    return STATES[b.jv] || STATES.idle;
+  }
+
+  const rgba = (a, k = 1) =>
+    `rgba(${Math.min(255, col[0] * k) | 0},${Math.min(255, col[1] * k) | 0},${Math.min(255, col[2] * k) | 0},${a})`;
+
+  function frame(now) {
+    const dt = Math.min(.05, last ? (now - last) / 1000 : .016);
+    last = now;
+    if (!reduced) t += dt;
+
+    // Ease towards the target state rather than snapping: a hard cut from
+    // thinking to idle reads as a glitch.
+    const s = state(), k = 1 - Math.pow(.02, dt);
+    for (let i = 0; i < 3; i++) col[i] += (s.c[i] - col[i]) * k;
+    energy += (s.e - energy) * k;
+    spin += (s.spin - spin) * k;
+    kick *= Math.pow(.04, dt);
+    const en = Math.min(1, energy + kick * .5);
+    if (!reduced) rot += spin * dt;
+
+    const c = ctx, cx = W / 2, cy = W / 2, R = W * .2;
+    c.clearRect(0, 0, W, W);
+    c.globalCompositeOperation = 'lighter';
+
+    // Halo is CSS behind the canvas (a full-canvas gradient every frame is the
+    // single most expensive thing to draw); only repaint it when it changes.
+    const halo = rgba((.16 + en * .14).toFixed(2));
+    if (halo !== lastHalo) { cv.parentNode.style.setProperty('--glow', halo); lastHalo = halo; }
+    let g;
+
+    // Particle sphere. Cheap trig "noise" displaces the surface so it breathes
+    // and, when he is busy, churns.
+    const cr = Math.cos(rot), sr = Math.sin(rot);
+    const tl = .38 + Math.sin(t * .23) * .12, ct = Math.cos(tl), st = Math.sin(tl);
+    const amp = .04 + en * .16, dot = Math.max(1, W / 520);
+    c.fillStyle = rgba(1, 1.25);
+    for (let i = 0; i < N; i++) {
+      const p = pts[i];
+      let x = p[0], y = p[1], z = p[2];
+      const n = Math.sin(x * 3.1 + t * 1.3) * Math.sin(y * 3.7 + t * .9) * Math.sin(z * 2.9 + t * 1.1);
+      const d = 1 + n * amp + Math.sin(t * 2 + p[3] * 6.28) * .012;
+      x *= d; y *= d; z *= d;
+      const x1 = x * cr - z * sr, z1 = x * sr + z * cr;   // spin about Y
+      const y2 = y * ct - z1 * st, z2 = y * st + z1 * ct; // tilt about X
+      const f = 3 / (3 - z2);
+      const depth = (z2 + 1.2) / 2.4;
+      c.globalAlpha = .12 + depth * .75;
+      const sz = dot * (.6 + depth * 1.5) * f;
+      c.fillRect(cx + x1 * R * f - sz / 2, cy + y2 * R * f - sz / 2, sz, sz);
+    }
+
+    c.globalAlpha = 1;
+
+    // Nucleus
+    const nr = R * (.42 + en * .12 + Math.sin(t * 2.2) * .02);
+    g = c.createRadialGradient(cx, cy, 0, cx, cy, nr);
+    g.addColorStop(0, `rgba(255,255,255,${.55 + en * .35})`);
+    g.addColorStop(.25, rgba(.55 + en * .3, 1.1));
+    g.addColorStop(1, rgba(0));
+    c.fillStyle = g; c.beginPath(); c.arc(cx, cy, nr, 0, 6.2832); c.fill();
+
+    // Orbits: 3D circles, brighter on the near side, each with a satellite.
+    c.lineWidth = Math.max(1, W / 700);
+    for (const o of ORBITS) {
+      const ca = Math.cos(o.tilt), sa = Math.sin(o.tilt), cyw = Math.cos(o.yaw + rot * .4), syw = Math.sin(o.yaw + rot * .4);
+      const P = (a) => {
+        let x = Math.cos(a) * o.r, y = 0, z = Math.sin(a) * o.r;
+        const y1 = y * ca - z * sa, z1 = y * sa + z * ca;
+        const x2 = x * cyw - z1 * syw, z2 = x * syw + z1 * cyw;
+        const f = 3 / (3 - z2 * .6);
+        return [cx + x2 * R * f, cy + y1 * R * f, z2];
+      };
+      const far = new Path2D(), near = new Path2D();
+      let prev = P(0);
+      for (let i = 1; i <= 64; i++) {
+        const q = P(i / 64 * 6.2832), path = q[2] > 0 ? near : far;
+        path.moveTo(prev[0], prev[1]); path.lineTo(q[0], q[1]);
+        prev = q;
+      }
+      c.strokeStyle = rgba(.06 + en * .05); c.stroke(far);
+      c.strokeStyle = rgba(.24 + en * .2); c.stroke(near);
+      const sat = P(o.ph + t * o.sp * (1 + en * 1.5));
+      g = c.createRadialGradient(sat[0], sat[1], 0, sat[0], sat[1], R * .09);
+      g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(.3, rgba(.8)); g.addColorStop(1, rgba(0));
+      c.fillStyle = g; c.beginPath(); c.arc(sat[0], sat[1], R * .09, 0, 6.2832); c.fill();
+    }
+
+    // Spectrum ring: bars ease towards random targets scaled by energy, so
+    // idle is a faint ripple and speech is a lively one.
+    const r0 = R * 1.9, maxL = R * (.08 + en * .42);
+    for (let i = 0; i < BARS; i++) {
+      if (!reduced && Math.random() < .12 + en * .3) specT[i] = Math.random() * (.25 + en * .75) + kick * .6;
+      spec[i] += (specT[i] - spec[i]) * Math.min(1, dt * 14);
+    }
+    c.lineWidth = Math.max(1.5, W / 330); c.lineCap = 'round';
+    const buckets = [new Path2D(), new Path2D(), new Path2D(), new Path2D()];
+    for (let i = 0; i < BARS; i++) {
+      const v = (spec[i] + spec[(i + 1) % BARS] + spec[(i + BARS - 1) % BARS]) / 3;
+      const a = i / BARS * 6.2832 + rot * .25 - 1.5708;
+      const l = 2 + v * maxL, ca = Math.cos(a), sa = Math.sin(a);
+      const b = buckets[Math.min(3, (v * 4) | 0)];
+      b.moveTo(cx + ca * r0, cy + sa * r0); b.lineTo(cx + ca * (r0 + l), cy + sa * (r0 + l));
+    }
+    buckets.forEach((b, i) => { c.strokeStyle = rgba(.25 + i * .17); c.stroke(b); });
+
+    // Outer instrument rings: a fine full circle, and segmented arcs turning
+    // the other way.
+    c.lineCap = 'butt';
+    c.lineWidth = Math.max(1, W / 900);
+    c.strokeStyle = rgba(.18);
+    c.beginPath(); c.arc(cx, cy, R * 1.82, 0, 6.2832); c.stroke();
+    c.lineWidth = Math.max(1.5, W / 420);
+    const segs = 6, gap = .16;
+    for (let i = 0; i < segs; i++) {
+      const a0 = i / segs * 6.2832 - rot * .6;
+      c.strokeStyle = rgba(i % 2 ? .22 : .45);
+      c.beginPath(); c.arc(cx, cy, R * 2.32, a0, a0 + 6.2832 / segs - gap); c.stroke();
+    }
+    c.lineWidth = Math.max(1, W / 800);
+    const sweep = t * .9;
+    c.strokeStyle = rgba(.6, 1.15);
+    c.beginPath(); c.arc(cx, cy, R * 2.42, sweep, sweep + .5 + en * .9); c.stroke();
+
+    c.globalCompositeOperation = 'source-over';
+  }
+
+  function loop(now) {
+    if (!running) return;
+    if (!document.hidden) frame(now);
+    if (reduced) timer = setTimeout(() => loop(performance.now()), 400);
+    else raf = requestAnimationFrame(loop);
+  }
+
+  return {
+    start() {
+      cv = cv || document.getElementById('hud-canvas');
+      if (!cv || running) return;
+      ctx = ctx || cv.getContext('2d');
+      running = true; last = 0;
+      size();
+      window.addEventListener('resize', size);
+      loop(performance.now());
+    },
+    stop() {
+      running = false;
+      cancelAnimationFrame(raf); clearTimeout(timer);
+      window.removeEventListener('resize', size);
+    },
+    pulse(n = 1) { kick = Math.min(1.2, kick + .35 * n); },
+  };
+})();
+
 const JV = (() => {
   // The conversation itself lives server-side (jarvis_threads), so a reload
   // or another device continues it. `restored` is whether this page has
@@ -11525,6 +11733,7 @@ const JV = (() => {
   // remembers is there.
   function hush() {
     if (window.speechSynthesis) speechSynthesis.cancel();
+    delete document.body.dataset.jvSpeaking;
   }
 
   /**
@@ -11626,6 +11835,10 @@ const JV = (() => {
     // Measured, a little lower than default. Clipped speech reads as urgency,
     // which is the opposite of the character.
     u.rate = 1.0; u.pitch = 0.85;
+    // The HUD core lights up while he talks and kicks on every word.
+    u.onstart = () => { document.body.dataset.jvSpeaking = '1'; HUD_FX.pulse(); };
+    u.onboundary = () => HUD_FX.pulse();
+    u.onend = u.onerror = () => { delete document.body.dataset.jvSpeaking; };
     speechSynthesis.speak(u);
   }
 
@@ -11742,6 +11955,7 @@ const JV = (() => {
       const p = $$('jv-panel');
       p.classList.remove('open', 'hud');
       document.body.dataset.jv = 'idle';
+      HUD_FX.stop();
       hush();
     },
 
@@ -11753,7 +11967,8 @@ const JV = (() => {
       if (!p.classList.contains('open')) this.open();
       const on = p.classList.toggle('hud');
       $$('jv-hud-btn').title = on ? 'Exit full screen' : 'Full screen';
-      if (on) { loadHudStats(); $$('jv-input').focus(); }
+      if (on) { HUD_FX.start(); loadHudStats(); $$('jv-input').focus(); }
+      else HUD_FX.stop();
     },
     key(e) {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(e.target.value); e.target.value = ''; }
