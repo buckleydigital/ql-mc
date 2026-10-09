@@ -40,8 +40,9 @@ outside the database, capped at five uses each per question.
 
 He runs only when someone asks: the panel, or a text from the owner's number.
 The self-scheduled jobs (`create_job`, run by the 15-minute heartbeat) were
-removed on 9 Oct 2026 to stop him spending API credit unattended, and the
-heartbeat cron was unscheduled (migration 20261009000002).
+removed on 9 Oct 2026 to stop him spending API credit unattended (migration
+20261009000002). The heartbeat still runs its watchers and panel alerts, which
+never call a model.
 
 ## Social posts
 

@@ -18,9 +18,13 @@
  * Website text is the business's, not ours: it goes to the model as quoted
  * data, and the model is told never to follow instructions found in it.
  *
+ * Claude does the judging. If it cannot (no ANTHROPIC_API_KEY, no credit, rate
+ * limited, down) and OPENAI_API_KEY is set, OpenAI does it instead for the rest
+ * of the run, with the same prompt and schema; the run's errors say so.
+ *
  * Runs only when a run is started by hand - there is no schedule - and stops
- * at the first API failure (no key, no credit, rate limit), leaving the rest
- * verified for the next run rather than failing them one by one.
+ * at the first failure neither can get past, leaving the rest verified for the
+ * next run rather than failing them one by one.
  *
  * { action: 'run', run_id } - from outreach-find; continues itself with hop.
  * { action: 'test', website, niche } - score one website, nothing saved.
@@ -62,6 +66,47 @@ const PRICES: Record<string, { input: number; output: number; write: number; rea
 function priceFor(model: string) {
   const key = Object.keys(PRICES).filter((k) => model.startsWith(k)).sort((a, b) => b.length - a.length)[0]
   return PRICES[key ?? 'claude-opus-5']
+}
+
+// ── OpenAI, the fallback ───────────────────────────────────────────────────
+// Plain fetch, no SDK. Inlined rather than shared, like everything else here:
+// this project deploys one file per function. jarvis-content has a copy.
+
+const OPENAI_MODEL = Deno.env.get('OPENAI_MODEL') ?? 'gpt-5.5'
+/** gpt-5.5 list price, US dollars per million tokens. A cheaper model over-reports, never hides. */
+const OPENAI_PRICE = { input: 5, output: 30, read: 0.5 }
+
+/** One structured-output call: JSON text that fits `schema`, or a thrown error. */
+async function askOpenAI(system: string, user: string, schema: object, effort: 'low' | 'medium') {
+  const key = Deno.env.get('OPENAI_API_KEY')
+  if (!key) throw new Error('OPENAI_API_KEY is not set')
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      reasoning_effort: effort,
+      max_completion_tokens: 8000,
+      response_format: { type: 'json_schema', json_schema: { name: 'answer', strict: true, schema } },
+      messages: [{ role: 'developer', content: system }, { role: 'user', content: user }],
+    }),
+    signal: AbortSignal.timeout(90_000),
+  })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(`OpenAI ${res.status}: ${String(body?.error?.message ?? '').slice(0, 200)}`)
+  const choice = body.choices?.[0]
+  // prompt_tokens includes the cached ones; Claude's input_tokens does not.
+  const read = Number(body.usage?.prompt_tokens_details?.cached_tokens ?? 0)
+  const input = Number(body.usage?.prompt_tokens ?? 0) - read
+  const output = Number(body.usage?.completion_tokens ?? 0)
+  return {
+    text: String(choice?.message?.content ?? ''),
+    refused: Boolean(choice?.message?.refusal),
+    truncated: choice?.finish_reason === 'length',
+    model: String(body.model ?? OPENAI_MODEL),
+    input, output, read,
+    cost: (input * OPENAI_PRICE.input + output * OPENAI_PRICE.output + read * OPENAI_PRICE.read) / 1e6,
+  }
 }
 
 const json = (body: unknown, status = 200) =>
@@ -128,66 +173,104 @@ const SCHEMA = {
   },
 }
 
-type Verdict = { fit_score: number; reason: string; opener: string; contact_name: string | null; sells_to_homeowners: boolean }
+type Verdict = { fit_score: number; reason: string; opener: string; contact_name: string | null; sells_to_homeowners: boolean; model?: string }
 type Spend = { calls: number; input: number; output: number; cacheRead: number; cacheWrite: number; cost: number; models: Set<string> }
 const newSpend = (): Spend => ({ calls: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, models: new Set() })
 
 /** Stops the run: the key, the credit or the rate limit, not this prospect. */
 class StopRun extends Error {}
 
+/**
+ * Who answers. Starts as Claude when ANTHROPIC_API_KEY is set; the first time
+ * Claude fails, `claude` is cleared and OpenAI takes the rest of the run, so a
+ * run out of credit does not ask Claude again for every prospect.
+ */
+type AI = { claude: Anthropic | null; note: string | null }
+
+function newAI(): AI | null {
+  const key = Deno.env.get('ANTHROPIC_API_KEY')
+  if (!key && !Deno.env.get('OPENAI_API_KEY')) return null
+  return { claude: key ? new Anthropic({ apiKey: key }) : null, note: null }
+}
+
 async function judge(
-  client: Anthropic, spend: Spend,
+  ai: AI, spend: Spend,
   p: { business_name: string; suburb: string | null; state: string | null; niche: string; offer: string | null },
   pages: { url: string; text: string }[],
 ): Promise<Verdict | 'refused'> {
   const where = [p.suburb, p.state].filter(Boolean).join(' ') || 'Australia'
   const site = pages.map((pg) => `<website url="${pg.url}">\n${pg.text}\n</website>`).join('\n\n')
-  let res
-  try {
-    res = await client.beta.messages.create({
-      model: MODEL,
-      max_tokens: 4096,
-      system: SYSTEM,
-      thinking: { type: 'adaptive' },
-      // Set explicitly: Opus 5.5 defaults to medium. One judgement from one
-      // page, many times a day - low is enough and keeps it cheap.
-      output_config: {
-        effort: 'low',
-        format: { type: 'json_schema', schema: SCHEMA },
-      },
-      // Routes around a safety refusal instead of returning nothing.
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      messages: [{
-        role: 'user',
-        content: `Niche: ${p.niche}\nWhat we offer this niche: ${p.offer || 'the Branded Lead Gen System: exclusive homeowner leads from their own ad accounts and branded funnel, live in 24-48 hours, no lock-in'}\n` +
-          `Business: ${p.business_name}, ${where}\n\n${site}`,
-      }],
-    })
-  } catch (err) {
-    if (err instanceof Anthropic.APIError) {
-      throw new StopRun(`Claude API ${err.status ?? ''}: ${(err.message || '').slice(0, 200)}`)
+  const user = `Niche: ${p.niche}\nWhat we offer this niche: ${p.offer || 'the Branded Lead Gen System: exclusive homeowner leads from their own ad accounts and branded funnel, live in 24-48 hours, no lock-in'}\n` +
+    `Business: ${p.business_name}, ${where}\n\n${site}`
+
+  let text: string, answeredBy: string
+  const claude = ai.claude
+  if (claude) {
+    let res
+    try {
+      res = await claude.beta.messages.create({
+        model: MODEL,
+        max_tokens: 4096,
+        system: SYSTEM,
+        thinking: { type: 'adaptive' },
+        // Set explicitly: Opus 5.5 defaults to medium. One judgement from one
+        // page, many times a day - low is enough and keeps it cheap.
+        output_config: {
+          effort: 'low',
+          format: { type: 'json_schema', schema: SCHEMA },
+        },
+        // Routes around a safety refusal instead of returning nothing.
+        betas: ['server-side-fallback-2026-07-01'],
+        fallbacks: 'default',
+        messages: [{ role: 'user', content: user }],
+      })
+    } catch (err) {
+      if (!(err instanceof Anthropic.APIError)) throw err
+      const why = `Claude API ${err.status ?? ''}: ${(err.message || '').slice(0, 200)}`
+      if (!Deno.env.get('OPENAI_API_KEY')) throw new StopRun(why)
+      if (ai.claude === claude) {
+        ai.claude = null
+        ai.note = `${why} - switched to OpenAI (${OPENAI_MODEL}) for the rest of the run`
+        console.warn('outreach-qualify:', ai.note)
+      }
+      return judge(ai, spend, p, pages)
     }
-    throw err
+
+    const u = res.usage
+    const model = res.model || MODEL
+    const pr = priceFor(model)
+    const input = u.input_tokens ?? 0, output = u.output_tokens ?? 0
+    const read = u.cache_read_input_tokens ?? 0, write = u.cache_creation_input_tokens ?? 0
+    spend.calls++; spend.input += input; spend.output += output; spend.cacheRead += read; spend.cacheWrite += write
+    spend.models.add(model)
+    spend.cost += (input * pr.input + output * pr.output + read * pr.read + write * pr.write) / 1e6
+
+    if (res.stop_reason === 'refusal') return 'refused'
+    if (res.stop_reason === 'max_tokens') throw new Error('answer cut off at max_tokens')
+    text = res.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
+    answeredBy = model
+  } else {
+    let r
+    try {
+      r = await askOpenAI(SYSTEM, user, SCHEMA, 'low')
+    } catch (err) {
+      throw new StopRun((err as Error).message)
+    }
+    spend.calls++; spend.input += r.input; spend.output += r.output; spend.cacheRead += r.read
+    spend.models.add(r.model)
+    spend.cost += r.cost
+    if (r.refused) return 'refused'
+    if (r.truncated) throw new Error('answer cut off at max_completion_tokens')
+    text = r.text
+    answeredBy = r.model
   }
 
-  const u = res.usage
-  const model = res.model || MODEL
-  const pr = priceFor(model)
-  const input = u.input_tokens ?? 0, output = u.output_tokens ?? 0
-  const read = u.cache_read_input_tokens ?? 0, write = u.cache_creation_input_tokens ?? 0
-  spend.calls++; spend.input += input; spend.output += output; spend.cacheRead += read; spend.cacheWrite += write
-  spend.models.add(model)
-  spend.cost += (input * pr.input + output * pr.output + read * pr.read + write * pr.write) / 1e6
-
-  if (res.stop_reason === 'refusal') return 'refused'
-  if (res.stop_reason === 'max_tokens') throw new Error('answer cut off at max_tokens')
-  const text = res.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
   const v = JSON.parse(text) as Verdict
   v.fit_score = Math.max(0, Math.min(10, Math.round(Number(v.fit_score) || 0)))
   v.reason = String(v.reason ?? '').trim().slice(0, 300)
   v.opener = String(v.opener ?? '').trim().slice(0, 300)
   v.contact_name = v.contact_name ? String(v.contact_name).trim().slice(0, 60) : null
+  v.model = answeredBy
   return v
 }
 
@@ -200,7 +283,7 @@ type Prospect = {
 type Niche = { key: string; label: string; offer: string | null }
 
 async function qualifyOne(
-  db: SupabaseClient, client: Anthropic, spend: Spend, p: Prospect, niche: Niche | undefined,
+  db: SupabaseClient, ai: AI, spend: Spend, p: Prospect, niche: Niche | undefined,
   stats: { qualified: number; not_fit: number },
 ): Promise<void> {
   const meta = { ...(p.meta ?? {}) }
@@ -224,7 +307,7 @@ async function qualifyOne(
     return
   }
 
-  const v = await judge(client, spend, {
+  const v = await judge(ai, spend, {
     business_name: p.business_name, suburb: p.suburb, state: p.state,
     niche: niche?.label ?? p.niche_key, offer: niche?.offer ?? null,
   }, pages)
@@ -245,7 +328,7 @@ async function qualifyOne(
     status: fit ? 'qualified' : 'rejected',
     status_reason: `${v.fit_score}/10: ${v.reason}`,
     ...(p.contact_name || !v.contact_name ? {} : { contact_name: v.contact_name }),
-    meta: { ...meta, qualify_attempts: attempts, qualified_at: new Date().toISOString(), sells_to_homeowners: v.sells_to_homeowners, qualify_model: MODEL },
+    meta: { ...meta, qualify_attempts: attempts, qualified_at: new Date().toISOString(), sells_to_homeowners: v.sells_to_homeowners, qualify_model: v.model ?? MODEL },
   }).eq('id', p.id)
   if (fit) stats.qualified++
   else stats.not_fit++
@@ -262,10 +345,10 @@ async function run(db: SupabaseClient, bearer: string, runId: string, hop: numbe
   const c = (cur ?? {}) as Record<string, number | string[]>
   const doneThisRun = Number(c.qualified ?? 0) + Number(c.not_fit ?? 0)
 
-  const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
-  if (!apiKey) errors.push('ANTHROPIC_API_KEY is not set: prospects verified but not scored')
+  const ai = newAI()
+  if (!ai) errors.push('Neither ANTHROPIC_API_KEY nor OPENAI_API_KEY is set: prospects verified but not scored')
   else if (doneThisRun < MAX_PER_RUN) {
-    const client = new Anthropic({ apiKey })
+    if (!ai.claude) errors.push(`ANTHROPIC_API_KEY is not set: scored with OpenAI (${OPENAI_MODEL})`)
     const { data: nicheRows } = await db.from('outreach_niches').select('key, label, offer')
     const niches = new Map(((nicheRows ?? []) as Niche[]).map((n) => [n.key, n]))
     const seen = new Set<string>()
@@ -284,7 +367,7 @@ async function run(db: SupabaseClient, bearer: string, runId: string, hop: numbe
       for (let i = 0; i < batch.length; i += PARALLEL) {
         if (Date.now() > deadline) { more = true; break outer }
         const results = await Promise.allSettled(batch.slice(i, i + PARALLEL).map((p) =>
-          qualifyOne(db, client, spend, p, niches.get(p.niche_key), stats)))
+          qualifyOne(db, ai, spend, p, niches.get(p.niche_key), stats)))
         left -= Math.min(PARALLEL, batch.length - i)
         const stop = results.find((r) => r.status === 'rejected' && r.reason instanceof StopRun)
         for (const r of results) {
@@ -342,13 +425,13 @@ Deno.serve(async (req: Request) => {
   try {
     if (input.action === 'test') {
       if (!input.website) return json({ error: 'website: a URL' }, 400)
-      const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
-      if (!apiKey) return json({ ok: false, error: 'ANTHROPIC_API_KEY is not set' }, 400)
+      const ai = newAI()
+      if (!ai) return json({ ok: false, error: 'Neither ANTHROPIC_API_KEY nor OPENAI_API_KEY is set' }, 400)
       const text = await pageText(input.website)
       if (!text) return json({ ok: false, error: 'could not read that website' }, 400)
       const { data: n } = await db.from('outreach_niches').select('key, label, offer').eq('key', input.niche ?? 'solar').maybeSingle()
       const spend = newSpend()
-      const v = await judge(new Anthropic({ apiKey }), spend, {
+      const v = await judge(ai, spend, {
         business_name: input.website, suburb: null, state: null,
         niche: (n as Niche | null)?.label ?? 'Solar & battery', offer: (n as Niche | null)?.offer ?? null,
       }, [{ url: input.website, text }])

@@ -188,8 +188,51 @@ hard_fails: anything that must never be published - an invented or unsupported n
 issues: what is wrong, concretely, quoting the words.
 fixes: exact instructions for the rewrite. Never write the post yourself.`
 
+// ── OpenAI, the fallback ───────────────────────────────────────────────────
+// When Claude cannot review (no ANTHROPIC_API_KEY, no credit, rate limited,
+// down) and OPENAI_API_KEY is set, OpenAI reviews with the same prompt and
+// schema. Plain fetch, no SDK; a copy of outreach-qualify's, inlined because
+// this project deploys one file per function.
+
+const OPENAI_MODEL = Deno.env.get('OPENAI_MODEL') ?? 'gpt-5.5'
+/** gpt-5.5 list price, US dollars per million tokens. A cheaper model over-reports, never hides. */
+const OPENAI_PRICE = { input: 5, output: 30, read: 0.5 }
+
+/** One structured-output call: JSON text that fits `schema`, or a thrown error. */
+async function askOpenAI(system: string, user: string, schema: object, effort: 'low' | 'medium') {
+  const key = Deno.env.get('OPENAI_API_KEY')
+  if (!key) throw new Error('OPENAI_API_KEY is not set')
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      reasoning_effort: effort,
+      max_completion_tokens: 8000,
+      response_format: { type: 'json_schema', json_schema: { name: 'answer', strict: true, schema } },
+      messages: [{ role: 'developer', content: system }, { role: 'user', content: user }],
+    }),
+    signal: AbortSignal.timeout(90_000),
+  })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(`OpenAI ${res.status}: ${String(body?.error?.message ?? '').slice(0, 200)}`)
+  const choice = body.choices?.[0]
+  // prompt_tokens includes the cached ones; Claude's input_tokens does not.
+  const read = Number(body.usage?.prompt_tokens_details?.cached_tokens ?? 0)
+  const input = Number(body.usage?.prompt_tokens ?? 0) - read
+  const output = Number(body.usage?.completion_tokens ?? 0)
+  return {
+    text: String(choice?.message?.content ?? ''),
+    refused: Boolean(choice?.message?.refusal),
+    truncated: choice?.finish_reason === 'length',
+    model: String(body.model ?? OPENAI_MODEL),
+    input, output, read,
+    cost: (input * OPENAI_PRICE.input + output * OPENAI_PRICE.output + read * OPENAI_PRICE.read) / 1e6,
+  }
+}
+
 async function review(
-  client: Anthropic,
+  client: Anthropic | null,
   brief: string,
   examples: { caption: string; original_caption: string | null }[],
   draft: { caption: string; card: Card; facts: Fact[]; platforms: string[] },
@@ -202,29 +245,49 @@ async function review(
       ).join('\n\n')
     : '(none yet)'
 
-  const res = await client.messages.create({
-    model: 'claude-opus-5-5',
-    max_tokens: 4000,
-    output_config: { effort: 'medium', format: { type: 'json_schema', schema: EDITOR_SCHEMA } },
-    system: EDITOR_SYSTEM,
-    messages: [{
-      role: 'user',
-      content:
-        `CONTENT BRIEF\n${brief}\n\n` +
-        `THE OWNER'S VOICE - approved posts and the owner's edits, newest first\n${voice}\n\n` +
-        `DRAFT FOR ${draft.platforms.join(' + ')}\n` +
-        `Caption:\n${draft.caption}\n\n` +
-        `Card (${draft.card.style}):\n${cardText(draft.card)}\n\n` +
-        `Facts the draft rests on:\n${draft.facts.map((f) => `- ${f.claim} [source: ${f.source}]`).join('\n') || '(none)'}`,
-    }] as any,
-  } as any)
+  const user =
+    `CONTENT BRIEF\n${brief}\n\n` +
+    `THE OWNER'S VOICE - approved posts and the owner's edits, newest first\n${voice}\n\n` +
+    `DRAFT FOR ${draft.platforms.join(' + ')}\n` +
+    `Caption:\n${draft.caption}\n\n` +
+    `Card (${draft.card.style}):\n${cardText(draft.card)}\n\n` +
+    `Facts the draft rests on:\n${draft.facts.map((f) => `- ${f.claim} [source: ${f.source}]`).join('\n') || '(none)'}`
 
-  const text = (res.content as any[]).filter((b) => b.type === 'text').map((b) => b.text).join('')
-  const verdict = JSON.parse(text) as {
+  type Verdict = {
     scores: Record<(typeof RUBRIC)[number], number>
     hard_fails: string[]; issues: string[]; fixes: string[]
   }
-  return { verdict, usage: res.usage as any, model: String((res as any).model ?? 'claude-opus-5-5') }
+
+  if (client) {
+    try {
+      const res = await client.messages.create({
+        model: 'claude-opus-5-5',
+        max_tokens: 4000,
+        output_config: { effort: 'medium', format: { type: 'json_schema', schema: EDITOR_SCHEMA } },
+        system: EDITOR_SYSTEM,
+        messages: [{ role: 'user', content: user }] as any,
+      } as any)
+      const text = (res.content as any[]).filter((b) => b.type === 'text').map((b) => b.text).join('')
+      const u = res.usage as any
+      const input = Number(u?.input_tokens ?? 0), output = Number(u?.output_tokens ?? 0)
+      return {
+        verdict: JSON.parse(text) as Verdict,
+        model: String((res as any).model ?? 'claude-opus-5-5'),
+        input, output,
+        read: Number(u?.cache_read_input_tokens ?? 0),
+        write: Number(u?.cache_creation_input_tokens ?? 0),
+        cost: (input * 4 + output * 20) / 1e6,
+      }
+    } catch (err) {
+      if (!(err instanceof Anthropic.APIError) || !Deno.env.get('OPENAI_API_KEY')) throw err
+      console.warn(`jarvis-content: Claude API ${err.status ?? ''} (${(err.message || '').slice(0, 200)}) - reviewing with OpenAI`)
+    }
+  }
+
+  const r = await askOpenAI(EDITOR_SYSTEM, user, EDITOR_SCHEMA, 'medium')
+  if (r.refused) throw new Error('The OpenAI editor refused to review this draft.')
+  if (r.truncated) throw new Error('The OpenAI editor was cut off before finishing.')
+  return { verdict: JSON.parse(r.text) as Verdict, model: r.model, input: r.input, output: r.output, read: r.read, write: 0, cost: r.cost }
 }
 
 // ── The card ───────────────────────────────────────────────────────────────
@@ -440,19 +503,19 @@ Deno.serve(async (req: Request) => {
 
     // Gate 2.
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
-    if (!apiKey) return json({ error: 'ANTHROPIC_API_KEY is not set' }, 500)
-    const { verdict, usage, model } = await review(new Anthropic({ apiKey }), ctx.brief, ctx.examples, {
+    if (!apiKey && !Deno.env.get('OPENAI_API_KEY')) {
+      return json({ error: 'Neither ANTHROPIC_API_KEY nor OPENAI_API_KEY is set' }, 500)
+    }
+    const { verdict, model, ...use } = await review(apiKey ? new Anthropic({ apiKey }) : null, ctx.brief, ctx.examples, {
       caption, card, facts, platforms,
     })
 
     // The editor is part of the bill, so it is costed like everything else.
-    const input = Number(usage?.input_tokens ?? 0), output = Number(usage?.output_tokens ?? 0)
     await admin.from('jarvis_usage').insert({
       channel: 'editor', model, outcome: 'reviewed', steps: 1,
-      input_tokens: input, output_tokens: output,
-      cache_read_tokens: Number(usage?.cache_read_input_tokens ?? 0),
-      cache_write_tokens: Number(usage?.cache_creation_input_tokens ?? 0),
-      cost_usd: Math.round(((input * 4 + output * 20) / 1e6) * 1e6) / 1e6,
+      input_tokens: use.input, output_tokens: use.output,
+      cache_read_tokens: use.read, cache_write_tokens: use.write,
+      cost_usd: Math.round(use.cost * 1e6) / 1e6,
     }).then(() => {}, () => {})
 
     // Gate 3: the bar, in code.
