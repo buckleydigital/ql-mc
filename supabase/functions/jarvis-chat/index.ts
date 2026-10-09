@@ -2134,6 +2134,14 @@ function addUsage(spend: ReturnType<typeof newSpend>, res: any) {
     searches * WEB_SEARCH_USD
 }
 
+/**
+ * Models the settings screen may choose. Both take this exact request: adaptive
+ * thinking with block_binding, effort low, fallbacks "default" and the
+ * _20260209 web tools. Claude Haiku 5.5 is cheaper but has no server-side
+ * refusal fallback and is not listed for those web tools, so it is not here.
+ */
+const MODELS = new Set(['claude-opus-5-5', 'claude-sonnet-5-5'])
+
 /** Rounds of tool use per question before he gives up. */
 const MAX_STEPS = 16
 
@@ -2470,6 +2478,15 @@ Deno.serve(async (req: Request) => {
     )
     const byName = new Map(available.map((t) => [t.name, t]))
 
+    // The model chosen in Jarvis settings, read every question so a change
+    // takes effect on the next one. Only models that accept exactly the request
+    // below are honoured; anything else, or no choice, falls back to the
+    // JARVIS_MODEL secret and then Opus. Switching mid-conversation is safe:
+    // the stored thread carries no thinking blocks, which are bound to the
+    // model that wrote them.
+    const { data: bs } = await admin.from('business_settings').select('jarvis_model').limit(1).maybeSingle()
+    const model = MODELS.has(bs?.jarvis_model) ? bs.jarvis_model : (Deno.env.get('JARVIS_MODEL') ?? 'claude-opus-5-5')
+
     const client = new Anthropic({ apiKey })
     const used: string[] = []
 
@@ -2478,7 +2495,7 @@ Deno.serve(async (req: Request) => {
     // cannot bill indefinitely.
     for (let turn = 0; turn < MAX_STEPS; turn++) {
       const res = await client.beta.messages.create({
-        model: Deno.env.get('JARVIS_MODEL') ?? 'claude-opus-5-5',
+        model,
         max_tokens: 8192,
         system,
         // Cache the conversation too, not just SYSTEM. The breakpoint follows

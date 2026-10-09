@@ -3293,6 +3293,13 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
     <textarea class="fi" id="js-brief" rows="6" maxlength="4000" style="width:100%;resize:vertical;font-size:13px;line-height:1.5" placeholder="Who the posts are for, how you sound, what never to say. Blank uses his default: Australian solar installers who buy leads; plain, direct, no hype; one idea per post; never name clients or invent numbers."></textarea>
     <p style="font-size:12px;color:var(--ink3);margin-top:6px;line-height:1.6">Read by him when he writes a post and by his editor when it checks one. The more specific, the less generic the posts.</p>
 
+    <div style="margin:18px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">His brain</div>
+    <select class="fi" id="js-model" style="width:100%">
+      <option value="claude-opus-5-5">Claude Opus 5.5 - sharpest ($4 in / $20 out per million tokens)</option>
+      <option value="claude-sonnet-5-5">Claude Sonnet 5.5 - half the price ($2 in / $10 out per million tokens)</option>
+    </select>
+    <p style="font-size:12px;color:var(--ink3);margin-top:6px;line-height:1.6">The model he thinks with, for the panel, texts and calls. Takes effect on your next question. Sonnet is cheaper and quick; Opus is better at long multi-step jobs like bulk sends and posts.</p>
+
     <div style="margin:18px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">What he costs</div>
     <div id="js-spend" style="font-size:12px;color:var(--ink3);line-height:1.9">Loading…</div>
     <p style="font-size:12px;color:var(--ink3);margin-top:6px;line-height:1.6">Anthropic API spend at list price, in US dollars - every question from the panel and every answer to one of his calls, web searches included. Twilio texts and calls are billed separately and are not counted here.</p>
@@ -9965,6 +9972,7 @@ async function openJarvisSettings() {
   setVal('js-quiet-end', String(s.jarvis_quiet_end || '07:30').slice(0, 5));
   setVal('js-cap', s.jarvis_daily_sms_cap == null ? 10 : s.jarvis_daily_sms_cap);
   setVal('js-call-cap', s.jarvis_call_cap == null ? 3 : s.jarvis_call_cap);
+  setVal('js-model', s.jarvis_model || 'claude-opus-5-5');
   const cv = s.jarvis_call_voice || 'Polly.Brian-Neural';
   const cvSel = $('js-call-voice');
   if (!Array.prototype.some.call(cvSel.options, function (o) { return o.value === cv; })) cvSel.add(new Option(cv, cv));
@@ -11104,6 +11112,7 @@ async function saveJarvisSettings() {
       jarvis_daily_sms_cap: num('js-cap', 0, 100, 10),
       jarvis_call_cap: num('js-call-cap', 0, 20, 3),
       jarvis_call_voice: $('js-call-voice').value || 'Polly.Brian-Neural',
+      jarvis_model: $('js-model').value || null,
     };
 
     const existing = await db.from('business_settings').select('id').limit(1).single();
