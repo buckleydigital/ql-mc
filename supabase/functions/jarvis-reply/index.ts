@@ -3,9 +3,10 @@
  *
  * Reached from jarvis-voice-reply (what you said on one of his calls) and from
  * twilio-inbound-sms (a text to a dedicated Jarvis number, if one is ever set
- * again). Split out because Twilio gives a webhook about fifteen seconds and
- * the Claude tool loop can run past that: the webhook answers Twilio at once
- * and this does the work.
+ * again), and from QL HQ's twilio-inbound-sms (your reply to the main number,
+ * which is HQ's AI SMS number and so rings HQ's webhook). Split out because
+ * Twilio gives a webhook about fifteen seconds and the Claude tool loop can
+ * run past that: the webhook answers Twilio at once and this does the work.
  *
  * The answer always lands in the Jarvis panel. If texts are switched on in
  * Jarvis settings it is also texted to you, from the business's main Twilio
@@ -19,15 +20,23 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
 Deno.serve(async (req: Request) => {
-  // Same capability test as jarvis-notify: prove the caller holds a key that
-  // can read a table only service_role can read.
-  const auth = (req.headers.get('Authorization') || '').replace('Bearer ', '').trim()
-  if (!auth) return json({ error: 'unauthorized' }, 401)
-
   const url = Deno.env.get('SUPABASE_URL')!
-  const caller = createClient(url, auth)
-  const { error: capErr } = await caller.from('jarvis_messages').select('id').limit(1)
-  if (capErr) return json({ error: 'unauthorized' }, 401)
+
+  // QL HQ forwards your texts here: Jarvis texts from the number HQ's AI SMS
+  // agent uses, so replies to him land on HQ's webhook. HQ proves itself with
+  // the same shared secret it already uses for sync-sales-conversation.
+  const apiSecret = Deno.env.get('QL_MC_API_SECRET')
+  const fromHq = !!apiSecret && req.headers.get('x-api-secret') === apiSecret
+
+  if (!fromHq) {
+    // Same capability test as jarvis-notify: prove the caller holds a key that
+    // can read a table only service_role can read.
+    const auth = (req.headers.get('Authorization') || '').replace('Bearer ', '').trim()
+    if (!auth) return json({ error: 'unauthorized' }, 401)
+    const caller = createClient(url, auth)
+    const { error: capErr } = await caller.from('jarvis_messages').select('id').limit(1)
+    if (capErr) return json({ error: 'unauthorized' }, 401)
+  }
 
   const db = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
