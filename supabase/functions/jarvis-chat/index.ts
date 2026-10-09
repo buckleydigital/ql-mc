@@ -2141,7 +2141,13 @@ const MAX_STEPS = 16
 const MAX_HISTORY = 40
 
 /**
- * Keep the last `max` messages, starting on a real question.
+ * Keep the conversation under `max` messages, starting on a real question.
+ *
+ * Over the limit it drops back to half, not to exactly `max`. Trimming one
+ * message per question changed the start of the conversation every time, and
+ * the prompt cache only matches from the start, so every question past the
+ * limit paid full price for the whole history again. Halving means the start
+ * stays put for the next twenty or so messages and the cache keeps hitting.
  *
  * Cutting at an arbitrary index can leave a tool_result first, answering a
  * tool_use that was cut off - and the API rejects the whole conversation. So
@@ -2149,7 +2155,7 @@ const MAX_HISTORY = 40
  */
 function trimHistory(messages: any[], max = MAX_HISTORY) {
   if (messages.length <= max) return messages
-  let out = messages.slice(-max)
+  let out = messages.slice(-Math.floor(max / 2))
   const isQuestion = (m: any) =>
     m?.role === 'user' &&
     (typeof m.content === 'string' ||
@@ -2475,6 +2481,13 @@ Deno.serve(async (req: Request) => {
         model: Deno.env.get('JARVIS_MODEL') ?? 'claude-opus-5-5',
         max_tokens: 8192,
         system,
+        // Cache the conversation too, not just SYSTEM. The breakpoint follows
+        // the last block, so each step of the tool loop, and the next question
+        // a few minutes later, reads everything before it at a tenth of the
+        // price. Before this the history and every tool result in it was sent
+        // at full price on every step: one question cost $0.69, nearly all of
+        // it resent history.
+        cache_control: { type: 'ephemeral' },
         // drop_block: if a stored thread ever does carry thinking the model no
         // longer accepts, drop that reasoning and answer rather than fail the
         // whole question. withoutThinking() means it should never be needed.
