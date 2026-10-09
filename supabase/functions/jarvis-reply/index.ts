@@ -8,9 +8,9 @@
  * Twilio gives a webhook about fifteen seconds and the Claude tool loop can
  * run past that: the webhook answers Twilio at once and this does the work.
  *
- * The answer always lands in the Jarvis panel. If texts are switched on in
- * Jarvis settings it is also texted to you, from the business's main Twilio
- * number.
+ * The answer always lands in the Jarvis panel, and a text is always answered
+ * by text from the business's main Twilio number. A spoken reply is also
+ * confirmed by text when texts are switched on in Jarvis settings.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -130,11 +130,14 @@ Deno.serve(async (req: Request) => {
       body: `You said: "${question.slice(0, 300)}"\n${reply}`,
     })
 
-    // And by text, from the main number, when texts are on.
+    // And by text, from the main number. A text always gets a text back: you
+    // asked him something, so the answer goes where you asked it. "Text me new
+    // alerts" only decides whether he texts you first, and whether a call is
+    // confirmed by text.
     let sid: string | null = null
     let sendError: string | null = null
     const fromNum = s?.twilio_from_number || Deno.env.get('TWILIO_FROM_NUMBER') || ''
-    if (s?.jarvis_notify_enabled === true && fromNum) {
+    if ((via !== 'voice' || s?.jarvis_notify_enabled === true) && fromNum) {
       const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')!
       const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')!
       const sendRes = await fetch(
