@@ -6664,7 +6664,7 @@ function renderManaged(clients, orderLog=[]) {
           ${c.cx_score!=null?`<div style="font-size:12px;font-family:var(--mono);margin-top:2px;color:${c.cx_score>=8?'var(--grn)':c.cx_score>=5?'var(--amb)':'var(--red)'}">CX ${c.cx_score}/10</div>`:''}
           ${c.phone?`<div class="kcard-phone">${esc(c.phone)}</div>`:''}
           ${c.management_fee?`<div class="kcard-val">${fmt(c.management_fee)}/mo fee</div>`:''}
-          ${nextPayChip(c.next_payment_date)}
+          ${c.stage==='churned'||(c.active_status||'').startsWith('Churned')?'':nextPayChip(c.next_payment_date)}
         </div>`).join('');
       col.querySelectorAll('.kcard').forEach(card=>{
         const id=card.dataset.clientId;
