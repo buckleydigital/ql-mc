@@ -377,6 +377,7 @@ async function run(db: SupabaseClient, bearer: string, runId: string, hop: numbe
       }
     }
     if (Date.now() >= deadline) more = true
+    if (ai.note) errors.push(ai.note)
   }
 
   if (spend.calls) {
