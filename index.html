@@ -3232,8 +3232,8 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
     <div class="msub">What he watches, and how he tells you</div>
 
     <div style="margin:16px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">Alerts</div>
-    <p style="font-size:12px;color:var(--ink3);margin:0;line-height:1.6">He no longer texts. Anything he spots, and the result of every job he runs, appears at the top of the Jarvis panel, with a red count on the ◈ button until you have seen it. A text to his number shows up there too, and he replies in the panel, not by SMS.</p>
-    <div class="frow" style="margin-top:10px"><label class="flabel">Timezone (for his scheduled jobs)</label>
+    <p style="font-size:12px;color:var(--ink3);margin:0;line-height:1.6">Anything he spots always appears at the top of the Jarvis panel, with a red count on the ◈ button until you have seen it. Switch on texts or calls below to have him reach you on your phone as well.</p>
+    <div class="frow" style="margin-top:10px"><label class="flabel">Timezone</label>
       <select class="fi" id="js-tz">
         <option value="Australia/Sydney">Sydney / Melbourne / Canberra / Hobart (AEST, daylight saving)</option>
         <option value="Australia/Brisbane">Brisbane / QLD (AEST, no daylight saving)</option>
@@ -3242,6 +3242,36 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
         <option value="Australia/Perth">Perth / WA (AWST)</option>
       </select>
     </div>
+
+    <div style="margin:18px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">Your phone</div>
+    <div class="frow"><label class="flabel">Your mobile</label><input class="fi" id="js-number" placeholder="0412 345 678" type="tel"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+      <input type="checkbox" id="js-enabled" style="width:auto;margin:0">
+      <label for="js-enabled" style="font-size:13px;color:var(--ink2);cursor:pointer;margin:0">Text me new alerts</label>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+      <input type="checkbox" id="js-call-enabled" style="width:auto;margin:0">
+      <label for="js-call-enabled" style="font-size:13px;color:var(--ink2);cursor:pointer;margin:0">Ring me for urgent items</label>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+      <div class="frow" style="flex:1;min-width:110px"><label class="flabel">Quiet from</label><input class="fi" id="js-quiet-start" type="time"></div>
+      <div class="frow" style="flex:1;min-width:110px"><label class="flabel">Quiet until</label><input class="fi" id="js-quiet-end" type="time"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+      <div class="frow" style="flex:1;min-width:110px"><label class="flabel">Max texts / day</label><input class="fi" id="js-cap" type="number" min="0" max="100" step="1"></div>
+      <div class="frow" style="flex:1;min-width:110px"><label class="flabel">Max calls / day</label><input class="fi" id="js-call-cap" type="number" min="0" max="20" step="1"></div>
+      <div class="frow" style="flex:2;min-width:150px"><label class="flabel">Call voice</label>
+        <select class="fi" id="js-call-voice">
+          <option value="Polly.Brian-Neural">Brian - British male</option>
+          <option value="Polly.Arthur-Neural">Arthur - British male</option>
+          <option value="Polly.Amy-Neural">Amy - British female</option>
+          <option value="Polly.Olivia-Neural">Olivia - Australian female</option>
+          <option value="Polly.Matthew-Neural">Matthew - American male</option>
+        </select>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--ink3);margin-top:6px;line-height:1.6">He texts and rings from your main Twilio number <strong style="color:var(--ink2)" id="js-main-number">(not set)</strong>, set under Twilio settings, and only ever to the mobile above. Calls are for urgent items only (a proposal cold over 14 days, blocked fulfilment). On a call he speaks, then listens: answer him and he acts on it, and confirms in the panel (and by text if texts are on). Replying to his texts does not reach him, because replies to the main number go to the client agents; answer him in the panel instead.</p>
+    <p style="font-size:12px;color:var(--ink3);margin-top:6px;line-height:1.6">Quiet hours hold a text or call until they end, rather than dropping it. The daily caps are the hard backstop. The main number needs the <strong style="color:var(--ink2)">Voice</strong> capability for calls.</p>
 
     <div style="margin:18px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">Voice in this browser</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
@@ -3258,7 +3288,7 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
 
     <div style="margin:18px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">What he costs</div>
     <div id="js-spend" style="font-size:12px;color:var(--ink3);line-height:1.9">Loading…</div>
-    <p style="font-size:12px;color:var(--ink3);margin-top:6px;line-height:1.6">Anthropic API spend at list price, in US dollars - every question from the panel and every scheduled job, web searches included.</p>
+    <p style="font-size:12px;color:var(--ink3);margin-top:6px;line-height:1.6">Anthropic API spend at list price, in US dollars - every question from the panel and every answer to one of his calls, web searches included. Twilio texts and calls are billed separately and are not counted here.</p>
 
     <div style="margin:18px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">What he is watching</div>
     <div id="js-watch" style="font-size:12px;color:var(--ink3);line-height:1.9">Loading…</div>
@@ -9921,6 +9951,18 @@ async function openJarvisSettings() {
   fillWebVoicePicker();
   const s = await loadBizSettings();
   setVal('js-brief', s.jarvis_content_brief || '');
+  setVal('js-number', s.jarvis_notify_number || '');
+  $('js-enabled').checked = s.jarvis_notify_enabled === true;
+  $('js-call-enabled').checked = s.jarvis_call_enabled === true;
+  setVal('js-quiet-start', String(s.jarvis_quiet_start || '20:00').slice(0, 5));
+  setVal('js-quiet-end', String(s.jarvis_quiet_end || '07:30').slice(0, 5));
+  setVal('js-cap', s.jarvis_daily_sms_cap == null ? 10 : s.jarvis_daily_sms_cap);
+  setVal('js-call-cap', s.jarvis_call_cap == null ? 3 : s.jarvis_call_cap);
+  const cv = s.jarvis_call_voice || 'Polly.Brian-Neural';
+  const cvSel = $('js-call-voice');
+  if (!Array.prototype.some.call(cvSel.options, function (o) { return o.value === cv; })) cvSel.add(new Option(cv, cv));
+  cvSel.value = cv;
+  $('js-main-number').textContent = s.twilio_from_number || '(not set)';
   // A zone set by hand is added rather than silently falling back, so opening
   // and saving this form cannot quietly relocate someone.
   const tz = s.jarvis_timezone || 'Australia/Sydney';
@@ -11032,11 +11074,29 @@ async function saveJarvisSettings() {
   const btn = $('js-save-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
-    // The SMS settings (number, quiet hours, daily cap) are left as they are:
-    // nothing reads them since he stopped texting.
+    // Texts or calls switched on against a number that cannot receive them is
+    // a setting that looks saved and then silently never fires.
+    const raw = $('js-number').value.trim();
+    const textOn = $('js-enabled').checked;
+    const callOn = $('js-call-enabled').checked;
+    if ((textOn || callOn) && !/^(\+?61|0)4[0-9\s\-().]{8,}$/.test(raw)) {
+      throw new Error('Enter a valid Australian mobile, or switch texts and calls off.');
+    }
+    const num = function (id, lo, hi, dflt) {
+      const n = parseInt($(id).value, 10);
+      return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : dflt;
+    };
     const patch = {
       jarvis_content_brief: $('js-brief').value.trim() || null,
       jarvis_timezone: $('js-tz').value || 'Australia/Sydney',
+      jarvis_notify_number: raw || null,
+      jarvis_notify_enabled: textOn,
+      jarvis_call_enabled: callOn,
+      jarvis_quiet_start: $('js-quiet-start').value || '20:00',
+      jarvis_quiet_end: $('js-quiet-end').value || '07:30',
+      jarvis_daily_sms_cap: num('js-cap', 0, 100, 10),
+      jarvis_call_cap: num('js-call-cap', 0, 20, 3),
+      jarvis_call_voice: $('js-call-voice').value || 'Polly.Brian-Neural',
     };
 
     const existing = await db.from('business_settings').select('id').limit(1).single();
@@ -11048,7 +11108,7 @@ async function saveJarvisSettings() {
       ({ error } = await db.from('business_settings').insert(patch));
     }
     if (error) throw error;
-    toast('Jarvis saved ✓');
+    toast(textOn || callOn ? 'Jarvis will reach you on your phone ✓' : 'Jarvis saved - panel only');
     closeModal('m-jarvis-settings');
   } catch (err) {
     toast('Save failed: ' + err.message, true);

@@ -38,11 +38,30 @@ outside the database, capped at five uses each per question.
 
 ## No scheduled jobs
 
-He runs only when someone asks: the panel, or a text from the owner's number.
+He runs only when someone asks: the panel, or your spoken answer on one of his calls.
 The self-scheduled jobs (`create_job`, run by the 15-minute heartbeat) were
 removed on 9 Oct 2026 to stop him spending API credit unattended (migration
 20261009000002). The heartbeat still runs its watchers and panel alerts, which
 never call a model.
+
+## Texts and calls
+
+The 15-minute heartbeat (`jarvis-notify`) always leaves new alerts in the
+panel. Two switches in Jarvis settings put him on your phone as well:
+
+- **Text me new alerts** - one text per heartbeat with anything new (top three,
+  plus a count), capped per day.
+- **Ring me for urgent items** - a cold proposal over 14 days or blocked
+  fulfilment rings your mobile. He reads it out (Twilio's Polly voice), then
+  listens: what you say goes to `jarvis-voice-reply` -> `jarvis-reply` ->
+  `jarvis-chat`, which acts on exactly what you named and confirms in the
+  panel (and by text when texts are on).
+
+Both go out from the main Twilio number (`twilio_from_number`), not a separate
+Jarvis number, and only to the mobile in settings. Quiet hours hold them until
+morning; the caps are the backstop. Replies **texted** to the main number go
+to the client agents in ql-hq, not to Jarvis - answer on the call or in the
+panel. Calls need the main number to have the Voice capability.
 
 ## Social posts
 
