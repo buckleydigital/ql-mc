@@ -6664,6 +6664,7 @@ function renderManaged(clients, orderLog=[]) {
           ${c.cx_score!=null?`<div style="font-size:12px;font-family:var(--mono);margin-top:2px;color:${c.cx_score>=8?'var(--grn)':c.cx_score>=5?'var(--amb)':'var(--red)'}">CX ${c.cx_score}/10</div>`:''}
           ${c.phone?`<div class="kcard-phone">${esc(c.phone)}</div>`:''}
           ${c.management_fee?`<div class="kcard-val">${fmt(c.management_fee)}/mo fee</div>`:''}
+          ${nextPayChip(c.next_payment_date)}
         </div>`).join('');
       col.querySelectorAll('.kcard').forEach(card=>{
         const id=card.dataset.clientId;
@@ -6795,6 +6796,19 @@ async function openEditClient(type,c) {
     loadManagedOrderLog(c.id);
     openModal('m-edit-managed');
   }
+}
+// "Next payment 14 Oct" on a managed card: red once it is overdue, amber in the
+// last three days, otherwise muted. Dates are YYYY-MM-DD in local time.
+function nextPayChip(d) {
+  if (!d) return '';
+  const due=new Date(d+'T00:00:00');
+  if (isNaN(due)) return '';
+  const today=new Date(); today.setHours(0,0,0,0);
+  const days=Math.round((due-today)/86400000);
+  const label=due.toLocaleDateString('en-AU',{day:'numeric',month:'short'});
+  const col=days<0?'var(--red)':days<=3?'var(--amb)':'var(--ink3)';
+  const when=days<0?`overdue since ${label}`:days===0?'due today':`next payment ${label}`;
+  return `<div style="font-size:12px;font-family:var(--mono);margin-top:2px;color:${col}">${esc(when)}</div>`;
 }
 function updateMgSubStageVisibility() {
   const stage=$('em-stage')?.value;
