@@ -2907,6 +2907,9 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
     </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="em-notes"></textarea></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">Integrations</div>
+    <!-- Managed clients only need the yes/no below. The webhook fields stay in the
+         page, hidden, so saving keeps whatever is already stored. -->
+    <div id="em-webhook-fields" style="display:none">
     <div class="frow"><label class="flabel">Client Webhook URL</label><input class="fi" id="em-client-webhook" type="url" placeholder="https://your-webhook-url/…"></div>
     <div class="frow"><label class="flabel">Webhook Authentication</label>
       <select class="fs" id="em-webhook-auth" onchange="toggleWebhookSecret('em')">
@@ -2941,7 +2944,8 @@ body[data-jv="listening"] #jv-panel.hud .hud-ring.r3{border-top-color:var(--hud-
       </div>
       <div id="em-test-result" style="font-size:12px;line-height:1.6;margin-top:7px"></div>
     </div>
-    <div class="frow"><label class="flabel">Has Custom Integration</label>
+    </div>
+    <div class="frow"><label class="flabel">Custom Integration</label>
       <select class="fs" id="em-has-custom-integration">
         <option value="false">No</option>
         <option value="true">Yes</option>
@@ -6798,6 +6802,9 @@ function updateMgSubStageVisibility() {
   const actRow=$('em-active-status-row');
   if (onbRow) onbRow.style.display=stage==='onboarding'?'':'none';
   if (actRow) actRow.style.display=stage==='active'?'':'none';
+  // An active managed client is "Ads Live" unless another status was chosen.
+  const st=$('em-active-status');
+  if (stage==='active' && st && !st.value) st.value='Ads Live';
 }
 function toggleDeliveryFields(prefix) {
   const method = $(prefix === 'ep' ? 'ep-delivery-method' : 'ppl-delivery-method')?.value || 'email';
@@ -6857,7 +6864,7 @@ async function updateClient(type) {
     const _todayStr=new Date().toISOString().split('T')[0];
     const _payDates={};_activeMo.forEach(m=>{_payDates[m]=(_prevPayDates&&_prevPayDates[m])||_todayStr;});
     const _emStage=$('em-stage').value;
-    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),retainer_payment_dates:JSON.stringify(_payDates),stage:_emStage,...(_mgFulfilMirrored?{}:{onboarding_sub_stage:_emStage==='onboarding'?($('em-onboarding-sub-stage').value||null):null}),active_status:_emStage==='active'?($('em-active-status').value||null):null,cx_score:$('em-cx').value!==''?parseInt($('em-cx').value):null,start_date:$('em-start').value||null,ads_first_live_date:$('em-ads-live').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),client_webhook:$('em-client-webhook').value.trim()||null,webhook_auth_mode:(($('em-webhook-auth').value!=='none'&&$('em-webhook-secret').value.trim())?$('em-webhook-auth').value:'none'),webhook_auth_header:($('em-webhook-auth').value==='header'?($('em-webhook-header').value.trim()||'Authorization'):null),webhook_auth_enabled:$('em-webhook-auth').value==='signature'&&!!$('em-webhook-secret').value.trim(),webhook_secret:$('em-webhook-secret').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
+    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),retainer_payment_dates:JSON.stringify(_payDates),stage:_emStage,...(_mgFulfilMirrored?{}:{onboarding_sub_stage:_emStage==='onboarding'?($('em-onboarding-sub-stage').value||null):null}),active_status:_emStage==='active'?($('em-active-status').value||'Ads Live'):null,cx_score:$('em-cx').value!==''?parseInt($('em-cx').value):null,start_date:$('em-start').value||null,ads_first_live_date:$('em-ads-live').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),client_webhook:$('em-client-webhook').value.trim()||null,webhook_auth_mode:(($('em-webhook-auth').value!=='none'&&$('em-webhook-secret').value.trim())?$('em-webhook-auth').value:'none'),webhook_auth_header:($('em-webhook-auth').value==='header'?($('em-webhook-header').value.trim()||'Authorization'):null),webhook_auth_enabled:$('em-webhook-auth').value==='signature'&&!!$('em-webhook-secret').value.trim(),webhook_secret:$('em-webhook-secret').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   }
   const {error}=await db.from('clients').update(d).eq('id',id);
