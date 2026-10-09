@@ -607,135 +607,6 @@ const MEMORY_TOOLS = [
   },
 ]
 
-// ─── jobs.mjs ────────────────────────────────────────────────────
-
-/**
- * Jobs: work JARVIS schedules for himself.
- *
- * "Every weekday at 8 text me the numbers." "Thursday, chase Sandford if they
- * have not replied." Before this he could only act while someone was talking to
- * him. A job is an instruction plus a time; the heartbeat (jarvis-notify, every
- * 15 minutes) claims the due ones, runs each through jarvis-chat with his full
- * tools and memory, and texts the result to the owner.
- *
- * Times are LOCAL (config.timezone). The owner says "8am", not "22:00 UTC".
- */
-
-
-const REPEATS = ['once', 'daily', 'weekdays', 'weekly', 'monthly']
-
-/** Cost guard: every active job is a model run on its schedule. */
-const MAX_ACTIVE_JOBS = 25
-
-/** A local wall-clock time as a UTC instant, correct across DST (two passes). */
-function localInstant(date, time) {
-  const guess = new Date(`${date}T${time}:00Z`)
-  const first = new Date(guess.getTime() - offsetMinutes(guess) * 60000)
-  return new Date(guess.getTime() - offsetMinutes(first) * 60000)
-}
-
-const localWhen = (iso) =>
-  iso
-    ? new Intl.DateTimeFormat('en-AU', {
-        timeZone: config.timezone, weekday: 'short', day: 'numeric', month: 'short',
-        hour: 'numeric', minute: '2-digit',
-      }).format(new Date(iso))
-    : null
-
-async function getJobs() {
-  const { rows } = await select(
-    'jarvis_jobs',
-    { select: 'id,title,instruction,repeat,next_run_at,last_run_at,last_result,runs', active: 'is.true', order: 'next_run_at.asc' },
-    { limit: 100 },
-  )
-  const jobs = rows.map((j) => ({ ...j, next_run_local: localWhen(j.next_run_at) }))
-  return {
-    summary: jobs.length
-      ? `${jobs.length} scheduled: ${jobs.slice(0, 3).map((j) => `${j.title} (${j.next_run_local})`).join('; ')}.`
-      : 'Nothing scheduled.',
-    jobs,
-  }
-}
-
-async function createJob({ title, instruction, date, time, repeat = 'once' } = {}) {
-  title = String(title ?? '').trim()
-  instruction = String(instruction ?? '').trim()
-  if (!title || !instruction) throw new Error('title and instruction are required')
-  if (!REPEATS.includes(repeat)) throw new Error(`repeat must be one of ${REPEATS.join(', ')}`)
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date ?? ''))) throw new Error('date must be YYYY-MM-DD (local)')
-  if (!/^\d{2}:\d{2}$/.test(String(time ?? ''))) throw new Error('time must be HH:MM, 24-hour, local')
-
-  const at = localInstant(date, time)
-  if (Number.isNaN(at.getTime())) throw new Error('That date and time do not exist.')
-  if (at.getTime() < Date.now() - 60_000) {
-    throw new Error(`${date} ${time} has already passed (today is ${localDate()}). Pick a future time.`)
-  }
-
-  const { total } = await select('jarvis_jobs', { select: 'id', active: 'is.true' }, { limit: 1 })
-  if (total >= MAX_ACTIVE_JOBS) {
-    throw new Error(`There are already ${total} scheduled jobs, the limit. Cancel one first.`)
-  }
-
-  const [row] = await insert('jarvis_jobs', {
-    title: title.slice(0, 120),
-    instruction: instruction.slice(0, 2000),
-    repeat,
-    next_run_at: at.toISOString(),
-  })
-  return {
-    summary: `Scheduled "${row.title}" for ${localWhen(row.next_run_at)}${repeat === 'once' ? '' : `, then ${repeat}`}.`,
-    job: { id: row.id, title: row.title, repeat: row.repeat, next_run_local: localWhen(row.next_run_at) },
-  }
-}
-
-async function deleteJob({ job_id } = {}) {
-  if (!job_id) throw new Error('job_id is required - get it from get_jobs.')
-  // Deactivated rather than deleted, so its history stays readable.
-  const rows = await patch('jarvis_jobs', { id: `eq.${job_id}` }, { active: false })
-  if (!rows.length) return { summary: 'No job with that id.' }
-  return { summary: `Cancelled "${rows[0].title}".` }
-}
-
-const JOB_TOOLS = [
-  {
-    name: 'get_jobs',
-    description: 'List the jobs you have scheduled for yourself: what, when next, how often, and the last result. Returns the ids delete_job needs.',
-    inputSchema: { type: 'object', properties: {} },
-    handler: getJobs,
-  },
-  {
-    name: 'create_job',
-    description:
-      'Schedule work for yourself to do later, once or on repeat - a report, a check, a follow-up. ' +
-      'When it comes due you will run it with all your tools and memory, and the result is texted to the owner. ' +
-      'Write the instruction as a complete brief to your future self: what to check or do, for whom, and what ' +
-      'to report. If it may send an email or SMS to a lead, say so explicitly in the instruction - a job only ' +
-      'sends to leads when its instruction says to. Times are local.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        title: { type: 'string', description: 'Short name, e.g. "Morning numbers".' },
-        instruction: { type: 'string', description: 'The full brief for when it runs.' },
-        date: { type: 'string', description: 'First run date, YYYY-MM-DD, local.' },
-        time: { type: 'string', description: 'First run time, HH:MM 24-hour, local.' },
-        repeat: { type: 'string', enum: REPEATS, description: 'once (default), daily, weekdays, weekly or monthly.' },
-      },
-      required: ['title', 'instruction', 'date', 'time'],
-    },
-    handler: createJob,
-  },
-  {
-    name: 'delete_job',
-    description: 'Cancel a scheduled job. Takes the id from get_jobs.',
-    inputSchema: {
-      type: 'object',
-      properties: { job_id: { type: 'string', description: 'Job UUID, from get_jobs.' } },
-      required: ['job_id'],
-    },
-    handler: deleteJob,
-  },
-]
-
 // ─── content.mjs ─────────────────────────────────────────────────
 
 /**
@@ -1909,7 +1780,6 @@ const str = (description) => ({ type: 'string', description })
 const TOOLS = [
   ...EXPLORE_TOOLS,
   ...MEMORY_TOOLS,
-  ...JOB_TOOLS,
   ...CONTENT_TOOLS,
   ...OUTREACH_TOOLS,
 
@@ -2373,11 +2243,10 @@ carries across days, devices and texts.
 - Use what you remember without being asked: if you know Dave prefers texts,
   suggest a text.
 
-YOU CAN SCHEDULE YOUR OWN WORK. "Every morning", "on Friday", "remind me",
-"if they have not replied by Thursday" -> create_job with a complete brief to
-your future self, then confirm the time in one line. get_jobs lists them,
-delete_job cancels. A job that should send anything to a lead must say so in its
-instruction; otherwise it reports and drafts.
+YOU ONLY RUN WHEN ASKED. You have no schedule and cannot set one: every run is
+someone asking you something, to keep the API bill down. For "every morning",
+"remind me" or "on Friday", say so plainly and suggest a task (create_task) or a
+follow-up date on the lead instead.
 
 SOCIAL POSTS. You draft Facebook/Instagram posts; the owner approves and posts
 them by hand - you cannot publish anything, and never say you have.
@@ -2480,10 +2349,13 @@ Deno.serve(async (req: Request) => {
     // Jarvis's own number AND FROM the number in jarvis_notify_number. The
     // service key is not reachable from any browser, so nothing a client can
     // run reaches this branch.
-    // Scheduled jobs come in the same way, from jarvis-notify's heartbeat, and
-    // pass the same service-role capability test.
+    //
+    // Nothing runs him unattended. Scheduled jobs (via:'job') were removed on
+    // 9 Oct so he only spends API credit when someone asks; a leftover caller
+    // is refused here rather than billed.
+    if (body?.via === 'job') return json({ error: 'Scheduled jobs are switched off.' }, 410)
     let isBridge = false
-    if (body?.via === 'sms' || body?.via === 'job') {
+    if (body?.via === 'sms') {
       const caller = createClient(Deno.env.get('SUPABASE_URL')!, bearer)
       const { error: capErr } = await caller.from('jarvis_messages').select('id').limit(1)
       if (capErr) return json({ error: 'Unauthorized' }, 401)
@@ -2579,13 +2451,6 @@ Deno.serve(async (req: Request) => {
         text:
           `Today is ${localDate()} (${config.timezone}). ` +
           `Channel: ${channel}.` +
-          (channel === 'job'
-            ? ' This is one of your scheduled jobs running unattended: nobody is watching this turn. Do the ' +
-              'job now, then write the report that will be texted to the owner - plain text, no markdown, ' +
-              'under 600 characters, leading with what matters. Send an email or SMS to a lead ONLY if the ' +
-              'job instruction explicitly says to; otherwise draft it and say in the report what you would ' +
-              'send, so they can reply yes.'
-            : '') +
           `\n\nWHAT YOU REMEMBER:\n${remembered}`,
       },
     ]

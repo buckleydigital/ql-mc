@@ -15,6 +15,10 @@
  * is a downside with no matching upside, and it would put a paid API call and a
  * network failure in the path of every heartbeat. Jarvis's voice lives in the
  * templates. Phrasing can move to a model later without touching detection.
+ *
+ * It never calls a model. It used to run Jarvis's scheduled jobs through
+ * jarvis-chat; those were removed on 9 Oct so Jarvis only spends API credit
+ * when someone asks him something.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -118,44 +122,6 @@ async function syncDonState(db: any): Promise<void> {
   }
 }
 
-// ── Scheduled jobs ─────────────────────────────────────────────────────────
-// Work Jarvis set for himself with create_job. Each due job goes to jarvis-chat
-// (via:'job'), which does it with his full tools and memory and returns a short
-// report; the report is left in the panel like any alert.
-
-/** Stop claiming more jobs this heartbeat once this much time has gone. */
-const JOB_TIME_BUDGET_MS = 60_000
-const MAX_JOBS_PER_BEAT = 2
-
-type Job = { id: string; title: string; instruction: string; repeat: string }
-
-async function runJob(url: string, job: Job): Promise<string> {
-  try {
-    const res = await fetch(`${url}/functions/v1/jarvis-chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!}`,
-      },
-      body: JSON.stringify({
-        via: 'job',
-        allow_writes: true,
-        messages: [{
-          role: 'user',
-          content: `Scheduled job "${job.title}" (${job.repeat}) is due now.\n\nInstruction:\n${job.instruction}`,
-        }],
-      }),
-    })
-    const raw = await res.text()
-    let reply = ''
-    try { reply = String(JSON.parse(raw)?.reply ?? '') } catch { /* below */ }
-    if (!res.ok || !reply) return `I could not complete this job (${res.status}). ${raw.slice(0, 120)}`
-    return reply
-  } catch (err) {
-    return `I could not complete this job: ${err instanceof Error ? err.message : err}`
-  }
-}
-
 Deno.serve(async (req: Request) => {
   // No public surface. The only callers are pg_cron (via pg_net) and a human
   // testing with the same key. Checked here rather than by verify_jwt, because
@@ -206,25 +172,6 @@ Deno.serve(async (req: Request) => {
         channel: 'panel', to_number: 'panel', tier, body: text, event_ids: eventIds, status: 'sent',
       })
 
-    // Jobs before alerts. Claimed one at a time so that a slow job leaves the
-    // rest queued for the next heartbeat instead of claimed and then dropped.
-    let jobsRun = 0
-    if (!dryRun) {
-      const started = Date.now()
-      while (jobsRun < MAX_JOBS_PER_BEAT && Date.now() - started < JOB_TIME_BUDGET_MS) {
-        const { data: claimed, error: jobErr } = await db.rpc('jarvis_claim_due_jobs', { p_limit: 1, p_tz: tz })
-        if (jobErr) { console.error('jarvis-notify: job claim failed:', jobErr.message); break }
-        const job = (claimed || [])[0] as Job | undefined
-        if (!job) break
-
-        const report = await runJob(url, job)
-        const { error: noteErr } = await note('job', `${job.title}: ${report}`.slice(0, 2000))
-        if (noteErr) console.error('jarvis-notify: job note failed:', noteErr.message)
-        await db.from('jarvis_jobs').update({ last_result: report.slice(0, 2000) }).eq('id', job.id)
-        jobsRun++
-      }
-    }
-
     const { data: events } = await db
       .from('jarvis_events')
       .select('id, kind, tier, subject, payload')
@@ -235,7 +182,7 @@ Deno.serve(async (req: Request) => {
       .limit(20)
 
     const evs = (events || []) as Ev[]
-    if (!evs.length) return json({ ok: true, scanned: pendingCount, noted: jobsRun > 0, jobs: jobsRun, reason: 'nothing_new' })
+    if (!evs.length) return json({ ok: true, scanned: pendingCount, noted: false, reason: 'nothing_new' })
 
     // One note per run, never one per event - a briefing, not six pings.
     // Urgent ones first; the panel has room for all of them.
@@ -258,7 +205,7 @@ Deno.serve(async (req: Request) => {
     }
 
     return json({
-      ok: !noteErr, scanned: pendingCount, noted: !noteErr, events: evs.length, jobs: jobsRun,
+      ok: !noteErr, scanned: pendingCount, noted: !noteErr, events: evs.length,
       ...(noteErr ? { error: noteErr.message } : {}),
     })
   } catch (err) {

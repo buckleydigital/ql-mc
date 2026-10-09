@@ -18,7 +18,6 @@ import { select, count, patch, insert, remove, invoke } from './db.mjs'
 import { config, stageKey, env } from './config.mjs'
 import { EXPLORE_TOOLS } from './explore.mjs'
 import { MEMORY_TOOLS } from './memory.mjs'
-import { JOB_TOOLS } from './jobs.mjs'
 import { CONTENT_TOOLS } from './content.mjs'
 import { OUTREACH_TOOLS } from './outreach.mjs'
 import { userToken } from './auth.mjs'
@@ -764,7 +763,6 @@ const str = (description) => ({ type: 'string', description })
 export const TOOLS = [
   ...EXPLORE_TOOLS,
   ...MEMORY_TOOLS,
-  ...JOB_TOOLS,
   ...CONTENT_TOOLS,
   ...OUTREACH_TOOLS,
 

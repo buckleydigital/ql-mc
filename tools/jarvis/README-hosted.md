@@ -36,21 +36,12 @@ Two kinds, both in the database, both service-role only
 He also has Anthropic's hosted `web_search` and `web_fetch` tools for anything
 outside the database, capped at five uses each per question.
 
-## Scheduled jobs
+## No scheduled jobs
 
-He can schedule his own work: "every weekday at 8, text me the numbers",
-"Thursday, chase Sandford if they have not replied". `create_job` stores an
-instruction and a local time in `jarvis_jobs`; the 15-minute heartbeat
-(`jarvis-notify`) claims due jobs one at a time (`jarvis_claim_due_jobs`, which
-also moves each one's schedule on, so two heartbeats can never run the same job
-twice), sends each to `jarvis-chat` as `via: 'job'`, and texts you the report.
-
-Jobs obey the same quiet hours and daily text cap as alerts. A job sends an
-email or SMS to a lead only if its instruction says to; otherwise it drafts and
-reports, and you reply "yes". At most two run per heartbeat, 25 can be active.
-
-The ✦ button in the panel shows what he remembers and what he has scheduled,
-and lets you edit memories or cancel jobs.
+He runs only when someone asks: the panel, or a text from the owner's number.
+The self-scheduled jobs (`create_job`, run by the 15-minute heartbeat) were
+removed on 9 Oct 2026 to stop him spending API credit unattended, and the
+heartbeat cron was unscheduled (migration 20261009000002).
 
 ## Social posts
 

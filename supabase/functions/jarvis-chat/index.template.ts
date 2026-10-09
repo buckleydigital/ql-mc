@@ -227,11 +227,10 @@ carries across days, devices and texts.
 - Use what you remember without being asked: if you know Dave prefers texts,
   suggest a text.
 
-YOU CAN SCHEDULE YOUR OWN WORK. "Every morning", "on Friday", "remind me",
-"if they have not replied by Thursday" -> create_job with a complete brief to
-your future self, then confirm the time in one line. get_jobs lists them,
-delete_job cancels. A job that should send anything to a lead must say so in its
-instruction; otherwise it reports and drafts.
+YOU ONLY RUN WHEN ASKED. You have no schedule and cannot set one: every run is
+someone asking you something, to keep the API bill down. For "every morning",
+"remind me" or "on Friday", say so plainly and suggest a task (create_task) or a
+follow-up date on the lead instead.
 
 SOCIAL POSTS. You draft Facebook/Instagram posts; the owner approves and posts
 them by hand - you cannot publish anything, and never say you have.
@@ -334,10 +333,13 @@ Deno.serve(async (req: Request) => {
     // Jarvis's own number AND FROM the number in jarvis_notify_number. The
     // service key is not reachable from any browser, so nothing a client can
     // run reaches this branch.
-    // Scheduled jobs come in the same way, from jarvis-notify's heartbeat, and
-    // pass the same service-role capability test.
+    //
+    // Nothing runs him unattended. Scheduled jobs (via:'job') were removed on
+    // 9 Oct so he only spends API credit when someone asks; a leftover caller
+    // is refused here rather than billed.
+    if (body?.via === 'job') return json({ error: 'Scheduled jobs are switched off.' }, 410)
     let isBridge = false
-    if (body?.via === 'sms' || body?.via === 'job') {
+    if (body?.via === 'sms') {
       const caller = createClient(Deno.env.get('SUPABASE_URL')!, bearer)
       const { error: capErr } = await caller.from('jarvis_messages').select('id').limit(1)
       if (capErr) return json({ error: 'Unauthorized' }, 401)
@@ -433,13 +435,6 @@ Deno.serve(async (req: Request) => {
         text:
           `Today is ${localDate()} (${config.timezone}). ` +
           `Channel: ${channel}.` +
-          (channel === 'job'
-            ? ' This is one of your scheduled jobs running unattended: nobody is watching this turn. Do the ' +
-              'job now, then write the report that will be texted to the owner - plain text, no markdown, ' +
-              'under 600 characters, leading with what matters. Send an email or SMS to a lead ONLY if the ' +
-              'job instruction explicitly says to; otherwise draft it and say in the report what you would ' +
-              'send, so they can reply yes.'
-            : '') +
           `\n\nWHAT YOU REMEMBER:\n${remembered}`,
       },
     ]
