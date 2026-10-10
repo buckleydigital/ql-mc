@@ -785,13 +785,29 @@ body.just-loaded .kval,body.just-loaded .kcard,body.just-loaded tbody tr,body.ju
 
 #jv-panel{position:fixed;top:42px;right:0;bottom:0;width:390px;max-width:100vw;background:var(--s1);border-left:1px solid var(--bd2);box-shadow:-8px 0 28px rgba(0,0,0,.35);z-index:9998;display:none;flex-direction:column}
 #jv-panel.open{display:flex}
-@media(max-width:700px){#jv-panel{width:100vw;top:0}
-  /* Title on its own line, the eight buttons on the line below. */
-  .jv-head{flex-wrap:wrap;row-gap:10px}
-  .jv-head > div[style*="flex:1"]{flex:1 1 calc(100% - 40px)}
-}
+@media(max-width:700px){#jv-panel{width:100vw;top:0}}
 
-.jv-head{display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid var(--bd)}
+/* Two rows: who he is (and close), then labelled controls. */
+.jv-head{display:flex;flex-direction:column;gap:10px;padding:12px 14px;border-bottom:1px solid var(--bd)}
+.jv-top{display:flex;align-items:center;gap:9px}
+.jv-name{flex:1;min-width:0}
+.jv-bar{display:flex;flex-wrap:wrap;gap:6px}
+.jv-tb{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 9px;border-radius:14px;
+  border:1px solid var(--bd2);background:transparent;color:var(--ink2);cursor:pointer;
+  font-family:inherit;font-size:12px;white-space:nowrap;transition:background .12s,color .12s}
+.jv-tb:hover{background:var(--s3);color:var(--ink)}
+.jv-tb svg,.jv-menu svg{width:14px;height:14px;flex:none;stroke:currentColor;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.jv-tb.on{background:var(--red-fill);border-color:var(--red);color:#fff}
+.jv-x{width:28px;padding:0;justify-content:center;flex:none}
+.jv-more{position:relative;margin-left:auto}
+.jv-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:10;min-width:230px;padding:5px;
+  background:var(--s2,var(--s1));border:1px solid var(--bd2);border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,.4)}
+.jv-menu.open{display:block}
+.jv-menu button{display:grid;grid-template-columns:18px 1fr;align-items:center;column-gap:8px;width:100%;
+  padding:7px 9px;border:0;border-radius:6px;background:transparent;color:var(--ink);font-family:inherit;
+  font-size:13px;text-align:left;cursor:pointer}
+.jv-menu button:hover{background:var(--s3)}
+.jv-menu small{grid-column:2;font-size:11.5px;color:var(--ink3)}
 .jv-reactor{width:22px;height:22px;border-radius:50%;border:2px solid var(--acc);position:relative;flex:none;opacity:.5;transition:opacity .3s}
 .jv-reactor::after{content:'';position:absolute;inset:4px;border-radius:50%;background:var(--acc);opacity:.5}
 .jv-reactor.live{opacity:1}
@@ -897,7 +913,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
 
 /* ── Readouts ──
    Glass cards with a lit top edge, rather than bare text on the dark. */
-.hud-col{position:absolute;top:12%;width:min(22vw,250px);z-index:2;
+.hud-col{position:absolute;top:max(12%,130px);width:min(22vw,250px);z-index:2;
   font-family:var(--mono);font-size:10.5px;line-height:1.5;
   padding:14px 16px 12px;border-radius:12px;
   background:linear-gradient(180deg,rgba(14,40,60,.42),rgba(4,14,24,.32));
@@ -929,9 +945,12 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
 #jv-panel.hud .jv-status{color:var(--hud-dim)}
 #jv-panel.hud .jv-reactor{border-color:var(--hud);box-shadow:0 0 14px rgba(95,216,255,.5)}
 #jv-panel.hud .jv-reactor::after{background:var(--hud)}
-#jv-panel.hud .jv-mic,#jv-panel.hud .btn{border-color:var(--hud-dim);color:var(--hud);background:transparent}
-#jv-panel.hud .jv-mic:hover,#jv-panel.hud .btn:hover{background:rgba(95,216,255,.1)}
-#jv-panel.hud .jv-mic.on{background:var(--red-fill);border-color:var(--red);color:#fff}
+#jv-panel.hud .jv-mic,#jv-panel.hud .jv-tb,#jv-panel.hud .btn{border-color:var(--hud-dim);color:var(--hud);background:transparent}
+#jv-panel.hud .jv-mic:hover,#jv-panel.hud .jv-tb:hover,#jv-panel.hud .btn:hover{background:rgba(95,216,255,.1)}
+#jv-panel.hud .jv-mic.on,#jv-panel.hud .jv-tb.on{background:var(--red-fill);border-color:var(--red);color:#fff}
+#jv-panel.hud .jv-menu{background:rgba(2,12,22,.96);border-color:var(--hud-dim)}
+#jv-panel.hud .jv-menu button{color:var(--hud)}
+#jv-panel.hud .jv-menu button:hover{background:rgba(95,216,255,.1)}
 
 /* The conversation floats over the reactor, centred and narrow like a column
    of subtitles rather than a chat window bolted to the side. */
@@ -956,10 +975,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
 @media(max-width:820px){
   .hud-col{display:none}
   .hud-core{width:88vw;height:88vw;top:36%;opacity:.55}
-  /* The title gets its own row; the buttons wrap beneath it instead of
-     sitting on top of it. */
-  #jv-panel.hud .jv-head{flex-wrap:wrap;row-gap:10px;padding:14px 16px}
-  #jv-panel.hud .jv-head > div:nth-child(2){flex:1 0 calc(100% - 40px)!important}
+  #jv-panel.hud .jv-head{padding:14px 16px}
   .hud-core-label{display:none}
 }
 /* Anyone who has asked their machine to stop animating gets a still reactor
@@ -1044,20 +1060,30 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
     </div>
 
     <div class="jv-head">
-      <div class="jv-reactor" id="jv-reactor"></div>
-      <div style="flex:1;min-width:0">
-        <div class="jv-title">JARVIS</div>
-        <div class="jv-status" id="jv-status">Not connected</div>
+      <div class="jv-top">
+        <div class="jv-reactor" id="jv-reactor"></div>
+        <div class="jv-name">
+          <div class="jv-title">JARVIS</div>
+          <div class="jv-status" id="jv-status">Not connected</div>
+        </div>
+        <button class="jv-tb jv-x" onclick="JV.close()" title="Close Jarvis" aria-label="Close Jarvis"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
       </div>
-      <button class="jv-mic admin-only-field" id="jv-settings" onclick="openJarvisSettings()" title="Jarvis settings">⚙</button>
-      <button class="jv-mic admin-only-field" id="jv-log" onclick="openJarvisLog()" title="What Jarvis has done">☷</button>
-      <button class="jv-mic admin-only-field" id="jv-mind" onclick="openJarvisMind()" title="What he remembers and has scheduled">✦</button>
-      <button class="jv-mic admin-only-field" id="jv-posts" onclick="openJarvisPosts()" title="Posts he has drafted">▦</button>
-      <button class="jv-mic" id="jv-new" onclick="JV.reset()" title="New conversation">⟲</button>
-      <button class="jv-mic" id="jv-hud-btn" onclick="JV.toggleHud()" title="Full screen">⬚</button>
-      <button class="jv-mic" id="jv-writes" onclick="JV.toggleWrites()" title="Read-only">🔒</button>
-      <button class="jv-mic" id="jv-speak" onclick="JV.toggleVoice()" title="Speak replies aloud">🔊</button>
-      <button class="btn btn-xs" onclick="JV.close()">✕</button>
+      <!-- Every button says what it does: icons alone were guesswork. -->
+      <div class="jv-bar">
+        <button class="jv-tb" id="jv-new" onclick="JV.reset()" title="Start a new conversation"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>New chat</span></button>
+        <button class="jv-tb" id="jv-writes" onclick="JV.toggleWrites()"></button>
+        <button class="jv-tb" id="jv-speak" onclick="JV.toggleVoice()"></button>
+        <button class="jv-tb" id="jv-hud-btn" onclick="JV.toggleHud()" title="Full screen"><svg viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg><span>Full screen</span></button>
+        <div class="jv-more admin-only-field">
+          <button class="jv-tb" id="jv-more-btn" onclick="JV.toggleMore(event)" aria-haspopup="true" aria-expanded="false">More<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="jv-menu" id="jv-menu" role="menu">
+            <button role="menuitem" id="jv-settings" onclick="JV.toggleMore();openJarvisSettings()"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</button>
+            <button role="menuitem" id="jv-log" onclick="JV.toggleMore();openJarvisLog()"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Activity log<small>What Jarvis has done</small></button>
+            <button role="menuitem" id="jv-mind" onclick="JV.toggleMore();openJarvisMind()"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2zM9 21h6"/></svg>Memory &amp; schedule<small>What he remembers and has scheduled</small></button>
+            <button role="menuitem" id="jv-posts" onclick="JV.toggleMore();openJarvisPosts()"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 9h16M9 9v11"/></svg>Drafted posts</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="jv-inbox admin-only-field" id="jv-inbox" style="display:none"></div>
     <div class="jv-body" id="jv-body"></div>
@@ -11896,11 +11922,18 @@ const JV = (() => {
     return r;
   }
 
+  function paintVoice() {
+    const b = $$('jv-speak');
+    if (!b) return;
+    b.innerHTML = voice ? '<svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4zM15.5 8.5a5 5 0 010 7M19 5a10 10 0 010 14"/></svg><span>Voice on</span>' : '<svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4zM23 9l-6 6M17 9l6 6"/></svg><span>Voice off</span>';
+    b.title = voice ? 'Replies are read aloud. Click to mute.' : 'Replies are text only. Click to have them read aloud.';
+  }
+
   function paintWrites() {
     const b = $$('jv-writes');
     if (!b) return;
-    b.textContent = writes ? '🔓' : '🔒';
-    b.title = writes ? 'Can send and change things' : 'Read-only — cannot send or change anything';
+    b.innerHTML = writes ? '<svg viewBox="0 0 24 24"><path d="M5 11h14v10H5zM8 11V7a4 4 0 017.8-1.2"/></svg><span>Can act</span>' : '<svg viewBox="0 0 24 24"><path d="M5 11h14v10H5zM8 11V7a4 4 0 018 0v4"/></svg><span>Read-only</span>';
+    b.title = writes ? 'Can send and change things. Click to make him read-only.' : 'Read-only: cannot send or change anything. Click to let him act.';
     b.classList.toggle('on', writes);
   }
 
@@ -11947,7 +11980,7 @@ const JV = (() => {
       }
       restore();
       if (!window.SpeechRecognition && !window.webkitSpeechRecognition) $$('jv-mic').disabled = true;
-      $$('jv-speak').textContent = voice ? '🔊' : '🔇';
+      paintVoice();
       paintWrites();
       status('Ready', 'ready');
       $$('jv-input').focus();
@@ -11977,16 +12010,28 @@ const JV = (() => {
       if (!p.classList.contains('open')) this.open();
       const on = p.classList.toggle('hud');
       $$('jv-hud-btn').title = on ? 'Exit full screen' : 'Full screen';
+      $$('jv-hud-btn').querySelector('span').textContent = on ? 'Exit full screen' : 'Full screen';
       if (on) { HUD_FX.start(); loadHudStats(); $$('jv-input').focus(); }
       else HUD_FX.stop();
     },
     key(e) {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(e.target.value); e.target.value = ''; }
     },
+    // The More menu (admin screens). Closes on any click outside it.
+    toggleMore(e) {
+      const m = $$('jv-menu'), open = !m.classList.contains('open');
+      if (e) e.stopPropagation();
+      m.classList.toggle('open', open);
+      $$('jv-more-btn').setAttribute('aria-expanded', open);
+      if (open) document.addEventListener('click', function off(ev) {
+        if (!m.contains(ev.target)) { m.classList.remove('open'); $$('jv-more-btn').setAttribute('aria-expanded', false); }
+        document.removeEventListener('click', off);
+      });
+    },
     toggleVoice() {
       voice = !voice;
       localStorage.setItem('ql_jarvis_voice', voice ? '1' : '0');
-      $$('jv-speak').textContent = voice ? '🔊' : '🔇';
+      paintVoice();
       if (!voice) hush();
     },
     toggleWrites() {
