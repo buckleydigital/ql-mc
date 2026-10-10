@@ -1023,7 +1023,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
     <div class="live-pill"><div class="ldot"></div>LIVE</div>
     <span id="clock"></span>
     <span class="uname-chip" id="uname"></span>
-    <button class="ibtn" id="alert-tray-btn" onclick="toggleAlertTray()" title="Alerts" style="position:relative">🔔<span id="alert-tray-badge" style="display:none;position:absolute;top:-2px;right:-2px;background:var(--red-fill);color:#fff;border-radius:8px;font-size:12px;padding:0 4px;font-family:var(--mono);font-weight:700;line-height:1.6">0</span></button>
+    <button class="ibtn" id="alert-tray-btn" onclick="toggleAlertTray()" title="Alerts" aria-label="Alerts" style="position:relative"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg><span id="alert-tray-badge" style="display:none;position:absolute;top:-2px;right:-2px;background:var(--red-fill);color:#fff;border-radius:8px;font-size:12px;padding:0 4px;font-family:var(--mono);font-weight:700;line-height:1.6">0</span></button>
     <button class="ibtn" id="jv-btn" onclick="JV.toggle()" title="JARVIS" style="position:relative">◈<span id="jv-dot" class="jv-dot"></span><span id="jv-unread" class="jv-unread" style="display:none">0</span></button>
     <button class="ibtn" id="theme-btn" onclick="toggleTheme()" title="Toggle theme">◐</button>
     <button class="ibtn" onclick="doLogout()" title="Sign out" aria-label="Sign out"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
