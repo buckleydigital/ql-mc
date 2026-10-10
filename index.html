@@ -202,6 +202,7 @@ a{color:inherit;text-decoration:none}
   color:var(--ink2);font-size:14px;transition:all .12s;
 }
 .ibtn:hover{background:var(--s3);border-color:var(--bd2);color:var(--ink)}
+.ibtn svg{width:16px;height:16px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .uname-chip{
   font-size:var(--fs-sm);font-weight:500;color:var(--ink2);
   padding:3px 10px;background:var(--s2);border:1px solid var(--bd2);border-radius:999px;
@@ -1009,7 +1010,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
     <button class="ibtn" id="alert-tray-btn" onclick="toggleAlertTray()" title="Alerts" style="position:relative">🔔<span id="alert-tray-badge" style="display:none;position:absolute;top:-2px;right:-2px;background:var(--red-fill);color:#fff;border-radius:8px;font-size:12px;padding:0 4px;font-family:var(--mono);font-weight:700;line-height:1.6">0</span></button>
     <button class="ibtn" id="jv-btn" onclick="JV.toggle()" title="JARVIS" style="position:relative">◈<span id="jv-dot" class="jv-dot"></span><span id="jv-unread" class="jv-unread" style="display:none">0</span></button>
     <button class="ibtn" id="theme-btn" onclick="toggleTheme()" title="Toggle theme">◐</button>
-    <button class="ibtn" onclick="doLogout()" title="Sign out">⎋</button>
+    <button class="ibtn" onclick="doLogout()" title="Sign out" aria-label="Sign out"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
   </div>
   <!-- Alert Tray Dropdown -->
   <div id="alert-tray" style="display:none;position:fixed;top:42px;right:10px;width:340px;max-height:420px;overflow-y:auto;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r);box-shadow:0 8px 28px rgba(0,0,0,.35);z-index:9999;padding:12px 14px">
