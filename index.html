@@ -1244,7 +1244,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
             <option value="">Everyone</option>
           </select>
           <span id="crm-repview-stats" style="font-size:12px;color:var(--acc);font-family:var(--mono)"></span>
-          <button class="btn btn-xs" id="crm-private-btn" style="margin-left:auto" onclick="togglePrivateKpis()">Show deal value &amp; LTV</button>
+          <button class="btn btn-xs admin-only-field" id="crm-private-btn" style="margin-left:auto" onclick="togglePrivateKpis()">Show deal value &amp; LTV</button>
         </div>
         <div class="kg kg-fit mb4 rep-stat-strip" style="display:none">
           <div class="kpi"><div class="klabel">Close Rate</div><div class="kval grn" id="rep-close">-</div><div class="ksub" id="rep-close-sub"></div></div>
@@ -1264,7 +1264,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
         <div class="sl">All Leads <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Name</th><th>Company</th><th>Stage</th><th>Build Fee</th><th>Source</th><th>Last Contact</th><th>Notes</th><th></th></tr></thead>
+            <thead><tr><th>Name</th><th>Company</th><th>Stage</th><th class="admin-only-field">Build Fee</th><th>Source</th><th>Last Contact</th><th>Notes</th><th></th></tr></thead>
             <tbody id="crm-tbody"><tr><td colspan="8" class="empty">Loading...</td></tr></tbody>
           </table>
           <div class="pager" id="crm-pager"></div>
@@ -5174,7 +5174,7 @@ function renderCRM() {
       <td><strong>${esc(l.name||'-')}</strong></td>
       <td>${esc(l.company||'-')}</td>
       <td><span class="badge ${stageBadge(l.stage)}">${stageLabel(l.stage)}</span></td>
-      <td>${l.value?'$'+Number(l.value).toLocaleString():'-'}</td>
+      ${IS_REP?'':`<td>${l.value?'$'+Number(l.value).toLocaleString():'-'}</td>`}
       <td>${esc(l.source||'-')}</td>
       <td>${contactCell}</td>
       <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink2)">${esc(l.notes||'-')}</td>
@@ -10906,6 +10906,7 @@ async function loadJarvisPosts() {
           '</div>' +
           '<textarea class="fi" id="jp-cap-' + p.id + '" rows="7" maxlength="2200" style="width:100%;resize:vertical;font-size:13px;line-height:1.5"' + (editable ? '' : ' readonly') + '>' + jmEsc(p.caption) + '</textarea>' +
           (facts ? '<details style="margin-top:6px;font-size:12px;color:var(--ink2)"><summary style="cursor:pointer;color:var(--ink3)">Facts behind it</summary><ul style="margin:6px 0 0 16px;line-height:1.6">' + facts + '</ul></details>' : '') +
+          (p.editor_notes ? '<details style="margin-top:6px;font-size:12px;color:var(--ink2)"' + (/^Editor: could be stronger/.test(p.editor_notes) ? ' open' : '') + '><summary style="cursor:pointer;color:var(--ink3)">Editor\'s notes</summary><div style="margin-top:6px;line-height:1.6;white-space:pre-wrap">' + jmEsc(p.editor_notes) + '</div></details>' : '') +
           '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">' + btns.join('') + '</div>' +
         '</div>' +
       '</div>';

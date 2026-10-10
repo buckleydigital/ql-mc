@@ -17,11 +17,15 @@
  *                 posts and edits as the voice to match, and a strict rubric.
  *                 It returns scores and concrete fixes, never a rewrite.
  *   3. the bar  - decided here in code from the scores, not by the model's own
- *                 verdict: truthful at least 7, every other score at least 6,
- *                 the average at least 7.
+ *                 verdict. Only truth blocks: a hard fail, or truthful under
+ *                 7, sends the draft back. Anything true is saved for you,
+ *                 with the editor's score and notes; under the quality bar
+ *                 (every score 6+, average 7+) it is marked as needing work.
  *
- * A draft that fails comes back to Jarvis with the fixes, and he revises. You
- * only ever see drafts that passed.
+ * Why the quality scores advise rather than block: a strict editor turned
+ * down true, usable posts three times running over taste ("not specific
+ * enough"), so you saw nothing at all. You approve every post anyway; you
+ * should see the draft and the critique, and decide.
  *
  * Actions (POST, JSON):
  *   { action: 'brief' }                       the brief, voice examples, recent topics
@@ -533,26 +537,34 @@ Deno.serve(async (req: Request) => {
     // Gate 3: the bar, in code.
     const scores = RUBRIC.map((k) => Number(verdict.scores?.[k] ?? 0))
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length
-    // Truth is the one score that cannot slip; the rest only need to be sound,
-    // since the owner reads and can edit every post before it goes anywhere.
+    // Truth is the only thing that blocks. The quality scores are advice for
+    // the owner, who reads and can edit every post before it goes anywhere.
     const truthful = Number(verdict.scores?.truthful ?? 0)
-    const passed = verdict.hard_fails.length === 0 && truthful >= 7 && Math.min(...scores) >= 6 && avg >= 7
+    const truthOk = verdict.hard_fails.length === 0 && truthful >= 7
+    const meetsBar = truthOk && Math.min(...scores) >= 6 && avg >= 7
     const scoreLine = RUBRIC.map((k, i) => `${k} ${scores[i]}`).join(', ')
 
-    if (!passed) {
+    if (!truthOk) {
       return json({
         accepted: false, stage: 'editor',
         score: Math.round(avg * 10) / 10, scores: verdict.scores,
         hard_fails: verdict.hard_fails, issues: verdict.issues, fixes: verdict.fixes,
-        bar: 'No hard fails, truthful at least 7, every other score at least 6, and an average of at least 7.',
+        bar: 'Nothing untrue or unpublishable: no hard fails, and truthful at least 7. Cut or rephrase the claims it names.',
       })
     }
 
-    // Passed: save, then draw the card.
+    // True: save it, then draw the card. Below the quality bar it is saved
+    // all the same, with the editor's fixes in the notes for the owner.
+    const notes = [
+      meetsBar ? '' : 'Editor: could be stronger.',
+      verdict.issues.length ? `Issues: ${verdict.issues.join(' ')}` : '',
+      !meetsBar && verdict.fixes.length ? `Suggested fixes: ${verdict.fixes.join(' ')}` : '',
+      `(${scoreLine})`,
+    ].filter(Boolean).join('\n')
     const row = {
       caption, card, facts, platforms,
       editor_score: Math.round(avg * 10) / 10,
-      editor_notes: `${scoreLine}${verdict.issues.length ? `. Notes: ${verdict.issues.join(' ')}` : ''}`.slice(0, 2000),
+      editor_notes: notes.slice(0, 2000),
       source: body.source ?? existing?.source ?? null,
       updated_at: new Date().toISOString(),
     }
@@ -576,9 +588,13 @@ Deno.serve(async (req: Request) => {
     }
 
     return json({
-      accepted: true, post_id: id, score: row.editor_score, scores: verdict.scores,
-      notes: verdict.issues, image_url, image_error,
-      next: 'Saved as a draft on the Posts screen for the owner to approve. Nothing is published anywhere.',
+      accepted: true, needs_work: !meetsBar, post_id: id, score: row.editor_score, scores: verdict.scores,
+      notes: verdict.issues, fixes: meetsBar ? [] : verdict.fixes, image_url, image_error,
+      next: meetsBar
+        ? 'Saved as a draft on the Posts screen for the owner to approve. Nothing is published anywhere.'
+        : 'Saved as a draft on the Posts screen, with the editor\'s notes, for the owner to judge. If you can act on the fixes ' +
+          'with what you already know, revise ONCE with this post_id; otherwise stop. Either way, tell the owner it is on the ' +
+          'Posts screen. Never ask the owner for facts just to satisfy the editor.',
     })
   } catch (err) {
     return json({ error: (err as Error).message }, 500)

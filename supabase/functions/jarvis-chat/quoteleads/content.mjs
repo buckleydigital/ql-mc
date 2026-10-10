@@ -29,13 +29,16 @@ async function createPostDraft({ caption, card, facts = [], platforms, post_id }
   })
   if (out.accepted) {
     return {
-      summary: `Draft passed the editor (${out.score}/10) and is on the Posts screen for approval.`,
+      summary: out.needs_work
+        ? `Saved on the Posts screen (editor ${out.score}/10, with its notes for the owner). Revise once with post_id if you can act on the fixes; otherwise tell the owner it is there.`
+        : `Draft passed the editor (${out.score}/10) and is on the Posts screen for approval.`,
       ...out,
     }
   }
-  // Not an error: the editor did its job. The fixes are the next step.
+  // Not an error: the editor did its job. Only something untrue or
+  // unpublishable comes back - cut or rephrase what it names.
   return {
-    summary: `Not good enough yet (${out.stage}${out.score ? `, ${out.score}/10` : ''}). Revise using the fixes and call create_post_draft again.`,
+    summary: `Not saved: ${out.stage === 'lint' ? 'the lint' : 'the editor'} found something untrue or unpublishable${out.score ? ` (${out.score}/10)` : ''}. Cut or rephrase what it names and call create_post_draft again.`,
     ...out,
   }
 }
