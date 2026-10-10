@@ -17,7 +17,8 @@
  *                 posts and edits as the voice to match, and a strict rubric.
  *                 It returns scores and concrete fixes, never a rewrite.
  *   3. the bar  - decided here in code from the scores, not by the model's own
- *                 verdict: every score at least 7, the average at least 8.
+ *                 verdict: truthful at least 7, every other score at least 6,
+ *                 the average at least 7.
  *
  * A draft that fails comes back to Jarvis with the fixes, and he revises. You
  * only ever see drafts that passed.
@@ -59,12 +60,20 @@ const ASSET_BASE = (Deno.env.get('JARVIS_ASSET_BASE') ?? 'https://mc.quoteleadsh
 // ── The brief ──────────────────────────────────────────────────────────────
 // Used when Jarvis settings has no content brief. It is a starting point, and
 // the settings screen says so: who you are talking to is your call, not his.
-const DEFAULT_BRIEF = `Audience: owners of Australian trade businesses, mainly solar installers, who buy leads or are weighing it up. Busy, sceptical of marketing, have been burned by bad lead providers.
-What QuoteLeads does: runs its own advertising to generate homeowner enquiries and delivers them to installers in real time.
+const DEFAULT_BRIEF = `Audience: owners of Australian trade businesses, mainly solar installers, who buy leads or are weighing it up. Busy, sceptical of marketing, have been burned by bad lead providers and shared lead sites.
+
+What QuoteLeads sells (established facts: a post may state these without listing them as facts, and cite "content brief" as the source for any number in them):
+- The Branded Lead Gen System, built into the installer's own business: Meta and Google ad campaigns on the installer's own ad accounts, under their brand; a branded landing page and survey funnel that pre-qualifies homeowners; tracking; an AI SMS agent; and a CRM pipeline. They own all of it.
+- Every enquiry is exclusive to that installer, never shared with competitors.
+- The AI SMS agent texts every new enquiry back in under 3 seconds, from the installer's own number and in their business name. The default first text: "Hi, thanks for reaching out to [business]. We just wanted to confirm you're looking for a [trade] quote - is that correct?"
+- The AI keeps the conversation going until the installer is free: it confirms the homeowner is interested and either tells them the team will call shortly, books a callback or a site visit, or gathers job details for a rough estimate, depending on how the installer sets it up. The installer gets an email when it books a callback. It never quotes prices, and it hands complaints and billing questions to a person.
+- Built and live in 24 to 48 hours. A one-off build: $2,500 + GST for one campaign, service area and offering, or $5,000 + GST for bigger setups (more than $100 a day in ad spend, several campaigns, areas or offerings). Ad spend is paid directly to Meta and Google from the installer's own account, from about $50 a day, never through us. Optional monthly management, from $690 a month + GST ($1,200 for the bigger build). No lock-in.
+- Pay per lead is also available: we run the ads and deliver exclusive leads to the installer as they come in.
+
 Voice: plain Australian English. Direct, calm, confident, no hype. Someone who knows marketing talking to someone who runs a trade business. Short sentences. Specific over clever.
-Every post: one idea. Either something an installer can use, or a true proof point from our own numbers. End with a low-key call to action at most.
+Every post: one idea. Either something an installer can use, a true proof point from our own numbers, or how the system actually works. End with a low-key call to action at most.
 Never: name a client or a lead, show a client's own figures, invent a number, a result or a testimonial, promise outcomes (sales, jobs, ROI).
-Post types: proof (real aggregate results), lessons (speed to call, follow-up, quoting), behind the scenes (how leads are generated and delivered), offers (only when the owner supplies one).`
+Post types: proof (real aggregate results), lessons (speed to reply, follow-up, quoting), behind the scenes (how the system generates and answers enquiries), offers (only when the owner supplies one).`
 
 // Phrases that mark a post as machine-written. Any one fails the draft.
 const BANNED: RegExp[] = [
@@ -107,7 +116,7 @@ const cardText = (c: Card) => [c.kicker, c.stat, c.headline, c.body, c.attributi
 const numbersIn = (s: string) =>
   (s.match(/\d[\d,]*(\.\d+)?/g) ?? []).map((n) => n.replace(/,/g, ''))
 
-function lint(caption: string, card: Card, facts: Fact[], clientNames: string[]): string[] {
+function lint(caption: string, card: Card, facts: Fact[], clientNames: string[], brief = ''): string[] {
   const problems: string[] = []
   const all = `${caption}\n${cardText(card)}`
 
@@ -124,10 +133,11 @@ function lint(caption: string, card: Card, facts: Fact[], clientNames: string[])
 
   // Every number must be one he can point to. Normalised so "1,200" matches
   // "1200", and checked against the facts' text as written.
-  const factText = facts.map((f) => `${f.claim} ${f.source}`).join(' ').replace(/,/g, '')
+  // The brief's own figures (price, build time, reply time) count as sourced.
+  const factText = `${facts.map((f) => `${f.claim} ${f.source}`).join(' ')} ${brief}`.replace(/,/g, '')
   const factNums = new Set(numbersIn(factText))
   for (const n of new Set(numbersIn(all))) {
-    if (!factNums.has(n)) problems.push(`The number ${n} is not in the facts. Add where it came from, or remove it.`)
+    if (!factNums.has(n)) problems.push(`The number ${n} is not in the facts or the content brief. Add where it came from, or remove it.`)
   }
   for (const f of facts) {
     if (!f?.claim || !f?.source) problems.push('Every fact needs both a claim and a source.')
@@ -172,21 +182,23 @@ const EDITOR_SCHEMA = {
   },
 }
 
-const EDITOR_SYSTEM = `You are the editor for a small Australian lead-generation business's social posts. Your job is to stop mediocre posts reaching the owner. Most first drafts should NOT pass. Be specific and unsentimental; you are protecting the brand from sounding like every other marketing account.
+const EDITOR_SYSTEM = `You are the editor for a small Australian lead-generation business's social posts. Your job is to stop mediocre or untrue posts reaching the owner, and to say exactly how to fix the rest. The owner reads and approves every post before it goes anywhere, so you are a quality filter, not the last line of defence. Be specific and unsentimental; you are protecting the brand from sounding like every other marketing account. Score what is on the page, not what an ideal post might have had.
+
+The content brief describes what the business sells. Treat it as established fact: a claim that matches the brief is supported, whether or not the draft lists it under facts. Only a claim that goes beyond the brief and the listed facts is unsupported.
 
 Score each 1-10:
 - specific: concrete, particular detail a reader could not have guessed. Generic advice that fits any business scores 4 or less.
-- truthful: every claim and number is supported by the listed facts, and none is stretched (e.g. "all" when facts say 98%, "your phone" when delivery can be email). Any unsupported claim caps this at 3.
+- truthful: every claim and number is supported by the content brief or the listed facts, and none is stretched (e.g. "all" when facts say 98%, "your phone" when delivery can be email). Any unsupported claim caps this at 3.
 - audience: speaks to a trade business owner's real problem, in their terms.
 - hook: the first line earns the second. Questions like "Want more leads?" and restating the topic score 3 or less.
-- voice: matches the brief and the owner's own approved posts and edits. Hype, corporate filler, or anything that reads machine-written scores 4 or less.
+- voice: matches the brief and the owner's own approved posts and edits (if there are none yet, judge against the brief alone and do not mark down for it). Hype, corporate filler, or anything that reads machine-written scores 4 or less.
 - clarity: one idea, no padding, short sentences, easy on a phone.
 - Any em dash or en dash is an issue: say to replace it with a full stop, a comma or a plain hyphen.
 - card: the image text reads in two seconds and adds something the caption does not just repeat.
 
 hard_fails: anything that must never be published - an invented or unsupported number, result or testimonial; a client or lead named or identifiable; a promise of outcomes; anything misleading. Empty if none.
 issues: what is wrong, concretely, quoting the words.
-fixes: exact instructions for the rewrite. Never write the post yourself.`
+fixes: exact instructions for the rewrite, most important first. Ask only for what can be fixed from the brief and the facts; never ask for information the draft could not have. Never write the post yourself.`
 
 // ── OpenAI, the fallback ───────────────────────────────────────────────────
 // When Claude cannot review (no ANTHROPIC_API_KEY, no credit, rate limited,
@@ -461,7 +473,7 @@ Deno.serve(async (req: Request) => {
         brief_is_default: c.briefIsDefault,
         voice_examples: c.examples,
         recent_posts: c.recent,
-        rules: 'Every number needs a fact with its source. No client names. Card styles: stat (stat <= 9 chars + headline), tip (headline), quote (real, approved quote + attribution). Headline <= 90 chars, body <= 170.',
+        rules: 'Every number needs a fact with its source; anything stated in the brief can cite "content brief". No client names. Card styles: stat (stat <= 9 chars + headline), tip (headline), quote (real, approved quote + attribution). Headline <= 90 chars, body <= 170.',
       })
     }
 
@@ -493,7 +505,7 @@ Deno.serve(async (req: Request) => {
     const ctx = await context(admin)
 
     // Gate 1.
-    const problems = lint(caption, card, facts, ctx.clientNames)
+    const problems = lint(caption, card, facts, ctx.clientNames, ctx.brief)
     if (problems.length) {
       return json({
         accepted: false, stage: 'lint', issues: problems,
@@ -521,7 +533,10 @@ Deno.serve(async (req: Request) => {
     // Gate 3: the bar, in code.
     const scores = RUBRIC.map((k) => Number(verdict.scores?.[k] ?? 0))
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length
-    const passed = verdict.hard_fails.length === 0 && Math.min(...scores) >= 7 && avg >= 8
+    // Truth is the one score that cannot slip; the rest only need to be sound,
+    // since the owner reads and can edit every post before it goes anywhere.
+    const truthful = Number(verdict.scores?.truthful ?? 0)
+    const passed = verdict.hard_fails.length === 0 && truthful >= 7 && Math.min(...scores) >= 6 && avg >= 7
     const scoreLine = RUBRIC.map((k, i) => `${k} ${scores[i]}`).join(', ')
 
     if (!passed) {
@@ -529,7 +544,7 @@ Deno.serve(async (req: Request) => {
         accepted: false, stage: 'editor',
         score: Math.round(avg * 10) / 10, scores: verdict.scores,
         hard_fails: verdict.hard_fails, issues: verdict.issues, fixes: verdict.fixes,
-        bar: 'Every score at least 7 and an average of at least 8, with no hard fails.',
+        bar: 'No hard fails, truthful at least 7, every other score at least 6, and an average of at least 7.',
       })
     }
 
