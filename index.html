@@ -633,10 +633,15 @@ td strong{font-weight:600}
 
 /* ═══ FILES PANEL ═══ */
 .files-layout{display:grid;grid-template-columns:200px 1fr;gap:10px;height:calc(100vh - 160px);height:calc(100dvh - 160px)}
-.files-list{display:flex;flex-direction:column;gap:2px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:10px}
+.files-list{display:flex;flex-direction:column;gap:2px;overflow-y:auto;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);padding:10px}
 .files-list-title{font-size:var(--fs-xs);font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid var(--bd)}
 .files-cat{font-size:var(--fs-xs);font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px}
 .files-cat:first-of-type{margin-top:0}
+.files-tabs{display:flex;gap:4px;margin-bottom:10px;padding-bottom:9px;border-bottom:1px solid var(--bd)}
+.files-tabs button{flex:1;font:inherit;font-size:var(--fs-xs);font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:6px 4px;border:1px solid transparent;border-radius:var(--r);background:transparent;color:var(--ink3);cursor:pointer}
+.files-tabs button.active{background:var(--acc-dim);color:var(--acc);border-color:rgba(79,143,255,.15)}
+.files-group{display:flex;flex-direction:column;gap:2px}
+.files-empty{font-size:12px;color:var(--ink3);padding:6px 2px;line-height:1.5}
 .file-item{padding:7px 10px;border-radius:var(--r);font-size:var(--fs-base);color:var(--ink2);cursor:pointer;transition:all .12s;border:1px solid transparent;line-height:1.4}
 .file-item:hover{background:var(--s2);color:var(--ink);border-color:var(--bd)}
 .file-item.active{background:var(--acc-dim);color:var(--acc);border-color:rgba(79,143,255,.15)}
@@ -647,10 +652,25 @@ td strong{font-weight:600}
 .file-rename input:focus{border-color:var(--acc)}
 .file-rename div{display:flex;gap:6px;justify-content:flex-end}
 .file-editor{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);display:flex;flex-direction:column;overflow:hidden}
-.file-editor-head{padding:9px 13px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;background:var(--s2);flex-shrink:0}
+.file-editor-head{padding:9px 13px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;gap:6px;background:var(--s2);flex-shrink:0}
 .file-editor-name{font-family:var(--code);font-size:var(--fs-sm);margin-right:10px;color:var(--acc);font-weight:500}
 .file-editor-ta{flex:1;background:transparent;border:none;outline:none;color:var(--ink);font-family:var(--code);font-size:var(--fs-base);line-height:1.7;padding:14px;resize:none}
-@media(max-width:700px){.files-layout{grid-template-columns:1fr;height:auto}.files-list{flex-direction:row;flex-wrap:wrap}}
+@media(max-width:700px){
+  .files-layout{grid-template-columns:1fr;height:auto}
+  .files-list{max-height:42vh;max-height:42dvh;overflow-y:auto}
+  .file-item{padding:10px 12px}
+  .file-rename input{font-size:16px;padding:8px 10px}
+  .file-rename .btn{padding:8px 14px}
+  .file-editor{min-height:70vh;min-height:70dvh}
+  .file-editor-head{flex-wrap:wrap;padding:10px 12px}
+  .file-editor-name{flex:1 1 100%;margin:0;white-space:normal;word-break:break-word}
+  .file-editor-src{display:none}
+  #tmpl-client-sel{flex:1 1 100%;max-width:none !important;margin-left:0 !important;font-size:14px !important;padding:7px 8px !important}
+  .file-editor-head .btn{flex:1;margin-left:0 !important;padding:8px 12px}
+  .file-editor-ta{font-size:16px;line-height:1.6;padding:12px}
+  #panel-files .ph-right{width:100%}
+  #panel-files .ph-right .btn{flex:1}
+}
 
 /* ═══ MAPS ═══ */
 @media(max-width:700px){
@@ -2137,7 +2157,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
       <!-- ══ FILES ══ -->
       <div class="panel" id="panel-files">
         <div class="ph">
-          <div class="ph-left"><h1>Files</h1><p>Email templates &amp; scripts - editable markdown</p></div>
+          <div class="ph-left"><h1>Files</h1><p>Email templates, scripts &amp; SOPs - editable markdown</p></div>
           <div class="ph-right">
             <button class="btn btn-sm" onclick="loadFileContent()">↻ Reload</button>
             <button class="btn btn-p btn-sm" onclick="saveFileContent()">Save file</button>
@@ -2145,7 +2165,11 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
         </div>
         <div class="files-layout">
           <div class="files-list">
-            <div class="files-list-title">Templates &amp; Scripts</div>
+            <div class="files-tabs" role="tablist">
+              <button class="active" data-files-tab="tmpl" onclick="showFilesTab('tmpl')">Templates &amp; Scripts</button>
+              <button data-files-tab="sop" onclick="showFilesTab('sop')">SOPs</button>
+            </div>
+            <div class="files-group" id="files-group-tmpl">
 
             <div class="files-cat">Sales</div>
             <div class="file-item" data-file="discovery-call-script.md" onclick="selectFile('discovery-call-script.md',this)">
@@ -2180,14 +2204,20 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
               <div class="file-name">ppl-welcome-email</div>
               <div class="file-desc">PPL client onboarding</div>
             </div>
+            </div>
+            <div class="files-group" id="files-group-sop" style="display:none">
+              <button class="btn btn-sm" onclick="newSop()" style="margin-bottom:8px">+ New SOP</button>
+              <div id="sop-list"></div>
+            </div>
           </div>
           <div class="file-editor">
             <div class="file-editor-head">
               <span class="file-editor-name" id="file-editor-name">post-call-email</span>
-              <span style="font-family:var(--mono);font-size:12px;color:var(--ink3)">Supabase · agent_files (docs)</span>
+              <span class="file-editor-src" style="font-family:var(--mono);font-size:12px;color:var(--ink3)">Supabase · agent_files (docs)</span>
               <select id="tmpl-client-sel" style="margin-left:auto;font-family:var(--mono);font-size:12px;padding:3px 7px;background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);color:var(--ink);outline:none;max-width:180px" onchange="updateTemplatePreview()"><option value="">- Preview with client -</option></select>
               <button class="btn btn-xs" onclick="renameFile()" title="Change the name and description shown in the list" style="flex-shrink:0;margin-left:6px">Rename</button>
               <button class="btn btn-xs" id="tmpl-preview-btn" onclick="toggleTemplatePreview()" style="flex-shrink:0;margin-left:6px">Preview</button>
+              <button class="btn btn-xs" id="sop-del-btn" onclick="deleteSop()" style="flex-shrink:0;margin-left:6px;display:none;color:var(--red)">Delete</button>
             </div>
             <textarea class="file-editor-ta" id="file-editor-ta" placeholder="Loading..."></textarea>
             <div id="tmpl-preview" style="display:none;padding:16px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);font-size:13px;line-height:1.75;white-space:pre-wrap;overflow-y:auto;max-height:520px;color:var(--ink);font-family:var(--font)"></div>
@@ -8318,7 +8348,66 @@ function selectFile(filename, el) {
   el.classList.add('active');
   curFile = filename;
   setText('file-editor-name', el.querySelector('.file-name')?.textContent || filename.replace(/\.md$/,''));
+  paintFileTools();
   loadFileContent();
+  // On a phone the editor sits under the list, so bring it into view.
+  if (matchMedia('(max-width:700px)').matches) document.querySelector('#panel-files .file-editor')?.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+// SOPs are files people add themselves, saved as sop-<id>.md. Their name
+// lives only in the title column; templates and scripts are built in.
+const isSop = f => f.startsWith('sop-');
+
+function showFilesTab(tab) {
+  document.querySelectorAll('[data-files-tab]').forEach(b => b.classList.toggle('active', b.dataset.filesTab === tab));
+  $('files-group-tmpl').style.display = tab === 'tmpl' ? '' : 'none';
+  $('files-group-sop').style.display  = tab === 'sop'  ? '' : 'none';
+}
+
+// The client picker and Preview fill in template fields, so SOPs don't get
+// them; only SOPs can be deleted.
+function paintFileTools() {
+  const sop = isSop(curFile);
+  if (sop && _tmplPreviewOn) toggleTemplatePreview();
+  $('tmpl-client-sel').style.display = sop ? 'none' : '';
+  $('tmpl-preview-btn').style.display = sop ? 'none' : '';
+  $('sop-del-btn').style.display = sop ? '' : 'none';
+}
+
+function renderSops(rows) {
+  const list = $('sop-list');
+  if (!list) return;
+  rows = rows.filter(r => isSop(r.filename)).sort((a,b) => (a.title||'').localeCompare(b.title||''));
+  list.innerHTML = rows.length ? rows.map(r =>
+    `<div class="file-item${r.filename===curFile?' active':''}" data-file="${esc(r.filename)}">` +
+    `<div class="file-name" data-builtin="">${esc(r.title || 'Untitled SOP')}</div>` +
+    `<div class="file-desc" data-builtin="">${esc(r.description || '')}</div></div>`).join('')
+    : '<div class="files-empty">No SOPs yet. Add one to write down how something is done.</div>';
+  list.querySelectorAll('.file-item').forEach(el => el.onclick = () => selectFile(el.dataset.file, el));
+}
+
+async function newSop() {
+  if (!db) return;
+  const filename = 'sop-' + Date.now().toString(36) + '.md';
+  const {error} = await db.from('agent_files').insert({agent:'docs', filename, title:'New SOP', content:'# New SOP\n\n## Purpose\n\n## Steps\n1. \n', updated_at:now()});
+  if (error) { toast('Could not add SOP: '+error.message, true); return; }
+  curFile = filename;
+  await loadFileNames();
+  const el = document.querySelector(`.file-item[data-file="${CSS.escape(filename)}"]`);
+  if (el) { selectFile(filename, el); renameFile(); }
+}
+
+async function deleteSop() {
+  if (!isSop(curFile)) return;
+  const name = $('file-editor-name').textContent;
+  if (!confirm(`Delete the SOP "${name}"? This can't be undone.`)) return;
+  const {error} = await db.from('agent_files').delete().eq('agent','docs').eq('filename',curFile);
+  if (error) { toast('Delete failed: '+error.message, true); return; }
+  toast('Deleted ✓');
+  const next = document.querySelector('#sop-list .file-item:not(.active)') || document.querySelector('#files-group-tmpl .file-item');
+  await loadFileNames();
+  const el = next && document.querySelector(`.file-item[data-file="${CSS.escape(next.dataset.file)}"]`);
+  if (el) { showFilesTab(isSop(el.dataset.file) ? 'sop' : 'tmpl'); selectFile(el.dataset.file, el); }
 }
 
 // Names shown in the list. The filename is the key the content is saved
@@ -8327,6 +8416,7 @@ async function loadFileNames() {
   if (!db) return;
   const {data,error} = await db.from('agent_files').select('filename,title,description').eq('agent','docs');
   if (error) return;
+  renderSops(data || []);
   for (const r of data || []) {
     const item = document.querySelector(`.file-item[data-file="${CSS.escape(r.filename)}"]`);
     if (!item) continue;
@@ -8341,6 +8431,7 @@ async function loadFileNames() {
 function renameFile() {
   const item = document.querySelector(`.file-item[data-file="${CSS.escape(curFile)}"]`);
   if (!item || item.querySelector('.file-rename')) return;
+  showFilesTab(isSop(curFile) ? 'sop' : 'tmpl');
   const nm = item.querySelector('.file-name'), ds = item.querySelector('.file-desc');
   const form = document.createElement('div');
   form.className = 'file-rename';
@@ -8357,7 +8448,9 @@ function renameFile() {
     const description = form.querySelector('.fr-desc').value.trim();
     if (!title) { toast('Give it a name', true); return; }
     // Blank or unchanged-from-built-in means "use the built-in one".
-    const row = { title: title === (nm.dataset.builtin ?? nm.textContent) ? null : title,
+    // SOPs have no built-in name, so theirs is always stored.
+    const row = isSop(curFile) ? { title, description: description || null } : {
+                  title: title === (nm.dataset.builtin ?? nm.textContent) ? null : title,
                   description: description && description !== (ds.dataset.builtin ?? ds.textContent) ? description : null };
     const {data:existing} = await db.from('agent_files').select('id').eq('agent','docs').eq('filename',curFile).maybeSingle();
     const {error} = existing
@@ -8377,6 +8470,7 @@ function renameFile() {
     if (e.key === 'Enter') save(); else if (e.key === 'Escape') close();
   });
   form.querySelector('.fr-name').select();
+  item.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 async function loadFileContent() {
   if (!db) return;
