@@ -1274,7 +1274,6 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
         <div class="kg kg-fit mb4 rep-stat-strip" style="display:none">
           <div class="kpi"><div class="klabel">Close Rate</div><div class="kval grn" id="rep-close">-</div><div class="ksub" id="rep-close-sub"></div></div>
           <div class="kpi"><div class="klabel">My Open Leads</div><div class="kval" id="rep-open">-</div></div>
-          <div class="kpi"><div class="klabel">Avg Commission / Close</div><div class="kval grn" id="rep-comm">-</div><div class="ksub" id="rep-comm-sub"></div></div>
         </div>
         <div class="kg kg-fit mb4">
           <div class="kpi"><div class="klabel">Total Leads</div><div class="kval blu" id="crm-total">-</div></div>
@@ -5068,9 +5067,9 @@ async function loadCrmLtv() {
     : 'no billed clients yet');
 }
 
-// Rep performance strip: close rate, open leads, commission per close.
+// Rep performance strip: close rate and open leads.
 // All data here is already RLS-scoped to the rep's own assigned leads.
-async function loadRepStats() {
+function loadRepStats() {
   const leads = crmPipelineLeads || [];
   const CLOSED = ['closed_won', 'closed_lost', 'churned'];
   const won = leads.filter(l => l.stage === 'closed_won').length;
@@ -5081,17 +5080,6 @@ async function loadRepStats() {
   setText('rep-close', total ? Math.round(won / total * 100) + '%' : '-');
   setText('rep-close-sub', decided ? Math.round(won / decided * 100) + '% of decided' : '');
   setText('rep-open', open);
-
-  // Their commission per close: deal value less GST, times their rate in
-  // Pay Rates. Worked out by the database so pay rates stay private.
-  const { data: comm } = await db.rpc('rep_commission_summary');
-  if (comm && comm.rep) {
-    const money = v => '$' + Number(v || 0).toLocaleString('en-AU', { maximumFractionDigits: 0 });
-    setText('rep-comm', comm.priced ? money(comm.average) : '-');
-    const gaps = [comm.no_value && comm.no_value + ' without a value yet', comm.no_rate && comm.no_rate + ' without a rate'].filter(Boolean).join(', ');
-    setText('rep-comm-sub', (comm.priced ? money(comm.total) + ' from ' + comm.priced + ' close' + (comm.priced === 1 ? '' : 's') : 'no priced closes yet') + (gaps ? ' · ' + gaps : ''));
-  }
-
 }
 function renderCRM() {
   let allLeads = crmAllLeads;           // table + KPIs (date-filtered)
