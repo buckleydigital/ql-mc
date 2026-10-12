@@ -1283,6 +1283,10 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           <div class="kpi admin-only-field kpi-private masked"><div class="klabel">Avg Won Deal</div><div class="kval grn" id="crm-avgwon">-</div><div class="ksub" id="crm-avgwon-sub"></div></div>
           <div class="kpi admin-only-field kpi-private masked"><div class="klabel">Avg Client LTV</div><div class="kval grn" id="crm-ltv">-</div><div class="ksub" id="crm-ltv-sub"></div></div>
         </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+          <input type="search" class="fi" id="crm-search" placeholder="Search leads by name, company, phone or email…" style="flex:1;min-width:200px;max-width:420px;font-size:13px;padding:6px 10px" oninput="setCrmSearch(this.value)">
+          <span id="crm-search-count" style="font-size:12px;color:var(--ink3);font-family:var(--mono)"></span>
+        </div>
         <div class="sl">Pipeline <div class="sl-line"></div></div>
         <div class="kanban-wrap"><div class="kanban" id="crm-kanban"></div></div>
         <div class="sl">All Leads <div class="sl-line"></div></div>
@@ -3806,6 +3810,23 @@ function populateCrmRepView() {
     _reps.map(r => `<option value="${esc(r.user_id)}">${esc(r.name || r.email)}${r.active ? '' : ' (inactive)'}</option>`).join('');
   sel.value = cur;
 }
+// Search narrows the kanban and the leads table only; the KPIs and follow-up
+// banner keep counting the whole (date / rep filtered) pipeline.
+let crmSearch = '';
+let _crmSearchT = null;
+function setCrmSearch(v) {
+  clearTimeout(_crmSearchT);
+  _crmSearchT = setTimeout(() => { crmSearch = v.trim().toLowerCase(); crmPage = 0; renderCRM(); }, 150);
+}
+function crmMatches(l) {
+  if (!crmSearch) return true;
+  const hay = [l.name, l.company, l.email, l.phone].filter(Boolean).join(' ').toLowerCase();
+  if (hay.includes(crmSearch)) return true;
+  // Phone numbers: match on digits so "0412 345" finds "0412345678".
+  const qd = crmSearch.replace(/\D/g, '');
+  return qd.length >= 3 && String(l.phone || '').replace(/\D/g, '').includes(qd);
+}
+
 // A rep never sees deal value or LTV, so picking one hides the button and
 // re-masks both cards - the filtered view then matches what that rep sees.
 function setCrmRepView(v) {
@@ -5152,6 +5173,11 @@ function renderCRM() {
     } else { banner.style.display='none'; }
   }
   const staleIds=new Set(staleLeads.map(l=>String(l.id)));
+  if (crmSearch) {
+    pipeline = pipeline.filter(crmMatches);
+    allLeads = allLeads.filter(crmMatches);
+  }
+  setText('crm-search-count', crmSearch ? `${allLeads.length} match${allLeads.length===1?'':'es'}` : '');
   CRM_STAGES.forEach(s=>{
     const col=$('crm-col-'+s.id),cnt=$('crmc-'+s.id);
     const sl=pipeline.filter(l=>l.stage===s.id);
@@ -5192,7 +5218,7 @@ function renderCRM() {
     }
   });
   const tb=$('crm-tbody');
-  if (!allLeads.length) { tb.innerHTML='<tr><td colspan="8" class="empty">No leads yet.</td></tr>'; $('crm-pager').innerHTML=''; return; }
+  if (!allLeads.length) { tb.innerHTML=`<tr><td colspan="8" class="empty">${crmSearch?'No leads match your search.':'No leads yet.'}</td></tr>`; $('crm-pager').innerHTML=''; return; }
   allLeads.forEach(l => { LEAD_CACHE[l.id] = l; });
   const totalPages = Math.ceil(allLeads.length / PAGE_SIZE);
   if (crmPage >= totalPages) crmPage = totalPages - 1;
