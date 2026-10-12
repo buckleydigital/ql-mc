@@ -3806,7 +3806,18 @@ function populateCrmRepView() {
     _reps.map(r => `<option value="${esc(r.user_id)}">${esc(r.name || r.email)}${r.active ? '' : ' (inactive)'}</option>`).join('');
   sel.value = cur;
 }
-function setCrmRepView(v) { crmRepView = v; crmPage = 0; renderCRM(); }
+// A rep never sees deal value or LTV, so picking one hides the button and
+// re-masks both cards - the filtered view then matches what that rep sees.
+function setCrmRepView(v) {
+  crmRepView = v; crmPage = 0;
+  const btn = $('crm-private-btn');
+  if (btn) btn.style.display = v ? 'none' : '';
+  if (v) {
+    document.querySelectorAll('.kpi-private').forEach(k => k.classList.add('masked'));
+    setText('crm-private-btn', 'Show deal value & LTV');
+  }
+  renderCRM();
+}
 const PAGE_SIZE = 50;
 function renderPager(elId, page, total, onPage) {
   const pages = Math.ceil(total / PAGE_SIZE);
