@@ -8651,7 +8651,7 @@ async function openInvoiceModal(clientId, offerType) {
   // Populate client / lead dropdown
   const [{data: clients}, {data: pipelineLeads}] = await Promise.all([
     db.from('clients').select('id,company_name,type,niche,lead_price,management_fee,contact_name,email').order('company_name'),
-    db.from('leads').select('id,name,company,email,type,deal_value').neq('stage','closed_lost').order('name')
+    db.from('leads').select(IS_REP ? 'id,name,company,email,lead_type' : 'id,name,company,email,lead_type,value').neq('stage','closed_lost').order('name')
   ]);
   const sel = $('inv-client');
   const pplClients = (clients||[]).filter(c => c.type === 'ppl');
@@ -8671,7 +8671,7 @@ async function openInvoiceModal(clientId, offerType) {
     html += '<optgroup label="Sales Pipeline Leads">' +
       pipelineLeads.map(l => {
         const display = l.company ? `${esc(l.name||'')} - ${esc(l.company)}` : esc(l.name||'Lead');
-        return `<option value="lead:${esc(String(l.id))}" data-source="lead" data-type="${esc(l.type||'ppl')}" data-niche="" data-lead-price="0" data-fee="${l.deal_value||0}" data-contact="${esc(l.name||'')}" data-email="${esc(l.email||'')}" data-company="${esc(l.company||'')}">${display}</option>`;
+        return `<option value="lead:${esc(String(l.id))}" data-source="lead" data-type="${esc(l.lead_type||'ppl')}" data-niche="" data-lead-price="0" data-fee="${l.value||0}" data-contact="${esc(l.name||'')}" data-email="${esc(l.email||'')}" data-company="${esc(l.company||'')}">${display}</option>`;
       }).join('') +
       '</optgroup>';
   }
@@ -8702,12 +8702,13 @@ function onInvClientChange() {
   // Clear existing lines and pre-fill
   invLineCount = 0;
   $('inv-lines').innerHTML = '';
-  if (type === 'managed') {
-    addInvLine('Managed Advertising - Monthly Retainer', 1, parseFloat(opt.dataset.fee) || 0);
-  } else if (isLead) {
-    // Pipeline lead: pre-fill based on deal value if available
+  if (isLead) {
+    // Pipeline lead: pre-fill with its build fee if one is entered (never
+    // loaded for reps, who cannot see deal values).
     const dealVal = parseFloat(opt.dataset.fee) || 0;
-    addInvLine('Pay-Per-Lead Services', 1, dealVal);
+    addInvLine(type === 'managed' ? 'Managed Advertising - Build Fee' : 'Pay-Per-Lead Services', 1, dealVal);
+  } else if (type === 'managed') {
+    addInvLine('Managed Advertising - Monthly Retainer', 1, parseFloat(opt.dataset.fee) || 0);
   } else {
     // PPL client: try to get latest order qty
     prefillPplLine(opt.value, parseFloat(opt.dataset.leadPrice) || 0, opt.dataset.niche || '');
