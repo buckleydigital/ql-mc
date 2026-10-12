@@ -399,7 +399,7 @@ code{font-family:var(--code);font-size:.92em;background:var(--s3);border:1px sol
 
 .kcol[data-s="new_lead"] .kcoln::before,.kcol[data-s="lead"] .kcoln::before{background:var(--acc);}
 .kcol[data-s="no_answer"] .kcoln::before,.kcol[data-s="paused"] .kcoln::before{background:var(--ink3);}
-.kcol[data-s="call_back"] .kcoln::before,.kcol[data-s="qualified"] .kcoln::before,.kcol[data-s="onboarding"] .kcoln::before{background:rgba(79,143,255,.6);}
+.kcol[data-s="call_back"] .kcoln::before,.kcol[data-s="onboarding"] .kcoln::before{background:rgba(79,143,255,.6);}
 .kcol[data-s="proposal"] .kcoln::before,.kcol[data-s="proposal_sent"] .kcoln::before{background:var(--amb);}
 .kcol[data-s="closed_won"] .kcoln::before,.kcol[data-s="active"] .kcoln::before,.kcol[data-s="active_client"] .kcoln::before{background:var(--grn);}
 .kcol[data-s="closed_lost"] .kcoln::before,.kcol[data-s="churned"] .kcoln::before{background:var(--red);}
@@ -3913,12 +3913,12 @@ function stageBadge(s) {
   if (['active','active_client','closed_won'].includes(l)) return 'bg-grn';
   if (['churned','closed_lost'].includes(l)) return 'bg-red';
   if (['paused','no_answer'].includes(l)) return 'bg-amb';
-  if (['qualified','onboarding','call_back'].includes(l)) return 'bg-vio';
+  if (['onboarding','call_back'].includes(l)) return 'bg-vio';
   if (['proposal','proposal_sent'].includes(l)) return 'bg-sky';
   return 'bg-blu';
 }
 function stageLabel(s) {
-  return {active_client:'Active',paused:'Paused',churned:'Churned',lead:'Lead',qualified:'Qualified',onboarding:'Onboarding',active:'Active',proposal_sent:'Proposal Sent',new_lead:'New Lead',no_answer:'No Answer',call_back:'Call-Back/Booked',proposal:'Proposal',closed_won:'Closed Won',closed_lost:'Closed Lost'}[s] || s;
+  return {active_client:'Active',paused:'Paused',churned:'Churned',lead:'Lead',onboarding:'Onboarding',active:'Active',proposal_sent:'Proposal Sent',new_lead:'New Lead',no_answer:'No Answer',call_back:'Call-Back/Booked',proposal:'Proposal',closed_won:'Closed Won',closed_lost:'Closed Lost'}[s] || s;
 }
 
 // Shows what a click switches to: a sun in dark mode, a moon in light.
@@ -5636,7 +5636,7 @@ async function saveStageNow() {
 function openEditLead(l) {
   setVal('el-id',l.id);setVal('el-name',l.name);setVal('el-company',l.company);
   setVal('el-email',l.email);setVal('el-phone',l.phone);
-  // Legacy stages (qualified / onboarding / proposal_sent) predate the six
+  // Legacy stages (onboarding / proposal_sent) predate the six
   // kanban columns and are still on real rows. Setting a <select> to a value it
   // has no option for leaves it blank, and saving would then write an empty
   // stage - so carry the current value in as an option and let it round-trip.
@@ -7586,7 +7586,7 @@ async function loadFinance() {
     db.from('ppl_order_log').select('id,client_id,leads_qty,status,sla_due_date,order_date').eq('status','in_progress'),
     db.from('ppl_order_log').select('id,client_id,leads_qty,sla_due_date,order_date,clients(company_name)').eq('status','in_progress').lte('sla_due_date',today).not('sla_due_date','is',null),
     db.from('monthly_goals').select('revenue_goal,month').gte('month',`${curYear}-01`).lte('month',`${curYear}-12`),
-    db.from('leads').select('id,stage,next_followup').in('stage',['new_lead','qualified','call_back','no_answer','onboarding','proposal','proposal_sent']),
+    db.from('leads').select('id,stage,next_followup').in('stage',['new_lead','call_back','no_answer','onboarding','proposal','proposal_sent']),
     db.from('ppl_leads').select('id,status').in('status',['pending','assigned']),
   ]);
   const latestAgSpend = (spR.data||[]).find(a=>a.account_type==='agency')?.spend || 0;
@@ -9232,7 +9232,7 @@ async function loadAlerts() {
   const [slaR, mgR, crmR, dueSoonR] = await Promise.all([
     db.from('ppl_order_log').select('id,client_id,sla_due_date,clients(company_name)').eq('status','in_progress').lte('sla_due_date',today).not('sla_due_date','is',null),
     db.from('clients').select('id,stage,next_payment_date,company_name').eq('type','managed'),
-    db.from('leads').select('id,stage,next_followup').in('stage',['new_lead','qualified','call_back','no_answer','onboarding','proposal','proposal_sent']),
+    db.from('leads').select('id,stage,next_followup').in('stage',['new_lead','call_back','no_answer','onboarding','proposal','proposal_sent']),
     db.from('ppl_order_log').select('id,client_id,sla_due_date,clients(company_name)').eq('status','in_progress').gt('sla_due_date',today).lte('sla_due_date',weekAhead).not('sla_due_date','is',null),
   ]);
   const overdueOrders = slaR.data||[];
