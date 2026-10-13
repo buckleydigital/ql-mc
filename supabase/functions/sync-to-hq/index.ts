@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { hqLeadIdFor } from '../_shared/hq-lead-link.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -141,10 +142,11 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── action: scrub ─────────────────────────────────────────────────────────
-    // Looks up the lead → client → ql_hq_company_id, then notifies ql-hq to
-    // decrement delivered_leads on the matching ppl_order AND flag the exact
-    // lead as scrubbed over there (matched by phone + name + company), so the
-    // client can't dispute a lead that's already been credited.
+    // Looks up the lead → client → ql_hq_company_id, then asks ql-hq to flag
+    // the exact lead as scrubbed (so the client can't dispute a lead that's
+    // already been credited) and, only if it found and flagged it, decrement
+    // delivered_leads on the matching ppl_order. The lead is identified by its
+    // ql-hq id from the delivery log, with phone + name as a fallback.
     if (action === 'scrub') {
       const { lead_id } = body as { lead_id?: string }
       if (!lead_id) return json({ error: 'lead_id is required for scrub action' }, 400)
@@ -173,6 +175,7 @@ Deno.serve(async (req: Request) => {
         body: JSON.stringify({
           action: 'scrub',
           ql_hq_company_id: client.ql_hq_company_id,
+          hq_lead_id: await hqLeadIdFor(supabase, lead_id),
           lead: { name: lead.name ?? null, phone: lead.phone ?? null },
         }),
       })

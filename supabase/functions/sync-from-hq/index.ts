@@ -24,6 +24,7 @@
 //                       split explicitly at the handler.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { mcLeadIdFor } from '../_shared/hq-lead-link.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -222,11 +223,11 @@ Deno.serve(async (req: Request) => {
 
     // ── action: scrub_lead (dispute approved in ql-hq) ───────────────────────
     if (action === 'scrub_lead') {
-      const { ql_hq_company_id, phone, name } = body as {
-        ql_hq_company_id?: string; phone?: string; name?: string
+      const { ql_hq_company_id, hq_lead_id, phone, name } = body as {
+        ql_hq_company_id?: string; hq_lead_id?: string | null; phone?: string | null; name?: string | null
       }
-      if (!ql_hq_company_id || !phone || !name) {
-        return json({ error: 'ql_hq_company_id, phone and name are required' }, 400)
+      if (!ql_hq_company_id || (!hq_lead_id && (!phone || !name))) {
+        return json({ error: 'ql_hq_company_id and hq_lead_id (or phone and name) are required' }, 400)
       }
 
       const supabase = createClient(
@@ -242,23 +243,39 @@ Deno.serve(async (req: Request) => {
         .maybeSingle()
       if (!client) return json({ ok: false, note: 'no client with that ql_hq_company_id' }, 404)
 
-      // 2) find the exact lead: same client + exact phone (E.164-normalised on
-      //    both sides) + exact name (trimmed, case-insensitive). Most recent
-      //    non-scrubbed match wins; already-scrubbed leads are skipped so the
-      //    idempotent guard in the RPC is never even needed for re-sends.
-      const normPhone = normalisePhone(phone)
-      const wantName  = name.trim().toLowerCase()
-      const { data: candidates } = await supabase
-        .from('ppl_leads')
-        .select('id, name, phone, status')
-        .eq('assigned_client_id', client.id)
-        .neq('status', 'scrubbed')
-        .order('created_at', { ascending: false })
-        .limit(200)
-      const match = (candidates || []).find((l) =>
-        normalisePhone((l.phone as string) || '') === normPhone &&
-        ((l.name as string) || '').trim().toLowerCase() === wantName,
-      )
+      // 2) find the exact lead. By the ql-hq lead id first: the delivery log
+      //    links it to the ql-mc lead it came from. Else same client + exact
+      //    phone (E.164-normalised on both sides) + exact name (trimmed,
+      //    case-insensitive). Most recent non-scrubbed match wins;
+      //    already-scrubbed leads are skipped so the idempotent guard in the
+      //    RPC is never even needed for re-sends.
+      let match: { id: string; name?: string | null; phone?: string | null } | undefined
+      const linkedId = hq_lead_id ? await mcLeadIdFor(supabase, hq_lead_id) : null
+      if (linkedId) {
+        const { data: linked } = await supabase
+          .from('ppl_leads')
+          .select('id, name, phone, status')
+          .eq('id', linkedId)
+          .eq('assigned_client_id', client.id)
+          .neq('status', 'scrubbed')
+          .maybeSingle()
+        match = linked ?? undefined
+      }
+      if (!match && phone && name) {
+        const normPhone = normalisePhone(phone)
+        const wantName  = name.trim().toLowerCase()
+        const { data: candidates } = await supabase
+          .from('ppl_leads')
+          .select('id, name, phone, status')
+          .eq('assigned_client_id', client.id)
+          .neq('status', 'scrubbed')
+          .order('created_at', { ascending: false })
+          .limit(200)
+        match = (candidates || []).find((l) =>
+          normalisePhone((l.phone as string) || '') === normPhone &&
+          ((l.name as string) || '').trim().toLowerCase() === wantName,
+        )
+      }
       if (!match) return json({ ok: false, note: 'no matching non-scrubbed lead (phone+name+client)' }, 404)
 
       // 3) scrub it — the RPC owns ALL counter movement and is idempotent
@@ -279,6 +296,7 @@ Deno.serve(async (req: Request) => {
               body: JSON.stringify({
                 action: 'scrub',
                 ql_hq_company_id,
+                hq_lead_id: hq_lead_id ?? null,
                 lead: { name: match.name ?? null, phone: match.phone ?? null },
               }),
             })
