@@ -1399,6 +1399,19 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           <button class="btn btn-p btn-sm" onclick="saveEmailTemplate('followup')">Save follow-up template</button>
           <span id="tpl-followup-note" style="font-size:12px;color:var(--ink3)"></span>
         </div>
+
+        <div class="sl" style="margin-top:22px">No-Answer Email (automatic) <div class="sl-line"></div></div>
+        <div style="font-size:13px;color:var(--ink2);line-height:1.6;margin-bottom:10px">Sent once, automatically, to a pipeline lead that has been in No Answer for the number of days below. It goes out as the lead's rep (or you, if it has none) each morning, and skips anyone on the do-not-contact list.</div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <div class="frow" style="flex:0 0 120px"><label class="flabel">Send after (days)</label><input class="fi" id="tpl-na-days" type="number" min="1" max="30"></div>
+          <div class="frow" style="flex:0 0 auto"><label class="flabel" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="tpl-na-enabled"> Switched on</label></div>
+        </div>
+        <div class="frow"><label class="flabel">Subject</label><input class="fi" id="tpl-na-subject"></div>
+        <div class="frow"><label class="flabel">Body</label><textarea class="fta" id="tpl-na-body" style="min-height:200px;line-height:1.6"></textarea></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-p btn-sm" onclick="saveNoAnswerEmail()">Save no-answer email</button>
+          <span id="tpl-na-note" style="font-size:12px;color:var(--ink3)"></span>
+        </div>
       </div>
 
       <!-- ══ HIRING PIPELINE ══ -->
@@ -5351,7 +5364,7 @@ function renderSentEmails() {
       <td style="font-family:var(--mono);font-size:12px;white-space:nowrap">${new Date(r.sent_at).toLocaleString('en-AU', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
       <td><strong>${esc(l.name || '-')}</strong>${l.company ? `<div style="font-size:12px;color:var(--ink3)">${esc(l.company)}</div>` : ''}</td>
       <td style="font-family:var(--mono);font-size:12px">${esc(r.to_email)}</td>
-      <td><span class="badge ${r.kind === 'info' ? 'bg-blu' : 'bg-vio'}">${r.kind === 'info' ? 'Info' : 'Follow-up'}</span></td>
+      <td><span class="badge ${r.kind === 'info' ? 'bg-blu' : r.kind === 'no_answer' ? 'bg-amb' : 'bg-vio'}">${({info:'Info', followup:'Follow-up', no_answer:'No answer', campaign:'Campaign'})[r.kind] || r.kind}</span></td>
       <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.subject)}</td>
       <td style="font-size:12px;color:var(--ink2)">${esc(who ? (who.name || who.email) : (r.reply_to || '-'))}</td>
       <td><button class="btn btn-xs" onclick="viewSentEmail('${esc(r.id)}')">View</button></td>
@@ -5405,12 +5418,40 @@ async function ensureEmailTemplates() {
 }
 async function loadEmailTemplates() {
   _emailTpls = null;
+  loadNoAnswerEmail();
   const tpls = await ensureEmailTemplates(); if (!tpls) return;
   ['info','followup'].forEach(k => {
     setVal('tpl-' + k + '-subject', tpls[k]?.subject || '');
     setVal('tpl-' + k + '-body', tpls[k]?.body || '');
     setText('tpl-' + k + '-note', tpls[k]?.updated_at ? 'Last saved ' + new Date(tpls[k].updated_at).toLocaleString('en-AU') : '');
   });
+}
+// The automatic no-answer email lives in business_settings, not
+// sales_email_templates: it has its own on/off and timing, and only
+// pipeline-no-answer-email sends it.
+async function loadNoAnswerEmail() {
+  const {data, error} = await db.from('business_settings')
+    .select('no_answer_email_enabled,no_answer_email_days,no_answer_email_subject,no_answer_email_body').limit(1).maybeSingle();
+  if (error || !data) return;
+  $('tpl-na-enabled').checked = !!data.no_answer_email_enabled;
+  setVal('tpl-na-days', data.no_answer_email_days);
+  setVal('tpl-na-subject', data.no_answer_email_subject);
+  setVal('tpl-na-body', data.no_answer_email_body);
+}
+async function saveNoAnswerEmail() {
+  const subject = $('tpl-na-subject').value.trim(), body = $('tpl-na-body').value;
+  const days = parseInt($('tpl-na-days').value, 10);
+  if (!subject || !body.trim()) { toast('Subject and body are required', true); return; }
+  if (!(days >= 1 && days <= 30)) { toast('Days must be between 1 and 30', true); return; }
+  const existing = await db.from('business_settings').select('id').limit(1).single();
+  if (!existing.data) { toast('Save Business Settings once first', true); return; }
+  const {error} = await db.from('business_settings').update({
+    no_answer_email_enabled: $('tpl-na-enabled').checked, no_answer_email_days: days,
+    no_answer_email_subject: subject, no_answer_email_body: body, updated_at: now(),
+  }).eq('id', existing.data.id);
+  if (error) { toast('Error: ' + error.message, true); return; }
+  setText('tpl-na-note', 'Last saved just now');
+  toast('No-answer email saved ✓');
 }
 async function saveEmailTemplate(kind) {
   const subject = $('tpl-' + kind + '-subject').value.trim();
@@ -5451,6 +5492,7 @@ function renderLeadEmailButtons(l) {
   const parts = [];
   if (infoSent) parts.push('Info sent ' + when(l.info_sent_at));
   if (fupSent) parts.push('Follow-up sent ' + when(l.followup_sent_at));
+  if (l.no_answer_email_sent_at) parts.push('No-answer email sent ' + when(l.no_answer_email_sent_at));
   note.textContent = !hasEmail ? 'No email address on this lead' : parts.join(' · ');
 }
 

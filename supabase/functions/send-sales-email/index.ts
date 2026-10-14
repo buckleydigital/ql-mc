@@ -82,8 +82,12 @@ Deno.serve(async (req: Request) => {
     // Recorded on the log row so the action log can tell a follow-up Jarvis sent
     // from the same email sent by hand: the sender id is the owner either way.
     const viaJarvis = body?.via === "jarvis";
+    // via:'auto' is the same bridge, used by pipeline-no-answer-email. It
+    // sends as the lead's owner when it has one (below), so the email is
+    // signed by and replies go to the rep who tried calling.
+    const viaAuto = body?.via === "auto";
 
-    if (body?.via === "jarvis") {
+    if (viaJarvis || viaAuto) {
       const caller = createClient(Deno.env.get("SUPABASE_URL")!, token);
       const { error: capErr } = await caller.from("jarvis_messages").select("id").limit(1);
       if (capErr) return json({ error: "Unauthorized" }, 401);
@@ -107,7 +111,7 @@ Deno.serve(async (req: Request) => {
       sender = u as Sender;
     }
     if (!sender) return json({ error: "Unauthorized" }, 401);
-    const user = sender;
+    let user = sender;
     const leadId  = String(body.lead_id ?? "").trim();
     const kind    = String(body.kind ?? "").trim();
     const subject = String(body.subject ?? "").trim();
@@ -116,9 +120,12 @@ Deno.serve(async (req: Request) => {
     if (!leadId) return json({ error: "lead_id is required" }, 400);
     // campaign: a bulk email from Jarvis's outbox. Not the Send Info / Follow
     // Up buttons, so it neither needs nor sets their once-only stamps.
-    if (kind !== "info" && kind !== "followup" && kind !== "campaign") {
-      return json({ error: "kind must be info, followup or campaign" }, 400);
+    // no_answer: the automatic email to a lead left in No Answer, only ever
+    // sent by pipeline-no-answer-email.
+    if (kind !== "info" && kind !== "followup" && kind !== "campaign" && kind !== "no_answer") {
+      return json({ error: "kind must be info, followup, campaign or no_answer" }, 400);
     }
+    if (kind === "no_answer" && !viaAuto) return json({ error: "no_answer is sent automatically" }, 400);
     if (!subject) return json({ error: "Subject is required" }, 400);
     if (!text) return json({ error: "Body is required" }, 400);
     if (subject.length > 300) return json({ error: "Subject is too long" }, 400);
@@ -126,10 +133,15 @@ Deno.serve(async (req: Request) => {
 
     const { data: lead, error: leadErr } = await admin
       .from("leads")
-      .select("id, name, email, owner_id, info_sent_at, followup_sent_at")
+      .select("id, name, email, owner_id, info_sent_at, followup_sent_at, no_answer_email_sent_at")
       .eq("id", leadId)
       .single();
     if (leadErr || !lead) return json({ error: "Lead not found" }, 404);
+
+    if (viaAuto && lead.owner_id) {
+      const { data: owned } = await admin.auth.admin.getUserById(lead.owner_id);
+      if (owned?.user) user = owned.user as Sender;
+    }
 
     // A rep may only email their own leads. Full users may email any.
     const isRep = (user.app_metadata as Record<string, unknown>)?.account_type === "sales_rep";
@@ -147,6 +159,9 @@ Deno.serve(async (req: Request) => {
     // only still holds for each kind.
     if (kind === "followup" && lead.followup_sent_at) {
       return json({ error: "The follow-up has already been sent" }, 409);
+    }
+    if (kind === "no_answer" && lead.no_answer_email_sent_at) {
+      return json({ error: "The no-answer email has already been sent" }, 409);
     }
 
     // The shared do-not-contact list (migration 20261006000001): an address or
@@ -234,7 +249,9 @@ Deno.serve(async (req: Request) => {
       ? { info_sent_at: now, info_sent_by: user.id }
       : kind === "followup"
         ? { followup_sent_at: now, followup_sent_by: user.id }
-        : {};
+        : kind === "no_answer"
+          ? { no_answer_email_sent_at: now }
+          : {};
     if (Object.keys(stamp).length) {
       const { error: updErr } = await admin.from("leads").update(stamp).eq("id", leadId);
       if (updErr) console.error("lead stamp failed after send:", updErr.message);
@@ -243,7 +260,7 @@ Deno.serve(async (req: Request) => {
     await admin.from("sales_email_log").insert({
       lead_id: leadId, kind, to_email: to, reply_to: replyTo || null,
       subject, body: text, sent_by: user.id, provider_id: payload?.id ?? null,
-      via: viaJarvis ? "jarvis" : null,
+      via: viaJarvis ? "jarvis" : viaAuto ? "auto" : null,
     });
 
     return json({ ok: true, to, reply_to: replyTo || null, sent_at: now });
