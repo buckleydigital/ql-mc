@@ -209,6 +209,24 @@ serve(async (req) => {
       apiResults.push(...results.map(r => ({ ...r, action: 'PAUSED' })))
     }
 
+    // Never resume a campaign meta-cost-check paused for cost; that waits for a
+    // person to resume it from MC.
+    if (toResume.length > 0) {
+      const { data: costPausedRows } = await dbClient
+        .from('meta_campaigns').select('meta_campaign_id')
+        .in('meta_campaign_id', toResume).eq('cost_paused', true)
+      const costPaused = new Set((costPausedRows || []).map(r => r.meta_campaign_id))
+      for (let i = toResume.length - 1; i >= 0; i--) {
+        if (costPaused.has(toResume[i])) toResume.splice(i, 1)
+      }
+      for (const a of campaignActions) {
+        if (costPaused.has(a.campaign_id)) {
+          a.action = 'PAUSED'
+          a.reason = 'Paused for cost by meta-cost-check'
+        }
+      }
+    }
+
     if (toResume.length > 0) {
       const results = await toggleCampaigns(toResume, 'ACTIVE', metaToken)
       apiResults.push(...results.map(r => ({ ...r, action: 'ACTIVE' })))

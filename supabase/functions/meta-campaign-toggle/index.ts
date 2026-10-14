@@ -73,8 +73,11 @@ serve(async (req) => {
     // Sync meta_campaigns table status
     for (const r of results) {
       if (r.success) {
+        // Resuming by hand overrides a cost pause from meta-cost-check.
+        const upd: Record<string, unknown> = { status: action, updated_at: new Date().toISOString() }
+        if (action === 'ACTIVE') Object.assign(upd, { cost_paused: false, cost_paused_at: null, cost_pause_reason: null })
         await supabaseClient.from('meta_campaigns')
-          .update({ status: action, updated_at: new Date().toISOString() })
+          .update(upd)
           .eq('meta_campaign_id', r.campaign_id)
       }
     }
