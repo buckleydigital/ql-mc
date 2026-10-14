@@ -112,6 +112,9 @@ Deno.serve(async (req: Request) => {
     }
     if (!sender) return json({ error: "Unauthorized" }, 401);
     let user = sender;
+    // Who is signed in and pressing send, as opposed to who the email goes out
+    // as (user, which can change below). Rep rules are about the former.
+    const callerIsRep = (sender.app_metadata as Record<string, unknown>)?.account_type === "sales_rep";
     const leadId  = String(body.lead_id ?? "").trim();
     const kind    = String(body.kind ?? "").trim();
     const subject = String(body.subject ?? "").trim();
@@ -122,8 +125,9 @@ Deno.serve(async (req: Request) => {
     // Up buttons, so it neither needs nor sets their once-only stamps.
     // no_answer: the automatic email to a lead left in No Answer, only ever
     // sent by pipeline-no-answer-email.
-    if (kind !== "info" && kind !== "followup" && kind !== "campaign" && kind !== "no_answer") {
-      return json({ error: "kind must be info, followup, campaign or no_answer" }, 400);
+    // info is the 2.5K offer, info_5k the 5K offer; each goes once per lead.
+    if (!["info", "info_5k", "followup", "campaign", "no_answer"].includes(kind)) {
+      return json({ error: "kind must be info, info_5k, followup, campaign or no_answer" }, 400);
     }
     if (kind === "no_answer" && !viaAuto) return json({ error: "no_answer is sent automatically" }, 400);
     if (!subject) return json({ error: "Subject is required" }, 400);
@@ -133,7 +137,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: lead, error: leadErr } = await admin
       .from("leads")
-      .select("id, name, email, owner_id, info_sent_at, followup_sent_at, no_answer_email_sent_at")
+      .select("id, name, email, owner_id, info_sent_at, info_5k_sent_at, followup_sent_at, no_answer_email_sent_at")
       .eq("id", leadId)
       .single();
     if (leadErr || !lead) return json({ error: "Lead not found" }, 404);
@@ -143,16 +147,33 @@ Deno.serve(async (req: Request) => {
       if (owned?.user) user = owned.user as Sender;
     }
 
+    // A full user sending by hand can send as one of the reps, so the From
+    // name, signature and replies are that rep's. With no choice made it goes
+    // out as the lead's rep, so an assigned lead is never sent nameless.
+    if (!viaJarvis && !viaAuto && !callerIsRep) {
+      const asked = String(body.send_as ?? "").trim();
+      const sendAs = asked || String(lead.owner_id ?? "");
+      if (sendAs && sendAs !== user.id) {
+        const { data: repRow } = await admin.from("sales_reps").select("user_id").eq("user_id", sendAs).maybeSingle();
+        if (repRow) {
+          const { data: as } = await admin.auth.admin.getUserById(sendAs);
+          if (as?.user) user = as.user as Sender;
+        } else if (asked) {
+          return json({ error: "That rep was not found" }, 400);
+        }
+      }
+    }
+
     // A rep may only email their own leads. Full users may email any.
-    const isRep = (user.app_metadata as Record<string, unknown>)?.account_type === "sales_rep";
-    if (isRep && lead.owner_id !== user.id) return json({ error: "That lead is not assigned to you" }, 403);
+    if (callerIsRep && lead.owner_id !== sender.id) return json({ error: "That lead is not assigned to you" }, 403);
 
     const to = String(lead.email ?? "").trim();
     if (!to || !EMAIL_RE.test(to)) return json({ error: "This lead has no valid email address" }, 400);
 
     // Order and once-only are enforced here, not by the disabled attribute on a
     // button: a stale tab must not be able to send a second copy.
-    if (kind === "info" && lead.info_sent_at) return json({ error: "The info email has already been sent" }, 409);
+    if (kind === "info" && lead.info_sent_at) return json({ error: "The 2.5K offer has already been sent" }, 409);
+    if (kind === "info_5k" && lead.info_5k_sent_at) return json({ error: "The 5K offer has already been sent" }, 409);
     // The follow-up deliberately does NOT require the info email to have gone
     // through this dashboard: plenty were sent by hand before this existed, and
     // refusing to follow those up would be the tool arguing with reality. Once
@@ -247,6 +268,8 @@ Deno.serve(async (req: Request) => {
     const now = new Date().toISOString();
     const stamp: Record<string, string> = kind === "info"
       ? { info_sent_at: now, info_sent_by: user.id }
+      : kind === "info_5k"
+        ? { info_5k_sent_at: now, info_5k_sent_by: user.id }
       : kind === "followup"
         ? { followup_sent_at: now, followup_sent_by: user.id }
         : kind === "no_answer"

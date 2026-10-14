@@ -1350,14 +1350,15 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
         </div>
         <div class="kg c4 mb4">
           <div class="kpi"><div class="klabel">Sent</div><div class="kval blu" id="sm-total">-</div><div class="ksub">all time</div></div>
-          <div class="kpi"><div class="klabel">Info Emails</div><div class="kval" id="sm-info">-</div></div>
+          <div class="kpi"><div class="klabel">Offer Emails</div><div class="kval" id="sm-info">-</div></div>
           <div class="kpi"><div class="klabel">Follow-Ups</div><div class="kval" id="sm-followup">-</div></div>
           <div class="kpi"><div class="klabel">Last 7 Days</div><div class="kval grn" id="sm-week">-</div></div>
         </div>
         <div style="display:flex;gap:4px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
           <span style="font-size:12px;color:var(--ink3);margin-right:4px">Show:</span>
           <button class="btn btn-xs sm-filter active" data-kind="" onclick="setSentFilter('',this)">All</button>
-          <button class="btn btn-xs sm-filter" data-kind="info" onclick="setSentFilter('info',this)">Info</button>
+          <button class="btn btn-xs sm-filter" data-kind="info" onclick="setSentFilter('info',this)">2.5K Offer</button>
+          <button class="btn btn-xs sm-filter" data-kind="info_5k" onclick="setSentFilter('info_5k',this)">5K Offer</button>
           <button class="btn btn-xs sm-filter" data-kind="followup" onclick="setSentFilter('followup',this)">Follow-up</button>
         </div>
         <div class="twrap">
@@ -1384,12 +1385,20 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           Anything with no value is left out rather than printed as an empty gap.
         </div>
 
-        <div class="sl">Info Email <div class="sl-line"></div></div>
+        <div class="sl">2.5K Offer Email <div class="sl-line"></div></div>
         <div class="frow"><label class="flabel">Subject</label><input class="fi" id="tpl-info-subject"></div>
         <div class="frow"><label class="flabel">Body</label><textarea class="fta" id="tpl-info-body" style="min-height:300px;line-height:1.6"></textarea></div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:22px">
-          <button class="btn btn-p btn-sm" onclick="saveEmailTemplate('info')">Save info template</button>
+          <button class="btn btn-p btn-sm" onclick="saveEmailTemplate('info')">Save 2.5K offer</button>
           <span id="tpl-info-note" style="font-size:12px;color:var(--ink3)"></span>
+        </div>
+
+        <div class="sl">5K Offer Email <div class="sl-line"></div></div>
+        <div class="frow"><label class="flabel">Subject</label><input class="fi" id="tpl-info_5k-subject"></div>
+        <div class="frow"><label class="flabel">Body</label><textarea class="fta" id="tpl-info_5k-body" style="min-height:300px;line-height:1.6"></textarea></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:22px">
+          <button class="btn btn-p btn-sm" onclick="saveEmailTemplate('info_5k')">Save 5K offer</button>
+          <span id="tpl-info_5k-note" style="font-size:12px;color:var(--ink3)"></span>
         </div>
 
         <div class="sl">Follow-Up Email <div class="sl-line"></div></div>
@@ -2697,9 +2706,10 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
     <input type="hidden" id="se-lead-id">
     <input type="hidden" id="se-kind">
     <div class="frow"><label class="flabel">To</label><input class="fi" id="se-to" disabled></div>
-    <div class="frow"><label class="flabel">Reply-To <span style="font-size:12px;color:var(--ink3);font-weight:400">replies come back to you</span></label><input class="fi" id="se-replyto" disabled></div>
-    <div class="frow"><label class="flabel">Subject</label><input class="fi" id="se-subject"></div>
-    <div class="frow"><label class="flabel">Message <span style="font-size:12px;color:var(--ink3);font-weight:400">edit for this lead if you want - the template is unchanged</span></label><textarea class="fta" id="se-body" style="min-height:280px;font-family:var(--font);line-height:1.6"></textarea></div>
+    <div class="frow" id="se-from-row" style="display:none"><label class="flabel">Send as <span style="font-size:12px;color:var(--ink3);font-weight:400">their name, signature and reply-to</span></label><select class="fs" id="se-from" onchange="changeSendAs()"></select></div>
+    <div class="frow"><label class="flabel">Reply-To <span style="font-size:12px;color:var(--ink3);font-weight:400">replies come back here</span></label><input class="fi" id="se-replyto" disabled></div>
+    <div class="frow"><label class="flabel">Subject</label><input class="fi" id="se-subject" oninput="_seDraft&&(_seDraft.edited=true)"></div>
+    <div class="frow"><label class="flabel">Message <span style="font-size:12px;color:var(--ink3);font-weight:400">edit for this lead if you want - the template is unchanged</span></label><textarea class="fta" id="se-body" style="min-height:280px;font-family:var(--font);line-height:1.6" oninput="_seDraft&&(_seDraft.edited=true)"></textarea></div>
     <div class="macts">
       <button class="btn" onclick="closeSendEmail()">Cancel</button>
       <button class="btn btn-p" id="se-send" onclick="sendSalesEmail()">Send email</button>
@@ -2770,7 +2780,8 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
     </div>
     <div class="sl" style="margin-top:4px">Emails <div class="sl-line"></div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
-      <button class="btn btn-sm" id="el-send-info" onclick="openSendEmail('info')">Send Info</button>
+      <button class="btn btn-sm" id="el-send-info" onclick="openSendEmail('info')">Send 2.5K Offer</button>
+      <button class="btn btn-sm" id="el-send-5k" onclick="openSendEmail('info_5k')">Send 5K Offer</button>
       <button class="btn btn-sm" id="el-send-followup" onclick="openSendEmail('followup')" style="display:none">Follow Up</button>
       <span id="el-email-note" style="font-size:12px;color:var(--ink3)"></span>
     </div>
@@ -5346,7 +5357,7 @@ function setSentFilter(kind, btn) {
 function renderSentEmails() {
   const week = Date.now() - 7 * 86400000;
   setText('sm-total', _sentMail.length || '-');
-  setText('sm-info', _sentMail.filter(r => r.kind === 'info').length || '-');
+  setText('sm-info', _sentMail.filter(r => r.kind === 'info' || r.kind === 'info_5k').length || '-');
   setText('sm-followup', _sentMail.filter(r => r.kind === 'followup').length || '-');
   setText('sm-week', _sentMail.filter(r => new Date(r.sent_at).getTime() >= week).length || '-');
 
@@ -5364,7 +5375,7 @@ function renderSentEmails() {
       <td style="font-family:var(--mono);font-size:12px;white-space:nowrap">${new Date(r.sent_at).toLocaleString('en-AU', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
       <td><strong>${esc(l.name || '-')}</strong>${l.company ? `<div style="font-size:12px;color:var(--ink3)">${esc(l.company)}</div>` : ''}</td>
       <td style="font-family:var(--mono);font-size:12px">${esc(r.to_email)}</td>
-      <td><span class="badge ${r.kind === 'info' ? 'bg-blu' : r.kind === 'no_answer' ? 'bg-amb' : 'bg-vio'}">${({info:'Info', followup:'Follow-up', no_answer:'No answer', campaign:'Campaign'})[r.kind] || r.kind}</span></td>
+      <td><span class="badge ${r.kind === 'info' ? 'bg-blu' : r.kind === 'no_answer' ? 'bg-amb' : 'bg-vio'}">${({info:'2.5K offer', info_5k:'5K offer', followup:'Follow-up', no_answer:'No answer', campaign:'Campaign'})[r.kind] || r.kind}</span></td>
       <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.subject)}</td>
       <td style="font-size:12px;color:var(--ink2)">${esc(who ? (who.name || who.email) : (r.reply_to || '-'))}</td>
       <td><button class="btn btn-xs" onclick="viewSentEmail('${esc(r.id)}')">View</button></td>
@@ -5420,7 +5431,7 @@ async function loadEmailTemplates() {
   _emailTpls = null;
   loadNoAnswerEmail();
   const tpls = await ensureEmailTemplates(); if (!tpls) return;
-  ['info','followup'].forEach(k => {
+  ['info','info_5k','followup'].forEach(k => {
     setVal('tpl-' + k + '-subject', tpls[k]?.subject || '');
     setVal('tpl-' + k + '-body', tpls[k]?.body || '');
     setText('tpl-' + k + '-note', tpls[k]?.updated_at ? 'Last saved ' + new Date(tpls[k].updated_at).toLocaleString('en-AU') : '');
@@ -5473,12 +5484,19 @@ function renderLeadEmailButtons(l) {
   const info = $('el-send-info'), fup = $('el-send-followup'), note = $('el-email-note');
   if (!info) return;
   const hasEmail = !!(l.email || '').trim();
-  const infoSent = !!l.info_sent_at, fupSent = !!l.followup_sent_at;
+  const infoSent = !!l.info_sent_at, fupSent = !!l.followup_sent_at, fiveSent = !!l.info_5k_sent_at;
 
-  info.textContent = infoSent ? 'Info Sent' : 'Send Info';
+  info.textContent = infoSent ? '2.5K Offer Sent' : 'Send 2.5K Offer';
   info.disabled = infoSent || !hasEmail;
   info.style.opacity = info.disabled ? '.5' : '';
   info.style.cursor = info.disabled ? 'default' : '';
+  const five = $('el-send-5k');
+  if (five) {
+    five.textContent = fiveSent ? '5K Offer Sent' : 'Send 5K Offer';
+    five.disabled = fiveSent || !hasEmail;
+    five.style.opacity = five.disabled ? '.5' : '';
+    five.style.cursor = five.disabled ? 'default' : '';
+  }
 
   // Always offered, whether or not the info email went through this dashboard -
   // the ones sent by hand still need following up.
@@ -5490,10 +5508,45 @@ function renderLeadEmailButtons(l) {
 
   const when = d => new Date(d).toLocaleDateString('en-AU');
   const parts = [];
-  if (infoSent) parts.push('Info sent ' + when(l.info_sent_at));
+  if (infoSent) parts.push('2.5K offer sent ' + when(l.info_sent_at));
+  if (fiveSent) parts.push('5K offer sent ' + when(l.info_5k_sent_at));
   if (fupSent) parts.push('Follow-up sent ' + when(l.followup_sent_at));
   if (l.no_answer_email_sent_at) parts.push('No-answer email sent ' + when(l.no_answer_email_sent_at));
   note.textContent = !hasEmail ? 'No email address on this lead' : parts.join(' · ');
+}
+
+const SEND_TITLES = { info: 'Send 2.5K Offer', info_5k: 'Send 5K Offer', followup: 'Send Follow-Up' };
+// The draft being sent: the raw template, so it can be re-filled when an admin
+// changes who it is sent as, and whether it has been edited since.
+let _seDraft = null;
+
+// Who an email goes out as: their name for {rep_name} and the signature, their
+// address for {rep_email} and the reply-to. Reps can read their own row.
+async function sendAsIdentity(userId, session) {
+  let r = _reps.find(x => x.user_id === userId);
+  if (!r) {
+    const { data } = await db.from('sales_reps').select('user_id,name,email,reply_to_email').eq('user_id', userId).maybeSingle();
+    r = data;
+  }
+  const isMe = userId === session?.user?.id;
+  return {
+    name:  r?.name || (isMe ? session?.user?.user_metadata?.name : '') || '',
+    email: r?.reply_to_email || r?.email || (isMe ? session?.user?.email : '') || '',
+  };
+}
+
+function fillSendDraft(identity) {
+  const { tpl, lead } = _seDraft;
+  const vals = {
+    first_name:   firstName(lead.name),
+    company_name: (lead.company || '').trim(),
+    rep_name:     identity.name,
+    rep_email:    identity.email,
+  };
+  setVal('se-replyto', vals.rep_email || 'your login email');
+  setVal('se-subject', mergeTemplate(tpl.subject, vals));
+  setVal('se-body', mergeTemplate(tpl.body, vals));
+  _seDraft.edited = false;
 }
 
 async function openSendEmail(kind) {
@@ -5506,26 +5559,47 @@ async function openSendEmail(kind) {
   if (!tpl) { toast('No ' + kind + ' template saved yet', true); return; }
 
   const { data: { session } } = await db.auth.getSession();
-  const me = _reps.find(r => r.user_id === session?.user?.id);
-  const vals = {
-    first_name:   firstName(lead.name),
-    company_name: (lead.company || '').trim(),
-    rep_name:     me?.name || session?.user?.user_metadata?.name || '',
-    rep_email:    me?.reply_to_email || me?.email || session?.user?.email || '',
-  };
+  const myId = session?.user?.id;
+  // Admins choose who it goes out as, starting with the lead's rep so an
+  // assigned lead is never sent under a blank name. A rep is always themselves.
+  let sendAs = myId;
+  const fromRow = $('se-from-row');
+  if (!IS_REP) {
+    const reps = _reps.filter(r => r.active !== false);
+    if (lead.owner_id && reps.some(r => r.user_id === lead.owner_id)) sendAs = lead.owner_id;
+    const sel = $('se-from');
+    sel.innerHTML = reps.map(r => `<option value="${esc(r.user_id)}">${esc(r.name || r.email)}</option>`).join('')
+      + (reps.some(r => r.user_id === myId) ? '' : `<option value="${esc(myId)}">Me (${esc(session?.user?.email || '')})</option>`);
+    sel.value = sendAs;
+    fromRow.style.display = '';
+  } else {
+    fromRow.style.display = 'none';
+  }
+
+  _seDraft = { tpl, lead, edited: false };
+  fillSendDraft(await sendAsIdentity(sendAs, session));
 
   setVal('se-lead-id', id);
   setVal('se-kind', kind);
   setVal('se-to', lead.email);
-  setVal('se-replyto', vals.rep_email || 'your login email');
-  setVal('se-subject', mergeTemplate(tpl.subject, vals));
-  setVal('se-body', mergeTemplate(tpl.body, vals));
-  setText('se-title', kind === 'info' ? 'Send Info / Proposal' : 'Send Follow-Up');
+  setText('se-title', SEND_TITLES[kind] || 'Send Email');
   setText('se-sub', (lead.name || '') + (lead.company ? ' · ' + lead.company : ''));
   const btn = $('se-send'); btn.disabled = false; btn.textContent = 'Send email';
   closeModal('m-edit-lead');
   $('m-send-email').classList.add('stacked');
   openModal('m-send-email');
+}
+
+async function changeSendAs() {
+  if (!_seDraft) return;
+  const { data: { session } } = await db.auth.getSession();
+  const identity = await sendAsIdentity($('se-from').value, session);
+  if (_seDraft.edited) {
+    setVal('se-replyto', identity.email || 'your login email');
+    toast('You edited the message, so the signature was left as is. Check it before sending.', true);
+    return;
+  }
+  fillSendDraft(identity);
 }
 // Closing the draft returns you to the lead you opened it from.
 function closeSendEmail() {
@@ -5547,7 +5621,7 @@ async function sendSalesEmail() {
     const res = await fetch(`${_ep}/functions/v1/send-sales-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-      body: JSON.stringify({ lead_id: id, kind, subject, body }),
+      body: JSON.stringify({ lead_id: id, kind, subject, body, ...(IS_REP ? {} : { send_as: $('se-from').value }) }),
     });
     const out = await res.json().catch(() => ({}));
     if (!res.ok) { toast(out.error || 'Could not send', true); btn.disabled = false; btn.textContent = 'Send email'; return; }
@@ -5556,12 +5630,14 @@ async function sendSalesEmail() {
     // closes, rather than waiting on the reload behind it.
     const l = LEAD_CACHE[id];
     if (l) {
-      if (kind === 'info') l.info_sent_at = out.sent_at || now();
-      else l.followup_sent_at = out.sent_at || now();
+      const at = out.sent_at || now();
+      if (kind === 'info') l.info_sent_at = at;
+      else if (kind === 'info_5k') l.info_5k_sent_at = at;
+      else l.followup_sent_at = at;
       renderLeadEmailButtons(l);
     }
     closeSendEmail();
-    toast(kind === 'info' ? 'Info email sent ✓' : 'Follow-up sent ✓');
+    toast(({ info: '2.5K offer sent ✓', info_5k: '5K offer sent ✓' })[kind] || 'Follow-up sent ✓');
     loadCRM();
   } catch (e) {
     toast('Could not send: ' + (e.message || e), true);
