@@ -3074,8 +3074,8 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">Twilio / SMS</div>
     <div class="frow"><label class="flabel">From Number</label><input class="fi" id="bs-twilio-from" placeholder="+61400000000" type="tel"></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">Pay-per-lead cost cut-off</div>
-    <div class="frow"><label class="flabel">Default max CPL (% of order's $/lead)</label><input class="fi" id="bs-default-max-cpl-pct" type="number" min="1" max="100" placeholder="70"></div>
-    <p style="font-size:12px;color:var(--ink3);margin:6px 0 0;line-height:1.6">Applies to every outstanding order without its own Max CPL. At 70%, a $100/lead order is cut off once leads cost more than $70. Blank turns the default off.</p>
+    <div class="frow"><label class="flabel">Default max CPL (% of order's $/lead ex GST)</label><input class="fi" id="bs-default-max-cpl-pct" type="number" min="1" max="100" placeholder="70"></div>
+    <p style="font-size:12px;color:var(--ink3);margin:6px 0 0;line-height:1.6">Applies to every outstanding order without its own Max CPL. Order prices include GST, so GST comes off first: at 70%, an $88/lead order ($80 ex GST) is cut off once leads cost Meta more than $56. Blank turns the default off.</p>
     <div class="macts">
       <div style="flex:1"></div>
       <button class="btn" onclick="closeModal('m-biz-settings')">Cancel</button>
@@ -6521,11 +6521,11 @@ async function ensureDefMaxCplPct() {
 function orderMaxCplCell(o, delivered) {
   const own = o.max_cpl != null;
   const max = own ? Number(o.max_cpl)
-    : (_defMaxCplPct != null && o.lead_price) ? Number(o.lead_price) * Number(_defMaxCplPct) / 100 : null;
+    : (_defMaxCplPct != null && o.lead_price) ? Number(o.lead_price) / 1.1 * Number(_defMaxCplPct) / 100 : null;
   if (max === null) return '-';
   const breached = o.cpl_breached_at && !delivered;
   const title = breached ? `Recent cost per lead is over this order's max (since ${o.cpl_breached_at.slice(0,10)})`
-    : own ? 'Set on this order' : `Default: ${_defMaxCplPct}% of $/lead`;
+    : own ? 'Set on this order' : `Default: ${_defMaxCplPct}% of $/lead ex GST`;
   return `<span title="${esc(title)}" style="color:${breached?'var(--red)':own?'var(--ink2)':'var(--ink3)'}">${breached?'⚠ ':''}$${max.toFixed(0)}${own?'':' <span style="font-size:11px">default</span>'}</span>`;
 }
 function renderOrderLogTable(data, clientId) {

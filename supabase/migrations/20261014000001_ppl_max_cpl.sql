@@ -24,6 +24,6 @@ alter table public.meta_campaigns
   add column if not exists cost_checked_at timestamptz;
 
 -- The default for orders with no max_cpl of their own: this percentage of the
--- order's $/lead. Blank turns the default off, leaving those orders unlimited.
+-- order's $/lead ex GST (lead_price includes GST). Blank turns the default off, leaving those orders unlimited.
 alter table public.business_settings
   add column if not exists default_max_cpl_pct numeric(5,2) default 70;

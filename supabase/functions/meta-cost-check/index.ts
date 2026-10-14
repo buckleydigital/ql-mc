@@ -8,8 +8,9 @@
 //     it is paused in Meta and marked cost_paused, the same "only pause when
 //     nobody on it still wants leads" rule meta-cap-check uses for caps
 // An order's max is its own max_cpl if set, otherwise
-// business_settings.default_max_cpl_pct of its $/lead. An order with neither
-// has no limit, so it keeps its campaigns running.
+// business_settings.default_max_cpl_pct of its $/lead ex GST (order prices
+// include GST; Meta spend has none). An order with neither has no limit, so it
+// keeps its campaigns running.
 // Anything newly flagged or paused is emailed. A cost pause sticks until the
 // campaign is resumed from MC, which clears it (see meta-campaign-toggle).
 //
@@ -24,6 +25,7 @@ const corsHeaders = {
 }
 
 const WINDOW_DAYS = 3
+const GST_RATE = 0.1
 const NOTIFY_TO = 'contact@quoteleads.com.au'
 
 type Order = {
@@ -101,7 +103,7 @@ serve(async (req) => {
       const client = (r as any).clients
       const leadPrice = r.lead_price === null ? null : Number(r.lead_price)
       const own = r.max_cpl === null ? null : Number(r.max_cpl)
-      const fallback = defaultPct !== null && leadPrice ? round(leadPrice * defaultPct / 100) : null
+      const fallback = defaultPct !== null && leadPrice ? round(leadPrice / (1 + GST_RATE) * defaultPct / 100) : null
       const order: Order = {
         id: r.id,
         client_id: r.client_id,
