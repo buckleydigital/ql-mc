@@ -5486,14 +5486,16 @@ function renderLeadEmailButtons(l) {
   const hasEmail = !!(l.email || '').trim();
   const infoSent = !!l.info_sent_at, fupSent = !!l.followup_sent_at, fiveSent = !!l.info_5k_sent_at;
 
+  // One offer per lead: once either has gone, both are greyed out.
+  const offerSent = infoSent || fiveSent;
   info.textContent = infoSent ? '2.5K Offer Sent' : 'Send 2.5K Offer';
-  info.disabled = infoSent || !hasEmail;
+  info.disabled = offerSent || !hasEmail;
   info.style.opacity = info.disabled ? '.5' : '';
   info.style.cursor = info.disabled ? 'default' : '';
   const five = $('el-send-5k');
   if (five) {
     five.textContent = fiveSent ? '5K Offer Sent' : 'Send 5K Offer';
-    five.disabled = fiveSent || !hasEmail;
+    five.disabled = offerSent || !hasEmail;
     five.style.opacity = five.disabled ? '.5' : '';
     five.style.cursor = five.disabled ? 'default' : '';
   }
