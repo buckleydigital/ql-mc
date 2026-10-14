@@ -9256,7 +9256,7 @@ function saveDismissedAlerts(set) {
 }
 let _dismissedAlerts = loadDismissedAlerts();
 
-function buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoonOrders) {
+function buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoonOrders, reportsDue = [], invoicesDue = []) {
   const items = [];
   const keyOf = (prefix, ids) => prefix + ':' + ids.map(String).sort().join(',');
   if (overdueOrders.length > 0) {
@@ -9279,6 +9279,17 @@ function buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoonOr
   if (crmFollowups.length > 0) {
     items.push({type:'warn', msg: `${crmFollowups.length} CRM lead${crmFollowups.length>1?'s':''} need follow-up`, panel:'crm',
       key: keyOf('crm', crmFollowups.map(l => l.id))});
+  }
+  // One alert per client, so clearing one when it's done doesn't bring the
+  // others back. Clearing a report reminder means it's been sent.
+  for (const c of reportsDue) {
+    items.push({type:'warn', msg: `Send ${c.company_name || 'client'} their first month report - ads went live ${c.ads_first_live_date}`, panel:'managed',
+      key: `report:${c.id}`});
+  }
+  // Keyed on the due date too, so next month's invoice is a new reminder.
+  for (const c of invoicesDue) {
+    items.push({type:'warn', msg: `Invoice ${c.company_name || 'client'} - next payment due ${c.next_payment_date}`, panel:'managed',
+      key: `invoice:${c.id}:${c.next_payment_date}`});
   }
   return items;
 }
@@ -9340,7 +9351,7 @@ async function loadAlerts() {
   const weekAhead = new Date(Date.now() + MS_PER_WEEK).toISOString().split('T')[0];
   const [slaR, mgR, crmR, dueSoonR] = await Promise.all([
     db.from('ppl_order_log').select('id,client_id,sla_due_date,clients(company_name)').eq('status','in_progress').lte('sla_due_date',today).not('sla_due_date','is',null),
-    db.from('clients').select('id,stage,next_payment_date,company_name').eq('type','managed'),
+    db.from('clients').select('id,stage,next_payment_date,company_name,ads_first_live_date,active_months').eq('type','managed'),
     db.from('leads').select('id,stage,next_followup').in('stage',['new_lead','call_back','no_answer','onboarding','proposal','proposal_sent']),
     db.from('ppl_order_log').select('id,client_id,sla_due_date,clients(company_name)').eq('status','in_progress').gt('sla_due_date',today).lte('sla_due_date',weekAhead).not('sla_due_date','is',null),
   ]);
@@ -9350,7 +9361,16 @@ async function loadAlerts() {
   const overduePayments = (mgR.data||[]).filter(c=>c.stage==='active'&&c.next_payment_date&&c.next_payment_date<today);
   const dueSoonOrders = dueSoonR.data||[];
   const crmFollowups = (crmR.data||[]).filter(l=>l.next_followup&&l.next_followup<=today);
-  _lastAlerts = buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoonOrders);
+  // Managed clients: first month report 30 days after ads go live (shown until
+  // day 60 so a late one still gets caught), and an invoice reminder 7 days
+  // before each payment once they're past month one. Month one isn't ticked
+  // in the month picker, so a ticked month means they've renewed at least once.
+  const addDays = (d, n) => { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().split('T')[0]; };
+  const monthsTicked = (c) => { try { return JSON.parse(c.active_months || '[]').length; } catch (_) { return 0; } };
+  const activeMg = (mgR.data||[]).filter(c=>c.stage==='active');
+  const reportsDue = activeMg.filter(c=>c.ads_first_live_date&&addDays(c.ads_first_live_date,30)<=today&&today<addDays(c.ads_first_live_date,60));
+  const invoicesDue = activeMg.filter(c=>monthsTicked(c)>=1&&c.next_payment_date&&addDays(c.next_payment_date,-7)<=today&&today<=c.next_payment_date);
+  _lastAlerts = buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoonOrders, reportsDue, invoicesDue);
   // Drop dismissals whose condition has since resolved, so the stored list
   // stays small and a recurrence is never pre-silenced.
   saveDismissedAlerts(_dismissedAlerts);
