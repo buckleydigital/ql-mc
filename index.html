@@ -9238,23 +9238,41 @@ async function downloadInvoicePDF(inv, isReceipt) {
 
 let _lastAlerts = [];
 
-// Dismissed alerts, per browser. The key is built from the ids the alert covers,
-// so clearing "2 orders overdue - A, B" stays cleared while it is still those
-// two - but a third client going overdue changes the key and the alert comes
-// back. Dismissing hides what you have seen; it cannot hide something new.
+// Cleared alerts are saved in dismissed_alerts, shared by the whole team and
+// kept across browsers. The key is built from the ids the alert covers, so
+// clearing "2 orders overdue - A, B" stays cleared while it is still those two -
+// but a third client going overdue changes the key and the alert comes back.
+// Clearing hides what you have seen; it cannot hide something new.
+let _dismissedAlerts = new Set();
+// Before clears were shared they lived in each browser under this key.
 const ALERT_DISMISS_KEY = 'ql_alerts_dismissed';
-function loadDismissedAlerts() {
-  try { return new Set(JSON.parse(localStorage.getItem(ALERT_DISMISS_KEY) || '[]')); }
-  catch (_) { return new Set(); }
+async function loadDismissedAlerts() {
+  const {data, error} = await db.from('dismissed_alerts').select('key');
+  if (error) { console.warn('dismissed_alerts:', error.message); return _dismissedAlerts; }
+  const set = new Set((data || []).map(r => r.key));
+  // Carry over anything this browser cleared the old way, once.
+  try {
+    const local = JSON.parse(localStorage.getItem(ALERT_DISMISS_KEY) || '[]');
+    if (local.length) {
+      const {error: upErr} = await db.from('dismissed_alerts').upsert(local.map(key => ({key})), {onConflict: 'key', ignoreDuplicates: true});
+      if (!upErr) { local.forEach(k => set.add(k)); localStorage.removeItem(ALERT_DISMISS_KEY); }
+    }
+  } catch (_) {}
+  return set;
 }
-function saveDismissedAlerts(set) {
-  // Only keys still in play are kept, so the list cannot grow forever with
-  // conditions that resolved months ago.
+async function saveDismissedAlerts(keys) {
+  const {error} = await db.from('dismissed_alerts').upsert(keys.map(key => ({key})), {onConflict: 'key', ignoreDuplicates: true});
+  if (error) toast('Could not save that: ' + error.message, true);
+}
+// Forget clears whose alert has gone (the payment came in, the order was
+// delivered), so if the same thing happens again it alerts again.
+async function pruneDismissedAlerts() {
   const live = new Set(_lastAlerts.map(a => a.key));
-  const keep = [...set].filter(k => live.has(k));
-  try { localStorage.setItem(ALERT_DISMISS_KEY, JSON.stringify(keep)); } catch (_) {}
+  const stale = [..._dismissedAlerts].filter(k => !live.has(k));
+  if (!stale.length) return;
+  const {error} = await db.from('dismissed_alerts').delete().in('key', stale);
+  if (!error) stale.forEach(k => _dismissedAlerts.delete(k));
 }
-let _dismissedAlerts = loadDismissedAlerts();
 
 function buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoonOrders, reportsDue = [], invoicesDue = []) {
   const items = [];
@@ -9298,16 +9316,17 @@ const visibleAlerts = () => _lastAlerts.filter(a => !_dismissedAlerts.has(a.key)
 
 function dismissAlert(key) {
   _dismissedAlerts.add(key);
-  saveDismissedAlerts(_dismissedAlerts);
   updateAlertBadge(visibleAlerts().length);
   renderAlertTray();
+  saveDismissedAlerts([key]);
 }
 
 function clearAllAlerts() {
-  _lastAlerts.forEach(a => _dismissedAlerts.add(a.key));
-  saveDismissedAlerts(_dismissedAlerts);
+  const keys = _lastAlerts.map(a => a.key);
+  keys.forEach(k => _dismissedAlerts.add(k));
   updateAlertBadge(0);
   renderAlertTray();
+  saveDismissedAlerts(keys);
 }
 
 function updateAlertBadge(count) {
@@ -9371,10 +9390,10 @@ async function loadAlerts() {
   const reportsDue = activeMg.filter(c=>c.ads_first_live_date&&addDays(c.ads_first_live_date,30)<=today&&today<addDays(c.ads_first_live_date,60));
   const invoicesDue = activeMg.filter(c=>monthsTicked(c)>=1&&c.next_payment_date&&addDays(c.next_payment_date,-7)<=today&&today<=c.next_payment_date);
   _lastAlerts = buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoonOrders, reportsDue, invoicesDue);
-  // Drop dismissals whose condition has since resolved, so the stored list
-  // stays small and a recurrence is never pre-silenced.
-  saveDismissedAlerts(_dismissedAlerts);
-  _dismissedAlerts = loadDismissedAlerts();
+  _dismissedAlerts = await loadDismissedAlerts();
+  // Only prune off a complete picture: a failed query would make every alert
+  // it feeds look resolved and wipe their clears.
+  if (![slaR, mgR, crmR, dueSoonR].some(r => r.error)) await pruneDismissedAlerts();
   updateAlertBadge(visibleAlerts().length);
 }
 
