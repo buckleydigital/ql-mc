@@ -133,7 +133,7 @@ Deno.serve(async (req: Request) => {
         campaign ? `Trade / campaign: ${campaign}.` : null,
         goal ? `Volume they want: ${goal}.` : null,
         postcode ? `Service area: ${postcode}.` : null,
-        '$2,500 one-off build + first 30 days management, then $600/mo optional.',
+        '$2,500 one-off build + first 30 days management, then $690/mo optional.',
       ].filter(Boolean).join('\n')
 
       // A double-tap on the button, or a second try minutes later, should land
@@ -470,6 +470,13 @@ Deno.serve(async (req: Request) => {
       postcode_list,
       ql_hq_order_id,
     } = body
+    // ql-hq sends the company's open area postcodes when every active order
+    // is split into areas (one area, one order, its own postcodes). Those are
+    // what leads are routed by; ppl-area-refresh keeps them current as areas
+    // fill. Without them the old behaviour stands.
+    const areaPostcodes: string[] | null = Array.isArray(body.postcodes)
+      ? body.postcodes.map((p: unknown) => String(p).trim()).filter((p: string) => /^\d{4}$/.test(p))
+      : null
 
     if (!ql_hq_company_id || !email) {
       return json({ error: 'ql_hq_company_id and email are required' }, 400)
@@ -481,9 +488,9 @@ Deno.serve(async (req: Request) => {
     )
 
     const normPhone   = normalisePhone(phone || '')
-    const postcodes: string[] = location_type === 'postcodes' && postcode_list
+    const postcodes: string[] = areaPostcodes ?? (location_type === 'postcodes' && postcode_list
       ? String(postcode_list).split(/[\s,\n]+/).map((p: string) => p.trim()).filter(Boolean)
-      : []
+      : [])
 
     const qty         = parseInt(String(quantity))    || 0
     const pplPrice    = parseFloat(String(price_per_lead)) || 0
@@ -531,7 +538,7 @@ Deno.serve(async (req: Request) => {
         total_leads_purchased: newTotal,
         has_reordered:         (priorOrders || 0) >= 1,
         updated_at:            new Date().toISOString(),
-        ...(postcodes.length > 0 && { postcodes }),
+        ...((areaPostcodes || postcodes.length > 0) && { postcodes }),
       }).eq('id', clientId)
 
     } else {
@@ -575,7 +582,9 @@ Deno.serve(async (req: Request) => {
         title:      `New PPL signup — ${company_name || email} · ${qty} × ${nicheLabel} leads`,
         priority:   'urgent',
         done:       false,
-        notes:      `Auto-created from ql-hq checkout. Configure postcodes and link campaigns in the PPL Clients panel. Email: ${email}`,
+        notes:      areaPostcodes
+          ? `Auto-created from ql-hq checkout. Postcodes are set from the order's areas. Link campaigns in the PPL Clients panel. Email: ${email}`
+          : `Auto-created from ql-hq checkout. Configure postcodes and link campaigns in the PPL Clients panel. Email: ${email}`,
         created_at: new Date().toISOString(),
       }]).catch((e: Error) => console.warn('task insert non-fatal:', e.message))
     }
