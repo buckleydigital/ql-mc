@@ -48,3 +48,7 @@ select cron.schedule('no-answer-email', '0 23,0 * * *', $cron$
                  'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'jarvis_service_key')),
     body    := '{}'::jsonb)
 $cron$);
+
+-- Added and then not used: unassigned leads are signed just "QuoteLeads".
+alter table public.business_settings
+  add column if not exists no_answer_email_signoff text not null default '';

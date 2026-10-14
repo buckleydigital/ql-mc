@@ -5,9 +5,9 @@
  * (3 to start) gets the no-answer email from Settings, once. It goes out
  * through send-sales-email, so the do-not-contact list, the 30-day duplicate
  * guard, the from address and the email log all apply exactly as for the
- * Follow Up button. It is sent as the lead's owner when it has one, so it is
- * signed by and replies go to the rep who tried calling; otherwise as the
- * Jarvis owner.
+ * Follow Up button. It is sent as the lead's rep when it has one, so it is
+ * signed by and replies go to the rep who tried calling; an unassigned lead's
+ * email is signed just "QuoteLeads".
  *
  * "In No Answer for 3 days" is leads.stage_changed_at, stamped by a trigger
  * from 14 Oct 2026. Leads already in No Answer before then have none and are
@@ -30,6 +30,7 @@ function merge(text: string, vals: Record<string, string>): string {
     .replace(/[ \t]{2,}/g, " ")
     .replace(/[ \t]+([,.;:!?])/g, "$1")
     .replace(/ -\s*$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
@@ -50,7 +51,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: cfg } = await admin
     .from("business_settings")
-    .select("no_answer_email_enabled, no_answer_email_days, no_answer_email_subject, no_answer_email_body, jarvis_owner_email")
+    .select("no_answer_email_enabled, no_answer_email_days, no_answer_email_subject, no_answer_email_body")
     .limit(1).maybeSingle();
   if (!cfg?.no_answer_email_enabled) return json({ message: "No-answer email is switched off", sent: 0 });
   const days = Math.max(1, Number(cfg.no_answer_email_days) || 3);
@@ -69,17 +70,14 @@ Deno.serve(async (req: Request) => {
   if (error) return json({ error: error.message }, 500);
   if (!leads?.length) return json({ message: "Nobody due", sent: 0 });
 
-  // Who each email is from, for {rep_name} and {rep_email}: the lead's owner,
-  // or the Jarvis owner for unassigned leads - matching who send-sales-email
-  // sends it as.
+  // {rep_name} and {rep_email} are the lead's rep. An unassigned lead has
+  // none, so its email just ends "QuoteLeads" (the empty line is dropped).
   const { data: reps } = await admin.from("sales_reps").select("user_id, name, email, reply_to_email");
   const repByUser = new Map((reps || []).map((r) => [r.user_id, r]));
-  const ownerEmail = String(cfg.jarvis_owner_email || "").trim().toLowerCase();
-  const ownerRep = (reps || []).find((r) => String(r.email || "").toLowerCase() === ownerEmail);
 
   const results: Array<{ lead_id: string; to: string; ok: boolean; error?: string }> = [];
   for (const lead of leads) {
-    const rep = (lead.owner_id && repByUser.get(lead.owner_id)) || ownerRep;
+    const rep = lead.owner_id ? repByUser.get(lead.owner_id) : undefined;
     const vals = {
       first_name: firstName(lead.name),
       company_name: String(lead.company || "").trim(),
