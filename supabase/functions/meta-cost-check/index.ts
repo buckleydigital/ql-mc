@@ -7,10 +7,9 @@
 //   - a campaign whose cost is above the max_cpl of EVERY outstanding order on
 //     it is paused in Meta and marked cost_paused, the same "only pause when
 //     nobody on it still wants leads" rule meta-cap-check uses for caps
-// An order's max is its own max_cpl if set, otherwise
-// business_settings.default_max_cpl_pct of its $/lead ex GST (order prices
-// include GST; Meta spend has none). An order with neither has no limit, so it
-// keeps its campaigns running.
+// An order's max is its own max_cpl if set, otherwise the most a lead can cost
+// Meta and still leave business_settings.target_margin_pct (see maxCplFor).
+// An order with neither has no limit, so it keeps its campaigns running.
 // Anything newly flagged or paused is emailed. A cost pause sticks until the
 // campaign is resumed from MC, which clears it (see meta-campaign-toggle).
 //
@@ -86,8 +85,12 @@ serve(async (req) => {
     if (!metaToken) throw new Error('META_ACCESS_TOKEN not configured')
 
     const { data: settings } = await db
-      .from('business_settings').select('default_max_cpl_pct').limit(1).maybeSingle()
-    const defaultPct = settings?.default_max_cpl_pct == null ? null : Number(settings.default_max_cpl_pct)
+      .from('business_settings').select('target_margin_pct,dud_rate_pct,stripe_fee_pct').limit(1).maybeSingle()
+    const margin = settings?.target_margin_pct == null ? null : {
+      margin: Number(settings.target_margin_pct),
+      dud: Number(settings.dud_rate_pct ?? 0),
+      stripe: Number(settings.stripe_fee_pct ?? 0),
+    }
 
     // ── Outstanding orders and the campaigns that feed them ──
     const { data: orderRows, error: orderErr } = await db
@@ -103,7 +106,7 @@ serve(async (req) => {
       const client = (r as any).clients
       const leadPrice = r.lead_price === null ? null : Number(r.lead_price)
       const own = r.max_cpl === null ? null : Number(r.max_cpl)
-      const fallback = defaultPct !== null && leadPrice ? round(leadPrice / (1 + GST_RATE) * defaultPct / 100) : null
+      const fallback = margin && leadPrice ? maxCplFor(leadPrice, margin) : null
       const order: Order = {
         id: r.id,
         client_id: r.client_id,
@@ -262,7 +265,7 @@ serve(async (req) => {
 
     return json({
       dry_run: dryRun,
-      default_max_cpl_pct: defaultPct,
+      margin_settings: margin,
       window: { since, until },
       checked_campaigns: results.length,
       paused: results.filter(r => r.action === 'pause').map(r => r.campaign_id),
@@ -274,6 +277,16 @@ serve(async (req) => {
     return json({ error: err instanceof Error ? err.message : String(err) }, 400)
   }
 })
+
+// The most Meta can charge per lead and still leave the target margin of the
+// price ex GST, after giving away dud replacements and paying Stripe:
+//   (price / 1.1 x (1 - margin) - price x stripe) / (1 + dud)
+// price includes GST; Meta spend has none. Same formula as maxCplFor in MC.
+function maxCplFor(priceIncGst: number, s: { margin: number; dud: number; stripe: number }): number {
+  const exGst = priceIncGst / (1 + GST_RATE)
+  const max = (exGst * (1 - s.margin / 100) - priceIncGst * s.stripe / 100) / (1 + s.dud / 100)
+  return round(Math.max(0, max))
+}
 
 // Meta's "lead" action already totals pixel and on-Facebook form leads, so use
 // it when present and only add the parts up when it is missing.
