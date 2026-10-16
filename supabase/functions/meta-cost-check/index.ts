@@ -26,8 +26,13 @@ const corsHeaders = {
 const WINDOW_DAYS = 3
 const NOTIFY_TO = 'contact@quoteleads.com.au'
 
+type CplSettings = {
+  margin: number; dud: number; stripe: number; gstRate: number;
+  priceIncludesGst: boolean; repCommission: number; commissionBase: 'ex' | 'inc';
+  stripeFixed: number;
+}
+
 type Order = {
-  id: string
   client_id: string
   company_name: string
   leads_qty: number
@@ -35,6 +40,8 @@ type Order = {
   max_cpl: number | null
   max_source: 'order' | 'default' | 'none'
   cpl_breached_at: string | null
+  repCommission: number | null
+  commissionBase: 'ex' | 'inc' | null
 }
 
 type CampaignResult = {
@@ -99,7 +106,7 @@ serve(async (req) => {
     // ── Outstanding orders and the campaigns that feed them ──
     const { data: orderRows, error: orderErr } = await db
       .from('ppl_order_log')
-      .select('id,client_id,leads_qty,lead_price,max_cpl,cpl_breached_at,clients!inner(company_name,type,meta_campaign_ids)')
+      .select('id,client_id,leads_qty,lead_price,max_cpl,cpl_breached_at,rep_commission_pct,commission_base,clients!inner(company_name,type,meta_campaign_ids)')
       .eq('status', 'in_progress')
       .eq('clients.type', 'ppl')
     if (orderErr) throw new Error(`DB error: ${orderErr.message}`)
@@ -110,7 +117,7 @@ serve(async (req) => {
       const client = (r as any).clients
       const leadPrice = r.lead_price === null ? null : Number(r.lead_price)
       const own = r.max_cpl === null ? null : Number(r.max_cpl)
-      const fallback = margin && leadPrice ? maxCplFor(leadPrice, margin) : null
+      const fallback = margin && leadPrice ? maxCplFor(leadPrice, mergeSettings(margin, r.rep_commission_pct == null ? null : Number(r.rep_commission_pct), r.commission_base)) : null
       const order: Order = {
         id: r.id,
         client_id: r.client_id,
@@ -120,6 +127,8 @@ serve(async (req) => {
         max_cpl: own ?? fallback,
         max_source: own !== null ? 'order' : fallback !== null ? 'default' : 'none',
         cpl_breached_at: r.cpl_breached_at,
+        repCommission: r.rep_commission_pct == null ? null : Number(r.rep_commission_pct),
+        commissionBase: r.commission_base,
       }
       for (const cid of (client?.meta_campaign_ids || []) as string[]) {
         if (!ordersByCampaign[cid]) ordersByCampaign[cid] = []
@@ -295,7 +304,7 @@ serve(async (req) => {
 //   max CPL = (revenue - commission - stripe - margin kept) / (1 + dud rate)
 //
 // price includes GST; Meta spend has none. Same formula as maxCplFor in MC.
-function maxCplFor(price: number, s: { margin: number; dud: number; stripe: number; gstRate: number; priceIncludesGst: boolean; repCommission: number; commissionBase: 'ex' | 'inc'; stripeFixed: number }): number {
+function maxCplFor(price: number, s: CplSettings): number {
   const gst = s.gstRate / 100
   const gross = s.priceIncludesGst ? price : price * (1 + gst)
   const revenue = s.priceIncludesGst ? price / (1 + gst) : price
@@ -304,6 +313,17 @@ function maxCplFor(price: number, s: { margin: number; dud: number; stripe: numb
   const stripe = gross * s.stripe / 100 + s.stripeFixed
   const kept = revenue * s.margin / 100
   return round(Math.max(0, (revenue - rep - stripe - kept) / (1 + s.dud / 100)))
+}
+
+// Merge business-level settings with order-level overrides. Order-level
+// repCommission / commissionBase win when set; otherwise the business default
+// applies (which itself defaults to ex-GST / 15% / $0.30 fixed).
+function mergeSettings(base: CplSettings, repCommission: number | null, commissionBase: 'ex' | 'inc' | null): CplSettings {
+  return {
+    ...base,
+    repCommission: repCommission ?? base.repCommission,
+    commissionBase: commissionBase ?? base.commissionBase,
+  };
 }
 
 // Meta's "lead" action already totals pixel and on-Facebook form leads, so use
