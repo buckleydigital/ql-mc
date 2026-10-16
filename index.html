@@ -2940,16 +2940,25 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
 </div>
 
 <div class="overlay" id="m-cpl-calc">
-  <div class="modal" style="max-width:460px">
+  <div class="modal" style="max-width:520px">
     <h2>CPL calculator</h2>
     <div class="msub">The most Meta can charge per lead and still hit your margin. Starts from the defaults in Business Settings.</div>
     <div style="display:flex;gap:8px">
-      <div class="frow" style="flex:1"><label class="flabel">Price per lead (inc GST)</label><input class="fi" id="cc-price" type="number" min="0" step="0.5" oninput="calcCpl()"></div>
+      <div class="frow" style="flex:1"><label class="flabel">Price per lead ($)</label><input class="fi" id="cc-price" type="number" min="0" step="0.5" oninput="calcCpl()"></div>
+      <div class="frow" style="flex:1"><label class="flabel">Price includes GST?</label><select class="fs" id="cc-price-inc-gst" oninput="calcCpl()" style="width:100%"><option value="0">No — ex-GST</option><option value="1">Yes — includes GST</option></select></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="frow" style="flex:1"><label class="flabel">GST rate (%)</label><input class="fi" id="cc-gst" type="number" min="0" max="100" step="0.1" oninput="calcCpl()"></div>
       <div class="frow" style="flex:1"><label class="flabel">Target margin %</label><input class="fi" id="cc-margin" type="number" min="0" max="95" step="0.5" oninput="calcCpl()"></div>
     </div>
     <div style="display:flex;gap:8px">
+      <div class="frow" style="flex:1"><label class="flabel">Rep commission (%)</label><input class="fi" id="cc-rep-commission" type="number" min="0" max="100" step="0.1" oninput="calcCpl()"></div>
+      <div class="frow" style="flex:1"><label class="flabel">Commission based on</label><select class="fs" id="cc-commission-base" oninput="calcCpl()" style="width:100%"><option value="ex">Revenue ex-GST</option><option value="inc">Payment incl GST</option></select></div>
+    </div>
+    <div style="display:flex;gap:8px">
       <div class="frow" style="flex:1"><label class="flabel">Dud rate %</label><input class="fi" id="cc-dud" type="number" min="0" max="100" step="0.5" oninput="calcCpl()"></div>
-      <div class="frow" style="flex:1"><label class="flabel">Stripe fee %</label><input class="fi" id="cc-stripe" type="number" min="0" max="10" step="0.05" oninput="calcCpl()"></div>
+      <div class="frow" style="flex:1"><label class="flabel">Stripe fee (%)</label><input class="fi" id="cc-stripe" type="number" min="0" max="10" step="0.05" oninput="calcCpl()"></div>
+      <div class="frow" style="flex:1"><label class="flabel">Stripe fixed ($)</label><input class="fi" id="cc-stripe-fixed" type="number" min="0" step="0.01" oninput="calcCpl()"></div>
     </div>
     <div id="cc-out" style="font-family:var(--mono);font-size:13px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;margin-top:6px"></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">Check a real cost per lead</div>
@@ -3132,7 +3141,18 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
       <div class="frow" style="flex:1"><label class="flabel">Dud rate %</label><input class="fi" id="bs-dud-rate" type="number" min="0" max="100" step="0.5" placeholder="12"></div>
       <div class="frow" style="flex:1"><label class="flabel">Stripe fee %</label><input class="fi" id="bs-stripe-fee" type="number" min="0" max="10" step="0.05" placeholder="1.75"></div>
     </div>
-    <p style="font-size:12px;color:var(--ink3);margin:6px 0 0;line-height:1.6">Sets the max cost per lead for every outstanding order without its own Max CPL: the most Meta can charge and still leave this margin of the price ex GST, after replacing duds and paying Stripe. Blank margin turns it off. <a href="#" onclick="event.preventDefault();openCplCalc()" style="color:var(--acc)">Open the calculator</a></p>
+    <div style="display:flex;gap:8px">
+      <div class="frow" style="flex:1"><label class="flabel">GST rate (%)</label><input class="fi" id="bs-gst-rate" type="number" min="0" max="100" step="0.1" placeholder="10"></div>
+      <div class="frow" style="flex:1"><label class="flabel">Rep commission (%)</label><input class="fi" id="bs-rep-commission" type="number" min="0" max="100" step="0.1" placeholder="15"></div>
+      <div class="frow" style="flex:1"><label class="flabel">Stripe fixed ($)</label><input class="fi" id="bs-stripe-fixed" type="number" min="0" step="0.01" placeholder="0.30"></div>
+    </div>
+    <div class="frow"><label class="flabel">Price per lead entered is</label>
+      <select class="fs" id="bs-price-includes-gst" style="width:100%"><option value="0">Ex-GST (default)</option><option value="1">Includes GST</option></select>
+    </div>
+    <div class="frow"><label class="flabel">Commission based on</label>
+      <select class="fs" id="bs-commission-base" style="width:100%"><option value="ex">Revenue ex-GST</option><option value="inc">Customer payment incl GST</option></select>
+    </div>
+    <p style="font-size:12px;color:var(--ink3);margin:6px 0 0;line-height:1.6">Sets the max cost per lead for every outstanding order without its own Max CPL: the most Meta can charge and still leave this margin of the price ex GST, after rep commission, replacing duds and paying Stripe. The listed price is ex-GST by default; commission is worked out on revenue ex-GST, so 15% on a $100 lead is $15, not $15 + GST. Blank margin turns it off. <a href="#" onclick="event.preventDefault();openCplCalc()" style="color:var(--acc)">Open the calculator</a></p>
     <div class="macts">
       <div style="flex:1"></div>
       <button class="btn" onclick="closeModal('m-biz-settings')">Cancel</button>
@@ -6664,48 +6684,88 @@ async function logRetainerPayment(clientId) {
 }
 
 // Cost cut-off: the most Meta can charge per lead and still leave the target
-// margin of the price ex GST, after replacing duds and paying Stripe. Same
-// formula as maxCplFor in meta-cost-check, which does the actual cutting off.
-//   max CPL = (price / 1.1 x (1 - margin) - price x stripe) / (1 + dud)
-// price is $/lead including GST; Meta spend has no GST.
-function maxCplFor(priceIncGst, s) {
-  const exGst = priceIncGst / 1.1;
-  return Math.max(0, (exGst * (1 - s.margin / 100) - priceIncGst * s.stripe / 100) / (1 + s.dud / 100));
+// margin of the price ex GST, after paying the rep commission, replacing duds
+// and paying Stripe. Same formula as maxCplFor in meta-cost-check.
+//
+//   price ex-GST by default (priceIncludesGst = false):
+//     revenue = price, gross = price x (1 + gst rate)
+//   price includes GST (priceIncludesGst = true):
+//     revenue = price / (1 + gst rate), gross = price
+//   commission = commission base x rep commission %, base is revenue ex-GST
+//     by default ('ex') so a 15% commission on a $100 lead is $15, not $15 + GST
+//   max CPL = (revenue - commission - stripe - margin kept) / (1 + dud rate)
+//
+// price is the $/lead listed; Meta spend has no GST.
+function maxCplFor(price, s) {
+  const gst = s.gstRate / 100
+  const gross = s.priceIncludesGst ? price : price * (1 + gst)
+  const revenue = s.priceIncludesGst ? price / (1 + gst) : price
+  const base = s.commissionBase === 'inc' ? gross : revenue
+  const rep = base * s.repCommission / 100
+  const stripe = gross * s.stripe / 100 + (s.stripeFixed || 0)
+  const kept = revenue * s.margin / 100
+  return Math.max(0, (revenue - rep - stripe - kept) / (1 + s.dud / 100))
 }
 let _cplSettings;
 async function ensureCplSettings() {
   if (_cplSettings !== undefined) return;
-  const {data} = await db.from('business_settings').select('target_margin_pct,dud_rate_pct,stripe_fee_pct').limit(1).maybeSingle();
+  const {data} = await db.from('business_settings').select('target_margin_pct,dud_rate_pct,stripe_fee_pct,gst_rate_pct,price_includes_gst,rep_commission_pct,commission_base,stripe_fee_fixed').limit(1).maybeSingle();
   _cplSettings = data?.target_margin_pct == null ? null
-    : { margin: Number(data.target_margin_pct), dud: Number(data.dud_rate_pct || 0), stripe: Number(data.stripe_fee_pct || 0) };
+    : { margin: Number(data.target_margin_pct), dud: Number(data.dud_rate_pct || 0), stripe: Number(data.stripe_fee_pct || 0),
+        gstRate: Number(data.gst_rate_pct || 10), priceIncludesGst: data.price_includes_gst === true,
+        repCommission: Number(data.rep_commission_pct || 0), commissionBase: data.commission_base || 'ex',
+        stripeFixed: Number(data.stripe_fee_fixed || 0) };
 }
 async function openCplCalc() {
   _cplSettings = undefined;
   await ensureCplSettings();
-  const s = _cplSettings || { margin: 30, dud: 12, stripe: 1.75 };
+  const s = _cplSettings || { margin: 30, dud: 12, stripe: 1.75, gstRate: 10, priceIncludesGst: false, repCommission: 15, commissionBase: 'ex', stripeFixed: 0.30 };
   if ($('cc-price').value === '') setVal('cc-price', 88);
   setVal('cc-margin', s.margin);
   setVal('cc-dud', s.dud);
   setVal('cc-stripe', s.stripe);
+  setVal('cc-gst', s.gstRate);
+  setVal('cc-price-inc-gst', s.priceIncludesGst ? '1' : '0');
+  setVal('cc-rep-commission', s.repCommission);
+  setVal('cc-commission-base', s.commissionBase);
+  setVal('cc-stripe-fixed', s.stripeFixed);
   calcCpl();
   openModal('m-cpl-calc');
 }
 function calcCpl() {
   const num = (id) => parseFloat($(id).value) || 0;
-  const price = num('cc-price'), s = { margin: num('cc-margin'), dud: num('cc-dud'), stripe: num('cc-stripe') };
+  const price = num('cc-price');
+  const s = {
+    margin: num('cc-margin'), dud: num('cc-dud'), stripe: num('cc-stripe'),
+    gstRate: num('cc-gst'), priceIncludesGst: $('cc-price-inc-gst').value === '1',
+    repCommission: num('cc-rep-commission'), commissionBase: $('cc-commission-base').value,
+    stripeFixed: num('cc-stripe-fixed'),
+  };
   const m = (n) => '$' + n.toFixed(2);
-  const exGst = price / 1.1, gst = price - exGst, fee = price * s.stripe / 100;
+  const gst = s.gstRate / 100;
+  const gross = s.priceIncludesGst ? price : price * (1 + gst);
+  const revenue = s.priceIncludesGst ? price / (1 + gst) : price;
+  const gstAmount = gross - revenue;
+  const base = s.commissionBase === 'inc' ? gross : revenue;
+  const rep = base * s.repCommission / 100;
+  const stripe = gross * s.stripe / 100 + s.stripeFixed;
+  const kept = revenue * s.margin / 100;
   const max = maxCplFor(price, s);
   const line = (k, v, strong) => `<div style="display:flex;justify-content:space-between;padding:2px 0${strong ? ';font-weight:700;color:var(--ink)' : ';color:var(--ink2)'}"><span>${k}</span><span>${v}</span></div>`;
   $('cc-out').innerHTML = !price ? '<span style="color:var(--ink3)">Enter a price per lead.</span>' :
-    line('Price inc GST', m(price)) + line('GST to the ATO', '−' + m(gst)) + line('Yours (ex GST)', m(exGst)) +
-    line(`Stripe fee (${s.stripe}%)`, '−' + m(fee)) +
-    line(`Margin kept (${s.margin}%)`, '−' + m(exGst * s.margin / 100)) +
+    line('Price listed', m(price)) +
+    line(s.priceIncludesGst ? 'GST included in price' : 'GST on top of price', m(s.priceIncludesGst ? gstAmount : 0)) +
+    line('Revenue ex GST', m(revenue)) +
+    line(`Rep commission (${s.repCommission}% on ${s.commissionBase === 'inc' ? 'payment incl GST' : 'revenue ex GST'})`, '−' + m(rep)) +
+    line(`Stripe fee (${s.stripe}% + ${m(s.stripeFixed)} fixed)`, '−' + m(stripe)) +
+    line(`Margin kept (${s.margin}% of revenue ex GST)`, '−' + m(kept)) +
     line(`Left for ads (${(1 + s.dud / 100).toFixed(2)} leads per sale)`, m(max * (1 + s.dud / 100))) +
     `<div style="border-top:1px solid var(--bd);margin:6px 0"></div>` + line('Max Meta cost per lead', m(max), true);
   const actual = num('cc-actual');
   if (!price || !actual) { $('cc-actual-out').innerHTML = ''; return; }
-  const cost = actual * (1 + s.dud / 100) + fee, profit = exGst - cost, pct = profit / exGst * 100;
+  const cost = actual * (1 + s.dud / 100) + stripe;
+  const profit = revenue - rep - cost;
+  const pct = revenue > 0 ? profit / revenue * 100 : 0;
   const ok = actual <= max;
   $('cc-actual-out').innerHTML = line('Cost per paid lead (inc duds and Stripe)', m(cost)) + line('Profit per lead', m(profit)) +
     `<div style="margin-top:4px;font-weight:700;color:${ok ? 'var(--grn)' : 'var(--red)'}">${pct.toFixed(1)}% margin · ${ok ? 'under the max, keeps running' : 'over the max, gets cut off'}</div>`;
@@ -6717,7 +6777,7 @@ function orderMaxCplCell(o, delivered) {
   if (max === null) return '-';
   const breached = o.cpl_breached_at && !delivered;
   const title = breached ? `Recent cost per lead is over this order's max (since ${o.cpl_breached_at.slice(0,10)})`
-    : own ? 'Set on this order' : `Default: leaves ${_cplSettings.margin}% margin after ${_cplSettings.dud}% duds and ${_cplSettings.stripe}% Stripe`;
+    : own ? 'Set on this order' : `Default: leaves ${_cplSettings.margin}% margin after ${_cplSettings.repCommission}% rep commission, ${_cplSettings.dud}% duds and ${_cplSettings.stripe}% Stripe, on a ${_cplSettings.priceIncludesGst ? 'GST-inclusive' : 'ex-GST'} lead price`;
   return `<span title="${esc(title)}" style="color:${breached?'var(--red)':own?'var(--ink2)':'var(--ink3)'}">${breached?'⚠ ':''}$${max.toFixed(0)}${own?'':' <span style="font-size:11px">default</span>'}</span>`;
 }
 function renderOrderLogTable(data, clientId) {
@@ -8816,6 +8876,11 @@ async function openBizSettingsModal() {
   setVal('bs-target-margin', s.target_margin_pct ?? '');
   setVal('bs-dud-rate', s.dud_rate_pct ?? '');
   setVal('bs-stripe-fee', s.stripe_fee_pct ?? '');
+  setVal('bs-gst-rate', s.gst_rate_pct ?? '');
+  setVal('bs-rep-commission', s.rep_commission_pct ?? '');
+  setVal('bs-stripe-fixed', s.stripe_fee_fixed ?? '');
+  setVal('bs-price-includes-gst', s.price_includes_gst === true ? '1' : '0');
+  setVal('bs-commission-base', s.commission_base || 'ex');
   openModal('m-biz-settings');
 }
 
@@ -8834,6 +8899,11 @@ async function saveBizSettings() {
     target_margin_pct: $('bs-target-margin').value !== '' ? parseFloat($('bs-target-margin').value) : null,
     dud_rate_pct: parseFloat($('bs-dud-rate').value) || 0,
     stripe_fee_pct: parseFloat($('bs-stripe-fee').value) || 0,
+    gst_rate_pct: parseFloat($('bs-gst-rate').value) || 10,
+    rep_commission_pct: parseFloat($('bs-rep-commission').value) || 0,
+    stripe_fee_fixed: parseFloat($('bs-stripe-fixed').value) || 0.30,
+    price_includes_gst: $('bs-price-includes-gst').value === '1',
+    commission_base: $('bs-commission-base').value,
     updated_at: new Date().toISOString()
   };
   const existing = await db.from('business_settings').select('id').limit(1).single();
@@ -8845,7 +8915,10 @@ async function saveBizSettings() {
   }
   if (error) { alert('Error saving: ' + error.message); return; }
   _cplSettings = payload.target_margin_pct == null ? null
-    : { margin: payload.target_margin_pct, dud: payload.dud_rate_pct, stripe: payload.stripe_fee_pct };
+    : { margin: payload.target_margin_pct, dud: payload.dud_rate_pct, stripe: payload.stripe_fee_pct,
+        gstRate: payload.gst_rate_pct, priceIncludesGst: payload.price_includes_gst === true,
+        repCommission: payload.rep_commission_pct, commissionBase: payload.commission_base,
+        stripeFixed: payload.stripe_fee_fixed };
   closeModal('m-biz-settings');
 }
 

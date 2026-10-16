@@ -24,7 +24,6 @@ const corsHeaders = {
 }
 
 const WINDOW_DAYS = 3
-const GST_RATE = 0.1
 const NOTIFY_TO = 'contact@quoteleads.com.au'
 
 type Order = {
@@ -85,11 +84,16 @@ serve(async (req) => {
     if (!metaToken) throw new Error('META_ACCESS_TOKEN not configured')
 
     const { data: settings } = await db
-      .from('business_settings').select('target_margin_pct,dud_rate_pct,stripe_fee_pct').limit(1).maybeSingle()
+      .from('business_settings').select('target_margin_pct,dud_rate_pct,stripe_fee_pct,gst_rate_pct,price_includes_gst,rep_commission_pct,commission_base,stripe_fee_fixed').limit(1).maybeSingle()
     const margin = settings?.target_margin_pct == null ? null : {
       margin: Number(settings.target_margin_pct),
       dud: Number(settings.dud_rate_pct ?? 0),
       stripe: Number(settings.stripe_fee_pct ?? 0),
+      gstRate: Number(settings.gst_rate_pct ?? 10),
+      priceIncludesGst: settings.price_includes_gst === true,
+      repCommission: Number(settings.rep_commission_pct ?? 0),
+      commissionBase: settings.commission_base ?? 'ex',
+      stripeFixed: Number(settings.stripe_fee_fixed ?? 0),
     }
 
     // ── Outstanding orders and the campaigns that feed them ──
@@ -279,13 +283,27 @@ serve(async (req) => {
 })
 
 // The most Meta can charge per lead and still leave the target margin of the
-// price ex GST, after giving away dud replacements and paying Stripe:
-//   (price / 1.1 x (1 - margin) - price x stripe) / (1 + dud)
+// price ex GST, after paying the rep commission, giving away dud replacements
+// and paying Stripe.
+//
+//   price ex-GST by default (priceIncludesGst = false):
+//     revenue = price, gross = price x (1 + gst rate)
+//   price includes GST (priceIncludesGst = true):
+//     revenue = price / (1 + gst rate), gross = price
+//   commission = commission base x rep commission %, base is revenue ex-GST
+//     by default ('ex') or the customer payment incl GST ('inc')
+//   max CPL = (revenue - commission - stripe - margin kept) / (1 + dud rate)
+//
 // price includes GST; Meta spend has none. Same formula as maxCplFor in MC.
-function maxCplFor(priceIncGst: number, s: { margin: number; dud: number; stripe: number }): number {
-  const exGst = priceIncGst / (1 + GST_RATE)
-  const max = (exGst * (1 - s.margin / 100) - priceIncGst * s.stripe / 100) / (1 + s.dud / 100)
-  return round(Math.max(0, max))
+function maxCplFor(price: number, s: { margin: number; dud: number; stripe: number; gstRate: number; priceIncludesGst: boolean; repCommission: number; commissionBase: 'ex' | 'inc'; stripeFixed: number }): number {
+  const gst = s.gstRate / 100
+  const gross = s.priceIncludesGst ? price : price * (1 + gst)
+  const revenue = s.priceIncludesGst ? price / (1 + gst) : price
+  const base = s.commissionBase === 'inc' ? gross : revenue
+  const rep = base * s.repCommission / 100
+  const stripe = gross * s.stripe / 100 + s.stripeFixed
+  const kept = revenue * s.margin / 100
+  return round(Math.max(0, (revenue - rep - stripe - kept) / (1 + s.dud / 100)))
 }
 
 // Meta's "lead" action already totals pixel and on-Facebook form leads, so use
