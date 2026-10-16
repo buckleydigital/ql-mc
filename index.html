@@ -986,9 +986,9 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
 /* The conversation floats over the reactor, centred and narrow like a column
    of subtitles rather than a chat window bolted to the side. */
 #jv-panel.hud .jv-body{position:relative;z-index:4;max-width:760px;margin:0 auto;width:100%;
-  padding:18px 22px;justify-content:flex-end;
-  -webkit-mask:linear-gradient(to bottom,transparent 0,#000 12%);
-          mask:linear-gradient(to bottom,transparent 0,#000 12%)}
+  padding:18px 22px;overflow-y:auto;justify-content:flex-start;
+  -webkit-mask:linear-gradient(to bottom,#000 0,#000 92%,transparent 100%);
+          mask:linear-gradient(to bottom,#000 0,#000 92%,transparent 100%)}
 #jv-panel.hud .jv-msg{background:rgba(4,20,34,.72);border:1px solid var(--hud-faint);
   border-radius:3px;color:rgba(214,242,255,.94);backdrop-filter:blur(3px);font-size:13px}
 #jv-panel.hud .jv-msg.you{border-color:var(--hud-dim);background:rgba(95,216,255,.1)}
