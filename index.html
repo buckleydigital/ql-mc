@@ -1778,7 +1778,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
         </div>
         <div class="twrap">
           <table id="or-pr-table">
-            <thead><tr><th>Business</th><th>Niche</th><th>Email</th><th>Location</th><th>Status</th></tr></thead>
+            <thead><tr><th>Business</th><th>Niche</th><th>Email</th><th>Location</th><th>Status</th><th style="width:56px"></th></tr></thead>
             <tbody id="or-pr-tbody"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
@@ -10803,12 +10803,21 @@ async function loadProspects() {
         '<td>' + jmEsc(place || '-') + '<div class="or-sub">found ' + orDate(r.found_at) + '</div></td>' +
         '<td>' + fit + '<span style="color:' + col + ';font-weight:500">' + jmEsc(OR_STATUS_LABEL[r.status] || r.status) + '</span>' +
           (why ? '<div class="or-sub">' + jmEsc(why) + '</div>' : '') + '</td>' +
+        '<td style="text-align:right"><button class="btn btn-xs btn-red" type="button" onclick="deleteProspect(\'' + orAttr(r.id) + '\')" title="Delete this prospect">✕</button></td>' +
       '</tr>';
     }).join('');
     renderPager('or-pr-pager', orPrPage, Number(rows[0].total), function (p) { orPrPage = p; loadProspects(); });
   } catch (err) {
-    tb.innerHTML = '<tr><td colspan="5" class="empty">Could not load prospects: ' + jmEsc(err.message || err) + '</td></tr>';
+    tb.innerHTML = '<tr><td colspan="6" class="empty">Could not load prospects: ' + jmEsc(err.message || err) + '</td></tr>';
   }
+}
+
+async function deleteProspect(id) {
+  if (!confirm('Delete this prospect? It will be removed from the search results and cannot be undone.')) return;
+  const { error } = await db.rpc('prospect_delete', { p_id: id });
+  if (error) { toast('Could not delete: ' + error.message, true); return; }
+  toast('Deleted ✓');
+  loadProspects();
 }
 
 async function loadSuppressions() {
