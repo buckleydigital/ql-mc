@@ -1779,7 +1779,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
         <div class="twrap">
           <table id="or-pr-table">
             <thead><tr><th>Business</th><th>Niche</th><th>Email</th><th>Location</th><th>Status</th><th style="width:56px"></th></tr></thead>
-            <tbody id="or-pr-tbody"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
+            <tbody id="or-pr-tbody"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
         <div id="or-pr-pager" style="margin-top:10px"></div>
@@ -10634,6 +10634,8 @@ const OR_STATUS = [
   ['bounced', 'bounced'], ['blocked', 'blocked'], ['rejected', 'not a fit'],
 ];
 const OR_STATUS_LABEL = Object.fromEntries(OR_STATUS);
+// Contacted or converted prospects are history; prospect_delete refuses them.
+const OR_UNDELETABLE = ['contacted', 'replied', 'interested', 'not_interested', 'unsubscribed', 'bounced', 'converted'];
 const OR_STATUS_COLOR = {
   qualified: 'var(--acc)', contacted: 'var(--acc)', replied: 'var(--amb)', interested: 'var(--grn)',
   converted: 'var(--grn)', blocked: 'var(--red)', bounced: 'var(--red)', unsubscribed: 'var(--red)',
@@ -10804,7 +10806,7 @@ async function loadProspects() {
     const rows = data || [];
     if (!rows.length) {
       const filtered = nicheSel.value || statusSel.value || $('or-pr-q').value.trim();
-      tb.innerHTML = '<tr><td colspan="5" class="empty">' + (filtered
+      tb.innerHTML = '<tr><td colspan="6" class="empty">' + (filtered
         ? 'No prospects match.'
         : 'No prospects yet. Jarvis starts finding them once a niche is switched on and finding is connected.') + '</td></tr>';
       $('or-pr-pager').innerHTML = '';
@@ -10829,7 +10831,8 @@ async function loadProspects() {
         '<td>' + jmEsc(place || '-') + '<div class="or-sub">found ' + orDate(r.found_at) + '</div></td>' +
         '<td>' + fit + '<span style="color:' + col + ';font-weight:500">' + jmEsc(OR_STATUS_LABEL[r.status] || r.status) + '</span>' +
           (why ? '<div class="or-sub">' + jmEsc(why) + '</div>' : '') + '</td>' +
-        '<td style="text-align:right"><button class="btn btn-xs btn-red" type="button" onclick="deleteProspect(\'' + orAttr(r.id) + '\')" title="Delete this prospect">✕</button></td>' +
+        '<td style="text-align:right">' + (OR_UNDELETABLE.includes(r.status) ? '' :
+          '<button class="btn btn-xs btn-red" type="button" onclick="deleteProspect(\'' + orAttr(r.id) + '\')" title="Delete this prospect">✕</button>') + '</td>' +
       '</tr>';
     }).join('');
     renderPager('or-pr-pager', orPrPage, Number(rows[0].total), function (p) { orPrPage = p; loadProspects(); });
