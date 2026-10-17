@@ -33,6 +33,7 @@ type CplSettings = {
 }
 
 type Order = {
+  id: string
   client_id: string
   company_name: string
   leads_qty: number
