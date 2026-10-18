@@ -75,13 +75,14 @@ Deno.serve(async (req: Request) => {
       const r = await fetch(`${GRAPH}/${path}${path.includes('?') ? '&' : '?'}access_token=${encodeURIComponent(token)}`)
       return await r.json().catch(() => ({}))
     }
-    const [account, assigned, agencies, pending] = await Promise.all([
+    const [account, assigned, agencies, pending, systemUsers] = await Promise.all([
       get(`act_${probe}?fields=account_id,name,account_status,currency,business{id,name},owner`),
       get(`act_${probe}/assigned_users?business=${BUSINESS_ID}&fields=id,name,tasks`),
       get(`act_${probe}/agencies?fields=id,name,access_status,access_requested_time`),
       get(`${BUSINESS_ID}/pending_client_ad_accounts?fields=ad_account{account_id,name},access_status`),
+      get(`${BUSINESS_ID}/system_users?fields=id,name,role`),
     ])
-    return json({ ok: true, token_user: me, probe, account, assigned_users: assigned, agencies, pending_client_ad_accounts: pending })
+    return json({ ok: true, token_user: me, probe, account, assigned_users: assigned, agencies, pending_client_ad_accounts: pending, system_users: systemUsers })
   }
 
   const [shared, owned, sharedPages, ownedPages] = await Promise.all([
