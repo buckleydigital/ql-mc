@@ -17,6 +17,9 @@
 //   check_lead_exists — the growth-onboarding spam gate. Is this email or phone
 //                       already in our sales pipeline (any stage)? Only ql-mc can
 //                       answer; ql-hq holds the signup for review if not.
+//   upsert_managed_purchase — a Branded Lead Gen System bought online: the
+//                       lead goes to Closed Won, a managed client is created
+//                       in Onboarding and the build fee is logged.
 //   upsert_fulfilment — ql-hq owns fulfilment (its Team Panel is where the work
 //                       happens) and pushes the derived summary here whenever a
 //                       step moves, so ql-mc can report on what is stuck without
@@ -448,6 +451,97 @@ Deno.serve(async (req: Request) => {
         return json({ error: upErr.message }, 500)
       }
       return json({ ok: true, mirrored: true, client_id: client.id })
+    }
+
+    // ── action: upsert_managed_purchase ──────────────────────────────────────
+    // A Branded Lead Gen System was bought online: /buy-system on ql-site,
+    // paid in Stripe, provisioned by ql-hq's stripe-webhook. It is recorded the
+    // way a won deal is recorded by hand (convertLead in index.html): the
+    // pipeline lead goes to Closed Won, a managed client is created in
+    // Onboarding, and the build fee is logged as a one-off order. Amounts are
+    // ex GST, like the rest of the revenue figures.
+    //
+    // Idempotent: a client already linked to this ql-hq company means the
+    // purchase is already recorded, so a repeat call adds nothing.
+    if (action === 'upsert_managed_purchase') {
+      const b = body as {
+        ql_hq_company_id?: string; name?: string; company_name?: string; email?: string; phone?: string
+        niche?: string; tier_label?: string; build_fee?: number; management_fee?: number; goal?: string
+      }
+      const hqId = String(b.ql_hq_company_id ?? '').trim()
+      const email = String(b.email ?? '').trim().toLowerCase()
+      if (!hqId || !email) return json({ error: 'ql_hq_company_id and email are required' }, 400)
+
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      )
+
+      const { data: already } = await supabase
+        .from('clients').select('id').eq('ql_hq_company_id', hqId).maybeSingle()
+      if (already) return json({ ok: true, client_id: already.id, duplicate: true })
+
+      const name     = String(b.name ?? '').trim()
+      const company  = String(b.company_name ?? '').trim()
+      const phone    = normalisePhone(String(b.phone ?? ''))
+      const label    = String(b.tier_label ?? 'Branded Lead Gen System').trim()
+      const buildFee = Number(b.build_fee) || 0
+      const monthly  = Number(b.management_fee) || 0
+      const today    = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date())
+      const nowIso   = new Date().toISOString()
+      const note     = `Bought the ${label} online on ${today}: $${buildFee.toLocaleString('en-AU')} + GST build, then $${monthly.toLocaleString('en-AU')}/mo + GST optional.` +
+        (b.goal ? `\nVolume they want: ${b.goal}.` : '')
+
+      // The pipeline lead: the existing one if we have spoken to them, else a
+      // new one, so the sale shows on the board and in the close rate.
+      const { data: matches } = await supabase.rpc('find_leads_by_contact', {
+        p_email: email, p_phone: phone, p_limit: 1,
+      })
+      let leadId: string | null = (matches?.[0]?.id as string | undefined) ?? null
+      const leadPatch = {
+        stage: 'closed_won', lead_type: 'managed', value: buildFee,
+        hq_company_id: hqId, hq_account_created_at: nowIso,
+        stage_changed_at: nowIso, updated_at: nowIso,
+      }
+      if (leadId) {
+        const { data: cur } = await supabase.from('leads').select('notes').eq('id', leadId).maybeSingle()
+        await supabase.from('leads').update({
+          ...leadPatch, notes: [cur?.notes, note].filter(Boolean).join('\n'),
+        }).eq('id', leadId)
+      } else {
+        const { data: lead, error: leadErr } = await supabase.from('leads').insert([{
+          ...leadPatch, name: name || company || email, company: company || null, email, phone,
+          niche: b.niche || null, source: 'website', notes: note,
+        }]).select('id').single()
+        if (leadErr) console.error('upsert_managed_purchase: lead insert failed:', leadErr.message)
+        leadId = lead?.id ?? null
+      }
+
+      const { data: client, error: clientErr } = await supabase.from('clients').insert([{
+        type: 'managed', company_name: company || name || email, contact_name: name || null,
+        email, phone, management_fee: monthly, stage: 'onboarding', onboarding_sub_stage: 'Paid & Signed',
+        ql_hq_company_id: hqId, created_at: nowIso,
+      }]).select('id').single()
+      if (clientErr || !client) {
+        console.error('upsert_managed_purchase: client insert failed:', clientErr?.message)
+        return json({ error: clientErr?.message || 'client insert failed', lead_id: leadId }, 500)
+      }
+
+      const { error: ordErr } = await supabase.from('managed_order_log').insert([{
+        client_id: client.id, description: `Build fee - ${label} (paid online)`,
+        amount: buildFee, order_date: today, created_at: nowIso,
+      }])
+      if (ordErr) console.error('upsert_managed_purchase: build fee not logged:', ordErr.message)
+
+      const { error: taskErr } = await supabase.from('tasks').insert([{
+        title: `New system purchase - ${company || name || email} · ${label}`,
+        priority: 'urgent', done: false,
+        notes: `${note}\nPaid by card on the website. Their QuoteLeadsHQ account is created and the welcome email sent; next is the intro call and onboarding (Team Panel). Email: ${email}`,
+        created_at: nowIso,
+      }])
+      if (taskErr) console.warn('upsert_managed_purchase: task not created:', taskErr.message)
+
+      return json({ ok: true, client_id: client.id, lead_id: leadId, duplicate: false })
     }
 
     if (action !== 'upsert_ppl_client') {
