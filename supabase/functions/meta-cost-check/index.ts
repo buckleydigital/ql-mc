@@ -18,6 +18,9 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Meta's Graph API, at the version every Mission Control function now uses.
+const GRAPH = `https://graph.facebook.com/${Deno.env.get('META_GRAPH_VERSION') || 'v23.0'}`
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -163,7 +166,7 @@ serve(async (req) => {
     for (const cid of campaignIds) {
       const orders = ordersByCampaign[cid]
       try {
-        const url = `https://graph.facebook.com/v21.0/${cid}/insights?fields=spend,actions&time_range=${encodeURIComponent(JSON.stringify({ since, until }))}&access_token=${metaToken}`
+        const url = `${GRAPH}/${cid}/insights?fields=spend,actions&time_range=${encodeURIComponent(JSON.stringify({ since, until }))}&access_token=${metaToken}`
         const res = await fetch(url)
         const data = await res.json()
         if (!res.ok || data.error) throw new Error(data.error?.message || `HTTP ${res.status}`)
@@ -343,7 +346,7 @@ function countLeads(actions: any[] | undefined): number {
 
 async function setCampaignStatus(id: string, status: 'PAUSED' | 'ACTIVE', token: string) {
   try {
-    const res = await fetch(`https://graph.facebook.com/v21.0/${id}`, {
+    const res = await fetch(`${GRAPH}/${id}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status, access_token: token }),

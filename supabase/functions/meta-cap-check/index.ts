@@ -1,6 +1,9 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Meta's Graph API, at the version every Mission Control function now uses.
+const GRAPH = `https://graph.facebook.com/${Deno.env.get('META_GRAPH_VERSION') || 'v23.0'}`
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -275,7 +278,7 @@ async function toggleCampaigns(
   const results = []
   for (const id of campaignIds) {
     try {
-      const res = await fetch(`https://graph.facebook.com/v21.0/${id}`, {
+      const res = await fetch(`${GRAPH}/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: action, access_token: token }),

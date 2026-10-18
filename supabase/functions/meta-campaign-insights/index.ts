@@ -1,6 +1,9 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Meta's Graph API, at the version every Mission Control function now uses.
+const GRAPH = `https://graph.facebook.com/${Deno.env.get('META_GRAPH_VERSION') || 'v23.0'}`
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -96,7 +99,7 @@ serve(async (req) => {
       try {
         // Fetch campaign status + insights in one call
         const fields = 'name,status,effective_status'
-        const statusUrl = `https://graph.facebook.com/v21.0/${camp.meta_campaign_id}?fields=${fields}&access_token=${metaToken}`
+        const statusUrl = `${GRAPH}/${camp.meta_campaign_id}?fields=${fields}&access_token=${metaToken}`
         const statusRes = await fetch(statusUrl)
         const statusData = await statusRes.json()
 
@@ -111,7 +114,7 @@ serve(async (req) => {
         }
 
         // Fetch insights for this month
-        const insightsUrl = `https://graph.facebook.com/v21.0/${camp.meta_campaign_id}/insights?fields=spend,impressions,clicks,actions,cpm,ctr,cpc&time_range={"since":"${sinceStr}","until":"${todayStr}"}&access_token=${metaToken}`
+        const insightsUrl = `${GRAPH}/${camp.meta_campaign_id}/insights?fields=spend,impressions,clicks,actions,cpm,ctr,cpc&time_range={"since":"${sinceStr}","until":"${todayStr}"}&access_token=${metaToken}`
         const insightsRes = await fetch(insightsUrl)
         const insightsData = await insightsRes.json()
 

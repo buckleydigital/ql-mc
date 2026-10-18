@@ -1,6 +1,9 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Meta's Graph API, at the version every Mission Control function now uses.
+const GRAPH = `https://graph.facebook.com/${Deno.env.get('META_GRAPH_VERSION') || 'v23.0'}`
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -40,7 +43,7 @@ serve(async (req) => {
 
     for (const campaignId of campaign_ids) {
       try {
-        const url = `https://graph.facebook.com/v21.0/${campaignId}`
+        const url = `${GRAPH}/${campaignId}`
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
