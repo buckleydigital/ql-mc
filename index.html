@@ -2807,7 +2807,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
         <option>Solar Residential</option><option>Solar Commercial</option><option>Battery Storage</option><option>Battery Retrofit</option><option>EV Charger</option><option>HVAC</option><option>Roofing - Restorations</option><option>Roofing - Replacements</option><option>Renovation - Kitchens</option><option>Renovation - Bathrooms</option><option>Renovation - Decks</option><option>Renovation - Fencing</option><option>Carpentry</option><option>Other</option>
       </select>
     </div>
-    <div class="frow"><label class="flabel">Active Niches <span style="font-size:12px;color:var(--ink3);font-weight:400">all niches this client accepts</span></label><input class="fi" id="ep-active-niches" placeholder="solar, hvac, roofing"></div>
+    <div class="frow"><label class="flabel">Active Niches <span style="font-size:12px;color:var(--ink3);font-weight:400">all niches this client accepts</span></label><input class="fi" id="ep-active-niches" placeholder="solar_and_battery, battery_retrofit, aircon"></div>
     <div class="frow"><label class="flabel">Price Per Lead Sold (AUD)</label><input class="fi" id="ep-price" type="number" oninput="updatePplCalc()"></div>
     <div class="frow"><label class="flabel">Meta CPL (AUD) <span style="font-size:12px;color:var(--ink3);font-weight:400">optional - overrides global avg</span></label><input class="fi" id="ep-meta-cpl" type="number" placeholder="e.g. 28.50"></div>
     <div class="frow"><label class="flabel">% Sold</label><input class="fi" id="ep-pct" type="number" placeholder="e.g. 70"></div>
@@ -3245,11 +3245,9 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
     <h2>Submit Test Lead</h2><div class="msub">Simulates an incoming ad lead through the full pipeline</div>
     <div class="frow"><label class="flabel">Niche</label>
       <select class="fs" id="tl-niche" onchange="toggleTestLeadFields()">
-        <option value="solar">Solar</option>
-        <option value="roofing">Roofing</option>
-        <option value="hvac">HVAC</option>
-        <option value="renovations">Renovations</option>
+        <option value="solar_and_battery">Solar + Battery</option>
         <option value="battery_retrofit">Battery Retrofit</option>
+        <option value="aircon">HVAC (aircon)</option>
       </select>
     </div>
     <div class="frow"><label class="flabel">Full Name</label><input class="fi" id="tl-name" value="Jane Test"></div>
@@ -4388,7 +4386,7 @@ async function populateTestLeadNiches() {
   const sel = $('tl-niche');
   if (!sel) return;
   // Default niches shown when DB has no data yet
-  const defaultNiches = ['solar', 'roofing', 'hvac', 'renovations', 'battery_retrofit'];
+  const defaultNiches = ['solar_and_battery', 'battery_retrofit', 'aircon'];
   try {
     // ppl_leads is the dedicated distribution-leads table - no filter needed.
     const { data } = await db.from('ppl_leads')
@@ -4405,7 +4403,7 @@ async function populateTestLeadNiches() {
 
 function toggleTestLeadFields() {
   const niche = document.getElementById('tl-niche').value;
-  const isSolar = niche === 'solar';
+  const isSolar = niche === 'solar' || niche === 'solar_and_battery' || niche === 'battery_retrofit';
   document.getElementById('tl-solar-fields').style.display = isSolar ? '' : 'none';
   document.getElementById('tl-custom-json-row').style.display = isSolar ? 'none' : '';
 }

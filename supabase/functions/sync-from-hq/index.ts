@@ -93,7 +93,7 @@ Deno.serve(async (req: Request) => {
       // so an honest unknown beats a confident wrong one.
       const NICHE: Record<string, string> = {
         // slugs (solar funnel)
-        solar: 'solar', solar_battery: 'solar',
+        solar: 'solar', solar_battery: 'solar', solar_and_battery: 'solar',
         battery_retrofit: 'battery_retrofit', commercial_solar: 'solar',
         // slugs the /get-started page maps its trade choices onto
         hvac: 'HVAC', roofing: 'Roofing', renovation: 'Renovation',
@@ -497,11 +497,12 @@ Deno.serve(async (req: Request) => {
     const nicheLabel  = [niche, sub_niche].filter(Boolean).join(' › ')
 
     // submit-lead routes on clients.active_niches against the lead_type the
-    // forms send. The solar forms send ql-hq's own slugs (solar_battery,
-    // battery_retrofit), so those are used as they are. The HVAC forms send
-    // 'aircon', not ql-hq's 'hvac', so an HVAC client gets 'aircon' as well.
+    // forms send. The solar forms send ql-hq's own slugs (solar_and_battery,
+    // battery_retrofit), so those are used as they are; solar_battery is the
+    // old name for solar_and_battery. The HVAC forms send 'aircon', not
+    // ql-hq's 'hvac', so an HVAC client gets 'aircon' as well.
     const ROUTING_NICHE: Record<string, string> = {
-      solar_and_battery: 'solar_battery',
+      solar_battery: 'solar_and_battery',
       hvac: 'aircon',
     }
     const nicheSlug    = String(niche || '').toLowerCase().trim().replace(/-/g, '_')
