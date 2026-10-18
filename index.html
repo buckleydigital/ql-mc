@@ -5110,6 +5110,27 @@ async function drop(e,prefix,newStage) {
   if (prefix==='crm') loadCRM(); else if (prefix==='hiring') loadHiring(); else if (prefix==='ppl') loadPPL(); else loadManaged();
 }
 
+// One rule for "needs follow-up", shared by the Sales Pipeline banner, the
+// bell and the Finance tile so they always count the same leads. They used to
+// each have their own: the bell counted passed follow-up dates, the banner
+// counted leads not contacted for 7 days, and the two lists barely overlapped.
+// A lead needs it when it is open, not marked uncontactable, and either its
+// follow-up date has come, or it has no follow-up date and has gone 7+ days
+// without contact (or has never been contacted and was not marked
+// contactable). A future follow-up date means it is scheduled, not overdue.
+const FOLLOWUP_STALE_DAYS = 7;
+function sydneyToday() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date());
+}
+function crmNeedsFollowup(l, today = sydneyToday()) {
+  if (['closed_won','closed_lost','churned'].includes(l.stage)) return false;
+  if (l.contactable === false) return false;
+  if (l.next_followup) return l.next_followup <= today;
+  if (!l.last_contact) return l.contactable !== true;
+  return (Date.now() - new Date(l.last_contact)) / 86400000 >= FOLLOWUP_STALE_DAYS;
+}
+const CRM_FOLLOWUP_COLS = 'id,name,company,stage,next_followup,last_contact,contactable';
+
 const CRM_STAGES=[{id:'new_lead',label:'New Lead'},{id:'no_answer',label:'No Answer'},{id:'call_back',label:'Call-Back/Booked'},{id:'proposal',label:'Proposal'},{id:'closed_won',label:'Closed Won'},{id:'closed_lost',label:'Closed Lost'}];
 async function loadCRM(resetPage) {
   if (resetPage) crmPage = 0;
@@ -5238,12 +5259,8 @@ function renderCRM() {
       ? valued.length + ' closes · inc GST'
       : (won ? 'no values entered' : ''));
   }
-  const staleLeads=pipeline.filter(l=>{
-    if (['closed_won','closed_lost'].includes(l.stage)) return false;
-    if (l.contactable===false) return false;
-    if (!l.last_contact) return l.contactable!==true; // "not yet contacted" only when not explicitly contactable
-    return Math.floor((Date.now()-new Date(l.last_contact))/(1000*86400))>=7;
-  });
+  const _fuToday=sydneyToday();
+  const staleLeads=pipeline.filter(l=>crmNeedsFollowup(l,_fuToday));
   const badge=$('crm-followup-badge'),banner=$('crm-followup-banner');
   if (badge){badge.textContent=staleLeads.length;badge.style.display=staleLeads.length>0?'inline':'none';}
   if (banner){
@@ -5252,7 +5269,8 @@ function renderCRM() {
       setText('crm-followup-count',staleLeads.length);
       const names=staleLeads.slice(0,4).map(l=>{
         const d=l.last_contact?Math.floor((Date.now()-new Date(l.last_contact))/(1000*86400)):null;
-        return `${esc(l.name||l.company||'Unknown')} (${d!==null?d+'d':'no contact'})`;
+        const why=l.next_followup?'due '+l.next_followup:(d!==null?d+'d':'no contact');
+        return `${esc(l.name||l.company||'Unknown')} (${why})`;
       }).join(', ')+(staleLeads.length>4?` +${staleLeads.length-4} more`:'');
       setText('crm-followup-names',names);
     } else { banner.style.display='none'; }
@@ -7896,7 +7914,7 @@ async function loadFinance() {
     db.from('ppl_order_log').select('id,client_id,leads_qty,status,sla_due_date,order_date').eq('status','in_progress'),
     db.from('ppl_order_log').select('id,client_id,leads_qty,sla_due_date,order_date,clients(company_name)').eq('status','in_progress').lte('sla_due_date',today).not('sla_due_date','is',null),
     db.from('monthly_goals').select('revenue_goal,month').gte('month',`${curYear}-01`).lte('month',`${curYear}-12`),
-    db.from('leads').select('id,stage,next_followup').in('stage',['new_lead','call_back','no_answer','onboarding','proposal','proposal_sent']),
+    db.from('leads').select(CRM_FOLLOWUP_COLS).not('stage','in','(closed_won,closed_lost,churned)'),
     db.from('ppl_leads').select('id,status').in('status',['pending','assigned']),
   ]);
   const latestAgSpend = (spR.data||[]).find(a=>a.account_type==='agency')?.spend || 0;
@@ -7938,7 +7956,7 @@ async function loadFinance() {
   const goals = goalsR.data||[];
   const ytdMonth = today.slice(0,7);
   const ytdGoalRev = goals.filter(g=>g.month<=ytdMonth).reduce((s,g)=>s+(g.revenue_goal||0),0);
-  const crmFollowups = (crmR.data||[]).filter(l=>l.next_followup&&l.next_followup<=today).length;
+  const crmFollowups = (crmR.data||[]).filter(l=>crmNeedsFollowup(l)).length;
   const pendingLeads = (pplLeadsR.data||[]).filter(l=>l.status==='pending').length;
   const extras = {mtdRev,curMonthKey,activeOrders,overdueOrders,dueSoon,ytdGoalRev,crmFollowups,pendingLeads,today,weekAhead};
   renderFinance(expR.data||[],spR.data||[],subR.data||[],pplR.data||[],mgR.data||[],mgOrdR.data||[],pplOrdR.data||[],from,next,spendLogR.data||[],agSp,{priorTotalRev,priorTotalExp,mgRevNext},extras);
@@ -9593,7 +9611,7 @@ async function loadAlerts() {
   const [slaR, mgR, crmR, dueSoonR] = await Promise.all([
     db.from('ppl_order_log').select('id,client_id,sla_due_date,clients(company_name)').eq('status','in_progress').lte('sla_due_date',today).not('sla_due_date','is',null),
     db.from('clients').select('id,stage,next_payment_date,company_name,ads_first_live_date,active_months').eq('type','managed'),
-    db.from('leads').select('id,stage,next_followup').in('stage',['new_lead','call_back','no_answer','onboarding','proposal','proposal_sent']),
+    db.from('leads').select(CRM_FOLLOWUP_COLS).not('stage','in','(closed_won,closed_lost,churned)'),
     db.from('ppl_order_log').select('id,client_id,sla_due_date,clients(company_name)').eq('status','in_progress').gt('sla_due_date',today).lte('sla_due_date',weekAhead).not('sla_due_date','is',null),
   ]);
   const overdueOrders = slaR.data||[];
@@ -9601,7 +9619,7 @@ async function loadAlerts() {
   // looking for it, which is most of the work it was supposed to save.
   const overduePayments = (mgR.data||[]).filter(c=>c.stage==='active'&&c.next_payment_date&&c.next_payment_date<today);
   const dueSoonOrders = dueSoonR.data||[];
-  const crmFollowups = (crmR.data||[]).filter(l=>l.next_followup&&l.next_followup<=today);
+  const crmFollowups = (crmR.data||[]).filter(l=>crmNeedsFollowup(l));
   // Managed clients: first month report 30 days after ads go live (shown until
   // day 60 so a late one still gets caught), and an invoice reminder 7 days
   // before each payment once they're past month one. Month one isn't ticked
