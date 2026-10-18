@@ -496,17 +496,29 @@ Deno.serve(async (req: Request) => {
     const pplPrice    = parseFloat(String(price_per_lead)) || 0
     const nicheLabel  = [niche, sub_niche].filter(Boolean).join(' › ')
 
+    // submit-lead routes on clients.active_niches against the lead_type the
+    // forms send, which is 'solar' or 'aircon' - never ql-hq's PPL slugs. So
+    // the slug alone matches no lead and a new client sits at zero leads until
+    // someone edits it by hand. Battery retrofit is fed by the solar forms.
+    // The slug is kept too, in case a form ever sends it.
+    const ROUTING_NICHE: Record<string, string> = {
+      solar_battery: 'solar', solar_and_battery: 'solar', battery_retrofit: 'solar', solar: 'solar',
+      hvac: 'aircon', aircon: 'aircon',
+    }
+    const nicheSlug    = String(niche || '').toLowerCase().trim().replace(/-/g, '_')
+    const routingNiches = [...new Set([ROUTING_NICHE[nicheSlug], nicheSlug].filter(Boolean))]
+
     // Prefer lookup by ql_hq_company_id; fall back to email match on PPL clients
     let { data: existing } = await supabase
       .from('clients')
-      .select('id, total_leads_purchased, has_reordered')
+      .select('id, total_leads_purchased, has_reordered, active_niches')
       .eq('ql_hq_company_id', ql_hq_company_id)
       .maybeSingle()
 
     if (!existing) {
       const { data: byEmail } = await supabase
         .from('clients')
-        .select('id, total_leads_purchased, has_reordered')
+        .select('id, total_leads_purchased, has_reordered, active_niches')
         .eq('email', email)
         .eq('type', 'ppl')
         .maybeSingle()
@@ -531,12 +543,16 @@ Deno.serve(async (req: Request) => {
         .eq('client_id', clientId)
 
       const newTotal = (existing.total_leads_purchased || 0) + qty
+      // A re-order can be for another niche; add it so its leads route too.
+      // Niches already on the client (set by hand or earlier) are kept.
+      const activeNiches = [...new Set([...((existing.active_niches as string[] | null) || []), ...routingNiches])]
 
       await supabase.from('clients').update({
         ql_hq_company_id,
         stage:                 'active_client',
         total_leads_purchased: newTotal,
         has_reordered:         (priorOrders || 0) >= 1,
+        active_niches:         activeNiches,
         updated_at:            new Date().toISOString(),
         ...((areaPostcodes || postcodes.length > 0) && { postcodes }),
       }).eq('id', clientId)
@@ -553,7 +569,7 @@ Deno.serve(async (req: Request) => {
           phone:                 normPhone,
           stage:                 'active_client',
           niche:                 nicheLabel,
-          active_niches:         [niche].filter(Boolean),
+          active_niches:         routingNiches,
           lead_price:            pplPrice,
           total_leads_purchased: qty,
           leads_delivered:       0,
@@ -577,8 +593,10 @@ Deno.serve(async (req: Request) => {
       clientId     = newClient.id
       resultAction = 'created'
 
-      // Auto-task so the team knows to configure campaigns
-      await supabase.from('tasks').insert([{
+      // Auto-task so the team knows to configure campaigns. Non-fatal. A
+      // supabase query has no .catch(), so chaining one threw a TypeError
+      // here, which failed the whole call before the order was logged.
+      const { error: taskErr } = await supabase.from('tasks').insert([{
         title:      `New PPL signup — ${company_name || email} · ${qty} × ${nicheLabel} leads`,
         priority:   'urgent',
         done:       false,
@@ -586,7 +604,8 @@ Deno.serve(async (req: Request) => {
           ? `Auto-created from ql-hq checkout. Postcodes are set from the order's areas. Link campaigns in the PPL Clients panel. Email: ${email}`
           : `Auto-created from ql-hq checkout. Configure postcodes and link campaigns in the PPL Clients panel. Email: ${email}`,
         created_at: new Date().toISOString(),
-      }]).catch((e: Error) => console.warn('task insert non-fatal:', e.message))
+      }])
+      if (taskErr) console.warn('task insert non-fatal:', taskErr.message)
     }
 
     // ── Append order to ppl_order_log ─────────────────────────────────────
