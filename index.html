@@ -551,7 +551,7 @@ td strong{font-weight:600}
   .or-batch-bar{flex-wrap:wrap}
   .or-batch-bar #or-batch-btn{flex:1 1 100%;padding:11px}
   #panel-outreach-batch .fi,#panel-outreach-sending .fi,#panel-outreach-stats .fi{font-size:16px}
-  #panel-outreach-stats .kg.c4{grid-template-columns:1fr 1fr;gap:10px}
+  #panel-outreach-stats .kg.c4,#panel-outreach-stats .kg.c5{grid-template-columns:1fr 1fr;gap:10px}
   #panel-outreach-stats .kpi{padding:12px 14px}
   #panel-outreach-sending .ph-right{width:100%}
   #panel-outreach-sending .ph-right .btn{flex:1}
@@ -1854,7 +1854,8 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
             <button class="btn btn-sm" onclick="loadOutreachStats()">↻ Refresh</button>
           </div>
         </div>
-        <div class="kg c4 mb4">
+        <div class="kg c5 mb4">
+          <div class="kpi"><div class="klabel">Emails Sent</div><div class="kval blu" id="ost-sent">-</div><div class="ksub" id="ost-sent-sub">incl. follow-ups</div></div>
           <div class="kpi"><div class="klabel">Businesses Emailed</div><div class="kval blu" id="ost-emailed">-</div><div class="ksub" id="ost-emailed-sub">-</div></div>
           <div class="kpi"><div class="klabel">Reply Rate</div><div class="kval" id="ost-reply">-</div><div class="ksub" id="ost-reply-sub">-</div></div>
           <div class="kpi"><div class="klabel">Interested</div><div class="kval grn" id="ost-int">-</div><div class="ksub" id="ost-int-sub">-</div></div>
@@ -11395,10 +11396,21 @@ function toggleDailyTable() {
 async function loadInstantlyStats(days) {
   const host = $('ost-instantly');
   host.innerHTML = '<div class="empty">Asking Instantly…</div>';
+  setText('ost-sent', '…');
   let r;
   try { r = await orSend('stats', { days: days }); }
-  catch (err) { host.innerHTML = '<div class="empty" style="color:var(--red)">' + jmEsc(err.message) + '</div>'; return; }
+  catch (err) {
+    host.innerHTML = '<div class="empty" style="color:var(--red)">' + jmEsc(err.message) + '</div>';
+    setText('ost-sent', '-'); setText('ost-sent-sub', 'Instantly unavailable');
+    return;
+  }
   const camps = r.campaigns || [], accts = r.accounts || [];
+  // Every email Instantly has sent across all campaigns, follow-ups included,
+  // for the selected period. "Businesses Emailed" counts each business once.
+  const sentTotal = camps.reduce(function (a, c) { return a + Number(c.sent || 0); }, 0);
+  const reached = camps.reduce(function (a, c) { return a + Number(c.contacted || 0); }, 0);
+  setText('ost-sent', sentTotal);
+  setText('ost-sent-sub', 'incl. follow-ups · to ' + reached + ' business' + (reached === 1 ? '' : 'es'));
   const pill = function (t) {
     const cls = /active|warming/.test(t) ? 'good' : /paused|draft|maintenance|completed/.test(t) ? 'warn' : 'bad';
     return '<span class="or-pill ' + cls + '">' + jmEsc(t) + '</span>';
