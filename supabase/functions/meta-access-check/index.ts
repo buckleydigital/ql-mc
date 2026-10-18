@@ -66,15 +66,34 @@ Deno.serve(async (req: Request) => {
   const me = await meRes.json().catch(() => ({}))
   if (!meRes.ok || me.error) return json({ ok: false, step: 'token', error: me.error ?? { message: `HTTP ${meRes.status}` } })
 
+  const body = await req.json().catch(() => ({})) as { probe_account?: string; probe_page?: string }
+  const get = async (path: string, as = token) => {
+    const r = await fetch(`${GRAPH}/${path}${path.includes('?') ? '&' : '?'}access_token=${encodeURIComponent(as)}`)
+    return await r.json().catch(() => ({}))
+  }
+
+  // { "probe_page": "123" }: what the token may do for lead forms on one Page:
+  // its permissions, the Page's own token and its existing instant forms.
+  const page = digits(body.probe_page)
+  if (page) {
+    const app = Deno.env.get('META_APP_ID'), secret = Deno.env.get('META_APP_SECRET')
+    const debug = app && secret ? await get(`debug_token?input_token=${encodeURIComponent(token)}`, `${app}|${secret}`) : { note: 'META_APP_ID/META_APP_SECRET not set' }
+    const [perms, info] = await Promise.all([
+      get('me/permissions'),
+      get(`${page}?fields=id,name,access_token,leadgen_tos_accepted`),
+    ])
+    const pageToken = (info as { access_token?: string }).access_token
+    const forms = pageToken ? await get(`${page}/leadgen_forms?fields=id,name,status,locale,questions,privacy_policy_url,created_time&limit=5`, pageToken) : null
+    const leads = pageToken && (forms as { data?: { id: string }[] })?.data?.[0]
+      ? await get(`${(forms as { data: { id: string }[] }).data[0].id}/leads?limit=1&fields=id,created_time`, pageToken) : null
+    delete (info as { access_token?: string }).access_token
+    return json({ ok: true, token_user: me, page, permissions: perms, debug, info, page_token: !!pageToken, forms, leads })
+  }
+
   // { "probe_account": "123" }: how Meta reports one ad account to us, and
   // through what relationship we can see it. Still read-only.
-  const body = await req.json().catch(() => ({})) as { probe_account?: string }
   const probe = digits(body.probe_account)
   if (probe) {
-    const get = async (path: string) => {
-      const r = await fetch(`${GRAPH}/${path}${path.includes('?') ? '&' : '?'}access_token=${encodeURIComponent(token)}`)
-      return await r.json().catch(() => ({}))
-    }
     const [account, assigned, agencies, pending, systemUsers, businessUsers] = await Promise.all([
       get(`act_${probe}?fields=account_id,name,account_status,currency,business{id,name},owner`),
       get(`act_${probe}/assigned_users?business=${BUSINESS_ID}&fields=id,name,tasks`),

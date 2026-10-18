@@ -24,3 +24,6 @@ verify_jwt = false
 
 [functions.meta-access-check]
 verify_jwt = false
+
+[functions.register-campaign]
+verify_jwt = false
