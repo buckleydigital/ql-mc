@@ -66,6 +66,24 @@ Deno.serve(async (req: Request) => {
   const me = await meRes.json().catch(() => ({}))
   if (!meRes.ok || me.error) return json({ ok: false, step: 'token', error: me.error ?? { message: `HTTP ${meRes.status}` } })
 
+  // { "probe_account": "123" }: how Meta reports one ad account to us, and
+  // through what relationship we can see it. Still read-only.
+  const body = await req.json().catch(() => ({})) as { probe_account?: string }
+  const probe = digits(body.probe_account)
+  if (probe) {
+    const get = async (path: string) => {
+      const r = await fetch(`${GRAPH}/${path}${path.includes('?') ? '&' : '?'}access_token=${encodeURIComponent(token)}`)
+      return await r.json().catch(() => ({}))
+    }
+    const [account, assigned, agencies, pending] = await Promise.all([
+      get(`act_${probe}?fields=account_id,name,account_status,currency,business{id,name},owner`),
+      get(`act_${probe}/assigned_users?business=${BUSINESS_ID}&fields=id,name,tasks`),
+      get(`act_${probe}/agencies?fields=id,name,access_status,access_requested_time`),
+      get(`${BUSINESS_ID}/pending_client_ad_accounts?fields=ad_account{account_id,name},access_status`),
+    ])
+    return json({ ok: true, token_user: me, probe, account, assigned_users: assigned, agencies, pending_client_ad_accounts: pending })
+  }
+
   const [shared, owned, sharedPages, ownedPages] = await Promise.all([
     graphList(`${BUSINESS_ID}/client_ad_accounts?fields=${AD_ACCOUNT_FIELDS}`, token),
     graphList(`${BUSINESS_ID}/owned_ad_accounts?fields=${AD_ACCOUNT_FIELDS}`, token),
