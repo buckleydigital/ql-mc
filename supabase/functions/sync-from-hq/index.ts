@@ -497,13 +497,12 @@ Deno.serve(async (req: Request) => {
     const nicheLabel  = [niche, sub_niche].filter(Boolean).join(' › ')
 
     // submit-lead routes on clients.active_niches against the lead_type the
-    // forms send, which is 'solar' or 'aircon' - never ql-hq's PPL slugs. So
-    // the slug alone matches no lead and a new client sits at zero leads until
-    // someone edits it by hand. Battery retrofit is fed by the solar forms.
-    // The slug is kept too, in case a form ever sends it.
+    // forms send. The solar forms send ql-hq's own slugs (solar_battery,
+    // battery_retrofit), so those are used as they are. The HVAC forms send
+    // 'aircon', not ql-hq's 'hvac', so an HVAC client gets 'aircon' as well.
     const ROUTING_NICHE: Record<string, string> = {
-      solar_battery: 'solar', solar_and_battery: 'solar', battery_retrofit: 'solar', solar: 'solar',
-      hvac: 'aircon', aircon: 'aircon',
+      solar_and_battery: 'solar_battery',
+      hvac: 'aircon',
     }
     const nicheSlug    = String(niche || '').toLowerCase().trim().replace(/-/g, '_')
     const routingNiches = [...new Set([ROUTING_NICHE[nicheSlug], nicheSlug].filter(Boolean))]
