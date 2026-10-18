@@ -11176,6 +11176,35 @@ async function loadOutreachEvents() {
 
 // ── Today's batch ─────────────────────────────────────────────────────────
 let orBatch = [];
+// The result of the last Approve & send, kept on the page: the toast is gone
+// in three seconds and the approved businesses leave the list, which read as
+// "nothing happened".
+let orLastApproval = '';
+
+// When Instantly will next send, in words. Campaigns send Monday to Friday
+// between send_from and send_to in the sender's timezone (campaignBody in
+// outreach-send), so an approval outside those hours waits for the next one.
+function orNextSendText(s) {
+  const tz = (s && s.timezone) || 'Australia/Brisbane';
+  const from = (s && s.send_from) || '08:30', to = (s && s.send_to) || '16:30';
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-AU', { timeZone: tz, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(new Date()).map(function (x) { return [x.type, x.value]; }));
+  const NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  let d = NAMES.findIndex(function (n) { return n.slice(0, 3) === p.weekday.slice(0, 3); });
+  const now = p.hour + ':' + p.minute;
+  const isWeekday = function (x) { return x >= 1 && x <= 5; };
+  const fmt = function (hm) {
+    let [h, m] = hm.split(':').map(Number); const ap = h >= 12 ? 'pm' : 'am'; h = h % 12 || 12;
+    return h + (m ? ':' + String(m).padStart(2, '0') : '') + ap;
+  };
+  const place = tz.split('/').pop().replace(/_/g, ' ') + ' time';
+  if (isWeekday(d) && now >= from && now < to) return 'Instantly is sending now, until ' + fmt(to) + ' ' + place;
+  let ahead = 0;
+  if (!(isWeekday(d) && now < from)) { do { d = (d + 1) % 7; ahead++; } while (!isWeekday(d)); }
+  const when = ahead === 0 ? 'today' : ahead === 1 ? 'tomorrow (' + NAMES[d] + ')' : NAMES[d];
+  return 'first emails go out ' + when + ' from ' + fmt(from) + ' ' + place + ' (Instantly sends Mon to Fri, ' + fmt(from) + ' to ' + fmt(to) + ')';
+}
+
 async function loadBatch() {
   const host = $('or-batch-list'), note = $('or-batch-note');
   const [candR, campR, setR] = await Promise.all([
@@ -11193,6 +11222,10 @@ async function loadBatch() {
     ? 'Sending for: ' + ready.map(function (c) { return '<b>' + jmEsc(c.label) + '</b>'; }).join(', ') + '. Each niche\'s best ' +
       'prospects are ticked up to its daily target.'
     : 'No niche is ready to send yet: write and approve its sequence, then Sync, on the <a href="#" onclick="nav(\'outreach-sending\');return false" style="color:var(--acc)">Sending</a> tab.';
+  if (orLastApproval) {
+    note.innerHTML = '<div style="margin-bottom:8px;padding:8px 10px;border:1px solid var(--line,rgba(127,127,127,.25));border-radius:var(--r);color:var(--ink)"><b>Last approval:</b> ' +
+      jmEsc(orLastApproval) + '</div>' + note.innerHTML;
+  }
   if (!orBatch.length) {
     host.innerHTML = '<div class="empty">Nobody ready for review. Run today\'s search on the Overview tab.</div>';
     $('or-batch-bar').style.display = 'none';
@@ -11266,11 +11299,14 @@ async function approveBatch() {
       const uploaded = Object.values(res).reduce(function (a, v) { return a + (typeof v === 'object' && v ? Number(v.uploaded || 0) : 0); }, 0);
       const problems = Object.keys(res).filter(function (k) { return typeof res[k] === 'string'; }).map(function (k) { return k + ': ' + res[k]; });
       msg += ' · ' + uploaded + ' in Instantly' + (problems.length ? ' · ' + problems.join('; ') : '');
+      if (uploaded) msg += ' · ' + orNextSendText(orSender);
     }
     if (skipped.length) msg += ' · ' + skipped.length + ' skipped (' + skipped.slice(0, 3).map(function (s) { return s.business + ': ' + s.reason; }).join('; ') + (skipped.length > 3 ? '…' : '') + ')';
     toast(msg);
+    orLastApproval = msg;
   } catch (err) {
     toast('Could not send: ' + (err.message || err), true);
+    orLastApproval = 'Could not send: ' + (err.message || err);
   } finally {
     loadBatch();
   }
