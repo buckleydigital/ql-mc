@@ -1,9 +1,10 @@
 // register-campaign - ql-hq built a campaign for a managed client; record it.
 //
-// ql-hq's campaign-build makes the campaign in the client's ad account (always
-// paused) and calls this, so Mission Control's spend checks, insights and on/off
-// switch, which all start from meta_campaigns, know it exists, and the client
-// card lists it. Fills clients.ad_account_id only when nobody has typed one in.
+// ql-hq's campaign-build makes the campaign in the client's own ad account
+// (always paused) and calls this. It goes in managed_campaigns, managed
+// advertising's own list: never in meta_campaigns or clients.meta_campaign_ids,
+// which are pay-per-lead's and are synced, capped and cost-checked as such.
+// Fills clients.ad_account_id only when nobody has typed one in.
 //
 // POST { hq_company_id, campaign: { meta_campaign_id, ad_account_id, name,
 // status, notes } } with x-api-secret (QL_MC_API_SECRET), as sync-from-hq.
@@ -32,8 +33,13 @@ Deno.serve(async (req: Request) => {
     }
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
-    const { error: campErr } = await supabase.from('meta_campaigns').upsert({
+    const { data: client } = await supabase.from('clients')
+      .select('id, ad_account_id').eq('ql_hq_company_id', hq_company_id).maybeSingle()
+
+    const { error: campErr } = await supabase.from('managed_campaigns').upsert({
       meta_campaign_id: campaignId,
+      hq_company_id,
+      client_id: client?.id ?? null,
       ad_account_id: account,
       name: String(campaign?.name || `Campaign ${campaignId}`).slice(0, 200),
       status: campaign?.status === 'ACTIVE' ? 'ACTIVE' : 'PAUSED',
@@ -42,16 +48,13 @@ Deno.serve(async (req: Request) => {
     }, { onConflict: 'meta_campaign_id' })
     if (campErr) return json({ error: campErr.message }, 500)
 
-    const { data: client } = await supabase.from('clients')
-      .select('id, ad_account_id, meta_campaign_ids').eq('ql_hq_company_id', hq_company_id).maybeSingle()
     if (!client) return json({ ok: true, linked: false, reason: 'no matching ql-mc client' })
-    const patch: Record<string, unknown> = {
-      meta_campaign_ids: Array.from(new Set([...(client.meta_campaign_ids ?? []), campaignId])),
-      updated_at: new Date().toISOString(),
+    // Fill the ad account only when nobody has typed one in.
+    if (!String(client.ad_account_id || '').trim()) {
+      const { error: upErr } = await supabase.from('clients')
+        .update({ ad_account_id: account, updated_at: new Date().toISOString() }).eq('id', client.id)
+      if (upErr) return json({ error: upErr.message }, 500)
     }
-    if (!String(client.ad_account_id || '').trim()) patch.ad_account_id = account
-    const { error: upErr } = await supabase.from('clients').update(patch).eq('id', client.id)
-    if (upErr) return json({ error: upErr.message }, 500)
     return json({ ok: true, linked: true, client_id: client.id })
   } catch (err) {
     console.error('register-campaign error:', err)
