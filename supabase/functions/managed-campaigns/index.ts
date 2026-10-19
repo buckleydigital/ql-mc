@@ -226,7 +226,7 @@ Deno.serve(async (req: Request) => {
       const r = await fetch(`${Deno.env.get('QL_HQ_API_URL')}/sync-from-mc`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-secret': Deno.env.get('QL_MC_API_SECRET') ?? '' },
-        body: JSON.stringify({ action: 'mark_ads_live', company_id: row.hq_company_id, actor_name: actor }),
+        body: JSON.stringify({ action: 'mark_ads_live', ql_hq_company_id: row.hq_company_id, actor_name: actor }),
       }).catch((e) => ({ ok: false, statusText: String(e) }) as Response)
       hq = r.ok ? 'ads live ticked' : `HQ not updated: ${r.statusText}`
     }
