@@ -10981,7 +10981,9 @@ function defaultSequence(n) {
     ('We build a lead system into ' + word + ' businesses: ads on your own Facebook and Google accounts, your own branded quote form, and a text back to every enquiry within seconds. The leads come to you only - never shared - and you own all of it.');
   return [
     { subject: word.charAt(0).toUpperCase() + word.slice(1) + ' leads in {suburb}', delay_days: 0,
-      body: 'Hi {first_name},\n\n{opener}\n\n' + offer + '\n\nMost are live within 48 hours, with no lock-in. Worth a quick chat?\n\nCheers,\n{sender}' },
+      // The offer carries the claims (48 hours, no lock-in), so the close
+      // must not repeat them.
+      body: 'Hi {first_name},\n\n{opener}\n\n' + offer + '\n\nWorth a quick chat?\n\nCheers,\n{sender}' },
     { subject: '', delay_days: 3,
       body: 'Hi {first_name},\n\nQuick one - where does most of your work come from at the moment: referrals, or the shared lead sites? If it is the shared sites, the difference with ours is that every enquiry goes to you and nobody else.\n\n{sender}' },
     { subject: '', delay_days: 4,
