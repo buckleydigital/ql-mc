@@ -128,7 +128,9 @@ function campaignBody(label: string, steps: Step[], s: Settings) {
       })),
     }],
     email_list: s.sending_accounts,
-    daily_limit: s.daily_limit,
+    // The cap is per inbox (set on each account in sync), so the campaign
+    // itself never holds sending below what the inboxes allow.
+    daily_limit: s.daily_limit * s.sending_accounts.length,
     stop_on_reply: true,
     stop_on_auto_reply: false,
     stop_for_company: true,
@@ -221,6 +223,17 @@ async function sync(db: SupabaseClient) {
   const webhook = await ensureWebhook(db, s)
   const blocked = await syncBlocklist(db)
 
+  // daily_limit is per inbox: each sending account gets it in Instantly.
+  const inboxes: Record<string, string> = {}
+  for (const email of s.sending_accounts) {
+    try {
+      await ig('PATCH', `/accounts/${encodeURIComponent(email)}`, { daily_limit: s.daily_limit })
+      inboxes[email] = `${s.daily_limit}/day`
+    } catch (e) {
+      inboxes[email] = `not set: ${(e as Error).message.slice(0, 80)}`
+    }
+  }
+
   const { data } = await db.from('outreach_niches')
     .select('key, label, sequence, sequence_approved_at, instantly_campaign_id, campaign_state')
     .not('sequence_approved_at', 'is', null)
@@ -241,7 +254,7 @@ async function sync(db: SupabaseClient) {
       results[n.key] = `failed: ${(e as Error).message}`
     }
   }
-  return { ok: true, webhook, blocklist: blocked, campaigns: results }
+  return { ok: true, webhook, blocklist: blocked, inboxes, campaigns: results }
 }
 
 type Queued = {
