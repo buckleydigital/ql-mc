@@ -1173,6 +1173,9 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           <button class="navbtn" data-panel="campaigns" onclick="nav('campaigns',this)">
             <span class="ni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 010 8.49M7.76 16.24a6 6 0 010-8.49M19.07 4.93a10 10 0 010 14.14M4.93 19.07a10 10 0 010-14.14"/></svg></span>Campaigns
           </button>
+          <button class="navbtn" data-panel="managed" onclick="nav('managed',this)">
+            <span class="ni"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></span>Managed Ads
+          </button>
           <button class="navbtn" data-panel="leads" onclick="nav('leads',this)">
             <span class="ni"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>PPL Lead Distribution
           </button>
@@ -1505,6 +1508,21 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           <div class="kpi"><div class="klabel">Total Generated</div><div class="kval" id="cpl-total-gen">-</div><div class="ksub">lifetime, all shown</div></div>
           <div class="kpi"><div class="klabel">Total Purchased</div><div class="kval" id="cpl-total-sold">-</div><div class="ksub">lifetime, all shown</div></div>
         </div>
+      </div>
+
+      <!-- ══ MANAGED ADS (done-for-you clients, separate from pay-per-lead) ══ -->
+      <div class="panel" id="panel-managed">
+        <div class="ph">
+          <div class="ph-left"><h1>Managed Ads</h1><p>Campaigns we build and run in clients' own ad accounts. Checked hourly; problems go to Jarvis.</p></div>
+          <div class="ph-right"><button class="btn btn-sm" onclick="loadManaged()">Refresh</button></div>
+        </div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Client</th><th>Status</th><th>Budget/day</th><th>Spend today</th><th>Spend 7d</th><th>Leads 7d</th><th>CPL 7d</th><th>CPL target</th><th>Issues</th><th></th></tr></thead>
+            <tbody id="managed-body"><tr><td colspan="10" style="color:var(--ink3)">Loading...</td></tr></tbody>
+          </table>
+        </div>
+        <div id="managed-preflight" style="margin-top:14px"></div>
       </div>
 
       <!-- ══ META CAMPAIGNS ══ -->
@@ -4308,6 +4326,7 @@ function nav(panel, el) {
   if (panel === 'broadcast') loadBroadcast();
   if (panel === 'pcal') loadPcal();
   if (panel === 'campaigns') { loadCampaigns(); renderMetaTokenBanner(); }
+  if (panel === 'managed') loadManaged();
   if (panel === 'leads') loadLeads();
   if (panel === 'sales-conv') loadSalesConversations();
   if (panel === 'invoices') loadInvoices();
@@ -12723,6 +12742,69 @@ const JV = (() => {
   };
 })();
 
+
+// ── Managed Ads: launch and watch (managed-campaigns function) ──
+async function managedCall(body) {
+  const {data:{session}} = await db.auth.getSession();
+  if (!session) throw new Error('Not authenticated');
+  const res = await fetch(`${_ep}/functions/v1/managed-campaigns`, {method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`}, body:JSON.stringify(body)});
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(out.error || `HTTP ${res.status}`);
+  return out;
+}
+const mEsc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mMoney = v => v == null ? '-' : '$' + Number(v).toFixed(2);
+async function loadManaged() {
+  const body = document.getElementById('managed-body');
+  try {
+    const {campaigns} = await managedCall({action:'list'});
+    if (!campaigns.length) { body.innerHTML = '<tr><td colspan="10" style="color:var(--ink3)">No managed campaigns yet. They appear here once HQ builds one.</td></tr>'; return; }
+    body.innerHTML = campaigns.map(c => {
+      const acct = String(c.ad_account_id || '').replace(/^act_/, '');
+      const live = c.status === 'ACTIVE';
+      const issues = (c.issues || []).map(i => `<div style="color:${i.tier==='urgent'?'var(--red)':'var(--ink2)'}">${mEsc(i.kind)}</div>`).join('') || '<span style="color:var(--ink3)">-</span>';
+      return `<tr>
+        <td><strong>${mEsc(c.clients?.company_name || c.name)}</strong><div style="font-size:11px;color:var(--ink3)">${mEsc(c.name)}</div></td>
+        <td>${live ? '<span style="color:var(--grn)">Live</span>' : 'Paused'}${c.effective_status && c.effective_status !== c.status ? `<div style="font-size:11px;color:var(--ink3)">${mEsc(c.effective_status)}</div>` : ''}</td>
+        <td>${mMoney(c.daily_budget)}</td><td>${mMoney(c.spend_today)}</td><td>${mMoney(c.spend_7d)}</td>
+        <td>${c.leads_7d ?? '-'}</td><td>${mMoney(c.cpl_7d)}</td>
+        <td><input type="number" min="1" step="1" style="width:70px" value="${c.clients?.managed_cpl_target ?? ''}" placeholder="$" onchange="managedTarget('${c.client_id}',this.value)" ${c.client_id ? '' : 'disabled'}></td>
+        <td style="font-size:12px">${issues}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-sm" onclick="managedPreflight('${c.id}')">Pre-flight</button>
+          ${live ? `<button class="btn btn-sm" onclick="managedPause('${c.id}')">Pause</button>` : `<button class="btn btn-p btn-sm" onclick="managedLaunch('${c.id}')">Launch</button>`}
+          <a class="btn btn-sm" target="_blank" rel="noopener" href="https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${encodeURIComponent(acct)}&selected_campaign_ids=${encodeURIComponent(c.meta_campaign_id)}">Ads Manager</a>
+        </td></tr>`;
+    }).join('');
+  } catch (e) { body.innerHTML = `<tr><td colspan="10" style="color:var(--red)">${mEsc(e.message)}</td></tr>`; }
+}
+function managedShowChecks(checks, title) {
+  const col = {pass:'var(--grn)', warn:'var(--amb)', fail:'var(--red)'};
+  document.getElementById('managed-preflight').innerHTML = `<div class="sl">${mEsc(title)} <div class="sl-line"></div></div>` +
+    (checks || []).map(c => `<div style="font-size:13px;padding:3px 0"><strong style="color:${col[c.result]};text-transform:uppercase;font-family:var(--mono);font-size:11px">${c.result}</strong> ${mEsc(c.check)}: ${mEsc(c.detail)}</div>`).join('');
+}
+async function managedPreflight(id) {
+  try { const r = await managedCall({action:'preflight', id}); managedShowChecks(r.checks, 'Pre-flight'); }
+  catch (e) { toast(e.message, true); }
+}
+async function managedLaunch(id) {
+  if (!confirm('Switch this campaign on? It starts spending the client\'s budget straight away.')) return;
+  try {
+    const r = await managedCall({action:'launch', id});
+    managedShowChecks(r.checks, r.ok ? 'Launched' : 'Not launched');
+    if (r.ok) toast('Campaign live' + (r.hq ? ` (${r.hq})` : '')); else toast(r.error || 'Pre-flight failed, see below', true);
+    loadManaged();
+  } catch (e) { toast(e.message, true); }
+}
+async function managedPause(id) {
+  if (!confirm('Pause this campaign?')) return;
+  try { const r = await managedCall({action:'pause', id}); r.ok ? toast('Paused') : toast(r.error, true); loadManaged(); }
+  catch (e) { toast(e.message, true); }
+}
+async function managedTarget(clientId, value) {
+  try { await managedCall({action:'set_target', client_id:clientId, cpl_target:value}); toast('CPL target saved'); }
+  catch (e) { toast(e.message, true); }
+}
 </script>
 
 </body>

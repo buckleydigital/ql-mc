@@ -27,3 +27,6 @@ verify_jwt = false
 
 [functions.register-campaign]
 verify_jwt = false
+
+[functions.managed-campaigns]
+verify_jwt = false
