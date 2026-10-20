@@ -1173,8 +1173,8 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           <button class="navbtn" data-panel="campaigns" onclick="nav('campaigns',this)">
             <span class="ni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 010 8.49M7.76 16.24a6 6 0 010-8.49M19.07 4.93a10 10 0 010 14.14M4.93 19.07a10 10 0 010-14.14"/></svg></span>Campaigns
           </button>
-          <button class="navbtn" data-panel="managed" onclick="nav('managed',this)">
-            <span class="ni"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></span>Managed Ads
+          <button class="navbtn" data-panel="mads" onclick="nav('mads',this)">
+            <span class="ni"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></span>Managed Campaigns
           </button>
           <button class="navbtn" data-panel="leads" onclick="nav('leads',this)">
             <span class="ni"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>PPL Lead Distribution
@@ -1511,10 +1511,10 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
       </div>
 
       <!-- ══ MANAGED ADS (done-for-you clients, separate from pay-per-lead) ══ -->
-      <div class="panel" id="panel-managed">
+      <div class="panel" id="panel-mads">
         <div class="ph">
-          <div class="ph-left"><h1>Managed Ads</h1><p>Campaigns we build and run in clients' own ad accounts. Checked hourly; problems go to Jarvis.</p></div>
-          <div class="ph-right"><button class="btn btn-sm" onclick="loadManaged()">Refresh</button></div>
+          <div class="ph-left"><h1>Managed Campaigns</h1><p>Campaigns we build and run in clients' own ad accounts. Checked hourly; problems go to Jarvis.</p></div>
+          <div class="ph-right"><button class="btn btn-sm" onclick="loadManagedAds()">Refresh</button></div>
         </div>
         <div class="twrap">
           <table>
@@ -4326,7 +4326,7 @@ function nav(panel, el) {
   if (panel === 'broadcast') loadBroadcast();
   if (panel === 'pcal') loadPcal();
   if (panel === 'campaigns') { loadCampaigns(); renderMetaTokenBanner(); }
-  if (panel === 'managed') loadManaged();
+  if (panel === 'mads') loadManagedAds();
   if (panel === 'leads') loadLeads();
   if (panel === 'sales-conv') loadSalesConversations();
   if (panel === 'invoices') loadInvoices();
@@ -12758,7 +12758,7 @@ async function managedCall(body) {
 }
 const mEsc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const mMoney = v => v == null ? '-' : '$' + Number(v).toFixed(2);
-async function loadManaged() {
+async function loadManagedAds() {
   const body = document.getElementById('managed-body');
   try {
     const {campaigns} = await managedCall({action:'list'});
@@ -12797,12 +12797,12 @@ async function managedLaunch(id) {
     const r = await managedCall({action:'launch', id});
     managedShowChecks(r.checks, r.ok ? 'Launched' : 'Not launched');
     if (r.ok) toast('Campaign live' + (r.hq ? ` (${r.hq})` : '')); else toast(r.error || 'Pre-flight failed, see below', true);
-    loadManaged();
+    loadManagedAds();
   } catch (e) { toast(e.message, true); }
 }
 async function managedPause(id) {
   if (!confirm('Pause this campaign?')) return;
-  try { const r = await managedCall({action:'pause', id}); r.ok ? toast('Paused') : toast(r.error, true); loadManaged(); }
+  try { const r = await managedCall({action:'pause', id}); r.ok ? toast('Paused') : toast(r.error, true); loadManagedAds(); }
   catch (e) { toast(e.message, true); }
 }
 async function managedTarget(clientId, value) {
