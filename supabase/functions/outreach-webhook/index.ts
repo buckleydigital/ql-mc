@@ -17,8 +17,11 @@
  *   email_bounced        -> 'bounced', and on the do-not-contact list
  *   account_error        -> an urgent note: an inbox has a problem
  *
- * A bounce never pauses a campaign: the address is put on the do-not-contact
- * list and sending carries on.
+ * Bounces are what get sending domains flagged, so after each one the niche's
+ * bounce rate over the last 7 days is checked, once 100 or more have been
+ * emailed: past 5% you get a heads-up (once a week) and sending carries on;
+ * past 10% its campaign is paused in Instantly and you get an urgent note.
+ * Resume it from the Sending tab once the list is fixed.
  *
  * Always answers 200 once the secret checks out, so one odd payload cannot
  * get the subscription disabled for repeated failures.
@@ -71,6 +74,45 @@ async function blockInInstantly(email: string) {
     body: JSON.stringify({ bl_value: email }),
     signal: AbortSignal.timeout(10_000),
   }).catch((e) => console.error('outreach-webhook: block in Instantly failed:', e))
+}
+
+/** Bounce rates that warn, then pause, a niche's campaign. */
+const BOUNCE_WARN = 0.05
+const BOUNCE_PAUSE = 0.10
+const BOUNCE_MIN_SENT = 100
+
+async function bounceGuard(db: SupabaseClient, niche: string): Promise<string> {
+  const { data } = await db.rpc('outreach_bounce_rate', { p_niche: niche })
+  const r = (data ?? {}) as { emailed?: number; bounced?: number }
+  const emailed = Number(r.emailed ?? 0), bounced = Number(r.bounced ?? 0)
+  if (emailed < BOUNCE_MIN_SENT || bounced / emailed <= BOUNCE_WARN) return ''
+  const { data: n } = await db.from('outreach_niches').select('label, instantly_campaign_id, campaign_state').eq('key', niche).single()
+  const row = n as { label: string; instantly_campaign_id: string | null; campaign_state: string | null } | null
+  if (!row?.instantly_campaign_id || row.campaign_state === 'paused') return ''
+  const pct = Math.round((1000 * bounced) / emailed) / 10
+
+  if (bounced / emailed <= BOUNCE_PAUSE) {
+    const warning = `${row.label} cold email is bouncing at`
+    const { count } = await db.from('jarvis_notifications').select('id', { count: 'exact', head: true })
+      .like('body', `${warning}%`).gte('created_at', new Date(Date.now() - 7 * 86_400_000).toISOString())
+    if (count) return ''
+    await note(db, 'notable', `${warning} ${pct}% this week (${bounced} of ${emailed}). Still sending - worth checking the latest prospects. It pauses itself past 10%.`)
+    return `, warned at ${pct}% bounces`
+  }
+
+  const key = Deno.env.get('INSTANTLY_API_KEY')
+  const res = key
+    ? await fetch(`https://api.instantly.ai/api/v2/campaigns/${row.instantly_campaign_id}/pause`, {
+        method: 'POST', headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(15_000),
+      }).catch(() => null)
+    : null
+  if (res?.ok) {
+    await db.from('outreach_niches').update({ campaign_state: 'paused' }).eq('key', niche)
+    await note(db, 'urgent', `Paused ${row.label} cold email: ${bounced} of ${emailed} bounced this week (${pct}%). Something is wrong with the list. Check it, then resume it on the Sending tab.`)
+    return `, ${row.label} paused at ${pct}% bounces`
+  }
+  await note(db, 'urgent', `${row.label} cold email is bouncing at ${pct}% this week and could not be paused automatically - pause it in Instantly now.`)
+  return `, could not pause at ${pct}% bounces`
 }
 
 type Prospect = {
@@ -192,7 +234,7 @@ Deno.serve(async (req: Request) => {
       case 'email_bounced':
         if (email) await suppress(db, email, 'bounced', 'bounced')
         await set({ status: 'bounced', status_reason: 'email bounced' })
-        handled = 'bounced, never contacted again'
+        handled = 'bounced, never contacted again' + (p ? await bounceGuard(db, p.niche_key) : '')
         break
 
       case 'account_error':
