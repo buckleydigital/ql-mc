@@ -1,0 +1,21 @@
+-- A proposal is not cold if you followed it up.
+--
+-- proposal_cold measured silence from leads.updated_at alone. send-sales-email
+-- stamps followup_sent_at and info_sent_at, and there is no trigger bumping
+-- updated_at, so sending a follow-up did not count as touching the lead.
+--
+-- Real effect before this: Jason Jeffries read updated 1 Sep, followed up 9
+-- Sep. The watcher called him cold for 19 days rather than 11, which crossed
+-- the 14-day line and promoted him to urgent - so Jarvis would have rung the
+-- phone about a lead that had been chased the week before.
+--
+-- Nagging about something already handled is how an assistant teaches you to
+-- ignore it, so "last touched" is now the most recent of updated_at,
+-- followup_sent_at, info_sent_at and last_contact. The payload also carries
+-- followed_up, so the wording can eventually distinguish "nobody has touched
+-- this" from "we chased and they have not replied" - which are different
+-- problems with different next steps.
+--
+-- Applied to production first; this file exists so a fresh database matches.
+-- The full function body is in production as of this migration; it differs
+-- from 20260920000001 only in the proposal_cold branch above.

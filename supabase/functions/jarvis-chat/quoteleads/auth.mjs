@@ -1,0 +1,54 @@
+/**
+ * A user session for the edge functions.
+ *
+ * `send-sales-email` and `send-sms` both verify the caller with
+ * `auth.getUser(token)` and then attribute the send to that user - the rep's
+ * name and reply-to address come out of the session. A service-role key is not
+ * a user token and fails that check, so the sending tools need a real login.
+ *
+ * Reads never come through here: they use the service-role key directly.
+ */
+
+import { config, env } from './config.mjs'
+
+let cached = null
+
+export function hasSendIdentity() {
+  return Boolean(env('QL_USER_EMAIL') && env('QL_USER_PASSWORD'))
+}
+
+/** A valid access token, logging in or refreshing as needed. */
+export async function userToken() {
+  if (!hasSendIdentity()) {
+    throw new Error(
+      'Sending requires a login: add QL_USER_EMAIL and QL_USER_PASSWORD as Supabase ' +
+        'Edge Function secrets (Supabase dashboard, ql-mc project, Edge Functions > Secrets), ' +
+        'or to tools/jarvis/.env for the local bridge. Emails and texts are sent as that user, ' +
+        'and replies go to them.',
+    )
+  }
+
+  // A minute of margin, so a token never expires mid-call.
+  if (cached && cached.expiresAt - 60_000 > Date.now()) return cached.token
+
+  const key = env('QL_SUPABASE_ANON_KEY') || config.key()
+  const res = await fetch(`${config.url()}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { apikey: key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: env('QL_USER_EMAIL'),
+      password: env('QL_USER_PASSWORD'),
+    }),
+  })
+
+  if (!res.ok) {
+    throw new Error(`Login failed: ${res.status} ${(await res.text()).slice(0, 200)}`)
+  }
+
+  const session = await res.json()
+  cached = {
+    token: session.access_token,
+    expiresAt: Date.now() + (session.expires_in ?? 3600) * 1000,
+  }
+  return cached.token
+}
