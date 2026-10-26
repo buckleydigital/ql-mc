@@ -2706,6 +2706,22 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
   </div>
 </div>
 
+<div class="overlay" id="m-lead-emails">
+  <div class="modal" style="width:min(880px,100%);max-width:880px">
+    <h2>Sent Emails</h2><div class="msub" id="le-sub"></div>
+    <input type="hidden" id="le-lead-id">
+    <div class="twrap" style="margin-bottom:6px">
+      <table>
+        <thead><tr><th>Sent</th><th>Type</th><th>Subject</th><th>Sent by</th><th></th></tr></thead>
+        <tbody id="le-tbody"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="macts">
+      <button class="btn" onclick="closeLeadEmails()">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="m-sent-email">
   <div class="modal">
     <h2>Sent Email</h2><div class="msub" id="sm-sub"></div>
@@ -2802,6 +2818,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
       <button class="btn btn-sm" id="el-send-info" onclick="openSendEmail('info')">Send 2.5K Offer</button>
       <button class="btn btn-sm" id="el-send-5k" onclick="openSendEmail('info_5k')">Send 5K Offer</button>
       <button class="btn btn-sm" id="el-send-followup" onclick="openSendEmail('followup')" style="display:none">Follow Up</button>
+      <button class="btn btn-sm" id="el-sent-emails" onclick="openLeadEmails()">Sent emails</button>
       <span id="el-email-note" style="font-size:12px;color:var(--ink3)"></span>
     </div>
     <div class="macts">
@@ -5440,7 +5457,7 @@ function renderSentEmails() {
       <td style="font-family:var(--mono);font-size:12px;white-space:nowrap">${new Date(r.sent_at).toLocaleString('en-AU', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
       <td><strong>${esc(l.name || '-')}</strong>${l.company ? `<div style="font-size:12px;color:var(--ink3)">${esc(l.company)}</div>` : ''}</td>
       <td style="font-family:var(--mono);font-size:12px">${esc(r.to_email)}</td>
-      <td><span class="badge ${r.kind === 'info' ? 'bg-blu' : r.kind === 'no_answer' ? 'bg-amb' : 'bg-vio'}">${({info:'2.5K offer', info_5k:'5K offer', followup:'Follow-up', no_answer:'No answer', campaign:'Campaign'})[r.kind] || r.kind}</span></td>
+      <td>${emailKindBadge(r.kind)}</td>
       <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.subject)}</td>
       <td style="font-size:12px;color:var(--ink2)">${esc(who ? (who.name || who.email) : (r.reply_to || '-'))}</td>
       <td><button class="btn btn-xs" onclick="viewSentEmail('${esc(r.id)}')">View</button></td>
@@ -5448,15 +5465,61 @@ function renderSentEmails() {
   }).join('');
   renderPager('sm-pager', _sentPage, rows.length, p => { _sentPage = p; renderSentEmails(); });
 }
+function emailKindBadge(kind) {
+  const label = ({info:'2.5K offer', info_5k:'5K offer', followup:'Follow-up', no_answer:'No answer', campaign:'Campaign'})[kind] || kind;
+  return `<span class="badge ${kind === 'info' ? 'bg-blu' : kind === 'no_answer' ? 'bg-amb' : 'bg-vio'}">${esc(label)}</span>`;
+}
 function viewSentEmail(id) {
-  const r = _sentMail.find(x => x.id === id); if (!r) return;
+  const r = _sentMail.find(x => x.id === id) || _leadMail.find(x => x.id === id); if (!r) return;
   const l = LEAD_CACHE[r.lead_id] || {};
   setText('sm-sub', (l.name || '') + (l.company ? ' · ' + l.company : '') + ' · ' + new Date(r.sent_at).toLocaleString('en-AU'));
   setVal('sm-v-to', r.to_email);
   setVal('sm-v-replyto', r.reply_to || '-');
   setVal('sm-v-subject', r.subject);
   setVal('sm-v-body', r.body);
+  $('m-sent-email').classList.toggle('stacked', $('m-lead-emails').classList.contains('open'));
   openModal('m-sent-email');
+}
+
+// Every email sent to one lead, from the Edit Lead modal. Same log and the same
+// RLS as the Sent Emails panel, so a rep only ever sees their own leads' mail.
+let _leadMail = [];
+async function openLeadEmails() {
+  const id = $('el-id').value;
+  const l = LEAD_CACHE[id] || {};
+  setVal('le-lead-id', id);
+  setText('le-sub', (l.name || '') + (l.company ? ' · ' + l.company : '') + (l.email ? ' · ' + l.email : ''));
+  $('le-tbody').innerHTML = '<tr><td colspan="5" class="empty">Loading...</td></tr>';
+  closeModal('m-edit-lead');
+  $('m-lead-emails').classList.add('stacked');
+  openModal('m-lead-emails');
+
+  const { data, error } = await db
+    .from('sales_email_log')
+    .select('id,lead_id,kind,to_email,reply_to,subject,body,sent_by,sent_at')
+    .eq('lead_id', id)
+    .order('sent_at', { ascending: false });
+  if (error) { $('le-tbody').innerHTML = `<tr><td colspan="5" class="empty">Error: ${esc(error.message)}</td></tr>`; return; }
+  _leadMail = data || [];
+  if (!IS_REP && !_reps.length) await ensureRepOptions();
+  if (!_leadMail.length) { $('le-tbody').innerHTML = '<tr><td colspan="5" class="empty">No emails sent to this lead yet.</td></tr>'; return; }
+  $('le-tbody').innerHTML = _leadMail.map(r => {
+    const who = _reps.find(x => x.user_id === r.sent_by);
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:12px;white-space:nowrap">${new Date(r.sent_at).toLocaleString('en-AU', {day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
+      <td>${emailKindBadge(r.kind)}</td>
+      <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.subject)}</td>
+      <td style="font-size:12px;color:var(--ink2)">${esc(who ? (who.name || who.email) : (r.reply_to || '-'))}</td>
+      <td><button class="btn btn-xs" onclick="viewSentEmail('${esc(r.id)}')">View</button></td>
+    </tr>`;
+  }).join('');
+}
+// Closing the list returns you to the lead you opened it from.
+function closeLeadEmails() {
+  const id = $('le-lead-id').value;
+  closeModal('m-lead-emails');
+  const l = LEAD_CACHE[id];
+  if (l) openEditLead(l);
 }
 
 /* ═══ SALES EMAILS ═══
@@ -5580,6 +5643,13 @@ function renderLeadEmailButtons(l) {
   if (fupSent) parts.push('Follow-up sent ' + when(l.followup_sent_at));
   if (l.no_answer_email_sent_at) parts.push('No-answer email sent ' + when(l.no_answer_email_sent_at));
   note.textContent = !hasEmail ? 'No email address on this lead' : parts.join(' · ');
+
+  const sent = $('el-sent-emails');
+  if (sent) {
+    sent.textContent = 'Sent emails';
+    db.from('sales_email_log').select('id', { count: 'exact', head: true }).eq('lead_id', l.id)
+      .then(({ count }) => { if ($('el-id').value === l.id && count != null) sent.textContent = 'Sent emails (' + count + ')'; });
+  }
 }
 
 const SEND_TITLES = { info: 'Send 2.5K Offer', info_5k: 'Send 5K Offer', followup: 'Send Follow-Up' };
