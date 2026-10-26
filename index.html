@@ -9648,7 +9648,7 @@ async function pruneDismissedAlerts() {
   if (!error) stale.forEach(k => _dismissedAlerts.delete(k));
 }
 
-function buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoonOrders, reportsDue = [], invoicesDue = []) {
+function buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoonOrders, reportsDue = [], invoicesDue = [], perfReportsDue = []) {
   const items = [];
   const keyOf = (prefix, ids) => prefix + ':' + ids.map(String).sort().join(',');
   if (overdueOrders.length > 0) {
@@ -9680,8 +9680,12 @@ function buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoonOr
   }
   // Keyed on the due date too, so next month's invoice is a new reminder.
   for (const c of invoicesDue) {
-    items.push({type:'warn', msg: `Invoice ${c.company_name || 'client'} - next payment due ${c.next_payment_date}`, panel:'managed',
+    items.push({type:'warn', msg: `Prepare invoice for ${c.company_name || 'client'} - next payment due ${c.next_payment_date}`, panel:'managed',
       key: `invoice:${c.id}:${c.next_payment_date}`});
+  }
+  for (const c of perfReportsDue) {
+    items.push({type:'warn', msg: `Prepare ${c.company_name || 'client'}'s performance report - payment date ${c.next_payment_date}`, panel:'managed',
+      key: `perf:${c.id}:${c.next_payment_date}`});
   }
   return items;
 }
@@ -9739,7 +9743,8 @@ function renderAlertTray() {
 }
 
 async function loadAlerts() {
-  const today = new Date().toISOString().split('T')[0];
+  // Sydney's date, not UTC's, so morning reminders aren't a day behind.
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
   const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
   const weekAhead = new Date(Date.now() + MS_PER_WEEK).toISOString().split('T')[0];
   const [slaR, mgR, crmR, dueSoonR] = await Promise.all([
@@ -9755,15 +9760,18 @@ async function loadAlerts() {
   const dueSoonOrders = dueSoonR.data||[];
   const crmFollowups = (crmR.data||[]).filter(l=>crmNeedsFollowup(l));
   // Managed clients: first month report 30 days after ads go live (shown until
-  // day 60 so a late one still gets caught), and an invoice reminder 7 days
-  // before each payment once they're past month one. Month one isn't ticked
-  // in the month picker, so a ticked month means they've renewed at least once.
+  // day 60 so a late one still gets caught), a prepare-invoice reminder from 7
+  // days before each payment date, and a performance report on the payment
+  // date (kept for 3 days so a quiet day doesn't lose it). The last two match
+  // the tasks create_billing_reminder_tasks() adds each morning, and are for
+  // admins only.
   const addDays = (d, n) => { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().split('T')[0]; };
-  const monthsTicked = (c) => { try { return JSON.parse(c.active_months || '[]').length; } catch (_) { return 0; } };
   const activeMg = (mgR.data||[]).filter(c=>c.stage==='active');
   const reportsDue = activeMg.filter(c=>c.ads_first_live_date&&addDays(c.ads_first_live_date,30)<=today&&today<addDays(c.ads_first_live_date,60));
-  const invoicesDue = activeMg.filter(c=>monthsTicked(c)>=1&&c.next_payment_date&&addDays(c.next_payment_date,-7)<=today&&today<=c.next_payment_date);
-  _lastAlerts = buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoonOrders, reportsDue, invoicesDue);
+  const billing = IS_REP ? [] : activeMg.filter(c=>c.next_payment_date);
+  const invoicesDue = billing.filter(c=>addDays(c.next_payment_date,-7)<=today&&today<=c.next_payment_date);
+  const perfReportsDue = billing.filter(c=>c.next_payment_date<=today&&today<=addDays(c.next_payment_date,3));
+  _lastAlerts = buildAlertItems(overdueOrders, overduePayments, crmFollowups, dueSoonOrders, reportsDue, invoicesDue, perfReportsDue);
   _dismissedAlerts = await loadDismissedAlerts();
   // Only prune off a complete picture: a failed query would make every alert
   // it feeds look resolved and wipe their clears.
