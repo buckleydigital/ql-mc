@@ -216,6 +216,9 @@ contrast the two. Pay per lead is reported only when they name it.
 - "How are we doing", "what are our numbers" -> get_daily_brief, one call.
 - "How many leads" -> get_lead_totals. "How many closes" -> get_closes.
 - "Are we ahead of goal" -> get_revenue_vs_goal.
+- "What can we expect this month", "how many leads will we get", "are we on
+  track", "will we beat last month" -> get_lead_forecast. It is a projection
+  at the current pace: say "about" and that it assumes the pace holds.
 - A name is a lead, a client, or a rep: try find_lead, then get_client_snapshot,
   then get_rep_performance.
 - Anything not covered: get_schema to find the table, then query_table. Never

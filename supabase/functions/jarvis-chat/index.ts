@@ -1465,6 +1465,79 @@ async function getLeadTotals() {
   )
 }
 
+async function getLeadForecast() {
+  // What to expect by the end of this month, at the pace so far. Everything is
+  // counted in local time from rows since the start of last month, so "this
+  // month", "the same point last month" and "the last 7 days" all agree.
+  const now = Date.now()
+  const month = localMonth()
+  const shift = (n) => { const d = new Date(`${month}-01T12:00:00Z`); d.setUTCMonth(d.getUTCMonth() + n); return d.toISOString().slice(0, 7) }
+  const monthStart = Date.parse(startOfMonth())
+  const lastStart = Date.parse(startOfLocalDay(`${shift(-1)}-01`))
+  const nextStart = Date.parse(startOfLocalDay(`${shift(1)}-01`))
+  const elapsedDays = (now - monthStart) / 864e5
+  const daysLeft = Math.max(0, (nextStart - now) / 864e5)
+  const samePoint = Math.min(lastStart + (now - monthStart), monthStart)
+  const since = new Date(lastStart).toISOString()
+
+  const [sales, ppl] = await Promise.all([
+    select('leads', { select: 'stage,created_at,updated_at', or: `(created_at.gte.${since},updated_at.gte.${since})` }, { limit: 20000 }),
+    select('ppl_leads', { select: 'created_at', created_at: `gte.${since}` }, { limit: 20000 }),
+  ])
+
+  // One projection, used for every series: this month's daily rate (or the
+  // last 14 days' in the first 3 days, so one quiet morning doesn't project
+  // zero), the last 7 days' rate as the trend, and last month at the same point.
+  const project = (times) => {
+    const t = times.map((x) => Date.parse(x)).filter(Number.isFinite)
+    const n = (from, to) => t.filter((x) => x >= from && x < to).length
+    const mtd = n(monthStart, now)
+    const last14 = n(now - 14 * 864e5, now)
+    const last7 = n(now - 7 * 864e5, now)
+    const rate = elapsedDays >= 3 ? mtd / elapsedDays : last14 / 14
+    const lastSame = n(lastStart, samePoint)
+    const lastTotal = n(lastStart, monthStart)
+    return {
+      so_far: mtd,
+      daily_rate: +rate.toFixed(2),
+      last_7_day_rate: +(last7 / 7).toFixed(2),
+      projected_month_end: Math.round(mtd + rate * daysLeft),
+      same_point_last_month: lastSame,
+      vs_last_month_pct: lastSame ? Math.round(((mtd - lastSame) / lastSame) * 100) : null,
+      last_month_total: lastTotal,
+    }
+  }
+
+  const salesLeads = project(sales.rows.map((r) => r.created_at))
+  // `leads` has no closed_at, so a win is dated by when it last moved, the
+  // same as get_closes.
+  const closes = project(sales.rows.filter((r) => isWon(r.stage)).map((r) => r.updated_at || r.created_at))
+  const pplLeads = project(ppl.rows.map((r) => r.created_at))
+
+  const vs = (p) => (p.vs_last_month_pct == null ? 'no comparison with last month' : `${p.vs_last_month_pct >= 0 ? '+' : ''}${p.vs_last_month_pct}% on the same point last month`)
+  const trend = (p) => (p.last_7_day_rate > p.daily_rate * 1.15 ? 'picking up' : p.last_7_day_rate < p.daily_rate * 0.85 ? 'slowing' : 'steady')
+
+  return ok(
+    `Sales pipeline: on pace for about ${salesLeads.projected_month_end} leads this month `
+      + `(${salesLeads.so_far} so far, about ${salesLeads.daily_rate} a day, ${Math.ceil(daysLeft)} days left), `
+      + `${vs(salesLeads)}; the last 7 days are ${trend(salesLeads)}. `
+      + `Closes: on pace for about ${closes.projected_month_end} (${closes.so_far} so far).`,
+    {
+      month,
+      days_elapsed: +elapsedDays.toFixed(1),
+      days_left: +daysLeft.toFixed(1),
+      sales_pipeline_leads: salesLeads,
+      closes,
+      pay_per_lead_leads: pplLeads,
+      method: 'Projection = so far + daily rate x days left. The rate is this month\'s, or the last 14 days\' '
+        + 'in the first 3 days of a month. It assumes the current pace holds; say so when giving the number.',
+      note: 'Unless the question was specifically about pay per lead, answer with the sales pipeline and '
+        + 'closes figures only. The pay_per_lead_leads numbers are here for a follow-up, not to be volunteered. '
+        + 'For revenue, combine with get_revenue_vs_goal rather than guessing.',
+    },
+  )
+}
+
 async function getPplSummary() {
   const today = startOfLocalDay(localDate())
   const [todayRows, monthRows, undelivered, unassigned, total] = await Promise.all([
@@ -1805,6 +1878,13 @@ const TOOLS = [
       'Lead counts for every period at once - today, yesterday, the last seven days, month to date, all time - for BOTH the sales pipeline (the `leads` table) and pay-per-lead (`ppl_leads`). Answers "how many leads today", "how many in our sales pipeline" and "how many pay per lead leads".',
     inputSchema: { type: 'object', properties: {} },
     handler: getLeadTotals,
+  },
+  {
+    name: 'get_lead_forecast',
+    description:
+      'Forecast for the rest of this month at the current pace: how many sales pipeline leads and closes to expect by month end, how this month compares with the same point last month, and whether the last 7 days are picking up or slowing (pay-per-lead volume is included for follow-ups). Answers "what can we expect this month", "how many leads will we get", "are we on track" and "will we beat last month".',
+    inputSchema: { type: 'object', properties: {} },
+    handler: getLeadForecast,
   },
   {
     name: 'get_closes',
@@ -2235,6 +2315,9 @@ contrast the two. Pay per lead is reported only when they name it.
 - "How are we doing", "what are our numbers" -> get_daily_brief, one call.
 - "How many leads" -> get_lead_totals. "How many closes" -> get_closes.
 - "Are we ahead of goal" -> get_revenue_vs_goal.
+- "What can we expect this month", "how many leads will we get", "are we on
+  track", "will we beat last month" -> get_lead_forecast. It is a projection
+  at the current pace: say "about" and that it assumes the pace holds.
 - A name is a lead, a client, or a rep: try find_lead, then get_client_snapshot,
   then get_rep_performance.
 - Anything not covered: get_schema to find the table, then query_table. Never

@@ -73,7 +73,7 @@ to inject into and no verb that writes — and any column whose name looks like 
 credential (`*_key`, `*_token`, `*secret*`, `*password*`) comes back redacted.
 
 **Reads** — `get_daily_brief` (everything, one call), `get_lead_totals`,
-`get_leads_today`, `get_closes`, `get_pipeline_summary`, `get_revenue_vs_goal`,
+`get_lead_forecast`, `get_leads_today`, `get_closes`, `get_pipeline_summary`, `get_revenue_vs_goal`,
 `get_ad_spend_and_cpl`, `get_rep_performance`, `get_client_snapshot`,
 `find_lead`, `list_tasks`, `get_followups_due`, `get_delivery_failures`,
 `get_email_draft`.

@@ -27,6 +27,9 @@ never answer a business question from memory.
 - A lead with no owner is handled by the person you are speaking to, and
   get_rep_performance shows it as their own row. It is never "unassigned".
 - "How many closes" -> get_closes. "Are we ahead of goal" -> get_revenue_vs_goal.
+- "What can we expect this month", "how many leads will we get", "are we on
+  track" -> get_lead_forecast. It is a projection at the current pace, so say
+  "about" and that it assumes the pace holds.
 - A name in a question is a lead, a client, or a representative. Try find_lead
   first; fall back to get_client_snapshot, then get_rep_performance.
 - Anything the tools above do not cover: get_schema to find the table, then
