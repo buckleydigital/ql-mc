@@ -9592,7 +9592,14 @@ async function downloadInvoicePDF(inv, isReceipt) {
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
     doc.setFillColor(...INK); doc.rect(0, 282, pw, 15, 'F');
-    text(footerNote, pw / 2, 290.6, 9.5, [200, 205, 215], false, {align: 'center'});
+    // "Thank you for your business.  ·  quoteleads.com.au", centred as one line.
+    const site = 'quoteleads.com.au', sep = '   \u00B7   ';
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+    const noteW = doc.getTextWidth(clean(footerNote) + sep);
+    doc.setFont('helvetica', 'bold');
+    const fx = (pw - noteW - doc.getTextWidth(site)) / 2;
+    text(footerNote + sep, fx, 290.6, 9.5, [200, 205, 215]);
+    text(site, fx + noteW, 290.6, 9.5, [124, 170, 255], true);
   }
 
   const filePrefix = isReceipt ? 'receipt-' : '';
