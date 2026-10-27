@@ -9246,7 +9246,8 @@ function onInvClientChange() {
     const dealVal = parseFloat(opt.dataset.fee) || 0;
     addInvLine(type === 'managed' ? 'Managed Advertising - Build Fee' : 'Pay-Per-Lead Services', 1, dealVal);
   } else if (type === 'managed') {
-    addInvLine('Managed Advertising - Monthly Retainer', 1, parseFloat(opt.dataset.fee) || 0);
+    // management_fee includes GST ($660 = $600 + GST); the line is ex GST.
+    addInvLine('Managed Advertising - Monthly Retainer', 1, Math.round((parseFloat(opt.dataset.fee) || 0) / 1.1 * 100) / 100);
   } else {
     // PPL client: try to get latest order qty
     prefillPplLine(opt.value, parseFloat(opt.dataset.leadPrice) || 0, opt.dataset.niche || '');
