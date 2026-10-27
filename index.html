@@ -4150,7 +4150,8 @@ window.addEventListener('load', () => {
   setText('ppl-leads-sub', `Jan ${curYear} – now`);
   // Goal Board year selector
   const goalSel = $('goal-year');
-  for (let y = curYear; y >= 2026; y--) {
+  // Next year too, so its goals can be set before it starts.
+  for (let y = curYear + 1; y >= 2026; y--) {
     const opt = document.createElement('option');
     opt.value = y; opt.textContent = y; if (y === curYear) opt.selected = true;
     goalSel.appendChild(opt);
@@ -8607,7 +8608,10 @@ async function loadGoals() {
   const priorYear = +year - 1;
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const today = new Date();
-  const curMonth = today.getFullYear() === +year ? today.getMonth() : 11;
+  // The last month with actuals: this month in the current year, all of a past
+  // year, none of a future one. Every month is listed so goals can be set ahead;
+  // months still to come have no actuals and don't count towards the YTD.
+  const curMonth = today.getFullYear() === +year ? today.getMonth() : +year < today.getFullYear() ? 11 : -1;
 
   // Load goals + actuals in parallel (including prior year for YoY)
   const [goalsR, pplOrdR, mgR, mgOrdR, expR, spendLogR, priorPplOrdR, priorMgOrdR, priorExpR, priorSpendLogR] = await Promise.all([
@@ -8661,8 +8665,13 @@ async function loadGoals() {
   let ytdRev = 0, ytdExp = 0, ytdGoalRev = 0, ytdPriorRev = 0;
   const monthsWithGoals = [];
 
-  for (let m = 0; m <= curMonth; m++) {
+  for (let m = 0; m < 12; m++) {
     const key = `${year}-${String(m+1).padStart(2,'0')}`;
+    if (m > curMonth) {
+      rows.push({ month: key, label: monthNames[m], future: true, rev: null, totalExp: null, profit: null, margin: null, priorRev: 0,
+        goal: goalMap[key] || { revenue_goal: 0, margin_goal: 0, notes: '' } });
+      continue;
+    }
     const from = `${key}-01`;
     const next = m === 11 ? `${+year+1}-01-01` : `${year}-${String(m+2).padStart(2,'0')}-01`;
 
@@ -8739,23 +8748,24 @@ async function loadGoals() {
   // Render table
   const tb = $('goal-tbody');
   tb.innerHTML = rows.map(r => {
-    const revPctNum = r.goal.revenue_goal > 0 ? (r.rev / r.goal.revenue_goal) * 100 : null;
+    const revPctNum = r.goal.revenue_goal > 0 && !r.future ? (r.rev / r.goal.revenue_goal) * 100 : null;
     const revPct = revPctNum !== null ? revPctNum.toFixed(0) : '-';
     const revPctColor = revPctNum === null ? 'var(--ink3)' : revPctNum >= 100 ? 'var(--grn)' : revPctNum >= 75 ? 'var(--amb)' : 'var(--red)';
-    const marginColor = r.goal.margin_goal > 0 ? (r.margin >= r.goal.margin_goal ? 'var(--grn)' : r.margin >= r.goal.margin_goal * 0.75 ? 'var(--amb)' : 'var(--red)') : 'var(--ink3)';
-    const yoyNum = r.priorRev > 0 ? ((r.rev - r.priorRev) / r.priorRev * 100) : null;
+    const marginColor = r.goal.margin_goal > 0 && !r.future ? (r.margin >= r.goal.margin_goal ? 'var(--grn)' : r.margin >= r.goal.margin_goal * 0.75 ? 'var(--amb)' : 'var(--red)') : 'var(--ink3)';
+    const yoyNum = r.priorRev > 0 && !r.future ? ((r.rev - r.priorRev) / r.priorRev * 100) : null;
+    const dash = '<span style="color:var(--ink3)">-</span>';
     const yoyCell = yoyNum !== null
       ? `<span style="font-family:var(--mono);font-size:12px;font-weight:500;color:${yoyNum>=0?'var(--grn)':'var(--red)'}">${yoyNum>=0?'↑ +':'↓ '}${yoyNum.toFixed(1)}%</span>`
       : '<span style="color:var(--ink3)">-</span>';
     return `<tr>
       <td style="font-family:var(--mono);font-size:12px;font-weight:500">${r.label}</td>
       <td><input class="fi goal-input" data-month="${r.month}" data-field="revenue_goal" type="number" value="${r.goal.revenue_goal||''}" placeholder="-" style="width:90px;font-size:12px;padding:3px 6px;text-align:right"></td>
-      <td style="font-family:var(--mono);font-size:12px;font-weight:500">${fmt(r.rev)}</td>
+      <td style="font-family:var(--mono);font-size:12px;font-weight:500">${r.future ? dash : fmt(r.rev)}</td>
       <td style="font-family:var(--mono);font-size:12px;font-weight:500;color:${revPctColor}">${revPct === '-' ? '-' : revPct + '%'}</td>
       <td>${yoyCell}</td>
       <td><input class="fi goal-input" data-month="${r.month}" data-field="margin_goal" type="number" value="${r.goal.margin_goal||''}" placeholder="-" style="width:70px;font-size:12px;padding:3px 6px;text-align:right" step="1" min="0" max="100">%</td>
-      <td style="font-family:var(--mono);font-size:12px;font-weight:500;color:${marginColor}">${r.margin.toFixed(1)}%</td>
-      <td style="font-family:var(--mono);font-size:12px;font-weight:500;color:${r.profit>=0?'var(--grn)':'var(--red)'}">${fmt(r.profit)}</td>
+      <td style="font-family:var(--mono);font-size:12px;font-weight:500;color:${marginColor}">${r.future ? dash : r.margin.toFixed(1) + '%'}</td>
+      <td style="font-family:var(--mono);font-size:12px;font-weight:500;color:${r.profit>=0?'var(--grn)':'var(--red)'}">${r.future ? dash : fmt(r.profit)}</td>
       <td><input class="fi goal-input" data-month="${r.month}" data-field="notes" type="text" value="${esc(r.goal.notes||'')}" placeholder="-" style="width:120px;font-size:12px;padding:3px 6px"></td>
       <td><button class="btn btn-xs" onclick="saveGoal('${r.month}')">Save</button></td>
     </tr>`;
@@ -8796,7 +8806,7 @@ function renderGoalCharts(rows) {
     type:'line',
     data:{labels,datasets:[
       {label:'Goal %',   data:rows.map(r=>r.goal.margin_goal||0), borderColor:CHART.cat2, borderWidth:2, borderDash:[5,4], pointRadius:0, pointHoverRadius:5, fill:false, tension:.25},
-      {label:'Actual %', data:rows.map(r=>+r.margin.toFixed(1)),  borderColor:CHART.cat1, borderWidth:2, pointRadius:4, pointBackgroundColor:CHART.cat1, pointBorderColor:'#0f0f12', pointBorderWidth:2, fill:false, tension:.25}
+      {label:'Actual %', data:rows.map(r=>r.margin==null?null:+r.margin.toFixed(1)),  borderColor:CHART.cat1, borderWidth:2, pointRadius:4, pointBackgroundColor:CHART.cat1, pointBorderColor:'#0f0f12', pointBorderWidth:2, fill:false, tension:.25}
     ]},
     options: chartBase({
       plugins:{legend:chartLegend(),tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+c.parsed.y+'%'}}},
