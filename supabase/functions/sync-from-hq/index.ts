@@ -24,10 +24,21 @@
 //                       happens) and pushes the derived summary here whenever a
 //                       step moves, so ql-mc can report on what is stuck without
 //                       holding the audit trail. Authority over each column is
-//                       split explicitly at the handler.
+//                       split explicitly at the handler. It also carries the
+//                       ads-live date, which is day 1 of management here too.
+//   billing_schedule  — every linked managed client's next payment date and the
+//                       draft invoice for it, for ql-hq's daily VA reminder.
+//   client_billing    — one client's payment dates, invoices and the business
+//                       settings the invoice PDF is drawn from, for the Team
+//                       Panel. ql-mc stays the only place invoices are made and
+//                       numbered; the Team Panel shows and sends these same ones.
+//   send_client_invoice — the Team Panel's Send: emails the PDF it drew (the
+//                       same layout as the Invoices screen) and stamps the
+//                       invoice sent here, so both panels show it sent.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { mcLeadIdFor } from '../_shared/hq-lead-link.ts'
+import '../_shared/no-em-dash.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -389,10 +400,102 @@ Deno.serve(async (req: Request) => {
     //   • stage                - advanced onboarding → active when ads go live,
     //     because that is what going live means, but never moved backwards and
     //     never touched for a client already past onboarding.
+    // ── action: billing_schedule ─────────────────────────────────────────────
+    if (action === 'billing_schedule') {
+      const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+      const { data: clients, error } = await supabase.from('clients')
+        .select('id, ql_hq_company_id, company_name, next_payment_date, management_fee')
+        .eq('type', 'managed').eq('stage', 'active').not('ql_hq_company_id', 'is', null)
+      if (error) return json({ error: error.message }, 500)
+      const ids = (clients ?? []).map((c) => c.id)
+      const { data: invs } = ids.length
+        ? await supabase.from('invoices').select('id, client_id, invoice_number, status, due_date, total, sent_at')
+            .in('client_id', ids).order('created_at', { ascending: false })
+        : { data: [] }
+      return json({
+        clients: (clients ?? []).map((c) => {
+          const inv = (invs ?? []).find((i) => i.client_id === c.id && i.due_date === c.next_payment_date) ?? null
+          return { hq_company_id: c.ql_hq_company_id, company_name: c.company_name, next_payment_date: c.next_payment_date,
+                   management_fee: c.management_fee, invoice: inv }
+        }),
+      })
+    }
+
+    // ── action: client_billing ───────────────────────────────────────────────
+    if (action === 'client_billing') {
+      const hqId = String(body.hq_company_id ?? '')
+      if (!hqId) return json({ error: 'hq_company_id is required' }, 400)
+      const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+      const { data: client } = await supabase.from('clients')
+        .select('id, company_name, contact_name, email, phone, management_fee, start_date, ads_first_live_date, last_payment_date, next_payment_date, stage')
+        .eq('ql_hq_company_id', hqId).maybeSingle()
+      if (!client) return json({ client: null, invoices: [], biz: null })
+      const [{ data: invoices }, { data: biz }] = await Promise.all([
+        supabase.from('invoices').select('*').eq('client_id', client.id).order('created_at', { ascending: false }).limit(24),
+        supabase.from('business_settings').select('business_name, abn, payid, bsb, account_number').limit(1).maybeSingle(),
+      ])
+      return json({ client, invoices: invoices ?? [], biz: biz ?? {} })
+    }
+
+    // ── action: send_client_invoice ──────────────────────────────────────────
+    // The same checks and the same sent stamp as send-invoice; the Team Panel
+    // has already checked that its caller may see this client.
+    if (action === 'send_client_invoice') {
+      const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/
+      const hqId = String(body.hq_company_id ?? '')
+      const to = String(body.to ?? '').trim().toLowerCase()
+      const subject = String(body.subject ?? '').trim()
+      const message = String(body.message ?? '').trim()
+      const pdf = String(body.pdf_base64 ?? '')
+      const replyTo = String(body.reply_to ?? '').trim()
+      if (!hqId || !body.invoice_id) return json({ error: 'hq_company_id and invoice_id are required' }, 400)
+      if (!EMAIL_RE.test(to)) return json({ error: 'That email address does not look right' }, 400)
+      if (!subject || subject.length > 200) return json({ error: 'Add a subject (200 characters at most)' }, 400)
+      if (!message || message.length > 5000) return json({ error: 'Add a message (5000 characters at most)' }, 400)
+      if (!pdf.startsWith('JVBER') || pdf.length * 0.75 > 5 * 1024 * 1024) return json({ error: 'The invoice PDF is missing or not a PDF' }, 400)
+
+      const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+      const { data: client } = await supabase.from('clients').select('id').eq('ql_hq_company_id', hqId).maybeSingle()
+      if (!client) return json({ error: 'No Mission Control client for this company' }, 404)
+      const { data: inv } = await supabase.from('invoices').select('id, invoice_number, status, client_id')
+        .eq('id', String(body.invoice_id)).maybeSingle()
+      if (!inv || inv.client_id !== client.id) return json({ error: 'Invoice not found for this client' }, 404)
+
+      const { data: bset } = await supabase.from('business_settings')
+        .select('business_name, sales_from_email, sales_reply_to_email').limit(1).maybeSingle()
+      const fromEmail = String(bset?.sales_from_email ?? '').trim() || Deno.env.get('RESEND_FROM_EMAIL')
+      const apiKey = Deno.env.get('RESEND_API_KEY')
+      if (!fromEmail || !apiKey) return json({ error: 'Email is not configured' }, 500)
+      const fromName = String(bset?.business_name ?? '').trim() || 'QuoteLeads'
+      const reply = String(bset?.sales_reply_to_email || replyTo || '').trim()
+      const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#ffffff"><div style="max-width:600px;margin:0 auto;padding:24px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.65;color:#1a1a20">${
+        message.split(/\n{2,}/).map((p) => `<p style="margin:0 0 16px">${esc(p).replace(/\n/g, '<br>')}</p>`).join('')}</div></body></html>`
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: `${fromName} <${fromEmail}>`, to, subject, html, text: message,
+          ...(EMAIL_RE.test(reply) ? { reply_to: reply } : {}),
+          attachments: [{ filename: `${inv.invoice_number || 'invoice'}.pdf`, content: pdf }],
+        }),
+      })
+      if (!res.ok) {
+        console.error('send_client_invoice resend error:', res.status, await res.text().catch(() => ''))
+        return json({ error: 'The email provider rejected the message. Nothing was sent.' }, 502)
+      }
+      const now = new Date().toISOString()
+      await supabase.from('invoices').update({
+        sent_at: now, sent_to: to, updated_at: now, ...(inv.status === 'paid' ? {} : { status: 'sent' }),
+      }).eq('id', inv.id)
+      return json({ ok: true, to, sent_at: now })
+    }
+
     if (action === 'upsert_fulfilment') {
-      const { hq_company_id, summary } = body as {
+      const { hq_company_id, summary, ads_live_date } = body as {
         hq_company_id?: string
         summary?: Record<string, unknown>
+        ads_live_date?: string | null
       }
       if (!hq_company_id || !summary) {
         return json({ error: 'hq_company_id and summary are required' }, 400)
@@ -405,7 +508,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: client } = await supabase
         .from('clients')
-        .select('id, stage, active_status')
+        .select('id, stage, active_status, type, start_date, ads_first_live_date, next_payment_date')
         .eq('ql_hq_company_id', hq_company_id)
         .maybeSingle()
 
@@ -444,6 +547,19 @@ Deno.serve(async (req: Request) => {
       const liveish = client.stage !== 'churned' && client.stage !== 'paused'
       if (hqActive && !client.active_status && liveish) patch.active_status = hqActive
       if (hqActive === 'Ads Live' && client.stage === 'onboarding') patch.stage = 'active'
+
+      // The day the ads went live is day 1 of management, here as in ql-hq: the
+      // start date, and the first payment 30 days on. Set once, when the date is
+      // first known, so a date someone has corrected by hand is never moved.
+      const live = /^\d{4}-\d{2}-\d{2}$/.test(String(ads_live_date ?? '')) ? String(ads_live_date) : null
+      if (live && client.type === 'managed' && !client.ads_first_live_date) {
+        patch.ads_first_live_date = live
+        patch.start_date = live
+        if (!client.next_payment_date) {
+          const d = new Date(live + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 30)
+          patch.next_payment_date = d.toISOString().slice(0, 10)
+        }
+      }
 
       const { error: upErr } = await supabase.from('clients').update(patch).eq('id', client.id)
       if (upErr) {
