@@ -5423,6 +5423,7 @@ function renderGuardrailSettings() {
   const d = grData, st = d.settings || {}, mm = st.metrics || {};
   const inp = (id, v, w = 70, type = 'number') => `<input class="fi" id="${id}" type="${type}" value="${v == null ? '' : esc(String(v))}" style="width:${w}px;font-size:12px;padding:5px 8px">`;
   $('gr-settings').innerHTML = `
+    <div id="gr-spend" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;font-size:12px;align-items:center;padding:10px 12px;border:1px solid var(--bd);border-radius:var(--r2)"></div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:12px;align-items:center">
       <label>Planned ad spend a day $ ${inp('gr-plan-spend', st.plan_daily_spend, 90)}</label>
       <label>Planned leads a week ${inp('gr-plan-leads', st.plan_weekly_leads, 80)}</label>
@@ -5438,6 +5439,43 @@ function renderGuardrailSettings() {
     <div style="display:flex;gap:8px;align-items:center"><button class="btn btn-p btn-sm" onclick="saveGuardrailSettings()">Save guardrails</button>
     <button class="btn btn-sm" onclick="resetGuardrailSettings()">Back to defaults</button>
     <span style="font-size:12px;color:var(--ink3)">Leave Red empty for a warning-only line.</span></div>`;
+  loadSpendSync();
+}
+// The QuoteLeads ad account's daily spend, pulled from Meta each morning
+// (agency-spend-sync). Every spend figure on the Scoreboard adds these days up.
+async function loadSpendSync() {
+  const el = $('gr-spend'); if (!el) return;
+  const { data: bs } = await db.from('business_settings').select('agency_ad_account_id, agency_spend_synced_at, agency_spend_error').limit(1).maybeSingle();
+  const when = bs?.agency_spend_synced_at ? new Date(bs.agency_spend_synced_at).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : null;
+  el.innerHTML = `<strong>Daily ad spend from Meta</strong>
+    <label>QuoteLeads ad account ID <input class="fi" id="gr-acct" value="${esc(bs?.agency_ad_account_id || '')}" placeholder="act_1234567890" style="width:170px;font-size:12px;padding:5px 8px"></label>
+    <button class="btn btn-sm" onclick="saveSpendAccount()">Save</button>
+    <button class="btn btn-sm" onclick="syncSpendNow(false)">Sync spend now</button>
+    <button class="btn btn-sm" onclick="syncSpendNow(true)" title="Re-fetch every day since 1 January">Re-fetch the year</button>
+    <span style="color:${bs?.agency_spend_error ? 'var(--red)' : 'var(--ink3)'}">${bs?.agency_spend_error ? esc(bs.agency_spend_error) : when ? `Last synced ${when}. Runs every morning at 7:05.` : 'Not synced yet.'}</span>`;
+}
+async function saveSpendAccount() {
+  const v = $('gr-acct').value.trim().replace(/^act_/, '');
+  if (v && !/^\d+$/.test(v)) { toast('The ad account ID is the number after act_', true); return; }
+  const existing = await db.from('business_settings').select('id').limit(1).single();
+  if (!existing.data) { toast('Save Business Settings once first', true); return; }
+  const { error } = await db.from('business_settings').update({ agency_ad_account_id: v || null, updated_at: now() }).eq('id', existing.data.id);
+  if (error) { toast('Error: ' + error.message, true); return; }
+  toast('Ad account saved ✓');
+  if (v) await syncSpendNow(false); else loadSpendSync();
+}
+async function syncSpendNow(backfill) {
+  toast(backfill ? 'Fetching every day since 1 January…' : 'Syncing spend…');
+  const { data: { session } } = await db.auth.getSession();
+  const res = await fetch(`${_ep}/functions/v1/agency-spend-sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+    body: JSON.stringify({ backfill }),
+  });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) toast('Spend sync failed: ' + (out.error || res.status), true);
+  else { toast(`Spend synced: ${out.days} days, ${out.since} to ${out.until}`); smSpendCache = {}; refreshSalesMetrics(); loadGuardrails(false); }
+  loadSpendSync();
 }
 // Only what differs from the defaults is stored, so a better default later
 // still reaches every line nobody changed.
