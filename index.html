@@ -1267,9 +1267,12 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           <button class="btn btn-xs crm-period-btn" data-period="yesterday" onclick="switchCrmFilter('yesterday',this)">Yesterday</button>
           <button class="btn btn-xs crm-period-btn" data-period="7d" onclick="switchCrmFilter('7d',this)">Last 7d</button>
           <button class="btn btn-xs crm-period-btn" data-period="30d" onclick="switchCrmFilter('30d',this)">Last 30d</button>
+          <button class="btn btn-xs crm-period-btn" data-period="month" onclick="switchCrmFilter('month',this)">This month</button>
+          <button class="btn btn-xs crm-period-btn" data-period="lastmonth" onclick="switchCrmFilter('lastmonth',this)">Last month</button>
           <button class="btn btn-xs crm-period-btn" data-period="ytd" onclick="switchCrmFilter('ytd',this)">YTD 2026</button>
           <button class="btn btn-xs crm-period-btn" data-period="custom" onclick="switchCrmFilter('custom',this)">Custom</button>
-          <input type="date" class="fi" id="crm-date" style="width:auto;font-size:12px;padding:5px 10px;display:none;font-family:var(--mono)" onchange="loadCRM(true)">
+          <input type="date" class="fi" id="crm-date" style="width:auto;font-size:12px;padding:5px 10px;display:none;font-family:var(--mono)" onchange="loadCRM(true)" title="From">
+          <input type="date" class="fi" id="crm-date-to" style="width:auto;font-size:12px;padding:5px 10px;display:none;font-family:var(--mono)" onchange="loadCRM(true)" title="To">
         </div>
         <div class="admin-only-field" id="crm-repview-row" style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
           <span style="font-size:12px;color:var(--ink3)">View as rep:</span>
@@ -1291,6 +1294,9 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           <div class="kpi admin-only-field kpi-private masked"><div class="klabel">Avg Won Deal</div><div class="kval grn" id="crm-avgwon">-</div><div class="ksub" id="crm-avgwon-sub"></div></div>
           <div class="kpi admin-only-field kpi-private masked"><div class="klabel">Avg Client LTV</div><div class="kval grn" id="crm-ltv">-</div><div class="ksub" id="crm-ltv-sub"></div></div>
         </div>
+        <div class="sl">Sales Metrics <span id="sm-scope" style="font-size:12px;color:var(--ink3);font-family:var(--mono);margin-left:6px"></span><div class="sl-line"></div></div>
+        <div class="kg kg-fit mb4" id="sales-metrics"></div>
+        <div id="sm-stage-age" style="display:flex;gap:8px;flex-wrap:wrap;margin:-6px 0 16px"></div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
           <input type="search" class="fi" id="crm-search" placeholder="Search leads by name, company, phone or email…" style="flex:1;min-width:200px;max-width:420px;font-size:13px;padding:6px 10px" oninput="setCrmSearch(this.value)">
           <span id="crm-search-count" style="font-size:12px;color:var(--ink3);font-family:var(--mono)"></span>
@@ -3973,6 +3979,7 @@ let leadsTotal = 0;
 let crmPage = 0;
 let crmAllLeads = [];       // date-filtered leads (table/KPIs)
 let crmPipelineLeads = [];  // all active leads regardless of date (kanban)
+let crmBizTotals = {};      // billed to date per business (loadCrmLtv), for the LTV metric
 let crmRepView = '';        // owner-only: '' = everyone, else a rep's user_id
 
 // Owner-only "view as rep": fill the selector from the loaded rep list.
@@ -5246,8 +5253,101 @@ async function loadCRM(resetPage) {
   crmAllLeads = curCrmRange ? (tableR.data || []) : crmPipelineLeads;
   if (!IS_REP) populateCrmRepView();
   renderCRM();
-  if (!IS_REP) loadCrmLtv();
+  if (!IS_REP) loadCrmLtv().then(refreshSalesMetrics);
   if (IS_REP) loadRepStats();
+}
+
+// ── How long a lead has been where it is ────────────────────────────────────
+const DAY_MS = 86400000;
+const daysSince = ts => ts ? Math.max(0, Math.floor((Date.now() - new Date(ts)) / DAY_MS)) : null;
+// When it reached its current stage: the won or lost date for a closed lead,
+// else the last stage change, else when it came in.
+const stageSince = l => (l.stage === 'closed_won' && l.won_at) || (l.stage === 'closed_lost' && l.lost_at) || l.stage_changed_at || l.created_at;
+function stageAgeLine(l) {
+  if (l.stage === 'closed_won' && l.won_at) {
+    const d = Math.max(0, Math.round((new Date(l.won_at) - new Date(l.created_at)) / DAY_MS));
+    return `<div class="kcard-meta" style="font-size:12px;font-family:var(--mono);color:var(--grn)">won in ${d}d</div>`;
+  }
+  if (l.stage === 'closed_lost') return '';
+  const inStage = daysSince(stageSince(l)), total = daysSince(l.created_at);
+  return `<div class="kcard-meta" style="font-size:12px;font-family:var(--mono);color:var(--ink3)">${inStage}d in stage · ${total}d since lead</div>`;
+}
+
+// ── Sales metrics for the chosen period ─────────────────────────────────────
+// Each counts what happened in the period: leads that came in, offers sent,
+// sales won. A rep sees their own leads, and their share of the ad spend (the
+// spend × their leads ÷ all leads), from pipeline_spend. Revenue is the deal
+// value as recorded, incl. GST; gross profit takes the GST off first.
+let smSpendCache = {};
+async function pipelineSpend(from, to) {
+  const k = `${from || ''}:${to || ''}`;
+  if (!smSpendCache[k]) {
+    smSpendCache[k] = db.rpc('pipeline_spend', { p_from: from || null, p_to: to || null })
+      .then(({ data, error }) => error ? null : (data || [])[0] || null);
+  }
+  return smSpendCache[k];
+}
+// Every lead (not just those created in the period: an offer or sale in it may
+// be from an older lead), scoped to the rep being viewed.
+function refreshSalesMetrics() { return renderSalesMetrics(crmRepView ? (crmPipelineLeads || []).filter(l => l.owner_id === crmRepView) : (crmPipelineLeads || [])); }
+async function renderSalesMetrics(leads) {
+  const el = $('sales-metrics'); if (!el) return;
+  const range = curCrmRange ? getDateRange(curCrmRange) : null;
+  const inRange = ts => { if (!ts) return false; if (!range) return true; const d = new Date(ts).toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }); return d >= range.from && d <= range.to; };
+  const came = leads.filter(l => inRange(l.created_at));
+  const contactable = came.filter(l => l.contactable === true).length;
+  const offers = leads.filter(l => inRange(l.offer_sent_at)).length;
+  const sales = leads.filter(l => l.stage === 'closed_won' && inRange(l.won_at || l.stage_changed_at));
+  const revenue = sales.reduce((a, l) => a + Number(l.value || 0), 0);
+  const days = sales.filter(l => l.won_at).map(l => (new Date(l.won_at) - new Date(l.created_at)) / DAY_MS);
+  const sp = await pipelineSpend(range?.from, range?.to);
+  const scoped = IS_REP || crmRepView;
+  let spend = sp ? Number(sp.spend) : null;
+  if (spend != null && scoped) spend = sp.leads_total ? spend * came.length / Number(sp.leads_total) : 0;
+  // LTV: what the business has been billed in total, where we can see it (not
+  // for reps), else the deal value.
+  const ltvs = sales.map(l => {
+    const biz = String(l.company || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    return (!IS_REP && biz && crmBizTotals[biz]) || Number(l.value || 0);
+  }).filter(v => v > 0);
+  const per = (a, b) => b ? a / b : null;
+  const money = v => v == null || !isFinite(v) ? '-' : (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString('en-AU', { maximumFractionDigits: Math.abs(v) < 100 ? 2 : 0 });
+  const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '';
+  const n = v => v == null ? '-' : v.toLocaleString('en-AU');
+  const gp = sales.length && spend != null ? (revenue / 1.1 - spend) / sales.length : null;
+  const cards = [
+    ['Lead Volume', n(came.length), 'came in', 'blu'],
+    ['Contactable', n(contactable), pct(contactable, came.length) && pct(contactable, came.length) + ' of leads', ''],
+    ['Sent Offer', n(offers), pct(offers, contactable) && pct(offers, contactable) + ' of contactable', ''],
+    ['Sales', n(sales.length), pct(sales.length, offers) && pct(sales.length, offers) + ' of offers', 'grn'],
+    ['Revenue', money(revenue), 'incl. GST', 'grn'],
+    ['Spent on Ads', money(spend), scoped ? 'share for these leads' : 'QuoteLeads ad account', ''],
+    ['Return on Ad Spend', spend ? (revenue / spend).toFixed(2) + 'x' : '-', 'revenue ÷ ad spend', ''],
+    ['Cost per Lead', money(per(spend, came.length)), '', ''],
+    ['Value per Lead', money(per(revenue, came.length)), 'revenue ÷ leads', ''],
+    ['Average LTV', money(per(ltvs.reduce((a, v) => a + v, 0), ltvs.length)), IS_REP ? 'deal value' : 'billed to date, per client won', 'grn'],
+    ['AOV', money(per(revenue, sales.length)), 'revenue ÷ sales', ''],
+    ['Cost per Offer Sent', money(per(spend, offers)), '', ''],
+    ['CAC', money(per(spend, sales.length)), 'ad spend ÷ sales', ''],
+    ['Avg Gross Profit', money(gp), 'per sale: revenue ex GST less ad spend', gp != null && gp < 0 ? 'red' : 'grn'],
+    ['Avg Days to Sale', days.length ? (days.reduce((a, d) => a + d, 0) / days.length).toFixed(1) : '-', 'lead in → won', ''],
+  ];
+  el.innerHTML = cards.map(([label, val, sub, cls]) =>
+    `<div class="kpi"><div class="klabel">${label}</div><div class="kval ${cls}">${val}</div>${sub ? `<div class="ksub">${esc(sub)}</div>` : ''}</div>`).join('');
+  const scope = IS_REP ? 'your leads' : crmRepView ? `${repName(crmRepView) || 'rep'}'s leads` : 'all leads';
+  const stale = sp?.spend_updated ? ` · ad spend to ${new Date(sp.spend_updated + 'T00:00:00').toLocaleDateString('en-AU')}` : '';
+  setText('sm-scope', `${range ? `${range.from} to ${range.to}` : 'all time'} · ${scope}${stale}`);
+  // Open pipeline: how many in each stage and how long they've sat there.
+  const age = $('sm-stage-age');
+  if (age) {
+    age.innerHTML = CRM_STAGES.filter(s => !['closed_won', 'closed_lost'].includes(s.id)).map(s => {
+      const inIt = leads.filter(l => l.stage === s.id);
+      if (!inIt.length) return '';
+      const avg = inIt.reduce((a, l) => a + daysSince(stageSince(l)), 0) / inIt.length;
+      const oldest = Math.max(...inIt.map(l => daysSince(stageSince(l))));
+      return `<span style="font-size:12px;font-family:var(--mono);background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:4px 10px">${esc(s.label)}: ${inIt.length} · avg ${avg.toFixed(0)}d in stage · oldest ${oldest}d</span>`;
+    }).join('');
+  }
 }
 
 // Average lifetime value per BUSINESS, all time - the same sums as Financials:
@@ -5286,6 +5386,7 @@ async function loadCrmLtv() {
   (pR.data || []).forEach(o => add(o.client_id, (o.leads_qty || 0) * (o.lead_price || 0)));
   (mR.data || []).forEach(o => add(o.client_id, o.amount || 0));
   const billed = Object.keys(total).filter(b => total[b] > 0);
+  crmBizTotals = total;
   const avg = arr => arr.length ? arr.reduce((a, b) => a + total[b], 0) / arr.length : 0;
   const money = v => '$' + Math.round(v).toLocaleString('en-AU');
   setText('crm-ltv', billed.length ? money(avg(billed)) : '-');
@@ -5329,6 +5430,7 @@ function renderCRM() {
       rvStats.textContent = `Close rate ${allPct} (all) · ${decPct} (decided) · Won ${w} · Lost ${lo} · Open ${op} · ${total} leads`;
     } else { rvStats.textContent = ''; }
   }
+  refreshSalesMetrics();
   const won=allLeads.filter(l=>l.stage==='closed_won').length;
   const lostAll=allLeads.filter(l=>l.stage==='closed_lost'||l.stage==='churned').length;
   const decidedAll=won+lostAll;
@@ -5392,6 +5494,7 @@ function renderCRM() {
         <div class="kcard" id="kc-crm-${esc(String(l.id))}" data-lead-id="${esc(String(l.id))}">
           <div class="kcard-name">${esc(l.name||'-')}</div>
           <div class="kcard-meta">${esc(l.company||'-')}</div>
+          ${stageAgeLine(l)}
           ${l.phone?`<div class="kcard-phone">${esc(l.phone)}</div>`:''}
           <div style="display:flex;gap:4px;margin-top:3px;align-items:center">
             ${(!IS_REP && l.value)?`<span class="kcard-val">${fmt(l.value)}</span>`:''}
@@ -8929,6 +9032,7 @@ function switchCrmFilter(range, el) {
   document.querySelectorAll('.crm-period-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   const ci = $('crm-date'); ci.style.display = range === 'custom' ? 'inline-block' : 'none';
+  $('crm-date-to').style.display = ci.style.display;
   if (range !== 'custom') loadCRM(true);
 }
 function getDateRange(range) {
@@ -8938,7 +9042,9 @@ function getDateRange(range) {
   if (range==='7d') {const s=new Date(today);s.setDate(s.getDate()-6);return {from:f(s),to:f(today)};}
   if (range==='30d') {const s=new Date(today);s.setDate(s.getDate()-29);return {from:f(s),to:f(today)};}
   if (range==='ytd') {return {from:`${today.getFullYear()}-01-01`,to:f(today)};}
-  if (range==='custom') {const v=$('crm-date').value;return v?{from:v,to:v}:{from:f(today),to:f(today)};}
+  if (range==='month') {return {from:f(today).slice(0,8)+'01',to:f(today)};}
+  if (range==='lastmonth') {const e=new Date(today.getFullYear(),today.getMonth(),0);return {from:f(e).slice(0,8)+'01',to:f(e)};}
+  if (range==='custom') {const v=$('crm-date').value, t=$('crm-date-to')?.value;return v?{from:v,to:t&&t>=v?t:v}:{from:f(today),to:f(today)};}
   return {from:f(today),to:f(today)};
 }
 
