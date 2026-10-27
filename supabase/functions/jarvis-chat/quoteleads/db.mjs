@@ -37,6 +37,19 @@ export async function select(table, params = {}, { limit } = {}) {
   return { rows, total: Number.isFinite(total) ? total : rows.length }
 }
 
+/** Call a database function (PostgREST RPC) and return what it returns. */
+export async function rpc(fn, args = {}) {
+  const res = await fetch(`${config.url()}/rest/v1/rpc/${fn}`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify(args),
+  })
+  if (!res.ok) {
+    throw new Error(`${fn}: ${res.status} ${(await res.text()).slice(0, 300)}`)
+  }
+  return res.json()
+}
+
 /** A count without transferring the rows. */
 export async function count(table, params = {}) {
   const qs = new URLSearchParams({ ...params, select: 'id' })

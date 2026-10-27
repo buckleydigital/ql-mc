@@ -14,7 +14,7 @@
  * `npm run bridge:writes` a deliberate act.
  */
 
-import { select, count, patch, insert, remove, invoke } from './db.mjs'
+import { select, count, patch, insert, remove, invoke, rpc } from './db.mjs'
 import { config, stageKey, env } from './config.mjs'
 import { EXPLORE_TOOLS } from './explore.mjs'
 import { MEMORY_TOOLS } from './memory.mjs'
@@ -169,10 +169,10 @@ async function getRevenueVsGoal({ month } = {}) {
  *
  *   - campaign_spend_log is the pay-per-lead source of truth, keyed by a
  *     YYYY-MM `period`. Monthly granularity - there is no daily figure.
- *   - ad_spend_daily.spend for account_type 'agency' is CUMULATIVE year to
- *     date, not that day's spend. Spend for a period is the latest row in it
- *     minus the latest row before it. Summing those rows, as an obvious
- *     reading would, inflates the number enormously.
+ *   - ad_spend_daily.day_spend for account_type 'agency' is what the
+ *     QuoteLeads ad account spent that day (synced from Meta each morning).
+ *     A period's spend is those days added up. (ad_spend_daily.spend on the
+ *     same rows is the running total for the year: never add that up.)
  */
 async function getAdSpendAndCpl({ month } = {}) {
   const target = month || localMonth()
@@ -181,21 +181,15 @@ async function getAdSpendAndCpl({ month } = {}) {
   end.setUTCMonth(end.getUTCMonth() + 1)
   const next = end.toISOString().slice(0, 8) + '01'
 
-  const agency = { select: 'date,spend', account_type: 'eq.agency', order: 'date.desc' }
-  const [spendLog, latest, baseline] = await Promise.all([
+  const [spendLog, days] = await Promise.all([
     select('campaign_spend_log', { select: 'campaign_name,spend,leads,period,source', period: `eq.${target}` }, { limit: 2000 }),
-    select('ad_spend_daily', { ...agency, date: `gte.${from}`, and: `(date.lt.${next})` }, { limit: 1 }),
-    select('ad_spend_daily', { ...agency, date: `lt.${from}` }, { limit: 1 }),
+    select('ad_spend_daily', { select: 'date,day_spend', account_type: 'eq.agency', date: `gte.${from}`, and: `(date.lt.${next})`, order: 'date.desc' }, { limit: 40 }),
   ])
 
   const pplSpend = sum(spendLog.rows, 'spend')
   const pplLeads = spendLog.rows.reduce((s, r) => s + Number(r.leads || 0), 0)
   const cpl = pplLeads ? Math.round((pplSpend / pplLeads) * 100) / 100 : null
-
-  const agencySpend = Math.max(
-    0,
-    Number(latest.rows[0]?.spend || 0) - Number(baseline.rows[0]?.spend || 0),
-  )
+  const agencySpend = Math.round(sum(days.rows, 'day_spend') * 100) / 100
 
   return ok(
     pplLeads
@@ -204,10 +198,67 @@ async function getAdSpendAndCpl({ month } = {}) {
     {
       month: target,
       pay_per_lead: { spend: pplSpend, leads: pplLeads, cpl, campaigns: spendLog.rows.length },
-      agency: { spend: agencySpend, as_at: latest.rows[0]?.date ?? null },
+      agency: { spend: agencySpend, as_at: days.rows[0]?.date ?? null },
       total_spend: pplSpend + agencySpend,
-      note: 'Pay-per-lead spend is logged monthly, so there is no daily figure. Agency spend is a delta of cumulative year-to-date rows.',
+      note: 'Pay-per-lead spend is logged monthly. Agency spend is the QuoteLeads ad account, added up day by day. For the full sales metrics (CPL against pipeline leads, CAC, ROAS) use get_sales_metrics.',
     },
+  )
+}
+
+/**
+ * The Scoreboard's 15 sales metrics for a period, computed in the database
+ * (sales_metrics) exactly as the dashboard shows them. Optionally one rep's
+ * leads, with their share of ad spend.
+ */
+async function getSalesMetrics({ from, to, rep } = {}) {
+  let owner = null
+  if (rep) {
+    const reps = await select('sales_reps', { select: 'user_id,name,email' }, { limit: 200 })
+    const q = norm(rep)
+    const hit = reps.rows.find((r) => norm(r.name || r.email).includes(q))
+    if (!hit) return ok(`I have no record of a representative named ${rep}.`, { reps: reps.rows.map((r) => r.name || r.email) })
+    owner = hit.user_id
+  }
+  const m = await rpc('sales_metrics', { p_from: from || null, p_to: to || null, p_owner: owner })
+  return ok(
+    `${m.from} to ${m.to}: ${m.lead_volume} leads, ${m.sales} sales, ${money(m.revenue_incl_gst)} revenue, ${money(m.spent_on_ads)} on ads.`,
+    {
+      metrics: m,
+      definitions: 'Leads, contactable: leads that came in during the period. Sent offer: offers sent during it. Sales and revenue: deals won during it (revenue incl. GST). Spend: QuoteLeads ad account, day by day. CAC = spend / sales. Avg gross profit per sale = (revenue / 1.1 - spend) / sales. Average LTV = total billed to the business, else the deal value.',
+    },
+  )
+}
+
+/**
+ * Monthly churn, the dashboard's way: clients lost in the month divided by the
+ * clients there at its start. Paused counts as a client.
+ */
+async function getChurn({ type = 'managed', month } = {}) {
+  const months = await rpc('churn_by_month', { p_type: type === 'ppl' ? 'ppl' : 'managed' })
+  if (!months.length) return ok(`No ${type} clients have a start date yet.`, { months })
+  const pick = month
+    ? months.find((x) => x.month === month)
+    : [...months].reverse().find((x) => !x.month_in_progress) || months[months.length - 1]
+  const pct = (r) => (r == null ? 'no rate' : `${r}%`)
+  const summary = pick
+    ? `${pick.label}${pick.month_in_progress ? ' so far' : ''}: ${pick.lost} of ${pick.clients_at_start} ${type} clients lost, ${pct(pick.churn_rate_pct)} churn.`
+    : `No ${type} churn figures for ${month}.`
+  return ok(summary, { type, month: pick ?? null, by_month: months.slice(-12) })
+}
+
+/**
+ * The guardrails: each metric against its amber and red lines, with the owner
+ * and the action, and the scale signal. Live, not this morning's snapshot.
+ */
+async function getGuardrails() {
+  const metrics = await rpc('guardrail_metrics')
+  const red = metrics.filter((x) => x.level === 'breach')
+  const amber = metrics.filter((x) => x.level === 'warning')
+  const signal = red.length ? 'red: pause scaling' : amber.length ? 'amber: hold spend and fix' : 'green: scale 20 to 25%'
+  const line = (x) => `${x.label} ${x.display}`
+  return ok(
+    `Signal ${signal}.${red.length ? ` Red: ${red.map(line).join(', ')}.` : ''}${amber.length ? ` Amber: ${amber.map(line).join(', ')}.` : ''}`,
+    { signal, metrics },
   )
 }
 
@@ -897,6 +948,37 @@ export const TOOLS = [
     description: 'Advertising spend and cost per lead for the month: pay-per-lead from the campaign spend log, plus agency spend. Logged monthly, so there is no daily figure.',
     inputSchema: { type: 'object', properties: { month: str('Month as YYYY-MM. Defaults to the current month.') } },
     handler: getAdSpendAndCpl,
+  },
+  {
+    name: 'get_sales_metrics',
+    description: 'The Scoreboard\'s 15 sales metrics for any period: lead volume, contactable, sent offer, sales, revenue, ad spend, ROAS, cost per lead, value per lead, average LTV, AOV, cost per offer sent, CAC, average gross profit per sale, average days to sale. Optionally for one rep. Answers "what was our CAC last month", "how many offers did we send in September", "what is Dave\'s revenue this month".',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        from: str('First day, YYYY-MM-DD (Sydney). Omit for all time.'),
+        to: str('Last day, YYYY-MM-DD, inclusive. Omit for today.'),
+        rep: str('A sales rep\'s name, to see only their leads.'),
+      },
+    },
+    handler: getSalesMetrics,
+  },
+  {
+    name: 'get_churn',
+    description: 'Monthly client churn: clients lost in the month divided by clients at the start of the month, month by month. Answers "what was our churn last month". Defaults to the last full month for managed clients.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        type: str('managed (default) or ppl.'),
+        month: str('Month as YYYY-MM. Omit for the last full month.'),
+      },
+    },
+    handler: getChurn,
+  },
+  {
+    name: 'get_guardrails',
+    description: 'The business guardrails right now: CPL, pitch rate, pitch-to-close, speed-to-lead, spend vs plan, lead volume, clients per VA, no-show rate, day-21 cohort CAC, cash collected, churn vs baseline, leads with no touch in 24h. Each is green, amber or red, with its owner and action, plus the overall scale signal. Answers "should we scale", "are we on track", "what is red".',
+    inputSchema: { type: 'object', properties: {} },
+    handler: getGuardrails,
   },
   {
     name: 'get_rep_performance',

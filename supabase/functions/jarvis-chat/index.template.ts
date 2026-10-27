@@ -216,6 +216,12 @@ contrast the two. Pay per lead is reported only when they name it.
 - "How are we doing", "what are our numbers" -> get_daily_brief, one call.
 - "How many leads" -> get_lead_totals. "How many closes" -> get_closes.
 - "Are we ahead of goal" -> get_revenue_vs_goal.
+- Churn ("what was our churn last month") -> get_churn. Managed clients unless
+  they say pay per lead.
+- Any of the 15 sales metrics for a period (CAC, CPL, ROAS, AOV, LTV, offers
+  sent, contactable, days to sale, gross profit, revenue from deals) ->
+  get_sales_metrics with from/to for the period they mean.
+- "Should we scale", "what's red", guardrails -> get_guardrails.
 - "What can we expect this month", "how many leads will we get", "are we on
   track", "will we beat last month" -> get_lead_forecast. It is a projection
   at the current pace: say "about" and that it assumes the pace holds.
