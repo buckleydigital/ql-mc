@@ -309,8 +309,8 @@ a{color:inherit;text-decoration:none}
 .btn-sm{min-height:30px;padding:0 12px;font-size:var(--fs-base)}
 .btn-xs{min-height:26px;padding:0 10px;font-size:var(--fs-sm)}
 .camp-period-btn.active{background:var(--acc-fill);color:#fff;border-color:var(--acc-fill)}
-.crm-period-btn.active{background:var(--acc-fill);color:#fff;border-color:var(--acc-fill)}
-.crm-period-btn{border-radius:999px}
+.crm-period-btn.active,.sb-period-btn.active{background:var(--acc-fill);color:#fff;border-color:var(--acc-fill)}
+.crm-period-btn,.sb-period-btn{border-radius:999px}
 .pager{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 0;font-size:var(--fs-sm);color:var(--ink3)}
 .pager button{padding:5px 12px;font-size:var(--fs-sm);background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--ink2);cursor:pointer}
 .pager button:hover:not(:disabled){background:var(--acc-dim);color:var(--acc);border-color:rgba(79,143,255,.15)}
@@ -1155,6 +1155,9 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
 
         <div class="sb-group">
           <span class="sb-group-label">Sales &amp; Clients</span>
+          <button class="navbtn" data-panel="scoreboard" onclick="nav('scoreboard',this)">
+            <span class="ni"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>Scoreboard
+          </button>
           <button class="navbtn" data-panel="crm" onclick="nav('crm',this)">
             <span class="ni"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span>Sales Pipeline<span id="crm-followup-badge" style="display:none;background:var(--amb-fill);color:#1c1416;border-radius:10px;font-size:12px;padding:1px 6px;margin-left:5px;font-family:var(--mono);font-weight:700;line-height:1.5">0</span>
           </button>
@@ -1251,6 +1254,40 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
       </div>
 
       <!-- ══ SALES CRM ══ -->
+      <div class="panel" id="panel-scoreboard">
+        <div class="ph">
+          <div class="ph-left"><h1>Scoreboard</h1><p>Every sales metric on one screen, and the guardrails that say whether to scale</p></div>
+          <div class="ph-right"><button class="btn btn-sm admin-only-field" onclick="loadGuardrails(true)" title="Re-grade today's snapshot now">↻ Re-check guardrails</button></div>
+        </div>
+        <div style="display:flex;gap:4px;margin-bottom:8px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:12px;color:var(--ink3);margin-right:4px">Period:</span>
+          <button class="btn btn-xs sb-period-btn active" data-period="month" onclick="switchSbPeriod('month',this)">This month</button>
+          <button class="btn btn-xs sb-period-btn" data-period="lastmonth" onclick="switchSbPeriod('lastmonth',this)">Last month</button>
+          <button class="btn btn-xs sb-period-btn" data-period="7d" onclick="switchSbPeriod('7d',this)">Last 7d</button>
+          <button class="btn btn-xs sb-period-btn" data-period="30d" onclick="switchSbPeriod('30d',this)">Last 30d</button>
+          <button class="btn btn-xs sb-period-btn" data-period="ytd" onclick="switchSbPeriod('ytd',this)">YTD</button>
+          <button class="btn btn-xs sb-period-btn" data-period="" onclick="switchSbPeriod('',this)">All time</button>
+          <button class="btn btn-xs sb-period-btn" data-period="custom" onclick="switchSbPeriod('custom',this)">Custom</button>
+          <input type="date" class="fi" id="sb-date" style="width:auto;font-size:12px;padding:5px 10px;display:none;font-family:var(--mono)" onchange="refreshSalesMetrics()" title="From">
+          <input type="date" class="fi" id="sb-date-to" style="width:auto;font-size:12px;padding:5px 10px;display:none;font-family:var(--mono)" onchange="refreshSalesMetrics()" title="To">
+          <select class="fi admin-only-field" id="sb-rep" style="width:auto;font-size:12px;padding:5px 10px;margin-left:auto" onchange="sbRep=this.value;refreshSalesMetrics()"><option value="">Everyone</option></select>
+        </div>
+        <div id="sm-scope" style="font-size:12px;color:var(--ink3);font-family:var(--mono);margin-bottom:16px"></div>
+        <div id="sales-metrics"></div>
+        <div id="sm-stage-age" style="display:flex;gap:8px;flex-wrap:wrap;margin:-6px 0 24px"></div>
+        <div id="gr-section" class="admin-only-field">
+          <div class="sl">Guardrails <span id="gr-sub" style="font-size:12px;color:var(--ink3);font-family:var(--mono);margin-left:6px"></span><div class="sl-line"></div></div>
+          <div id="gr-signal"></div>
+          <div class="twrap mb4"><table><thead><tr><th>Metric</th><th>Now</th><th>Status</th><th>Green · Amber · Red</th><th>Why</th><th>Owner and action</th></tr></thead><tbody id="gr-body"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody></table></div>
+          <div class="sl">Day-21 cohorts <span style="font-size:12px;color:var(--ink3);font-family:var(--mono);margin-left:6px">each week's leads, judged 21 days after the week ends · weeks under 5 leads aren't graded</span><div class="sl-line"></div></div>
+          <div class="twrap mb4"><table><thead><tr><th>Week of</th><th>Leads</th><th>Won in 21 days</th><th>Ad spend</th><th>CAC</th></tr></thead><tbody id="gr-cohorts"></tbody></table></div>
+          <details id="gr-settings-wrap" style="margin-bottom:24px">
+            <summary style="cursor:pointer;font-size:13px;font-weight:600;padding:6px 0">Guardrail settings: lines, owners, actions and plans</summary>
+            <div id="gr-settings" style="margin-top:10px"></div>
+          </details>
+        </div>
+      </div>
+
       <div class="panel" id="panel-crm">
         <div class="ph">
           <div class="ph-left"><h1>Sales Pipeline</h1><p>Agency client acquisition</p></div>
@@ -1294,9 +1331,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           <div class="kpi admin-only-field kpi-private masked"><div class="klabel">Avg Won Deal</div><div class="kval grn" id="crm-avgwon">-</div><div class="ksub" id="crm-avgwon-sub"></div></div>
           <div class="kpi admin-only-field kpi-private masked"><div class="klabel">Avg Client LTV</div><div class="kval grn" id="crm-ltv">-</div><div class="ksub" id="crm-ltv-sub"></div></div>
         </div>
-        <div class="sl">Sales Metrics <span id="sm-scope" style="font-size:12px;color:var(--ink3);font-family:var(--mono);margin-left:6px"></span><div class="sl-line"></div></div>
-        <div class="kg kg-fit mb4" id="sales-metrics"></div>
-        <div id="sm-stage-age" style="display:flex;gap:8px;flex-wrap:wrap;margin:-6px 0 16px"></div>
+        <div style="margin:-8px 0 16px;font-size:12px"><a href="#" onclick="nav('scoreboard');return false" style="color:var(--acc)">All 15 sales metrics and the guardrails are on the Scoreboard →</a></div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
           <input type="search" class="fi" id="crm-search" placeholder="Search leads by name, company, phone or email…" style="flex:1;min-width:200px;max-width:420px;font-size:13px;padding:6px 10px" oninput="setCrmSearch(this.value)">
           <span id="crm-search-count" style="font-size:12px;color:var(--ink3);font-family:var(--mono)"></span>
@@ -2315,6 +2350,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
 
   <div class="bnav" style="flex-wrap:wrap;height:auto;padding:4px 2px;">
     <button class="bnbtn active" data-panel="tasks" onclick="nav('tasks',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span><span class="bnbtn-lbl">Tasks</span></button>
+    <button class="bnbtn" data-panel="scoreboard" onclick="nav('scoreboard',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><span class="bnbtn-lbl">Scoreboard</span></button>
     <button class="bnbtn" data-panel="crm" onclick="nav('crm',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span><span class="bnbtn-lbl">Sales</span></button>
     <button class="bnbtn" data-panel="invoices" onclick="nav('invoices',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M5 2v20l2.5-1.5L10 22l2-1.5L14 22l2.5-1.5L19 22V2l-2.5 1.5L14 2l-2 1.5L10 2 7.5 3.5 5 2z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span><span class="bnbtn-lbl">Invoices</span></button>
     <button class="bnbtn" data-panel="sales-conv" onclick="nav('sales-conv',this)"><span class="bnbtn-icon"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 01-11.7 7.7L3 21l1.9-6.1A8.5 8.5 0 1121 11.5z"/><path d="M8 10.5h8M8 13.5h5"/></svg></span><span class="bnbtn-lbl">Messages</span></button>
@@ -4231,7 +4267,7 @@ document.addEventListener('keydown', e => {
 async function doLogout() { if (!confirm('Sign out?')) return; if (db) await db.auth.signOut(); }
 
 // Panels a sales rep is allowed to open. Everything else is hidden + blocked.
-const REP_PANELS = new Set(['crm', 'invoices', 'sales-conv']);
+const REP_PANELS = new Set(['crm', 'invoices', 'sales-conv', 'scoreboard']);
 
 function toggleClientBreakdown() {
   const el = $('ld-client-breakdown');
@@ -4413,6 +4449,7 @@ function nav(panel, el) {
   if (panel === 'sales-conv') loadSalesConversations();
   if (panel === 'invoices') loadInvoices();
   if (panel === 'goals') loadGoals();
+  if (panel === 'scoreboard') loadScoreboard();
   if (panel === 'emailtpl') loadEmailTemplates();
   if (panel === 'sentmail') loadSentEmails();
   if (panel === 'hiring') loadHiring();
@@ -5296,10 +5333,151 @@ async function pipelineSpend(from, to) {
 }
 // Every lead (not just those created in the period: an offer or sale in it may
 // be from an older lead), scoped to the rep being viewed.
-function refreshSalesMetrics() { return renderSalesMetrics(crmRepView ? (crmPipelineLeads || []).filter(l => l.owner_id === crmRepView) : (crmPipelineLeads || [])); }
+let sbRange = 'month', sbRep = '';
+function refreshSalesMetrics() { return renderSalesMetrics(sbRep ? (crmPipelineLeads || []).filter(l => l.owner_id === sbRep) : (crmPipelineLeads || [])); }
+function sbDateRange() {
+  if (!sbRange) return null;
+  if (sbRange !== 'custom') return getDateRange(sbRange);
+  const f = $('sb-date').value, t = $('sb-date-to').value;
+  if (!f) return getDateRange('month');
+  return { from: f, to: t && t >= f ? t : f };
+}
+function switchSbPeriod(range, el) {
+  sbRange = range;
+  document.querySelectorAll('.sb-period-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  const show = range === 'custom' ? 'inline-block' : 'none';
+  $('sb-date').style.display = show; $('sb-date-to').style.display = show;
+  refreshSalesMetrics();
+}
+// The Scoreboard reads the same leads the pipeline does; it loads them if the
+// pipeline hasn't been opened yet.
+async function loadScoreboard() {
+  if (!crmPipelineLeads.length) await loadCRM();
+  const src = $('crm-rep-view'), dst = $('sb-rep');
+  if (!IS_REP && src && dst && dst.options.length < 2) { dst.innerHTML = src.innerHTML; dst.value = sbRep; }
+  if (!IS_REP && !Object.keys(crmBizTotals).length) await loadCrmLtv();
+  refreshSalesMetrics();
+  loadGuardrails(false);
+}
+
+// ── Guardrails ──────────────────────────────────────────────────────────────
+// Graded in the database (guardrail_metrics), so the Scoreboard, the morning
+// digest and Jarvis's alerts always agree. Owner only.
+let grData = null;
+const GR_LEVEL = {
+  green: ['bg-grn', 'Green'], watch: ['bg-gray', 'Watch'], warning: ['bg-amb', 'Amber'],
+  breach: ['bg-red', 'Red'], no_data: ['bg-gray', 'No data'], off: ['bg-gray', 'Off'],
+};
+const GR_SIGNAL = {
+  green: ['var(--grn)', 'Green: scale 20 to 25%'],
+  amber: ['var(--amb)', 'Amber: hold spend and fix'],
+  red: ['var(--red)', 'Red: pause scaling'],
+};
+function grFmt(m, v) {
+  if (v == null || v === '') return '-';
+  const u = m.unit || '';
+  return u === '$' ? '$' + v : v + (u ? (u.startsWith('%') ? u : ' ' + u) : '');
+}
+async function loadGuardrails(refresh) {
+  if (IS_REP || !$('gr-body')) return;
+  const { data, error } = await db.rpc('guardrail_report', { p_refresh: !!refresh });
+  if (error) { $('gr-body').innerHTML = `<tr><td colspan="6" class="empty" style="color:var(--red)">Error: ${esc(error.message)}</td></tr>`; return; }
+  grData = data;
+  renderGuardrails();
+  if (refresh) toast('Guardrails re-checked');
+}
+function renderGuardrails() {
+  const d = grData; if (!d) return;
+  const ms = d.metrics || [];
+  const red = ms.filter(m => m.level === 'breach').length, amber = ms.filter(m => m.level === 'warning').length;
+  const sig = GR_SIGNAL[d.signal] || GR_SIGNAL.green;
+  const snap = d.snapshot;
+  setText('gr-sub', snap ? `morning digest ${new Date(snap.at).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}` : 'no digest yet');
+  $('gr-signal').innerHTML = `<div style="padding:12px 16px;border-radius:var(--r2);border:1px solid ${sig[0]};background:var(--s1);margin-bottom:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <strong style="color:${sig[0]};font-size:15px">${sig[1]}</strong>
+    <span style="font-size:12px;color:var(--ink3)">${red} red · ${amber} amber, right now. Amber and red go to Jarvis each morning; speed-to-lead and spend pacing as they happen. Each Monday: the weekly review.</span></div>`;
+  $('gr-body').innerHTML = ms.map(m => {
+    const [cls, word] = GR_LEVEL[m.level] || GR_LEVEL.no_data;
+    const lines = `${m.dir === 'low' ? '≥' : '≤'}${grFmt(m, m.green)} · ${m.dir === 'low' ? '<' : '>'}${grFmt(m, m.warn)} · ${m.breach == null ? '-' : (m.dir === 'low' ? '<' : '>') + grFmt(m, m.breach)}`;
+    return `<tr style="${m.level === 'off' ? 'opacity:.5' : ''}">
+      <td style="font-weight:600;white-space:nowrap">${esc(m.label)}${m.realtime ? ' <span class="badge bg-gray" title="Checked every 15 minutes">live</span>' : ''}</td>
+      <td style="font-family:var(--mono);white-space:nowrap">${esc(m.display || '-')}</td>
+      <td><span class="badge ${cls}">${word}</span></td>
+      <td style="font-family:var(--mono);font-size:12px;white-space:nowrap">${esc(lines)}</td>
+      <td style="font-size:12px;color:var(--ink2);min-width:220px;white-space:normal">${esc(m.detail || '')}</td>
+      <td style="font-size:12px;min-width:220px;white-space:normal"><strong>${esc(m.owner || '')}</strong>${m.action ? ': ' + esc(m.action) : ''}</td>
+    </tr>`;
+  }).join('');
+  const cac = ms.find(m => m.key === 'cohort_cac');
+  const money = v => v == null ? '-' : '$' + Math.round(Number(v)).toLocaleString('en-AU');
+  $('gr-cohorts').innerHTML = (cac?.cohorts || []).length ? cac.cohorts.map(c => `<tr style="${c.leads < 5 ? 'opacity:.55' : ''}">
+      <td style="font-family:var(--mono)">${new Date(c.week + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+      <td style="font-family:var(--mono)">${c.leads}</td><td style="font-family:var(--mono)">${c.sales}</td>
+      <td style="font-family:var(--mono)">${c.spend == null ? 'not synced' : money(c.spend)}</td>
+      <td style="font-family:var(--mono)">${c.cac != null ? money(c.cac) : c.spend > 0 ? 'no sales' : '-'}</td></tr>`).join('')
+    : '<tr><td colspan="5" class="empty">No week is 21 days old yet</td></tr>';
+  renderGuardrailSettings();
+}
+function renderGuardrailSettings() {
+  const d = grData, st = d.settings || {}, mm = st.metrics || {};
+  const inp = (id, v, w = 70, type = 'number') => `<input class="fi" id="${id}" type="${type}" value="${v == null ? '' : esc(String(v))}" style="width:${w}px;font-size:12px;padding:5px 8px">`;
+  $('gr-settings').innerHTML = `
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:12px;align-items:center">
+      <label>Planned ad spend a day $ ${inp('gr-plan-spend', st.plan_daily_spend, 90)}</label>
+      <label>Planned leads a week ${inp('gr-plan-leads', st.plan_weekly_leads, 80)}</label>
+      <span style="color:var(--ink3)">Spend pacing and lead volume need these.</span>
+    </div>
+    <div class="twrap mb4"><table><thead><tr><th>On</th><th>Metric</th><th>Green</th><th>Amber past</th><th>Red past</th><th>Owner</th><th>Action</th></tr></thead><tbody>
+    ${(d.metrics || []).map(x => [x.key, mm[x.key]]).filter(([, m]) => m).map(([k, m]) => `<tr>
+      <td><input type="checkbox" id="gr-on-${k}" ${m.on !== false ? 'checked' : ''}></td>
+      <td style="font-size:12px;white-space:nowrap">${esc(m.label)} <span style="color:var(--ink3)">(${esc(m.unit || 'count')}, ${m.dir === 'low' ? 'lower is worse' : 'higher is worse'})</span></td>
+      <td>${inp('gr-green-' + k, m.green)}</td><td>${inp('gr-warn-' + k, m.warn)}</td><td>${inp('gr-breach-' + k, m.breach)}</td>
+      <td>${inp('gr-owner-' + k, m.owner, 110, 'text')}</td><td>${inp('gr-action-' + k, m.action, 320, 'text')}</td></tr>`).join('')}
+    </tbody></table></div>
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn btn-p btn-sm" onclick="saveGuardrailSettings()">Save guardrails</button>
+    <button class="btn btn-sm" onclick="resetGuardrailSettings()">Back to defaults</button>
+    <span style="font-size:12px;color:var(--ink3)">Leave Red empty for a warning-only line.</span></div>`;
+}
+// Only what differs from the defaults is stored, so a better default later
+// still reaches every line nobody changed.
+async function saveGuardrailSettings() {
+  const def = (grData.defaults || {}).metrics || {};
+  const num = id => { const v = $(id).value.trim(); return v === '' ? null : Number(v); };
+  const out = { metrics: {} };
+  const ps = num('gr-plan-spend'), pl = num('gr-plan-leads');
+  if (ps != null) out.plan_daily_spend = ps;
+  if (pl != null) out.plan_weekly_leads = pl;
+  for (const k of Object.keys(def)) {
+    const now = { on: $('gr-on-' + k).checked, green: num('gr-green-' + k), warn: num('gr-warn-' + k), breach: num('gr-breach-' + k),
+      owner: $('gr-owner-' + k).value.trim(), action: $('gr-action-' + k).value.trim() };
+    if ([now.green, now.warn, now.breach].some(v => v != null && !isFinite(v))) { toast(`${def[k].label}: lines must be numbers`, true); return; }
+    const diff = {};
+    for (const [f, v] of Object.entries(now)) if (JSON.stringify(v) !== JSON.stringify(def[k][f] ?? null)) diff[f] = v;
+    if (Object.keys(diff).length) out.metrics[k] = diff;
+  }
+  await writeGuardrails(out);
+}
+async function resetGuardrailSettings() {
+  if (!confirm('Put every guardrail line, owner and action back to the defaults? The spend and lead plans are kept.')) return;
+  const st = grData.settings || {};
+  const out = { metrics: {} };
+  if (st.plan_daily_spend != null) out.plan_daily_spend = st.plan_daily_spend;
+  if (st.plan_weekly_leads != null) out.plan_weekly_leads = st.plan_weekly_leads;
+  await writeGuardrails(out);
+}
+async function writeGuardrails(value) {
+  const existing = await db.from('business_settings').select('id').limit(1).single();
+  if (!existing.data) { toast('Save Business Settings once first', true); return; }
+  const { error } = await db.from('business_settings').update({ guardrails: value, updated_at: now() }).eq('id', existing.data.id);
+  if (error) { toast('Error: ' + error.message, true); return; }
+  toast('Guardrails saved ✓');
+  // Re-grade today's digest against the new lines.
+  await loadGuardrails(true);
+}
 async function renderSalesMetrics(leads) {
   const el = $('sales-metrics'); if (!el) return;
-  const range = curCrmRange ? getDateRange(curCrmRange) : null;
+  const range = sbDateRange();
   const inRange = ts => { if (!ts) return false; if (!range) return true; const d = new Date(ts).toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }); return d >= range.from && d <= range.to; };
   const came = leads.filter(l => inRange(l.created_at));
   const contactable = came.filter(l => l.contactable === true).length;
@@ -5308,7 +5486,7 @@ async function renderSalesMetrics(leads) {
   const revenue = sales.reduce((a, l) => a + Number(l.value || 0), 0);
   const days = sales.filter(l => l.won_at).map(l => (new Date(l.won_at) - new Date(l.created_at)) / DAY_MS);
   const sp = IS_REP ? null : await pipelineSpend(range?.from, range?.to);
-  const scoped = !!crmRepView;
+  const scoped = !!sbRep;
   let spend = sp ? Number(sp.spend) : null;
   if (spend != null && scoped) spend = sp.leads_total ? spend * came.length / Number(sp.leads_total) : 0;
   // LTV: what the business has been billed in total, where we can see it (not
@@ -5341,9 +5519,19 @@ async function renderSalesMetrics(leads) {
     ['Avg Gross Profit', money(gp), 'per sale: revenue ex GST less ad spend', gp != null && gp < 0 ? 'red' : 'grn'],
     ['Avg Days to Sale', days.length ? (days.reduce((a, d) => a + d, 0) / days.length).toFixed(1) : '-', 'lead in → won', ''],
   ];
-  el.innerHTML = cards.filter(c => !IS_REP || !SPEND_CARDS.includes(c[0])).map(([label, val, sub, cls]) =>
-    `<div class="kpi"><div class="klabel">${label}</div><div class="kval ${cls}">${val}</div>${sub ? `<div class="ksub">${esc(sub)}</div>` : ''}</div>`).join('');
-  const scope = IS_REP ? 'your leads' : crmRepView ? `${repName(crmRepView) || 'rep'}'s leads` : 'all leads';
+  // Three rows: how leads move, what they're worth, what they cost.
+  const GROUPS = [
+    ['Funnel', ['Lead Volume', 'Contactable', 'Sent Offer', 'Sales', 'Avg Days to Sale']],
+    ['Money', ['Revenue', 'Spent on Ads', 'Return on Ad Spend', 'AOV', 'Average LTV', 'Avg Gross Profit']],
+    ['Unit economics', ['Cost per Lead', 'Value per Lead', 'Cost per Offer Sent', 'CAC']],
+  ];
+  const card = ([label, val, sub, cls]) =>
+    `<div class="kpi"><div class="klabel">${label}</div><div class="kval ${cls}">${val}</div>${sub ? `<div class="ksub">${esc(sub)}</div>` : ''}</div>`;
+  el.innerHTML = GROUPS.map(([title, names]) => {
+    const row = names.map(nm => cards.find(c => c[0] === nm)).filter(c => c && (!IS_REP || !SPEND_CARDS.includes(c[0])));
+    return row.length ? `<div style="font-size:12px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px">${title}</div><div class="kg kg-fit mb4">${row.map(card).join('')}</div>` : '';
+  }).join('');
+  const scope = IS_REP ? 'your leads' : sbRep ? `${repName(sbRep) || 'rep'}'s leads` : 'all leads';
   const stale = !IS_REP && sp?.spend_updated ? ` · ad spend to ${new Date(sp.spend_updated + 'T00:00:00').toLocaleDateString('en-AU')}` : '';
   setText('sm-scope', `${range ? `${range.from} to ${range.to}` : 'all time'} · ${scope}${stale}`);
   // Open pipeline: how many in each stage and how long they've sat there.

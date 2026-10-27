@@ -90,6 +90,26 @@ function describe(e: Ev): string {
       return `${who} - onboarding is past due${e.payload.step ? ` on ${e.payload.step}` : ''}.`
     case 'fulfilment_blocked':
       return `${who} - fulfilment is blocked${e.payload.blocked ? ` (${e.payload.blocked})` : ''}.`
+    // Guardrails: the number, the line it crossed, and who does what.
+    case 'guardrail': {
+      const p = e.payload
+      const red = p.level === 'breach'
+      const line = red ? p.breach : p.warn
+      const unit = String(p.unit ?? '')
+      const fmt = (v: unknown) => unit === '$' ? `$${v}` : `${v}${unit && unit !== '$' ? (unit.startsWith('%') ? unit : ` ${unit}`) : ''}`
+      const trend = p.key === 'cohort_cac' && p.trending_up ? ' Two cohorts trending up.' : ''
+      return `${red ? 'RED' : 'AMBER'} ${who}: ${p.display ?? '-'} (line ${fmt(line)}).${trend} ${p.owner}: ${p.action}`
+    }
+    case 'speed_to_lead': {
+      const m = Number(e.payload.minutes ?? 0)
+      const t = m >= 120 ? `${Math.round(m / 60)}h` : `${m} min`
+      return `${who} came in ${t} ago and nobody has contacted them${e.payload.phone ? ` (${e.payload.phone})` : ''}.`
+    }
+    case 'guardrail_weekly': {
+      const p = e.payload
+      const sig = p.signal === 'red' ? 'red: pause scaling' : p.signal === 'amber' ? 'amber: hold spend and fix' : 'green: scale 20 to 25%'
+      return `Weekly review - ${sig}. ${p.red} red, ${p.amber} amber. Latest cohort CAC ${p.cac ?? '-'}${p.trending_up ? ', trending up' : ''}.`
+    }
     default:
       return `${who} - ${e.kind}.`
   }
@@ -369,6 +389,31 @@ async function syncDonState(db: any): Promise<void> {
   }
 }
 
+// Which VA looks after which client, from ql-hq, for the clients-per-VA
+// guardrail. Refreshed every few hours; best effort, like Don's state.
+// deno-lint-ignore no-explicit-any
+async function syncVaLoad(db: any): Promise<void> {
+  const hq = Deno.env.get('QL_HQ_API_URL')
+  const secret = Deno.env.get('QL_MC_API_SECRET')
+  if (!hq || !secret) return
+  try {
+    const { data: row } = await db.from('business_settings').select('id, va_load_synced_at').limit(1).maybeSingle()
+    if (!row?.id) return
+    if (row.va_load_synced_at && Date.now() - Date.parse(row.va_load_synced_at) < 4 * 3600_000) return
+    const res = await fetch(`${hq}/sync-from-mc`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-secret': secret },
+      body: JSON.stringify({ action: 'va_load' }),
+    })
+    if (!res.ok) { console.warn('syncVaLoad: ql-hq returned', res.status); return }
+    const vas = (await res.json())?.vas
+    if (!Array.isArray(vas)) return
+    await db.from('business_settings').update({ va_load: vas, va_load_synced_at: new Date().toISOString() }).eq('id', row.id)
+  } catch (err) {
+    console.warn('syncVaLoad failed:', err instanceof Error ? err.message : err)
+  }
+}
+
 Deno.serve(async (req: Request) => {
   // No public surface. The only callers are pg_cron (via pg_net) and a human
   // testing with the same key. Checked here rather than by verify_jwt, because
@@ -405,6 +450,7 @@ Deno.serve(async (req: Request) => {
     // refreshing it afterwards would leave every run reasoning about the
     // previous heartbeat's answer.
     await syncDonState(db)
+    await syncVaLoad(db)
 
     const { data: pendingCount, error: scanErr } = await db.rpc('jarvis_apply_scan')
     if (scanErr) return json({ error: `scan failed: ${scanErr.message}` }, 500)
