@@ -272,22 +272,22 @@ begin
                    when coalesce(d, 0) = 0 then 'Every active retainer is paid up ($' || round(n) || ' a month).'
                    else '$' || round(d) || ' of $' || round(n) || ' a month overdue: ' || detail || '.' end);
 
-  -- Churn spike: clients lost in the last 30 days over every client we had in
-  -- them, against the average of the six 30-day periods before.
+  -- Churn spike: clients lost in the last 30 days over those active 30 days
+  -- ago, against the average of the six 30-day periods before.
   select
     (select count(*) from public.clients where churned_at > today - 30 and churned_at <= today),
-    (select count(*) from public.clients where client_since <= today and (churned_at is null or churned_at > today - 30)),
+    (select count(*) from public.clients where client_since <= today - 30 and (churned_at is null or churned_at > today - 30)),
     (select avg(case when s.base > 0 then s.lost::numeric / s.base end) from (
        select (select count(*) from public.clients c where c.churned_at > today - 30 * (k + 1) and c.churned_at <= today - 30 * k) lost,
-              (select count(*) from public.clients c where c.client_since <= today - 30 * k and (c.churned_at is null or c.churned_at > today - 30 * (k + 1))) base
+              (select count(*) from public.clients c where c.client_since <= today - 30 * (k + 1) and (c.churned_at is null or c.churned_at > today - 30 * (k + 1))) base
          from generate_series(1, 6) k) s)
     into d, n, sp;
   v := case when n > 0 and sp is not null then
          case when sp > 0 then round(((d / n) / sp - 1) * 100, 1) when d > 0 then 100 else 0 end end;
   out := out || jsonb_build_object('key', 'churn_spike', 'value', case when d = 0 then least(v, 0) else v end,
     'display', case when n > 0 then round(d * 100 / n, 1) || '%' else '-' end,
-    'detail', case when coalesce(n, 0) = 0 then 'No clients in the last 30 days.'
-                   else d || ' of the ' || n || ' clients we had lost in 30 days (' || round(d * 100 / n, 1) || '%); usual is '
+    'detail', case when coalesce(n, 0) = 0 then 'No clients active 30 days ago.'
+                   else d || ' of ' || n || ' clients lost in 30 days (' || round(d * 100 / n, 1) || '%); usual is '
                         || coalesce(round(sp * 100, 1) || '%', 'unknown') || '.' end);
 
   -- Follow-up SLA: open leads nobody has touched in 24 hours. No Answer

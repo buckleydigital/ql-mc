@@ -1263,9 +1263,8 @@ async function getSalesMetrics({ from, to, rep } = {}) {
 }
 
 /**
- * Monthly churn, the dashboard's way: clients lost in the month divided by
- * every client we had that month (there at its start or joining in it).
- * Paused counts as a client.
+ * Monthly churn, the dashboard's way: clients lost in the month divided by the
+ * clients there at its start. Paused counts as a client.
  */
 async function getChurn({ type = 'managed', month } = {}) {
   const months = await rpc('churn_by_month', { p_type: type === 'ppl' ? 'ppl' : 'managed' })
@@ -1275,11 +1274,11 @@ async function getChurn({ type = 'managed', month } = {}) {
     : [...months].reverse().find((x) => !x.month_in_progress) || months[months.length - 1]
   const pct = (r) => (r == null ? 'no rate' : `${r}%`)
   const summary = pick
-    ? `${pick.label}${pick.month_in_progress ? ' so far' : ''}: ${pct(pick.churn_rate_pct)} churn, ${pick.lost} of the ${pick.clients_that_month} ${type} clients we had that month lost.`
+    ? `${pick.label}${pick.month_in_progress ? ' so far' : ''}: ${pct(pick.churn_rate_pct)} churn, ${pick.lost} of the ${pick.clients_at_start} ${type} clients at the start of the month lost.`
     : `No ${type} churn figures for ${month}.`
   return ok(summary, {
     type, month: pick ?? null, by_month: months.slice(-12),
-    definition: 'Churn % = clients lost in the month / all clients we had that month. Always give the percentage.',
+    definition: 'Churn % = clients lost in the month / clients at the start of the month. A client who joins mid-month counts from the next month. Always give the percentage.',
   })
 }
 
@@ -2001,7 +2000,7 @@ const TOOLS = [
   },
   {
     name: 'get_churn',
-    description: 'Monthly client churn as a percentage: clients lost in the month divided by all clients we had that month, month by month. Answers "what was our churn last month". Defaults to the last full month for managed clients.',
+    description: 'Monthly client churn: clients lost in the month divided by clients at the start of the month, month by month. Answers "what was our churn last month". Defaults to the last full month for managed clients.',
     inputSchema: {
       type: 'object',
       properties: {
