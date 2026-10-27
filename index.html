@@ -1323,7 +1323,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           <div class="kpi"><div class="klabel">Avg True CPL</div><div class="kval blu" id="ppl-true-cpl">-</div><div class="ksub">after % sold</div></div>
           <div class="kpi"><div class="klabel">Due for Reorder</div><div class="kval amb" id="ppl-reorder-count">-</div><div class="ksub">≥75% delivered</div></div>
           <div class="kpi"><div class="klabel">Total Clients</div><div class="kval" id="ppl-total">-</div><div class="ksub">all-time</div></div>
-          <div class="kpi"><div class="klabel">Churn Rate</div><div class="kval red" id="ppl-churn-rate">-</div><div class="ksub">churned ÷ total</div></div>
+          <div class="kpi"><div class="klabel">Churn Last Month</div><div class="kval red" id="ppl-churn-rate">-</div><div class="ksub" id="ppl-churn-sub">lost ÷ clients at the start</div></div>
           <div class="kpi"><div class="klabel">Retention Rate</div><div class="kval grn" id="ppl-retention-rate">-</div><div class="ksub">active + paused ÷ total</div></div>
         </div>
         <div class="sl">Churn Overview <div class="sl-line"></div></div>
@@ -1333,6 +1333,19 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
             <div class="chart-body donut"><canvas id="chart-ppl-churn"></canvas></div>
           </div>
           <div id="ppl-churn-breakdown" style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:8px;justify-content:center"></div>
+        </div>
+        <div class="sl">Monthly Churn <span style="font-size:12px;color:var(--ink3);font-family:var(--mono);margin-left:6px">clients lost in the month ÷ clients at its start × 100</span><div class="sl-line"></div></div>
+        <div style="display:flex;gap:14px;margin-bottom:16px;align-items:flex-start;flex-wrap:wrap">
+          <div class="chart-card" style="flex:1 1 320px;min-width:260px">
+            <div class="chart-title">Churn rate by month</div>
+            <div class="chart-body"><canvas id="chart-ppl-churn-monthly"></canvas></div>
+          </div>
+          <div class="twrap" style="flex:1 1 340px;min-width:260px;margin:0">
+            <table>
+              <thead><tr><th>Month</th><th>At start</th><th>New</th><th>Lost</th><th>Churn</th></tr></thead>
+              <tbody id="ppl-churn-months"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
+            </table>
+          </div>
         </div>
         <div class="sl">Client Pipeline <div class="sl-line"></div></div>
         <div class="kanban-wrap"><div class="kanban" id="ppl-kanban"></div></div>
@@ -1624,7 +1637,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           <div class="kpi"><div class="klabel">Mgmt Fee Revenue</div><div class="kval grn" id="mg-fees">-</div></div>
           <div class="kpi"><div class="klabel">Avg CPL (All)</div><div class="kval" id="mg-cpl">-</div></div>
           <div class="kpi"><div class="klabel">Total Clients</div><div class="kval" id="mg-total">-</div><div class="ksub">all-time</div></div>
-          <div class="kpi"><div class="klabel">Churn Rate</div><div class="kval red" id="mg-churn-rate">-</div><div class="ksub">churned ÷ total</div></div>
+          <div class="kpi"><div class="klabel">Churn Last Month</div><div class="kval red" id="mg-churn-rate">-</div><div class="ksub" id="mg-churn-sub">lost ÷ clients at the start</div></div>
           <div class="kpi"><div class="klabel">Retention Rate</div><div class="kval grn" id="mg-retention-rate">-</div><div class="ksub">active + paused ÷ total</div></div>
         </div>
         <div class="sl">Churn Overview <div class="sl-line"></div></div>
@@ -1634,6 +1647,19 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
             <div class="chart-body donut"><canvas id="chart-mg-churn"></canvas></div>
           </div>
           <div id="mg-churn-breakdown" style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:8px;justify-content:center"></div>
+        </div>
+        <div class="sl">Monthly Churn <span style="font-size:12px;color:var(--ink3);font-family:var(--mono);margin-left:6px">clients lost in the month ÷ clients at its start × 100</span><div class="sl-line"></div></div>
+        <div style="display:flex;gap:14px;margin-bottom:16px;align-items:flex-start;flex-wrap:wrap">
+          <div class="chart-card" style="flex:1 1 320px;min-width:260px">
+            <div class="chart-title">Churn rate by month</div>
+            <div class="chart-body"><canvas id="chart-mg-churn-monthly"></canvas></div>
+          </div>
+          <div class="twrap" style="flex:1 1 340px;min-width:260px;margin:0">
+            <table>
+              <thead><tr><th>Month</th><th>At start</th><th>New</th><th>Lost</th><th>Churn</th></tr></thead>
+              <tbody id="mg-churn-months"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
+            </table>
+          </div>
         </div>
         <div class="sl">Client Pipeline <div class="sl-line"></div></div>
         <div class="kanban-wrap"><div class="kanban" id="mg-kanban"></div></div>
@@ -2859,10 +2885,11 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
       </div>
     </div>
     <div class="frow"><label class="flabel">Status</label>
-      <select class="fs" id="ep-stage">
+      <select class="fs" id="ep-stage" onchange="toggleChurnedRow('ep')">
         <option value="active_client">Active</option><option value="paused">Paused</option><option value="churned">Churned</option>
       </select>
     </div>
+    <div class="frow" id="ep-churned-row" style="display:none"><label class="flabel">Churned on <span style="font-size:12px;color:var(--ink3);font-weight:400">set to the day they're moved to Churned; correct it here if needed</span></label><input class="fi" id="ep-churned" type="date"></div>
     <div class="frow"><label class="flabel">CX Score <span style="font-size:12px;color:var(--ink3);font-weight:400">/10 - client experience rating</span></label><input class="fi" id="ep-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="ep-notes"></textarea></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">Lead Delivery</div>
@@ -3078,6 +3105,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
         <option value="paused">Paused</option><option value="churned">Churned</option>
       </select>
     </div>
+    <div class="frow" id="em-churned-row" style="display:none"><label class="flabel">Churned on <span style="font-size:12px;color:var(--ink3);font-weight:400">set to the day they're moved to Churned; correct it here if needed</span></label><input class="fi" id="em-churned" type="date"></div>
     <div class="frow"><label class="flabel">CX Score <span style="font-size:12px;color:var(--ink3);font-weight:400">/10 - client experience rating</span></label><input class="fi" id="em-cx" type="number" min="0" max="10" step="1" placeholder="e.g. 8"></div>
     <div class="frow"><label class="flabel">Start Date</label><input class="fi" id="em-start" type="date" oninput="$('em-ads-live').value=this.value;calcNextPayment()"></div>
     <div class="frow"><label class="flabel">Ads First Live Date</label><input class="fi" id="em-ads-live" type="date" oninput="$('em-start').value=this.value;calcNextPayment()"></div>
@@ -3933,7 +3961,7 @@ async function exitImpersonation() {
   location.reload();
 }
 let revChart = null, cplChart = null, goalRevChart = null, goalMarginChart = null;
-let pplChurnChart = null, mgChurnChart = null;
+let pplChurnChart = null, mgChurnChart = null, pplChurnMonthly = null, mgChurnMonthly = null;
 let curCrmRange = '';   // '' = no date filter → full pipeline visible by default
 
 const _taskMap = new Map();
@@ -6358,7 +6386,7 @@ function renderPPL(clients, ytdLeads=0, campaigns=[]) {
   const pplChurned=clients.filter(c=>c.stage==='churned').length;
   const pplTotal=clients.length;
   setText('ppl-total',pplTotal||'-');
-  setText('ppl-churn-rate',pplTotal>0?(pplChurned/pplTotal*100).toFixed(1)+'%':'-');
+  pplChurnMonthly=renderMonthlyChurn('ppl',clients.filter(c=>['active_client','paused','churned'].includes(c.stage)),pplChurnMonthly);
   setText('ppl-retention-rate',pplTotal>0?((pplActive+pplPaused)/pplTotal*100).toFixed(1)+'%':'-');
   pplChurnChart=renderChurnChart('chart-ppl-churn',pplActive,pplPaused,pplChurned,pplChurnChart);
   renderChurnBreakdown('ppl-churn-breakdown',pplActive,pplPaused,pplChurned);
@@ -7224,7 +7252,7 @@ function renderManaged(clients, orderLog=[]) {
   const mgChurned=clients.filter(c=>c.stage==='churned').length;
   const mgTotal=clients.length;
   setText('mg-total',mgTotal||'-');
-  setText('mg-churn-rate',mgTotal>0?(mgChurned/mgTotal*100).toFixed(1)+'%':'-');
+  mgChurnMonthly=renderMonthlyChurn('mg',clients.filter(c=>['onboarding','active','paused','churned'].includes(c.stage)),mgChurnMonthly);
   setText('mg-retention-rate',mgTotal>0?((mgOnboarding+mgActive+mgPaused)/mgTotal*100).toFixed(1)+'%':'-');
   // Onboarding counts as Active here. A client being built is a client we have,
   // not a third state the reader has to reconcile.
@@ -7310,7 +7338,7 @@ async function openEditClient(type,c) {
     setVal('ep-active-niches',Array.isArray(c.active_niches)?c.active_niches.join(', '):'');
     setVal('ep-price',c.lead_price);setVal('ep-meta-cpl',c.meta_cpl||'');setVal('ep-pct',c.pct_sold);
     setVal('ep-ld',c.leads_delivered||0);setVal('ep-tlp',c.total_leads_purchased||0);setVal('ep-scrubbed',c.leads_scrubbed||0);_prevScrubbed=c.leads_scrubbed||0;setVal('ep-total-gen',c.total_leads_generated||'');
-    setVal('ep-stage',c.stage||'active_client');setVal('ep-cx',c.cx_score!=null?c.cx_score:'');setVal('ep-notes',c.notes);
+    setVal('ep-stage',c.stage||'active_client');loadChurnedField('ep',c);setVal('ep-cx',c.cx_score!=null?c.cx_score:'');setVal('ep-notes',c.notes);
     const epPc=Array.isArray(c.postcodes)?c.postcodes.join(', '):(c.postcodes||'');
     setVal('ep-postcodes',epPc);
     setVal('ep-weekly-cap',c.weekly_cap!=null?c.weekly_cap:'');
@@ -7344,6 +7372,7 @@ async function openEditClient(type,c) {
     setVal('em-budget',c.monthly_budget);setVal('em-fee',c.management_fee);
     const mgStage=['onboarding','active','paused','churned'].includes(c.stage)?c.stage:'active';
     setVal('em-stage',mgStage);
+    loadChurnedField('em',c);
     setVal('em-onboarding-sub-stage',c.onboarding_sub_stage||'');
     setVal('em-active-status',c.active_status||'');
     // Once ql-hq is mirroring fulfilment for this client, IT owns the onboarding
@@ -7405,12 +7434,34 @@ function nextPayChip(d) {
   const when=days<0?`overdue since ${label}`:days===0?'due today':`next payment ${label}`;
   return `<div style="font-size:12px;font-family:var(--mono);margin-top:2px;color:${col}">${esc(when)}</div>`;
 }
+// The churn date shows only for a churned client: a client moved to churned
+// gets today's date from the database, and an existing one can be corrected.
+// Sent only when the client row has the column, so saving works either side of
+// the migration.
+function loadChurnedField(prefix, c) {
+  const el = $(prefix + '-churned'); if (!el) return;
+  el.value = c.churned_at || '';
+  el.dataset.has = 'churned_at' in c ? '1' : '';
+  el.dataset.was = c.stage === 'churned' ? '1' : '';
+  toggleChurnedRow(prefix);
+}
+function toggleChurnedRow(prefix) {
+  const row = $(prefix + '-churned-row'), el = $(prefix + '-churned');
+  const churned = $(prefix + '-stage')?.value === 'churned';
+  if (row) row.style.display = churned && el?.dataset.has && el?.dataset.was ? '' : 'none';
+}
+function churnedPatch(prefix) {
+  const el = $(prefix + '-churned');
+  if (!el?.dataset.has || !el.dataset.was || $(prefix + '-stage')?.value !== 'churned') return {};
+  return { churned_at: el.value || null };
+}
 function updateMgSubStageVisibility() {
   const stage=$('em-stage')?.value;
   const onbRow=$('em-onboarding-sub-row');
   const actRow=$('em-active-status-row');
   if (onbRow) onbRow.style.display=stage==='onboarding'?'':'none';
   if (actRow) actRow.style.display=stage==='active'?'':'none';
+  toggleChurnedRow('em');
   // An active managed client is "Ads Live" unless another status was chosen.
   const st=$('em-active-status');
   if (stage==='active' && st && !st.value) st.value='Ads Live';
@@ -7460,7 +7511,7 @@ async function updateClient(type) {
     const _monthlyCap=$('ep-monthly-cap').value!==''?parseInt($('ep-monthly-cap').value):null;
     const _epMetaCampaignIds=getCheckedCampaigns('ep-campaign-picker');
     const _activeNiches=$('ep-active-niches').value.split(',').map(s=>s.trim()).filter(Boolean);
-    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,active_niches:_activeNiches,lead_price:_price,meta_cpl:_metaCpl,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,leads_scrubbed:_scrubbed,stage:$('ep-stage').value,cx_score:$('ep-cx').value!==''?parseInt($('ep-cx').value):null,notes:$('ep-notes').value.trim(),postcodes:_postcodes,weekly_cap:_weeklyCap,monthly_cap:_monthlyCap,meta_campaign_ids:_epMetaCampaignIds.length?_epMetaCampaignIds:null,delivery_method:$('ep-delivery-method').value,delivery_email:$('ep-delivery-email').value.trim()||null,delivery_phone:$('ep-delivery-phone').value.trim()||null,custom_fields:_customFields,ql_hq_company_id:$('ep-ql-hq-id').value.trim()||null,has_quoteleads_platform_account:$('ep-has-ql-account').value==='true',hq_bearer_token:$('ep-hq-bearer-token').value.trim()||null,client_webhook:$('ep-client-webhook').value.trim()||null,webhook_auth_mode:(($('ep-webhook-auth').value!=='none'&&$('ep-webhook-secret').value.trim())?$('ep-webhook-auth').value:'none'),webhook_auth_header:($('ep-webhook-auth').value==='header'?($('ep-webhook-header').value.trim()||'Authorization'):null),webhook_auth_enabled:$('ep-webhook-auth').value==='signature'&&!!$('ep-webhook-secret').value.trim(),webhook_secret:$('ep-webhook-secret').value.trim()||null,has_custom_integration:$('ep-has-custom-integration').value==='true',meta_cap_paused:false,meta_cap_paused_at:null,meta_cap_pause_reason:null,updated_at:now()};
+    d={company_name:$('ep-co').value.trim(),contact_name:$('ep-cn').value.trim(),email:$('ep-em').value.trim(),phone:$('ep-ph').value.trim(),niche:$('ep-niche').value,active_niches:_activeNiches,lead_price:_price,meta_cpl:_metaCpl,balance:_balCalc>=0?_balCalc:0,leads_delivered:_ld,total_leads_purchased:_tlp,leads_scrubbed:_scrubbed,stage:$('ep-stage').value,...churnedPatch('ep'),cx_score:$('ep-cx').value!==''?parseInt($('ep-cx').value):null,notes:$('ep-notes').value.trim(),postcodes:_postcodes,weekly_cap:_weeklyCap,monthly_cap:_monthlyCap,meta_campaign_ids:_epMetaCampaignIds.length?_epMetaCampaignIds:null,delivery_method:$('ep-delivery-method').value,delivery_email:$('ep-delivery-email').value.trim()||null,delivery_phone:$('ep-delivery-phone').value.trim()||null,custom_fields:_customFields,ql_hq_company_id:$('ep-ql-hq-id').value.trim()||null,has_quoteleads_platform_account:$('ep-has-ql-account').value==='true',hq_bearer_token:$('ep-hq-bearer-token').value.trim()||null,client_webhook:$('ep-client-webhook').value.trim()||null,webhook_auth_mode:(($('ep-webhook-auth').value!=='none'&&$('ep-webhook-secret').value.trim())?$('ep-webhook-auth').value:'none'),webhook_auth_header:($('ep-webhook-auth').value==='header'?($('ep-webhook-header').value.trim()||'Authorization'):null),webhook_auth_enabled:$('ep-webhook-auth').value==='signature'&&!!$('ep-webhook-secret').value.trim(),webhook_secret:$('ep-webhook-secret').value.trim()||null,has_custom_integration:$('ep-has-custom-integration').value==='true',meta_cap_paused:false,meta_cap_paused_at:null,meta_cap_pause_reason:null,updated_at:now()};
     const {count:deliveredCount}=await db.from('ppl_order_log').select('id',{count:'exact',head:true}).eq('client_id',id).eq('status','delivered');
     if (!(deliveredCount>0)) d.pct_sold=parseFloat($('ep-pct').value)||null;
     if (!d.company_name) { toast('Company name required',true); return; }
@@ -7473,7 +7524,7 @@ async function updateClient(type) {
     const _todayStr=new Date().toISOString().split('T')[0];
     const _payDates={};_activeMo.forEach(m=>{_payDates[m]=(_prevPayDates&&_prevPayDates[m])||_todayStr;});
     const _emStage=$('em-stage').value;
-    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),retainer_payment_dates:JSON.stringify(_payDates),stage:_emStage,...(_mgFulfilMirrored?{}:{onboarding_sub_stage:_emStage==='onboarding'?($('em-onboarding-sub-stage').value||null):null}),active_status:_emStage==='active'?($('em-active-status').value||'Ads Live'):null,cx_score:$('em-cx').value!==''?parseInt($('em-cx').value):null,start_date:$('em-start').value||null,ads_first_live_date:$('em-ads-live').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),client_webhook:$('em-client-webhook').value.trim()||null,webhook_auth_mode:(($('em-webhook-auth').value!=='none'&&$('em-webhook-secret').value.trim())?$('em-webhook-auth').value:'none'),webhook_auth_header:($('em-webhook-auth').value==='header'?($('em-webhook-header').value.trim()||'Authorization'):null),webhook_auth_enabled:$('em-webhook-auth').value==='signature'&&!!$('em-webhook-secret').value.trim(),webhook_secret:$('em-webhook-secret').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
+    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),retainer_payment_dates:JSON.stringify(_payDates),stage:_emStage,...churnedPatch('em'),...(_mgFulfilMirrored?{}:{onboarding_sub_stage:_emStage==='onboarding'?($('em-onboarding-sub-stage').value||null):null}),active_status:_emStage==='active'?($('em-active-status').value||'Ads Live'):null,cx_score:$('em-cx').value!==''?parseInt($('em-cx').value):null,start_date:$('em-start').value||null,ads_first_live_date:$('em-ads-live').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),client_webhook:$('em-client-webhook').value.trim()||null,webhook_auth_mode:(($('em-webhook-auth').value!=='none'&&$('em-webhook-secret').value.trim())?$('em-webhook-auth').value:'none'),webhook_auth_header:($('em-webhook-auth').value==='header'?($('em-webhook-header').value.trim()||'Authorization'):null),webhook_auth_enabled:$('em-webhook-auth').value==='signature'&&!!$('em-webhook-secret').value.trim(),webhook_secret:$('em-webhook-secret').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
   }
   const {error}=await db.from('clients').update(d).eq('id',id);
@@ -8671,6 +8722,79 @@ function chartBase(extra={}) {
 function chartLegend() {
   const {tick}=chartDefaults();
   return {display:true,position:'bottom',labels:{color:tick,font:{family:"'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",size:11},boxWidth:8,boxHeight:8,usePointStyle:true,pointStyle:'circle',padding:14}};
+}
+// Churn month by month: of the clients we had at the start of a month, how
+// many were lost during it, × 100. A client joins on client_since and is lost
+// on churned_at (the day they were moved to churned). Paused clients are still
+// clients. Someone who joined and left inside the same month isn't in that
+// month's starting count, so they're shown beside "Lost" but not in the rate.
+function monthlyChurn(clients) {
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
+  const dated = clients.filter(c => c.client_since);
+  if (!dated.length) return [];
+  let [y, m] = dated.map(c => c.client_since).sort()[0].slice(0, 7).split('-').map(Number);
+  const [ty, tm] = today.slice(0, 7).split('-').map(Number);
+  const ym = (yy, mm) => `${yy}-${String(mm).padStart(2, '0')}-01`;
+  const out = [];
+  while (y < ty || (y === ty && m <= tm)) {
+    const start = ym(y, m);
+    const label = new Date(start + 'T00:00:00').toLocaleDateString('en-AU', { month: 'short', year: '2-digit' });
+    if (++m > 12) { m = 1; y++; }
+    const end = ym(y, m);
+    const lostIn = c => c.churned_at && c.churned_at >= start && c.churned_at < end;
+    const atStart = dated.filter(c => c.client_since < start && (!c.churned_at || c.churned_at >= start));
+    const joined = dated.filter(c => c.client_since >= start && c.client_since < end);
+    const lost = atStart.filter(lostIn).length;
+    out.push({
+      start, label, atStart: atStart.length, joined: joined.length, lost,
+      joinedLost: joined.filter(lostIn).length,
+      rate: atStart.length ? lost / atStart.length * 100 : null,
+      current: today < end,
+    });
+  }
+  return out;
+}
+
+function renderMonthlyChurn(prefix, clients, currentChart) {
+  const months = monthlyChurn(clients);
+  const pct = r => r == null ? '-' : r.toFixed(1) + '%';
+  const body = $(prefix + '-churn-months');
+  const lastFull = [...months].reverse().find(mo => !mo.current);
+  const now = months[months.length - 1];
+  setText(prefix + '-churn-rate', lastFull ? pct(lastFull.rate) : '-');
+  setText(prefix + '-churn-sub', lastFull
+    ? `${lastFull.label}: ${lastFull.lost} of ${lastFull.atStart} lost${now?.current ? ` · ${now.label} so far ${pct(now.rate)}` : ''}`
+    : 'lost ÷ clients at the start');
+  if (body) {
+    body.innerHTML = months.length ? [...months].reverse().map(mo => `<tr>
+      <td style="font-family:var(--mono);font-size:12px">${esc(mo.label)}${mo.current ? ' <span style="color:var(--ink3)">so far</span>' : ''}</td>
+      <td style="font-family:var(--mono)">${mo.atStart}</td>
+      <td style="font-family:var(--mono);color:var(--grn)">${mo.joined || '-'}</td>
+      <td style="font-family:var(--mono)">${mo.lost || '-'}${mo.joinedLost ? ` <span style="color:var(--ink3);font-size:12px" title="Joined and left in the same month, so not in this month's rate">+${mo.joinedLost} new</span>` : ''}</td>
+      <td style="font-family:var(--mono);color:${mo.rate ? 'var(--red)' : 'var(--ink3)'}">${pct(mo.rate)}</td>
+    </tr>`).join('') : '<tr><td colspan="5" class="empty">No join or churn dates yet</td></tr>';
+  }
+  const canvas = $(`chart-${prefix}-churn-monthly`);
+  if (currentChart) currentChart.destroy();
+  if (!canvas || !months.length) return null;
+  return new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: months.map(mo => mo.label + (mo.current ? '*' : '')),
+      datasets: [{
+        label: 'Churn', data: months.map(mo => mo.rate == null ? null : +mo.rate.toFixed(1)),
+        backgroundColor: CHART.crit, hoverBackgroundColor: CHART.hover(CHART.crit),
+        borderWidth: 0, borderRadius: 4, borderSkipped: false, categoryPercentage: .7, barPercentage: .8,
+      }],
+    },
+    options: chartBase({
+      plugins: { tooltip: { callbacks: {
+        title: c => months[c[0].dataIndex].label + (months[c[0].dataIndex].current ? ' (so far)' : ''),
+        label: c => { const mo = months[c.dataIndex]; return ` ${pct(mo.rate)}: ${mo.lost} of ${mo.atStart} lost`; },
+      } } },
+      scales: { x: { ticks: { maxRotation: 0 } }, y: { beginAtZero: true, ticks: { callback: v => v + '%' } } },
+    }),
+  });
 }
 function renderChurnChart(canvasId, active, paused, churned, currentChart) {
   const total = active + paused + churned;
