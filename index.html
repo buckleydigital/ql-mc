@@ -1431,16 +1431,12 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           <span id="tpl-followup-note" style="font-size:12px;color:var(--ink3)"></span>
         </div>
 
-        <div class="sl" style="margin-top:22px">No-Answer Email (automatic) <div class="sl-line"></div></div>
-        <div style="font-size:13px;color:var(--ink2);line-height:1.6;margin-bottom:10px">Sent once, automatically, to a pipeline lead that has been in No Answer for the number of days below. It goes out as the lead's rep (or you, if it has none) each morning, and skips anyone on the do-not-contact list.</div>
-        <div style="display:flex;gap:8px;align-items:flex-end">
-          <div class="frow" style="flex:0 0 120px"><label class="flabel">Send after (days)</label><input class="fi" id="tpl-na-days" type="number" min="1" max="30"></div>
-          <div class="frow" style="flex:0 0 auto"><label class="flabel" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="tpl-na-enabled"> Switched on</label></div>
-        </div>
-        <div class="frow"><label class="flabel">Subject</label><input class="fi" id="tpl-na-subject"></div>
-        <div class="frow"><label class="flabel">Body</label><textarea class="fta" id="tpl-na-body" style="min-height:200px;line-height:1.6"></textarea></div>
+        <div class="sl" style="margin-top:22px">No-Answer Follow-Ups (automatic) <div class="sl-line"></div></div>
+        <div style="font-size:13px;color:var(--ink2);line-height:1.6;margin-bottom:10px">When a pipeline lead is moved to No Answer, it gets a text and an email on each of the days below, each morning, until it's moved out of No Answer. The email goes out as the lead's rep (or you, if it has none). Nobody who has opted out or is on the do-not-contact list is sent anything. Use {first_name}, {company_name}, {rep_name} and {rep_email}. Leave a text or email blank to skip it on that day.</div>
+        <div class="frow" style="flex:0 0 auto;margin-bottom:10px"><label class="flabel" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="tpl-na-enabled"> Switched on</label></div>
+        <div id="tpl-na-steps"></div>
         <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn btn-p btn-sm" onclick="saveNoAnswerEmail()">Save no-answer email</button>
+          <button class="btn btn-p btn-sm" onclick="saveNoAnswerEmail()">Save no-answer follow-ups</button>
           <span id="tpl-na-note" style="font-size:12px;color:var(--ink3)"></span>
         </div>
       </div>
@@ -5717,32 +5713,44 @@ async function loadEmailTemplates() {
     setText('tpl-' + k + '-note', tpls[k]?.updated_at ? 'Last saved ' + new Date(tpls[k].updated_at).toLocaleString('en-AU') : '');
   });
 }
-// The automatic no-answer email lives in business_settings, not
-// sales_email_templates: it has its own on/off and timing, and only
-// pipeline-no-answer-email sends it.
+// The automatic no-answer follow-ups live in business_settings, not
+// sales_email_templates: they have their own on/off and days, and only
+// pipeline-no-answer-email sends them. Day 1, 3, 7 and 10, a text and an email.
+const NA_DAYS = [1, 3, 7, 10];
 async function loadNoAnswerEmail() {
   const {data, error} = await db.from('business_settings')
-    .select('no_answer_email_enabled,no_answer_email_days,no_answer_email_subject,no_answer_email_body').limit(1).maybeSingle();
+    .select('no_answer_email_enabled,no_answer_followups').limit(1).maybeSingle();
   if (error || !data) return;
   $('tpl-na-enabled').checked = !!data.no_answer_email_enabled;
-  setVal('tpl-na-days', data.no_answer_email_days);
-  setVal('tpl-na-subject', data.no_answer_email_subject);
-  setVal('tpl-na-body', data.no_answer_email_body);
+  const steps = Array.isArray(data.no_answer_followups) ? data.no_answer_followups : [];
+  $('tpl-na-steps').innerHTML = NA_DAYS.map(d => {
+    const st = steps.find(x => Number(x.day) === d) || {};
+    return `<div style="border:1px solid var(--bd);border-radius:var(--r);padding:12px 14px;margin-bottom:12px">
+      <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--acc);margin-bottom:8px">DAY ${d}</div>
+      <div class="frow"><label class="flabel">Text <span id="tpl-na-sms-count-${d}" style="font-weight:400;color:var(--ink3)"></span></label><textarea class="fta" id="tpl-na-sms-${d}" style="min-height:64px" maxlength="440" oninput="setText('tpl-na-sms-count-${d}', this.value.length + ' / 440 characters')">${esc(st.sms || '')}</textarea></div>
+      <div class="frow"><label class="flabel">Email subject</label><input class="fi" id="tpl-na-subject-${d}" value="${esc(st.subject || '')}"></div>
+      <div class="frow"><label class="flabel">Email</label><textarea class="fta" id="tpl-na-email-${d}" style="min-height:150px;line-height:1.6">${esc(st.email || '')}</textarea></div>
+    </div>`;
+  }).join('');
 }
 async function saveNoAnswerEmail() {
-  const subject = $('tpl-na-subject').value.trim(), body = $('tpl-na-body').value;
-  const days = parseInt($('tpl-na-days').value, 10);
-  if (!subject || !body.trim()) { toast('Subject and body are required', true); return; }
-  if (!(days >= 1 && days <= 30)) { toast('Days must be between 1 and 30', true); return; }
+  const steps = NA_DAYS.map(d => ({
+    day: d,
+    sms: $('tpl-na-sms-' + d).value.trim(),
+    subject: $('tpl-na-subject-' + d).value.trim(),
+    email: $('tpl-na-email-' + d).value.trim(),
+  }));
+  const half = steps.find(st => !!st.subject !== !!st.email);
+  if (half) { toast(`Day ${half.day}: give the email both a subject and a body, or leave both blank`, true); return; }
+  if (!steps.some(st => st.sms || st.email)) { toast('Write at least one text or email', true); return; }
   const existing = await db.from('business_settings').select('id').limit(1).single();
   if (!existing.data) { toast('Save Business Settings once first', true); return; }
   const {error} = await db.from('business_settings').update({
-    no_answer_email_enabled: $('tpl-na-enabled').checked, no_answer_email_days: days,
-    no_answer_email_subject: subject, no_answer_email_body: body, updated_at: now(),
+    no_answer_email_enabled: $('tpl-na-enabled').checked, no_answer_followups: steps, updated_at: now(),
   }).eq('id', existing.data.id);
   if (error) { toast('Error: ' + error.message, true); return; }
   setText('tpl-na-note', 'Last saved just now');
-  toast('No-answer email saved ✓');
+  toast('No-answer follow-ups saved ✓');
 }
 async function saveEmailTemplate(kind) {
   const subject = $('tpl-' + kind + '-subject').value.trim();

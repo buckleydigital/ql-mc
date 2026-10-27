@@ -124,12 +124,14 @@ Deno.serve(async (req: Request) => {
     // campaign: a bulk email from Jarvis's outbox. Not the Send Info / Follow
     // Up buttons, so it neither needs nor sets their once-only stamps.
     // no_answer: the automatic email to a lead left in No Answer, only ever
-    // sent by pipeline-no-answer-email.
+    // sent by pipeline-no-answer-email. no_answer_followup: one step of the
+    // day 1, 3, 7 and 10 sequence that replaced it, from the same sender,
+    // which records each step itself (no_answer_followup_log).
     // info is the 2.5K offer, info_5k the 5K offer; each goes once per lead.
-    if (!["info", "info_5k", "followup", "campaign", "no_answer"].includes(kind)) {
-      return json({ error: "kind must be info, info_5k, followup, campaign or no_answer" }, 400);
+    if (!["info", "info_5k", "followup", "campaign", "no_answer", "no_answer_followup"].includes(kind)) {
+      return json({ error: "kind must be info, info_5k, followup, campaign, no_answer or no_answer_followup" }, 400);
     }
-    if (kind === "no_answer" && !viaAuto) return json({ error: "no_answer is sent automatically" }, 400);
+    if ((kind === "no_answer" || kind === "no_answer_followup") && !viaAuto) return json({ error: `${kind} is sent automatically` }, 400);
     if (!subject) return json({ error: "Subject is required" }, 400);
     if (!text) return json({ error: "Body is required" }, 400);
     if (subject.length > 300) return json({ error: "Subject is too long" }, 400);
@@ -275,7 +277,7 @@ Deno.serve(async (req: Request) => {
         ? { info_5k_sent_at: now, info_5k_sent_by: user.id }
       : kind === "followup"
         ? { followup_sent_at: now, followup_sent_by: user.id }
-        : kind === "no_answer"
+        : kind === "no_answer" || (kind === "no_answer_followup" && !lead.no_answer_email_sent_at)
           ? { no_answer_email_sent_at: now }
           : {};
     if (Object.keys(stamp).length) {
@@ -284,7 +286,8 @@ Deno.serve(async (req: Request) => {
     }
 
     await admin.from("sales_email_log").insert({
-      lead_id: leadId, kind, to_email: to, reply_to: replyTo || null,
+      // The log knows the follow-ups as no-answer emails (its kind check).
+      lead_id: leadId, kind: kind === "no_answer_followup" ? "no_answer" : kind, to_email: to, reply_to: replyTo || null,
       subject, body: text, sent_by: user.id, provider_id: payload?.id ?? null,
       via: viaJarvis ? "jarvis" : viaAuto ? "auto" : null,
     });

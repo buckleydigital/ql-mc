@@ -65,17 +65,33 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Verify user token
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !user) {
+    const { to, message, lead_id, source, via } = await req.json();
+
+    // A signed-in user, or (via:'auto') pipeline-no-answer-email's follow-ups,
+    // which present the service key and prove it the way send-sales-email's
+    // bridge does: by reading jarvis_messages, which nothing else can.
+    let user: { id: string; email?: string } | null = null;
+    if (via === "auto") {
+      const caller = createClient(Deno.env.get("SUPABASE_URL")!, token);
+      const { error: capErr } = await caller.from("jarvis_messages").select("id").limit(1);
+      if (!capErr) user = { id: "auto", email: "No-answer follow-up" };
+    } else {
+      const { data: { user: u } } = await supabaseAdmin.auth.getUser(token);
+      user = u;
+    }
+    if (!user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { to, message, lead_id, source } = await req.json();
     const isSales = source === "sales";
+    if (via === "auto" && !isSales) {
+      return new Response(JSON.stringify({ error: "Automatic texts are for sales leads only" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Validate phone
     const normalisedTo = normalisePhone(to);
