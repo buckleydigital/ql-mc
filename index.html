@@ -1269,7 +1269,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           <button class="btn btn-xs crm-period-btn" data-period="30d" onclick="switchCrmFilter('30d',this)">Last 30d</button>
           <button class="btn btn-xs crm-period-btn" data-period="month" onclick="switchCrmFilter('month',this)">This month</button>
           <button class="btn btn-xs crm-period-btn" data-period="lastmonth" onclick="switchCrmFilter('lastmonth',this)">Last month</button>
-          <button class="btn btn-xs crm-period-btn" data-period="ytd" onclick="switchCrmFilter('ytd',this)">YTD 2026</button>
+          <button class="btn btn-xs crm-period-btn" data-period="ytd" onclick="switchCrmFilter('ytd',this)" id="crm-ytd-btn">YTD</button>
           <button class="btn btn-xs crm-period-btn" data-period="custom" onclick="switchCrmFilter('custom',this)">Custom</button>
           <input type="date" class="fi" id="crm-date" style="width:auto;font-size:12px;padding:5px 10px;display:none;font-family:var(--mono)" onchange="loadCRM(true)" title="From">
           <input type="date" class="fi" id="crm-date-to" style="width:auto;font-size:12px;padding:5px 10px;display:none;font-family:var(--mono)" onchange="loadCRM(true)" title="To">
@@ -1324,7 +1324,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
         </div>
         <div class="kg c4 mb4">
           <div class="kpi"><div class="klabel">Active Clients</div><div class="kval blu" id="ppl-active">-</div></div>
-          <div class="kpi"><div class="klabel">Leads Sold This Year</div><div class="kval" id="ppl-leads">-</div><div class="ksub">Jan 2026 – now</div></div>
+          <div class="kpi"><div class="klabel">Leads Sold This Year</div><div class="kval" id="ppl-leads">-</div><div class="ksub" id="ppl-leads-sub">this year</div></div>
           <div class="kpi"><div class="klabel">Avg Meta CPL</div><div class="kval" id="ppl-meta-cpl">-</div></div>
           <div class="kpi"><div class="klabel">Avg True CPL</div><div class="kval blu" id="ppl-true-cpl">-</div><div class="ksub">after % sold</div></div>
           <div class="kpi"><div class="klabel">Due for Reorder</div><div class="kval amb" id="ppl-reorder-count">-</div><div class="ksub">≥75% delivered</div></div>
@@ -3115,8 +3115,8 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
     <div class="frow"><label class="flabel">Next Payment Due</label><input class="fi" id="em-next-pay" type="date"></div>
     <input type="hidden" id="em-payments-made">
     <div class="frow" style="flex-direction:column;gap:6px;align-items:flex-start">
-      <label class="flabel">Active Retainer Months - 2026 <span style="font-weight:400;color:var(--ink3)">(tap to toggle)</span></label>
-      <div id="em-month-picker" style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;width:100%"></div>
+      <label class="flabel">Active Retainer Months <span style="font-weight:400;color:var(--ink3)">(tap to toggle)</span></label>
+      <div id="em-month-picker" style="display:flex;flex-direction:column;gap:8px;width:100%"></div>
       <div id="em-month-summary" style="font-family:var(--mono);font-size:12px;color:var(--ink3);margin-top:1px">-</div>
     </div>
     <div class="frow"><label class="flabel">Notes</label><textarea class="fta" id="em-notes"></textarea></div>
@@ -4130,6 +4130,12 @@ window.addEventListener('load', () => {
   ytdOpt.value = `ytd-${curYear}`; ytdOpt.textContent = `${curYear} YTD`; ytdOpt.selected = true;
   sel.appendChild(ytdOpt);
   const START_YEAR = 2026, START_MONTH = 0;
+  // Each earlier year in full, newest first.
+  for (let y = curYear - 1; y >= START_YEAR; y--) {
+    const opt = document.createElement('option');
+    opt.value = `ytd-${y}`; opt.textContent = `${y} (full year)`;
+    sel.appendChild(opt);
+  }
   for (let i = 0; ; i++) {
     const d = new Date(n.getFullYear(), n.getMonth() - i, 1);
     if (d.getFullYear() < START_YEAR || (d.getFullYear() === START_YEAR && d.getMonth() < START_MONTH)) break;
@@ -4139,6 +4145,9 @@ window.addEventListener('load', () => {
     sel.appendChild(opt);
   }
   $('crm-date').value = new Date().toISOString().split('T')[0];
+  // Labels that name the year, so they move on each January.
+  setText('crm-ytd-btn', `YTD ${curYear}`);
+  setText('ppl-leads-sub', `Jan ${curYear} – now`);
   // Goal Board year selector
   const goalSel = $('goal-year');
   for (let y = curYear; y >= 2026; y--) {
@@ -5312,8 +5321,8 @@ async function renderSalesMetrics(leads) {
   const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '';
   const n = v => v == null ? '-' : v.toLocaleString('en-AU');
   const gp = sales.length && spend != null ? (revenue / 1.1 - spend) / sales.length : null;
-  // Anything built on ad spend, which a rep never sees.
-  const SPEND_CARDS = ['Spent on Ads', 'Return on Ad Spend', 'Cost per Lead', 'Cost per Offer Sent', 'CAC', 'Avg Gross Profit'];
+  // Anything built on ad spend, and client lifetime value: a rep sees neither.
+  const SPEND_CARDS = ['Spent on Ads', 'Return on Ad Spend', 'Cost per Lead', 'Cost per Offer Sent', 'CAC', 'Avg Gross Profit', 'Average LTV'];
   const cards = [
     ['Lead Volume', n(came.length), 'came in', 'blu'],
     ['Contactable', n(contactable), pct(contactable, came.length) && pct(contactable, came.length) + ' of leads', ''],
@@ -6810,16 +6819,26 @@ function calcNextPayment() {
   setVal('em-next-pay', d.toISOString().split('T')[0]);
 }
 const _MG_MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const _MG_YEAR=2026;
+// Every year from 2026 (or the client's earliest ticked month) to this one,
+// newest first. Saving keeps exactly the months shown here, so every year a
+// client has months in must be on screen, or saving would drop them.
+const _MG_FIRST_YEAR=2026;
 function renderMonthPicker(activeMonthsJson){
   let active=[];
   try{active=JSON.parse(activeMonthsJson||'[]');}catch(e){}
+  if(!Array.isArray(active)) active=[];
   const c=$('em-month-picker'); if(!c) return;
-  c.innerHTML=_MG_MONTHS.map((m,i)=>{
-    const key=`${_MG_YEAR}-${String(i+1).padStart(2,'0')}`;
-    const on=active.includes(key);
-    return `<button type="button" onclick="toggleMgMonth('${key}',this)" data-month="${key}" data-on="${on?'1':'0'}" style="font-family:var(--mono);font-size:12px;padding:5px 2px;border-radius:4px;border:1px solid ${on?'var(--acc)':'var(--bd)'};background:${on?'rgba(79,143,255,.15)':'var(--s2)'};color:${on?'var(--acc)':'var(--ink3)'};cursor:pointer;transition:all .14s;text-align:center">${m}</button>`;
-  }).join('');
+  const years=active.map(k=>+String(k).slice(0,4)).filter(Boolean);
+  const from=Math.min(_MG_FIRST_YEAR,...years), to=Math.max(new Date().getFullYear(),...years);
+  const rows=[];
+  for(let y=to;y>=from;y--){
+    rows.push(`<div><div style="font-family:var(--mono);font-size:12px;color:var(--ink3);margin-bottom:3px">${y}</div><div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px">${_MG_MONTHS.map((m,i)=>{
+      const key=`${y}-${String(i+1).padStart(2,'0')}`;
+      const on=active.includes(key);
+      return `<button type="button" onclick="toggleMgMonth('${key}',this)" data-month="${key}" data-on="${on?'1':'0'}" style="font-family:var(--mono);font-size:12px;padding:5px 2px;border-radius:4px;border:1px solid ${on?'var(--acc)':'var(--bd)'};background:${on?'rgba(79,143,255,.15)':'var(--s2)'};color:${on?'var(--acc)':'var(--ink3)'};cursor:pointer;transition:all .14s;text-align:center">${m}</button>`;
+    }).join('')}</div></div>`);
+  }
+  c.innerHTML=rows.join('');
   updateMgMonthSummary();
 }
 function toggleMgMonth(key,btn){
@@ -6834,7 +6853,8 @@ function updateMgMonthSummary(){
   const months=getActiveMgMonths();
   const fee=parseFloat($('em-fee')?.value)||0;
   const el=$('em-month-summary'); if(!el) return;
-  setText('em-month-summary',`${months.length} month${months.length!==1?'s':''} active · ${fmt(months.length*fee)} retainer revenue (2026)`);
+  const y=String(new Date().getFullYear()), thisYear=months.filter(m=>m.startsWith(y)).length;
+  setText('em-month-summary',`${months.length} month${months.length!==1?'s':''} active · ${fmt(months.length*fee)} retainer revenue all time · ${thisYear} this year (${fmt(thisYear*fee)})`);
 }
 function getActiveMgMonths(){
   const btns=$('em-month-picker')?.querySelectorAll('button')||[];
@@ -8142,7 +8162,9 @@ async function loadFinance() {
   const isYtd = val.startsWith('ytd-');
   const ytdYear = isYtd ? val.split('-')[1] : null;
   const from = isYtd ? `${ytdYear}-01-01` : `${val}-01`;
-  const next = isYtd ? today : nextMonthStart(val);
+  // A past year runs to 31 December; this year, to today.
+  const pastYear = isYtd && +ytdYear < new Date().getFullYear();
+  const next = isYtd ? (pastYear ? `${ytdYear}-12-31` : today) : nextMonthStart(val);
   const monthStart = today.slice(0,7)+'-01';
   const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth()+1, 1).toISOString().split('T')[0];
   const weekAhead = new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0];
@@ -8162,7 +8184,7 @@ async function loadFinance() {
   const curPeriod = new Date().toISOString().slice(0,7); // YYYY-MM
   let spendLogQ = db.from('campaign_spend_log').select('id,campaign_name,period,spend,leads,source,notes');
   if (isYtd) {
-    spendLogQ = spendLogQ.gte('period',`${ytdYear}-01`).lte('period',curPeriod);
+    spendLogQ = spendLogQ.gte('period',`${ytdYear}-01`).lte('period',pastYear ? `${ytdYear}-12` : curPeriod);
   } else {
     spendLogQ = spendLogQ.eq('period', val);
   }
