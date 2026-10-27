@@ -3257,6 +3257,24 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
   </div>
 </div>
 
+<div class="overlay" id="m-send-invoice">
+  <div class="modal" style="max-width:560px">
+    <h2>Send invoice</h2>
+    <div class="msub" id="si-sub"></div>
+    <input type="hidden" id="si-id">
+    <div class="frow"><label class="flabel">To</label><input class="fi" id="si-to" type="email" inputmode="email" autocomplete="off"></div>
+    <div class="frow"><label class="flabel">Subject</label><input class="fi" id="si-subject"></div>
+    <div class="frow"><label class="flabel">Message</label><textarea class="fta" id="si-message" rows="8"></textarea></div>
+    <div class="msub" style="margin-top:4px">The invoice PDF is attached. Replies come back to you. Nothing is sent until you press Send.</div>
+    <div class="macts">
+      <button class="btn" onclick="redownloadInvoice($('si-id').value)">Download PDF</button>
+      <div style="flex:1"></div>
+      <button class="btn" onclick="closeModal('m-send-invoice')">Cancel</button>
+      <button class="btn btn-p" id="si-send" onclick="sendInvoice()">Send</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="m-edit-task">
   <div class="modal">
     <h2>Edit Task</h2>
@@ -9324,10 +9342,11 @@ async function loadInvoices() {
       <td style="font-family:var(--mono);font-size:12px">${inv.invoice_date||'-'}</td>
       <td style="font-family:var(--mono);font-size:12px">${inv.due_date||'-'}</td>
       <td style="font-family:var(--mono);font-weight:600">$${Number(inv.total||0).toLocaleString('en-AU',{minimumFractionDigits:2})}</td>
-      <td><span class="badge ${statusCls[inv.status]||'bg-gray'}">${esc(inv.status||'draft')}</span></td>
+      <td><span class="badge ${statusCls[inv.status]||'bg-gray'}"${inv.sent_at?` title="Sent to ${esc(inv.sent_to||'')} on ${esc(new Date(inv.sent_at).toLocaleString('en-AU'))}"`:''}>${esc(inv.status||'draft')}</span></td>
       <td style="white-space:nowrap">
         <button class="btn btn-xs" onclick="editInvoice('${esc(String(inv.id))}')">Edit</button>
         <button class="btn btn-xs" onclick="redownloadInvoice('${esc(String(inv.id))}')">PDF</button>
+        <button class="btn btn-xs" style="color:var(--blu)" onclick="openSendInvoice('${esc(String(inv.id))}')">${inv.sent_at?'Resend':'Send'}</button>
         <button class="btn btn-xs" style="color:var(--grn)" onclick="downloadReceiptPDF('${esc(String(inv.id))}')">Receipt</button>
         ${inv.status!=='paid'?`<button class="btn btn-xs" style="color:var(--grn);border-color:rgba(46,204,138,.35)" onclick="markInvoicePaid('${esc(String(inv.id))}')">Paid</button>`:''}
         <button class="btn btn-xs" style="color:var(--red)" onclick="deleteInvoice('${esc(String(inv.id))}','${esc(inv.invoice_number||'')}')">Del</button>
@@ -9378,6 +9397,61 @@ async function redownloadInvoice(id) {
   const {data: inv} = await db.from('invoices').select('*').eq('id', id).single();
   if (!inv) return;
   downloadInvoicePDF(inv);
+}
+
+// --- Send invoice by email (send-invoice edge function) ---
+// A preview first: nothing goes until Send is pressed in the modal.
+async function openSendInvoice(id) {
+  const {data: inv} = await db.from('invoices').select('*').eq('id', id).single();
+  if (!inv) { alert('Could not load that invoice.'); return; }
+  const [biz, cl] = await Promise.all([
+    loadBizSettings(),
+    inv.client_id ? db.from('clients').select('contact_name,email').eq('id', inv.client_id).maybeSingle() : Promise.resolve({data: null}),
+  ]);
+  const c = cl.data || {};
+  const first = String(c.contact_name || '').trim().split(/\s+/)[0];
+  const money = '$' + Number(inv.total || 0).toLocaleString('en-AU', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const due = inv.due_date ? new Date(inv.due_date + 'T00:00:00').toLocaleDateString('en-AU', {day: 'numeric', month: 'long', year: 'numeric'}) : '';
+  const from = biz.business_name || 'QuoteLeads';
+  setVal('si-id', inv.id);
+  $('si-sub').textContent = (inv.invoice_number || 'Invoice') + ' - ' + (inv.client_name || '') + (inv.sent_at ? ' (already sent to ' + (inv.sent_to || '') + ')' : '');
+  setVal('si-to', inv.client_email || c.email || '');
+  setVal('si-subject', 'Invoice ' + (inv.invoice_number || '') + ' from ' + from);
+  setVal('si-message',
+    'Hi ' + (first || 'there') + ',\n\n' +
+    'Please find attached invoice ' + (inv.invoice_number || '') + ' for ' + money + (inv.gst_type === 'exclusive' ? ' including GST' : '') + (due ? ', due ' + due : '') + '.\n\n' +
+    'Payment details are on the invoice. Any questions, just reply to this email.\n\n' +
+    'Thanks,\n' + from);
+  openModal('m-send-invoice');
+}
+
+async function sendInvoice() {
+  const id = $('si-id').value;
+  const to = $('si-to').value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(to)) { alert('Enter the email address to send it to.'); return; }
+  const btn = $('si-send');
+  btn.disabled = true; btn.textContent = 'Sending...';
+  try {
+    const {data: inv} = await db.from('invoices').select('*').eq('id', id).single();
+    if (!inv) throw new Error('Could not load that invoice.');
+    const pdf = await downloadInvoicePDF(inv, false, true);
+    const {data: {session}} = await db.auth.getSession();
+    if (!session) throw new Error('Not logged in');
+    const res = await fetch(_ep + '/functions/v1/send-invoice', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token},
+      body: JSON.stringify({invoice_id: id, to, subject: $('si-subject').value.trim(), message: $('si-message').value.trim(), pdf_base64: pdf}),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || !body.ok) throw new Error(body.error || ('send-invoice ' + res.status));
+    closeModal('m-send-invoice');
+    toast('Invoice sent to ' + body.to + ' ✓');
+    loadInvoices();
+  } catch (e) {
+    alert('Not sent: ' + (e instanceof Error ? e.message : String(e)));
+  } finally {
+    btn.disabled = false; btn.textContent = 'Send';
+  }
 }
 
 async function downloadReceiptPDF(id) {
@@ -9433,7 +9507,7 @@ const INVOICE_INCLUDED = {
 // Not in business_settings, so kept here with the rest of the invoice layout.
 const INVOICE_FROM_LINES = ['contact@quoteleads.com.au', 'quoteleads.com.au'];
 
-async function downloadInvoicePDF(inv, isReceipt) {
+async function downloadInvoicePDF(inv, isReceipt, asBase64) {
   try {
   const biz = await loadBizSettings();
   await ensureJsPDF();
@@ -9602,9 +9676,15 @@ async function downloadInvoicePDF(inv, isReceipt) {
     text(site, fx + noteW, 290.6, 9.5, [124, 170, 255], true);
   }
 
+  // The Send button attaches the same file the PDF button downloads.
+  if (asBase64) return doc.output('datauristring').split(',')[1];
   const filePrefix = isReceipt ? 'receipt-' : '';
   doc.save(filePrefix + (inv.invoice_number || 'invoice') + '.pdf');
-  } catch(e) { console.error('PDF generation error:', e); alert('PDF generation failed: ' + (e instanceof Error ? e.message : String(e))); }
+  } catch(e) {
+    console.error('PDF generation error:', e);
+    if (asBase64) throw e;
+    alert('PDF generation failed: ' + (e instanceof Error ? e.message : String(e)));
+  }
 }
 
 let _lastAlerts = [];
