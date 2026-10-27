@@ -11091,7 +11091,6 @@ async function orSend(action, extra) {
   return body;
 }
 
-const OR_NICHE_WORD = { solar: 'solar', hvac: 'air con' };
 // Who the homeowner gets calls from on the shared lead sites.
 const OR_NICHE_PRO = { solar: 'installers', hvac: 'installers' };
 
@@ -11100,15 +11099,14 @@ const OR_NICHE_PRO = { solar: 'installers', hvac: 'installers' };
  * difference, and small asks only: never a call request.
  */
 function defaultSequence(n) {
-  const word = OR_NICHE_WORD[n.key] || n.label.toLowerCase();
   const pro = OR_NICHE_PRO[n.key] || 'businesses';
   return [
     { subject: 'quick q about {company}', delay_days: 0,
-      body: 'Hi {first_name},\n\n{opener}\n\nQuick question: are you still buying shared leads from the quote sites, where the same homeowner gets three other ' + pro + ' calling them?\n\nWe run ads under your own brand instead, so every enquiry is yours alone and gets a text back in seconds, before anyone else rings them.\n\nOpen to seeing how it would look for {suburb}?\n\n{sender}' },
+      body: 'Hi {first_name},\n\n{opener}\n\nQuick question: are you still buying shared leads from the quote sites, where the same homeowner gets three other ' + pro + ' calling them?\n\nWe build and run ads under your own brand instead, so every enquiry is yours alone and gets a text back in seconds, before anyone else rings them. You own all of it: the ad account, the pages and every lead.\n\nOpen to seeing how it would look for {suburb}?\n\n{sender}' },
     { subject: '', delay_days: 3,
       body: 'Hi {first_name},\n\nHappy to just show you. Reply "show me" and I\'ll send the ad, the quote form and a real lead as it comes through, mocked up for {company}.\n\n{sender}' },
     { subject: '', delay_days: 4,
-      body: 'Hi {first_name},\n\nLast one from me. If running your own ads isn\'t for you, we also sell ' + word + ' leads pay-per-lead, with no setup and no contract. 100% exclusive.\n\nWant the details for {suburb}?\n\n{sender}' },
+      body: 'Hi {first_name},\n\nLast one from me. We run it for you for the first 30 days. If it isn\'t working by then, you walk away: no contract, and you keep everything we built. The risk sits with us, not you.\n\nWorth a look for {suburb}?\n\n{sender}' },
   ];
 }
 
