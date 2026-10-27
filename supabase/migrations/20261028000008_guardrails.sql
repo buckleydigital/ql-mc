@@ -141,6 +141,7 @@ declare
   v numeric; n numeric; d numeric; sp numeric; detail text;
   plan numeric;
   last_spend date := (select max(date) from public.ad_spend_daily where account_type = 'agency');
+  spend_end date;
   stale text := 'Ad spend has not updated since ' || coalesce(to_char((select max(date) from public.ad_spend_daily where account_type = 'agency'), 'DD Mon'), 'ever') || '.';
   cohorts jsonb := '[]'::jsonb;
   elig jsonb;
@@ -148,13 +149,16 @@ declare
   r record;
 begin
   -- CPL, 7-day rolling.
-  sp := public.guardrail_spend(today - 7, today - 1);
-  select count(*) into n from public.leads where (created_at at time zone tz)::date between today - 7 and today - 1;
+  -- The spend feed (Make, each evening) lands a day behind, so the 7 days
+  -- end on the last day it has, as long as that is recent.
+  spend_end := least(today - 1, last_spend);
+  sp := case when last_spend >= today - 3 then public.guardrail_spend(spend_end - 6, spend_end) end;
+  select count(*) into n from public.leads where (created_at at time zone tz)::date between spend_end - 6 and spend_end;
   v := case when sp is null then null when n > 0 then round(sp / n, 2) when sp > 0 then 999999 else null end;
   detail := case when sp is null then stale
-                 when n = 0 and sp > 0 then '$' || round(sp) || ' spent, no leads in 7 days.'
-                 when n = 0 then 'No spend or leads in the last 7 days.'
-                 else '$' || round(sp) || ' over ' || n || ' leads, last 7 days.' end;
+                 when n = 0 and sp > 0 then '$' || round(sp) || ' spent, no leads, 7 days to ' || to_char(spend_end, 'DD Mon') || '.'
+                 when n = 0 then 'No spend or leads in the 7 days to ' || to_char(spend_end, 'DD Mon') || '.'
+                 else '$' || round(sp) || ' over ' || n || ' leads, 7 days to ' || to_char(spend_end, 'DD Mon') || '.' end;
   out := out || jsonb_build_object('key', 'cpl', 'value', v, 'display', case when v >= 999999 then 'no leads' when v is null then '-' else '$' || to_char(v, 'FM999990.00') end, 'detail', detail, 'sample', n);
 
   -- Pitch rate: leads that came in 3 to 9 days ago (time to be pitched) that got an offer.
@@ -185,13 +189,13 @@ begin
 
   -- Spend pacing: yesterday's (or today's so far) spend against the daily plan.
   plan := nullif(cfg ->> 'plan_daily_spend', '')::numeric;
-  sp := greatest(public.guardrail_spend(today - 1, today - 1), case when last_spend >= today then public.guardrail_spend(today, today) end);
+  sp := case when last_spend >= today - 2 then public.guardrail_spend(last_spend, last_spend) end;
   v := case when plan > 0 and sp is not null then round((sp / plan - 1) * 100, 1) end;
   out := out || jsonb_build_object('key', 'spend_pacing', 'value', v, 'realtime', true,
     'display', case when v is null then '-' else case when v >= 0 then '+' else '' end || v || '%' end,
     'detail', case when coalesce(plan, 0) <= 0 then 'Set a daily spend plan to check pacing.'
                    when sp is null then stale
-                   else '$' || round(sp) || ' a day against a plan of $' || round(plan) || '.' end);
+                   else '$' || round(sp) || ' on ' || to_char(last_spend, 'DD Mon') || ' against a plan of $' || round(plan) || ' a day.' end);
 
   -- Lead volume: last 7 days against the weekly plan.
   plan := nullif(cfg ->> 'plan_weekly_leads', '')::numeric;
