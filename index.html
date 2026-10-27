@@ -5275,7 +5275,8 @@ function stageAgeLine(l) {
 
 // ── Sales metrics for the chosen period ─────────────────────────────────────
 // Each counts what happened in the period: leads that came in, offers sent,
-// sales won. A rep sees their own leads, and their share of the ad spend (the
+// sales won. A sales rep sees their own leads and never anything about ad
+// spend. The owner viewing as a rep sees that rep's share of the spend (the
 // spend × their leads ÷ all leads), from pipeline_spend. Revenue is the deal
 // value as recorded, incl. GST; gross profit takes the GST off first.
 let smSpendCache = {};
@@ -5300,8 +5301,8 @@ async function renderSalesMetrics(leads) {
   const sales = leads.filter(l => l.stage === 'closed_won' && inRange(l.won_at || l.stage_changed_at));
   const revenue = sales.reduce((a, l) => a + Number(l.value || 0), 0);
   const days = sales.filter(l => l.won_at).map(l => (new Date(l.won_at) - new Date(l.created_at)) / DAY_MS);
-  const sp = await pipelineSpend(range?.from, range?.to);
-  const scoped = IS_REP || crmRepView;
+  const sp = IS_REP ? null : await pipelineSpend(range?.from, range?.to);
+  const scoped = !!crmRepView;
   let spend = sp ? Number(sp.spend) : null;
   if (spend != null && scoped) spend = sp.leads_total ? spend * came.length / Number(sp.leads_total) : 0;
   // LTV: what the business has been billed in total, where we can see it (not
@@ -5315,6 +5316,8 @@ async function renderSalesMetrics(leads) {
   const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '';
   const n = v => v == null ? '-' : v.toLocaleString('en-AU');
   const gp = sales.length && spend != null ? (revenue / 1.1 - spend) / sales.length : null;
+  // Anything built on ad spend, which a rep never sees.
+  const SPEND_CARDS = ['Spent on Ads', 'Return on Ad Spend', 'Cost per Lead', 'Cost per Offer Sent', 'CAC', 'Avg Gross Profit'];
   const cards = [
     ['Lead Volume', n(came.length), 'came in', 'blu'],
     ['Contactable', n(contactable), pct(contactable, came.length) && pct(contactable, came.length) + ' of leads', ''],
@@ -5332,10 +5335,10 @@ async function renderSalesMetrics(leads) {
     ['Avg Gross Profit', money(gp), 'per sale: revenue ex GST less ad spend', gp != null && gp < 0 ? 'red' : 'grn'],
     ['Avg Days to Sale', days.length ? (days.reduce((a, d) => a + d, 0) / days.length).toFixed(1) : '-', 'lead in → won', ''],
   ];
-  el.innerHTML = cards.map(([label, val, sub, cls]) =>
+  el.innerHTML = cards.filter(c => !IS_REP || !SPEND_CARDS.includes(c[0])).map(([label, val, sub, cls]) =>
     `<div class="kpi"><div class="klabel">${label}</div><div class="kval ${cls}">${val}</div>${sub ? `<div class="ksub">${esc(sub)}</div>` : ''}</div>`).join('');
   const scope = IS_REP ? 'your leads' : crmRepView ? `${repName(crmRepView) || 'rep'}'s leads` : 'all leads';
-  const stale = sp?.spend_updated ? ` · ad spend to ${new Date(sp.spend_updated + 'T00:00:00').toLocaleDateString('en-AU')}` : '';
+  const stale = !IS_REP && sp?.spend_updated ? ` · ad spend to ${new Date(sp.spend_updated + 'T00:00:00').toLocaleDateString('en-AU')}` : '';
   setText('sm-scope', `${range ? `${range.from} to ${range.to}` : 'all time'} · ${scope}${stale}`);
   // Open pipeline: how many in each stage and how long they've sat there.
   const age = $('sm-stage-age');
