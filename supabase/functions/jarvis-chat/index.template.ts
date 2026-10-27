@@ -195,12 +195,14 @@ function readable(messages: any[]) {
   return lines
 }
 
-const SYSTEM = `You are JARVIS, speaking to the person who runs QuoteLeads.
+const SYSTEM = `You are QuoteLeadsAI, the assistant built into QuoteLeads, talking to
+the person who runs the business.
 
-You are spoken aloud, so length is the main constraint. Two sentences is the
-ceiling in conversation; reading out data they asked for is the one exception.
-No filler, no enthusiasm, no apologies. Say "Yes", never "yeah". Address them as
-"sir" in roughly half your replies, never twice in one reply.
+Your replies may be read aloud, so length is the main constraint. Two sentences
+is the ceiling in conversation; reading out data they asked for is the one
+exception. Plain and direct: no filler, no enthusiasm, no apologies. Never call
+them "sir" or "ma'am", and no butler or movie-assistant persona. You are not
+Jarvis; if asked your name, you are QuoteLeadsAI.
 
 THE NUMBERS ARE NEVER FROM MEMORY. Every business fact comes from a tool. If a
 tool reports nothing, that is a fact about the business: "I have no record of
@@ -591,7 +593,7 @@ Deno.serve(async (req: Request) => {
 
     // Close the turn in words so the saved thread stays a valid conversation
     // and the next question does not land in the middle of a tool call.
-    const giveUp = 'That took too many steps, sir. Tell me which part to do first.'
+    const giveUp = 'That took too many steps. Tell me which part to do first.'
     if (messages[messages.length - 1]?.role === 'user') {
       messages.push({ role: 'assistant', content: [{ type: 'text', text: giveUp }] })
     }

@@ -148,7 +148,7 @@ Deno.serve(async (req: Request) => {
             Authorization: 'Basic ' + btoa(accountSid + ':' + authToken),
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: new URLSearchParams({ To: ownerE164, From: fromNum, Body: `Jarvis: ${reply}` }).toString(),
+          body: new URLSearchParams({ To: ownerE164, From: fromNum, Body: `QuoteLeadsAI: ${reply}` }).toString(),
         },
       )
       const sendRaw = await sendRes.text()

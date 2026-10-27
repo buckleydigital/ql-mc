@@ -115,12 +115,12 @@ function describe(e: Ev): string {
   }
 }
 
-// Spoken, not written. Said with "Sir" in front, the way he talks, and the
-// rest counted rather than read out - there is no scrollback on a call.
+// Spoken, not written. Introduced by name, and the rest counted rather than
+// read out - there is no scrollback on a call.
 function speakable(lines: string[], extra: number): string {
   const body = lines.join(' ')
   const tail = extra > 0 ? ` And ${extra} more ${extra === 1 ? 'item' : 'items'} waiting.` : ''
-  return `Sir. ${body}${tail}`
+  return `QuoteLeadsAI here. ${body}${tail}`
 }
 
 // TwiML is XML, so anything interpolated into it has to be escaped or a client
@@ -264,7 +264,7 @@ async function phoneOwner(db: any, s: Settings | null, tz: string, dryRun: boole
     if (extra > 0) text += `\n+${extra} more waiting.`
     // Replies to the main number go to the client agents, not to him, so he
     // says where to answer.
-    textBody = `Jarvis: ${text}\nReply in the Jarvis panel.`.slice(0, 480)
+    textBody = `QuoteLeadsAI: ${text}\nReply in the QuoteLeadsAI panel.`.slice(0, 480)
     if (!dryRun) {
       const res = await twilio('Messages', { To: to, From: from, Body: textBody })
       await db.from('jarvis_notifications').insert({
@@ -312,7 +312,7 @@ async function phoneOwner(db: any, s: Settings | null, tz: string, dryRun: boole
         say(spoken) + say('Anything you would like me to do?') +
         `</Gather>` +
         say(spoken) +
-        say(textOn ? 'Details are in your messages. Goodbye.' : 'Details are in the Jarvis panel. Goodbye.') +
+        say(textOn ? 'Details are in your messages. Goodbye.' : 'Details are in the QuoteLeadsAI panel. Goodbye.') +
         `</Response>`
 
       if (!dryRun) {

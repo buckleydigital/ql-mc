@@ -65,7 +65,7 @@ Deno.serve(async (req: Request) => {
       return twiml(say('Goodbye.'))
     }
 
-    const where = s?.jarvis_notify_enabled === true ? 'I will text you to confirm.' : 'I will confirm in the Jarvis panel.'
+    const where = s?.jarvis_notify_enabled === true ? 'I will text you to confirm.' : 'I will confirm in the QuoteLeadsAI panel.'
 
     if (!speech) {
       return twiml(say('Nothing heard. Goodbye.'))
