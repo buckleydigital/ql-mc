@@ -1364,7 +1364,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           <div class="kpi"><div class="klabel">Avg True CPL</div><div class="kval blu" id="ppl-true-cpl">-</div><div class="ksub">after % sold</div></div>
           <div class="kpi"><div class="klabel">Due for Reorder</div><div class="kval amb" id="ppl-reorder-count">-</div><div class="ksub">≥75% delivered</div></div>
           <div class="kpi"><div class="klabel">Total Clients</div><div class="kval" id="ppl-total">-</div><div class="ksub">all-time</div></div>
-          <div class="kpi"><div class="klabel">Churn Last Month</div><div class="kval red" id="ppl-churn-rate">-</div><div class="ksub" id="ppl-churn-sub">lost ÷ clients at the start</div></div>
+          <div class="kpi"><div class="klabel">Churn Last Month</div><div class="kval red" id="ppl-churn-rate">-</div><div class="ksub" id="ppl-churn-sub">lost ÷ clients that month</div></div>
           <div class="kpi"><div class="klabel">Retention Rate</div><div class="kval grn" id="ppl-retention-rate">-</div><div class="ksub">active + paused ÷ total</div></div>
         </div>
         <div class="sl">Churn Overview <div class="sl-line"></div></div>
@@ -1383,7 +1383,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           </div>
           <div class="twrap" style="flex:1 1 340px;min-width:260px;margin:0">
             <table>
-              <thead><tr><th>Month</th><th>At start</th><th>New</th><th>Lost</th><th>Churn</th></tr></thead>
+              <thead><tr><th>Month</th><th>Clients</th><th>New</th><th>Lost</th><th>Churn</th></tr></thead>
               <tbody id="ppl-churn-months"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
             </table>
           </div>
@@ -1674,7 +1674,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           <div class="kpi"><div class="klabel">Mgmt Fee Revenue</div><div class="kval grn" id="mg-fees">-</div></div>
           <div class="kpi"><div class="klabel">Avg CPL (All)</div><div class="kval" id="mg-cpl">-</div></div>
           <div class="kpi"><div class="klabel">Total Clients</div><div class="kval" id="mg-total">-</div><div class="ksub">all-time</div></div>
-          <div class="kpi"><div class="klabel">Churn Last Month</div><div class="kval red" id="mg-churn-rate">-</div><div class="ksub" id="mg-churn-sub">lost ÷ clients at the start</div></div>
+          <div class="kpi"><div class="klabel">Churn Last Month</div><div class="kval red" id="mg-churn-rate">-</div><div class="ksub" id="mg-churn-sub">lost ÷ clients that month</div></div>
           <div class="kpi"><div class="klabel">Retention Rate</div><div class="kval grn" id="mg-retention-rate">-</div><div class="ksub">active + paused ÷ total</div></div>
         </div>
         <div class="sl">Churn Overview <div class="sl-line"></div></div>
@@ -1693,7 +1693,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           </div>
           <div class="twrap" style="flex:1 1 340px;min-width:260px;margin:0">
             <table>
-              <thead><tr><th>Month</th><th>At start</th><th>New</th><th>Lost</th><th>Churn</th></tr></thead>
+              <thead><tr><th>Month</th><th>Clients</th><th>New</th><th>Lost</th><th>Churn</th></tr></thead>
               <tbody id="mg-churn-months"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
             </table>
           </div>
@@ -9095,11 +9095,10 @@ function chartLegend() {
   const {tick}=chartDefaults();
   return {display:true,position:'bottom',labels:{color:tick,font:{family:"'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",size:11},boxWidth:8,boxHeight:8,usePointStyle:true,pointStyle:'circle',padding:14}};
 }
-// Churn month by month: of the clients we had at the start of a month, how
-// many were lost during it, × 100. A client joins on client_since and is lost
-// on churned_at (the day they were moved to churned). Paused clients are still
-// clients. Someone who joined and left inside the same month isn't in that
-// month's starting count, so they're shown beside "Lost" but not in the rate.
+// Churn month by month: of all the clients we had during a month (there at
+// its start or joining in it), how many were lost in it, × 100. A client joins
+// on client_since and is lost on churned_at (the day they were moved to
+// churned). Paused clients are still clients.
 function monthlyChurn(clients) {
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
   const dated = clients.filter(c => c.client_since);
@@ -9113,14 +9112,15 @@ function monthlyChurn(clients) {
     const label = new Date(start + 'T00:00:00').toLocaleDateString('en-AU', { month: 'short', year: '2-digit' });
     if (++m > 12) { m = 1; y++; }
     const end = ym(y, m);
+    // Every client we had at any point in the month, including ones who
+    // joined during it, and how many of them left in it.
     const lostIn = c => c.churned_at && c.churned_at >= start && c.churned_at < end;
-    const atStart = dated.filter(c => c.client_since < start && (!c.churned_at || c.churned_at >= start));
+    const had = dated.filter(c => c.client_since < end && (!c.churned_at || c.churned_at >= start));
     const joined = dated.filter(c => c.client_since >= start && c.client_since < end);
-    const lost = atStart.filter(lostIn).length;
+    const lost = had.filter(lostIn).length;
     out.push({
-      start, label, atStart: atStart.length, joined: joined.length, lost,
-      joinedLost: joined.filter(lostIn).length,
-      rate: atStart.length ? lost / atStart.length * 100 : null,
+      start, label, had: had.length, joined: joined.length, lost,
+      rate: had.length ? lost / had.length * 100 : null,
       current: today < end,
     });
   }
@@ -9135,14 +9135,14 @@ function renderMonthlyChurn(prefix, clients, currentChart) {
   const now = months[months.length - 1];
   setText(prefix + '-churn-rate', lastFull ? pct(lastFull.rate) : '-');
   setText(prefix + '-churn-sub', lastFull
-    ? `${lastFull.label}: ${lastFull.lost} of ${lastFull.atStart} lost${now?.current ? ` · ${now.label} so far ${pct(now.rate)}` : ''}`
-    : 'lost ÷ clients at the start');
+    ? `${lastFull.label}: ${lastFull.lost} of ${lastFull.had} clients lost${now?.current ? ` · ${now.label} so far ${pct(now.rate)}` : ''}`
+    : 'lost ÷ clients that month');
   if (body) {
     body.innerHTML = months.length ? [...months].reverse().map(mo => `<tr>
       <td style="font-family:var(--mono);font-size:12px">${esc(mo.label)}${mo.current ? ' <span style="color:var(--ink3)">so far</span>' : ''}</td>
-      <td style="font-family:var(--mono)">${mo.atStart}</td>
+      <td style="font-family:var(--mono)">${mo.had}</td>
       <td style="font-family:var(--mono);color:var(--grn)">${mo.joined || '-'}</td>
-      <td style="font-family:var(--mono)">${mo.lost || '-'}${mo.joinedLost ? ` <span style="color:var(--ink3);font-size:12px" title="Joined and left in the same month, so not in this month's rate">+${mo.joinedLost} new</span>` : ''}</td>
+      <td style="font-family:var(--mono)">${mo.lost || '-'}</td>
       <td style="font-family:var(--mono);color:${mo.rate ? 'var(--red)' : 'var(--ink3)'}">${pct(mo.rate)}</td>
     </tr>`).join('') : '<tr><td colspan="5" class="empty">No join or churn dates yet</td></tr>';
   }
@@ -9162,7 +9162,7 @@ function renderMonthlyChurn(prefix, clients, currentChart) {
     options: chartBase({
       plugins: { tooltip: { callbacks: {
         title: c => months[c[0].dataIndex].label + (months[c[0].dataIndex].current ? ' (so far)' : ''),
-        label: c => { const mo = months[c.dataIndex]; return ` ${pct(mo.rate)}: ${mo.lost} of ${mo.atStart} lost`; },
+        label: c => { const mo = months[c.dataIndex]; return ` ${pct(mo.rate)}: ${mo.lost} of ${mo.had} lost`; },
       } } },
       scales: { x: { ticks: { maxRotation: 0 } }, y: { beginAtZero: true, ticks: { callback: v => v + '%' } } },
     }),
