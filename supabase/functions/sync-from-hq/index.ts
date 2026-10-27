@@ -549,14 +549,14 @@ Deno.serve(async (req: Request) => {
       if (hqActive === 'Ads Live' && client.stage === 'onboarding') patch.stage = 'active'
 
       // The day the ads went live is day 1 of management, here as in ql-hq: the
-      // start date, and the first payment 30 days on. Set once, when the date is
+      // start date, and the first payment on day 30 (go-live + 29). Set once, when the date is
       // first known, so a date someone has corrected by hand is never moved.
       const live = /^\d{4}-\d{2}-\d{2}$/.test(String(ads_live_date ?? '')) ? String(ads_live_date) : null
       if (live && client.type === 'managed' && !client.ads_first_live_date) {
         patch.ads_first_live_date = live
         patch.start_date = live
         if (!client.next_payment_date) {
-          const d = new Date(live + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 30)
+          const d = new Date(live + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 29)
           patch.next_payment_date = d.toISOString().slice(0, 10)
         }
       }
