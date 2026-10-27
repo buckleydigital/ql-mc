@@ -5074,7 +5074,7 @@ function renderTaskList(id, list) {
       </div>
     </div>`).join('');
   el.querySelectorAll('.tcb[data-task-id]').forEach(cb => {
-    cb.addEventListener('click', () => toggleTask(cb.dataset.taskId));
+    cb.addEventListener('click', () => toggleTask(cb.dataset.taskId, cb.dataset.done === '1'));
   });
   el.querySelectorAll('.task-body[data-task-id]').forEach(body => {
     body.addEventListener('click', () => openEditTask(_taskMap.get(body.dataset.taskId)));
@@ -5103,14 +5103,9 @@ async function deleteTask() {
   if (error) { toast('Error: '+error.message,true); return; }
   closeModal('m-edit-task'); loadTasks(); toast('Task deleted');
 }
-// Ticking a task clears it: the row is deleted, not kept crossed out. Billing
-// reminders record what they've sent in billing_reminders_sent, so a deleted
-// one is not made again.
-async function toggleTask(id) {
-  const row = $('ti-' + id);
-  if (row) row.style.opacity = '.4';
-  const {error} = await db.from('tasks').delete().eq('id',id);
-  if (error) { if (row) row.style.opacity = ''; toast('Error: '+error.message,true); return; }
+async function toggleTask(id, currentDone) {
+  const {error} = await db.from('tasks').update({done:!currentDone,updated_at:now()}).eq('id',id);
+  if (error) { toast('Error: '+error.message,true); return; }
   loadTasks();
 }
 async function quickAdd() {
