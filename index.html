@@ -1331,7 +1331,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           <div class="kpi admin-only-field kpi-private masked"><div class="klabel">Avg Won Deal</div><div class="kval grn" id="crm-avgwon">-</div><div class="ksub" id="crm-avgwon-sub"></div></div>
           <div class="kpi admin-only-field kpi-private masked"><div class="klabel">Avg Client LTV</div><div class="kval grn" id="crm-ltv">-</div><div class="ksub" id="crm-ltv-sub"></div></div>
         </div>
-        <div style="margin:-8px 0 16px;font-size:12px"><a href="#" onclick="nav('scoreboard');return false" style="color:var(--acc)">All 15 sales metrics and the guardrails are on the Scoreboard →</a></div>
+        <div class="admin-only-field" style="margin:-8px 0 16px;font-size:12px"><a href="#" onclick="nav('scoreboard');return false" style="color:var(--acc)">All 15 sales metrics and the guardrails are on the Scoreboard →</a></div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
           <input type="search" class="fi" id="crm-search" placeholder="Search leads by name, company, phone or email…" style="flex:1;min-width:200px;max-width:420px;font-size:13px;padding:6px 10px" oninput="setCrmSearch(this.value)">
           <span id="crm-search-count" style="font-size:12px;color:var(--ink3);font-family:var(--mono)"></span>
@@ -4280,7 +4280,8 @@ document.addEventListener('keydown', e => {
 async function doLogout() { if (!confirm('Sign out?')) return; if (db) await db.auth.signOut(); }
 
 // Panels a sales rep is allowed to open. Everything else is hidden + blocked.
-const REP_PANELS = new Set(['crm', 'invoices', 'sales-conv', 'scoreboard']);
+// The Scoreboard is owner-only: business-wide numbers and the guardrails.
+const REP_PANELS = new Set(['crm', 'invoices', 'sales-conv']);
 
 function toggleClientBreakdown() {
   const el = $('ld-client-breakdown');
