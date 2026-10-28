@@ -104,7 +104,8 @@ Deno.serve(async (req: Request) => {
       // and renovation enquiry as a solar lead - a reporting error that looks
       // like data. An unrecognised trade now keeps whatever the visitor chose;
       // leads.niche is free text and clients already carry labels like 'HVAC',
-      // so an honest unknown beats a confident wrong one.
+      // so an honest unknown beats a confident wrong one. No trade at all is
+      // left blank ('') rather than guessed.
       const NICHE: Record<string, string> = {
         // slugs (solar funnel)
         solar: 'solar', solar_battery: 'solar', solar_and_battery: 'solar',
@@ -119,7 +120,7 @@ Deno.serve(async (req: Request) => {
         'Roofing': 'Roofing',
         'Renovation': 'Renovation',
       }
-      const niche = NICHE[campaign] ?? (campaign || 'solar')
+      const niche = NICHE[campaign] ?? campaign
       // The business's today, not UTC's.
       //
       // toISOString() is UTC, and Sydney runs 10-11 hours ahead, so from 10am
@@ -627,7 +628,7 @@ Deno.serve(async (req: Request) => {
       } else {
         const { data: lead, error: leadErr } = await supabase.from('leads').insert([{
           ...leadPatch, name: name || company || email, company: company || null, email, phone,
-          niche: b.niche || null, source: 'website', notes: note,
+          niche: b.niche || '', source: 'website', notes: note,
         }]).select('id').single()
         if (leadErr) console.error('upsert_managed_purchase: lead insert failed:', leadErr.message)
         leadId = lead?.id ?? null

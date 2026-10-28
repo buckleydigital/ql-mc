@@ -1351,7 +1351,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
       <!-- ══ PPL CLIENTS ══ -->
       <div class="panel" id="panel-ppl">
         <div class="ph">
-          <div class="ph-left"><h1>Pay-Per-Lead</h1><p>Solar lead delivery tracking</p></div>
+          <div class="ph-left"><h1>Pay-Per-Lead</h1><p>Lead delivery tracking</p></div>
           <div class="ph-right">
             <button class="btn btn-sm" onclick="openCplCalc()" style="margin-right:6px">CPL calculator (Pay Per Lead)</button>
             <button class="btn btn-p btn-sm" onclick="openModal('m-ppl')">+ Add client</button>
@@ -1441,6 +1441,15 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
           <span style="font-family:var(--code);color:var(--acc)">{rep_email}</span>.
           Anything with no value is left out rather than printed as an empty gap.
         </div>
+
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+          <label class="flabel" style="margin:0">Niche</label>
+          <select class="fs" id="tpl-niche" style="max-width:260px" onchange="loadEmailTemplates(true)"></select>
+          <input class="fi" id="tpl-niche-new" placeholder="New niche, e.g. roofing" maxlength="40" style="max-width:220px" onkeydown="if(event.key==='Enter')addTemplateNiche()">
+          <button class="btn btn-sm" onclick="addTemplateNiche()">Add niche</button>
+          <button class="btn btn-danger btn-sm" id="tpl-niche-del" onclick="deleteTemplateNiche()" style="display:none">Delete this niche's versions</button>
+        </div>
+        <div id="tpl-niche-note" style="font-size:12px;color:var(--ink3);margin-bottom:18px;line-height:1.6"></div>
 
         <div class="sl">2.5K Offer Email <div class="sl-line"></div></div>
         <div class="frow"><label class="flabel">Subject</label><input class="fi" id="tpl-info-subject"></div>
@@ -2588,7 +2597,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
 
 <div class="overlay" id="m-ppl">
   <div class="modal">
-    <h2>Add PPL Client</h2><div class="msub">Pay-per-lead solar client</div>
+    <h2>Add PPL Client</h2><div class="msub">Pay-per-lead client</div>
     <div class="frow"><label class="flabel">Company Name</label><input class="fi" id="ppl-co" placeholder="e.g. SunPower Solutions"></div>
     <div class="frow"><label class="flabel">Contact Name</label><input class="fi" id="ppl-cn" placeholder="e.g. John Smith"></div>
     <div class="frow"><label class="flabel">Email</label><input class="fi" id="ppl-em" type="email" placeholder="john@example.com"></div>
@@ -2806,7 +2815,9 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
     <input type="hidden" id="se-kind">
     <div class="frow"><label class="flabel">To</label><input class="fi" id="se-to" disabled></div>
     <div class="frow" id="se-from-row" style="display:none"><label class="flabel">Send as <span style="font-size:12px;color:var(--ink3);font-weight:400">their name, signature and reply-to</span></label><select class="fs" id="se-from" onchange="changeSendAs()"></select></div>
-    <div class="frow"><label class="flabel">Reply-To <span style="font-size:12px;color:var(--ink3);font-weight:400">replies come back here</span></label><input class="fi" id="se-replyto" disabled></div>
+    <div class="frow"><label class="flabel">Niche <span style="font-size:12px;color:var(--ink3);font-weight:400">which version of the email</span></label><select class="fs" id="se-niche" onchange="changeSendNiche()"></select></div>
+    <div class="frow"><label class="flabel">From name <span style="font-size:12px;color:var(--ink3);font-weight:400">the name they see it from</span></label><input class="fi" id="se-fromname" maxlength="80"></div>
+    <div class="frow"><label class="flabel">Reply-To <span style="font-size:12px;color:var(--ink3);font-weight:400">replies come back here</span></label><input class="fi" id="se-replyto" type="email" placeholder="your login email"></div>
     <div class="frow"><label class="flabel">Subject</label><input class="fi" id="se-subject" oninput="_seDraft&&(_seDraft.edited=true)"></div>
     <div class="frow"><label class="flabel">Message <span style="font-size:12px;color:var(--ink3);font-weight:400">edit for this lead if you want - the template is unchanged</span></label><textarea class="fta" id="se-body" style="min-height:280px;font-family:var(--font);line-height:1.6" oninput="_seDraft&&(_seDraft.edited=true)"></textarea></div>
     <div class="macts">
@@ -2825,6 +2836,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
     <input type="hidden" id="el-last-contact-orig">
     <div class="frow"><label class="flabel">Contact Name</label><input class="fi" id="el-name"></div>
     <div class="frow"><label class="flabel">Company</label><input class="fi" id="el-company"></div>
+    <div class="frow"><label class="flabel">Niche <span style="font-size:12px;color:var(--ink3);font-weight:400">picks which version of the sales emails they get</span></label><input class="fi" id="el-niche" list="niche-list" maxlength="40" placeholder="e.g. solar, hvac, roofing"><datalist id="niche-list"></datalist></div>
     <div class="frow"><label class="flabel">Email</label><input class="fi" id="el-email" type="email"></div>
     <div class="frow"><label class="flabel">Phone</label><input class="fi" id="el-phone"></div>
     <div class="frow"><label class="flabel">Stage</label>
@@ -3237,9 +3249,10 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">Invoice Defaults</div>
     <div class="frow"><label class="flabel">Default Notes / Footer</label><textarea class="fta" id="bs-notes" placeholder="Thank you for your business."></textarea></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">Sales Email</div>
-    <div class="frow"><label class="flabel">Send from</label><input class="fi" id="bs-sales-from" placeholder="contact@quoteleads.com.au" type="email"></div>
+    <div class="frow"><label class="flabel">From name</label><input class="fi" id="bs-sales-from-name" maxlength="80" placeholder="{rep_name} at QuoteLeads"></div>
+    <div class="frow" style="margin-top:8px"><label class="flabel">Send from</label><input class="fi" id="bs-sales-from" placeholder="contact@quoteleads.com.au" type="email"></div>
     <div class="frow" style="margin-top:8px"><label class="flabel">Replies go to</label><input class="fi" id="bs-sales-replyto" placeholder="Leave blank to use the sender's own address" type="email"></div>
-    <p style="font-size:12px;color:var(--ink3);margin:6px 0 0;line-height:1.6">The send-from address must be on a domain verified in Resend - anything else is rejected. Reps keep their own reply-to address, so a lead answering a rep still reaches that rep; this one applies to sends with no rep behind them, which includes QuoteLeadsAI's follow-ups.</p>
+    <p style="font-size:12px;color:var(--ink3);margin:6px 0 0;line-height:1.6">From name is the name leads see the email from; {rep_name} is the rep sending it. Leave it blank for "{rep_name} at QuoteLeads". Both the name and the reply-to can also be changed on any one email before it is sent. The send-from address must be on a domain verified in Resend - anything else is rejected. Reps keep their own reply-to address, so a lead answering a rep still reaches that rep; this one applies to sends with no rep behind them, which includes QuoteLeadsAI's follow-ups.</p>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">Twilio / SMS</div>
     <div class="frow"><label class="flabel">From Number</label><input class="fi" id="bs-twilio-from" placeholder="+61400000000" type="tel"></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">Pay-per-lead cost cut-off</div>
@@ -5931,23 +5944,86 @@ function mergeTemplate(text, vals) {
     .replace(/ -\s*$/gm, '')
     .trim();
 }
+// Templates by niche. sales_email_templates is the default every niche gets;
+// sales_email_template_niches holds a niche's own version of any of the three.
+// Niches are matched in lower case, so "Solar" on a lead finds "solar".
+const TPL_KINDS = ['info', 'info_5k', 'followup'];
+const nicheKey = n => String(n || '').trim().toLowerCase();
+const NICHE_NAMES = { hvac: 'HVAC', ev: 'EV', ev_charger: 'EV Charger' };
+const nicheName = n => !n ? 'All niches' : NICHE_NAMES[n] || String(n).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 async function ensureEmailTemplates() {
   if (_emailTpls) return _emailTpls;
-  const { data, error } = await db.from('sales_email_templates').select('kind,subject,body');
-  if (error) { toast('Could not load templates: ' + error.message, true); return null; }
-  _emailTpls = {};
-  (data || []).forEach(t => { _emailTpls[t.kind] = t; });
+  const [b, n, l] = await Promise.all([
+    db.from('sales_email_templates').select('kind,subject,body,updated_at'),
+    db.from('sales_email_template_niches').select('kind,niche,subject,body,updated_at'),
+    db.from('leads').select('niche').not('niche', 'is', null).limit(5000),
+  ]);
+  const err = b.error || n.error;
+  if (err) { toast('Could not load templates: ' + err.message, true); return null; }
+  const base = {}, niches = {};
+  (b.data || []).forEach(t => { base[t.kind] = t; });
+  (n.data || []).forEach(t => { (niches[t.niche] ??= {})[t.kind] = t; });
+  const leadNiches = [...new Set((l.data || []).map(r => nicheKey(r.niche)).filter(Boolean))];
+  _emailTpls = { base, niches, leadNiches };
   return _emailTpls;
 }
-async function loadEmailTemplates() {
-  _emailTpls = null;
-  loadNoAnswerEmail();
+// The version a lead in this niche gets: its niche's own, else the default.
+function pickTemplate(tpls, kind, niche) {
+  const k = nicheKey(niche);
+  return (k && tpls.niches[k]?.[kind]) || tpls.base[kind] || null;
+}
+function knownNiches(tpls) {
+  return [...new Set([...Object.keys(tpls.niches), ...tpls.leadNiches, ..._tplExtraNiches])].sort();
+}
+// For the Niche box on a lead: every niche we have templates for or have seen.
+async function fillNicheList() {
   const tpls = await ensureEmailTemplates(); if (!tpls) return;
-  ['info','info_5k','followup'].forEach(k => {
-    setVal('tpl-' + k + '-subject', tpls[k]?.subject || '');
-    setVal('tpl-' + k + '-body', tpls[k]?.body || '');
-    setText('tpl-' + k + '-note', tpls[k]?.updated_at ? 'Last saved ' + new Date(tpls[k].updated_at).toLocaleString('en-AU') : '');
+  const dl = $('niche-list');
+  if (dl) dl.innerHTML = knownNiches(tpls).map(n => `<option value="${esc(n)}">`).join('');
+}
+let _tplNiche = '';          // the niche being edited; '' is the default
+let _tplExtraNiches = [];    // added here but not saved yet
+async function loadEmailTemplates(fromSelect) {
+  if (fromSelect === true) _tplNiche = $('tpl-niche').value;
+  else { _emailTpls = null; loadNoAnswerEmail(); }
+  const tpls = await ensureEmailTemplates(); if (!tpls) return;
+  const list = knownNiches(tpls);
+  if (_tplNiche && !list.includes(_tplNiche)) list.push(_tplNiche);
+  $('tpl-niche').innerHTML = '<option value="">All niches (default)</option>'
+    + list.map(n => `<option value="${esc(n)}">${esc(nicheName(n))}${tpls.niches[n] ? '' : ' (uses the default)'}</option>`).join('');
+  $('tpl-niche').value = _tplNiche;
+  const own = _tplNiche ? (tpls.niches[_tplNiche] || {}) : tpls.base;
+  TPL_KINDS.forEach(k => {
+    const t = own[k] || tpls.base[k];
+    setVal('tpl-' + k + '-subject', t?.subject || '');
+    setVal('tpl-' + k + '-body', t?.body || '');
+    setText('tpl-' + k + '-note', _tplNiche && !own[k]
+      ? `Showing the default. Save to give ${nicheName(_tplNiche)} its own version.`
+      : t?.updated_at ? 'Last saved ' + new Date(t.updated_at).toLocaleString('en-AU') : '');
   });
+  setText('tpl-niche-note', _tplNiche
+    ? `Leads with the niche ${nicheName(_tplNiche)} get these. An email ${nicheName(_tplNiche)} has no version of uses the default.`
+    : 'The default: what every lead gets unless its niche has its own version. Set a lead\'s niche on the lead.');
+  $('tpl-niche-del').style.display = _tplNiche && tpls.niches[_tplNiche] ? '' : 'none';
+}
+function addTemplateNiche() {
+  const k = nicheKey($('tpl-niche-new').value).replace(/[^a-z0-9 +&_-]/g, '').replace(/\s+/g, ' ').trim();
+  if (!k) { toast('Type the niche first, e.g. roofing', true); return; }
+  if (!_tplExtraNiches.includes(k)) _tplExtraNiches.push(k);
+  setVal('tpl-niche-new', '');
+  _tplNiche = k;
+  loadEmailTemplates(false);
+  toast(`Now editing ${nicheName(k)}. Change the emails and save each one.`);
+}
+async function deleteTemplateNiche() {
+  if (!_tplNiche) return;
+  if (!confirm(`Delete the ${nicheName(_tplNiche)} versions? Leads in ${nicheName(_tplNiche)} will get the default emails.`)) return;
+  const { error } = await db.from('sales_email_template_niches').delete().eq('niche', _tplNiche);
+  if (error) { toast('Error: ' + error.message, true); return; }
+  _tplExtraNiches = _tplExtraNiches.filter(n => n !== _tplNiche);
+  _tplNiche = '';
+  loadEmailTemplates(false);
+  toast('Deleted ✓');
 }
 // The automatic no-answer follow-ups live in business_settings, not
 // sales_email_templates: they have their own on/off and days, and only
@@ -5993,13 +6069,15 @@ async function saveEmailTemplate(kind) {
   const body    = $('tpl-' + kind + '-body').value;
   if (!subject || !body.trim()) { toast('Subject and body are required', true); return; }
   const { data: { session } } = await db.auth.getSession();
-  const { error } = await db.from('sales_email_templates')
-    .update({ subject, body, updated_at: now(), updated_by: session?.user?.id || null })
-    .eq('kind', kind);
+  const row = { subject, body, updated_at: now(), updated_by: session?.user?.id || null };
+  const { error } = _tplNiche
+    ? await db.from('sales_email_template_niches').upsert({ kind, niche: _tplNiche, ...row }, { onConflict: 'kind,niche' })
+    : await db.from('sales_email_templates').update(row).eq('kind', kind);
   if (error) { toast('Error: ' + error.message, true); return; }
   _emailTpls = null;
+  await loadEmailTemplates(false);
   setText('tpl-' + kind + '-note', 'Last saved just now');
-  toast('Template saved ✓');
+  toast(_tplNiche ? `Saved for ${nicheName(_tplNiche)} ✓` : 'Template saved ✓');
 }
 
 // Button state on the Edit Lead modal. Sent is sent - the greyed-out label is
@@ -6068,7 +6146,16 @@ async function sendAsIdentity(userId, session) {
   };
 }
 
+// The From name: the one in Business Settings with {rep_name} filled in, or
+// "{rep_name} at QuoteLeads". With no rep name, just the rest of it.
+let _salesFromNameTpl = null;
+function fromNameFor(repName) {
+  const t = String(_salesFromNameTpl || '').trim() || '{rep_name} at QuoteLeads';
+  return repName ? t.replace(/\{rep_name\}/g, repName)
+    : (t.replace(/\{rep_name\}\s*(at\s+)?/gi, '').replace(/\s{2,}/g, ' ').replace(/^[\s|,:\-]+/, '').trim() || 'QuoteLeads');
+}
 function fillSendDraft(identity) {
+  _seDraft.identity = identity;
   const { tpl, lead } = _seDraft;
   const vals = {
     first_name:   firstName(lead.name),
@@ -6076,7 +6163,8 @@ function fillSendDraft(identity) {
     rep_name:     identity.name,
     rep_email:    identity.email,
   };
-  setVal('se-replyto', vals.rep_email || 'your login email');
+  setVal('se-replyto', vals.rep_email || '');
+  setVal('se-fromname', fromNameFor(identity.name));
   setVal('se-subject', mergeTemplate(tpl.subject, vals));
   setVal('se-body', mergeTemplate(tpl.body, vals));
   _seDraft.edited = false;
@@ -6088,8 +6176,19 @@ async function openSendEmail(kind) {
   if (!lead) { toast('Open the lead again', true); return; }
   if (!(lead.email || '').trim()) { toast('This lead has no email address', true); return; }
   const tpls = await ensureEmailTemplates(); if (!tpls) return;
-  const tpl = tpls[kind];
+  const tpl = pickTemplate(tpls, kind, lead.niche);
   if (!tpl) { toast('No ' + kind + ' template saved yet', true); return; }
+  // Which version: the lead's niche if it has one of this email, else the
+  // default. Any niche with a version of it can be picked instead.
+  const lk = nicheKey(lead.niche);
+  const withKind = Object.keys(tpls.niches).filter(n => tpls.niches[n][kind]).sort();
+  $('se-niche').innerHTML = '<option value="">Default (all niches)</option>'
+    + withKind.map(n => `<option value="${esc(n)}">${esc(nicheName(n))}</option>`).join('');
+  $('se-niche').value = withKind.includes(lk) ? lk : '';
+  if (_salesFromNameTpl === null) {
+    const { data: bs } = await db.from('business_settings').select('sales_from_name').limit(1).maybeSingle();
+    _salesFromNameTpl = bs?.sales_from_name || '';
+  }
 
   const { data: { session } } = await db.auth.getSession();
   const myId = session?.user?.id;
@@ -6109,7 +6208,7 @@ async function openSendEmail(kind) {
     fromRow.style.display = 'none';
   }
 
-  _seDraft = { tpl, lead, edited: false };
+  _seDraft = { tpl, lead, kind, niche: $('se-niche').value, edited: false };
   fillSendDraft(await sendAsIdentity(sendAs, session));
 
   setVal('se-lead-id', id);
@@ -6128,11 +6227,28 @@ async function changeSendAs() {
   const { data: { session } } = await db.auth.getSession();
   const identity = await sendAsIdentity($('se-from').value, session);
   if (_seDraft.edited) {
-    setVal('se-replyto', identity.email || 'your login email');
+    _seDraft.identity = identity;
+    setVal('se-replyto', identity.email || '');
+    setVal('se-fromname', fromNameFor(identity.name));
     toast('You edited the message, so the signature was left as is. Check it before sending.', true);
     return;
   }
   fillSendDraft(identity);
+}
+// Another niche's version of the same email. Edits to the draft are lost, so ask.
+async function changeSendNiche() {
+  if (!_seDraft) return;
+  const tpls = await ensureEmailTemplates(); if (!tpls) return;
+  const n = $('se-niche').value;
+  const tpl = n ? tpls.niches[n]?.[_seDraft.kind] : tpls.base[_seDraft.kind];
+  if (!tpl) return;
+  if (_seDraft.edited && !confirm('Swap to the ' + (n ? nicheName(n) : 'default') + ' version? Your edits to this draft will be lost.')) {
+    $('se-niche').value = _seDraft.niche ?? '';
+    return;
+  }
+  _seDraft.tpl = tpl;
+  _seDraft.niche = n;
+  fillSendDraft(_seDraft.identity || { name: '', email: '' });
 }
 // Closing the draft returns you to the lead you opened it from.
 function closeSendEmail() {
@@ -6147,6 +6263,9 @@ async function sendSalesEmail() {
   const id = $('se-lead-id').value, kind = $('se-kind').value;
   const subject = $('se-subject').value.trim(), body = $('se-body').value.trim();
   if (!subject || !body) { toast('Subject and message are required', true); return; }
+  const fromName = $('se-fromname').value.replace(/[<>"]/g, '').trim();
+  const replyTo = $('se-replyto').value.trim();
+  if (replyTo && !/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(replyTo)) { toast('The reply-to address does not look right', true); return; }
 
   btn.disabled = true; btn.textContent = 'Sending...';
   try {
@@ -6154,7 +6273,8 @@ async function sendSalesEmail() {
     const res = await fetch(`${_ep}/functions/v1/send-sales-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-      body: JSON.stringify({ lead_id: id, kind, subject, body, ...(IS_REP ? {} : { send_as: $('se-from').value }) }),
+      body: JSON.stringify({ lead_id: id, kind, subject, body, from_name: fromName, reply_to: replyTo,
+        ...(IS_REP ? {} : { send_as: $('se-from').value }) }),
     });
     const out = await res.json().catch(() => ({}));
     if (!res.ok) { toast(out.error || 'Could not send', true); btn.disabled = false; btn.textContent = 'Send email'; return; }
@@ -6324,7 +6444,7 @@ async function saveStageNow() {
 }
 function openEditLead(l) {
   setVal('el-id',l.id);setVal('el-name',l.name);setVal('el-company',l.company);
-  setVal('el-email',l.email);setVal('el-phone',l.phone);
+  setVal('el-email',l.email);setVal('el-phone',l.phone);setVal('el-niche',l.niche||'');fillNicheList();
   // Legacy stages (onboarding / proposal_sent) predate the six
   // kanban columns and are still on real rows. Setting a <select> to a value it
   // has no option for leaves it blank, and saving would then write an empty
@@ -6469,7 +6589,7 @@ async function updateLead() {
   const origLastContact = $('el-last-contact-orig').value || null;
   const origCount = parseInt($('el-contact-count-orig').value||'0', 10) || 0;
   const contactIncrement = (newLastContact && (!origLastContact || newLastContact > origLastContact)) ? 1 : 0;
-  const d={name:$('el-name').value.trim(),company:$('el-company').value.trim(),email:$('el-email').value.trim(),phone:$('el-phone').value.trim(),stage,lead_type:'managed',value:parseFloat($('el-value').value)||null,source:$('el-source').value,notes:$('el-notes').value.trim(),contactable,last_contact:newLastContact,next_followup:$('el-next-followup').value||null,contact_count:origCount+contactIncrement,updated_at:now()};
+  const d={name:$('el-name').value.trim(),company:$('el-company').value.trim(),niche:$('el-niche').value.trim(),email:$('el-email').value.trim(),phone:$('el-phone').value.trim(),stage,lead_type:'managed',value:parseFloat($('el-value').value)||null,source:$('el-source').value,notes:$('el-notes').value.trim(),contactable,last_contact:newLastContact,next_followup:$('el-next-followup').value||null,contact_count:origCount+contactIncrement,updated_at:now()};
   // Only full users can (re)assign a lead's owner; reps can't touch it.
   if (!IS_REP) d.owner_id = $('el-owner').value || null;
   if (!d.name) { toast('Name required',true); return; }
@@ -9533,6 +9653,7 @@ async function openBizSettingsModal() {
   setVal('bs-payid', s.payid || '');
   setVal('bs-notes', s.default_notes || '');
   setVal('bs-sales-from', s.sales_from_email || '');
+  setVal('bs-sales-from-name', s.sales_from_name || '');
   setVal('bs-sales-replyto', s.sales_reply_to_email || '');
   setVal('bs-twilio-from', s.twilio_from_number || '');
   setVal('bs-target-margin', s.target_margin_pct ?? '');
@@ -9570,6 +9691,7 @@ async function checkMetaCapi() {
 }
 
 async function saveBizSettings() {
+  _salesFromNameTpl = null;
   const payload = {
     business_name: $('bs-name').value.trim(),
     abn: $('bs-abn').value.trim(),
@@ -9580,6 +9702,7 @@ async function saveBizSettings() {
     default_notes: $('bs-notes').value.trim(),
     twilio_from_number: $('bs-twilio-from').value.trim() || null,
     sales_from_email: $('bs-sales-from').value.trim() || null,
+    sales_from_name: $('bs-sales-from-name').value.replace(/[<>"]/g, '').trim() || null,
     sales_reply_to_email: $('bs-sales-replyto').value.trim() || null,
     target_margin_pct: $('bs-target-margin').value !== '' ? parseFloat($('bs-target-margin').value) : null,
     dud_rate_pct: parseFloat($('bs-dud-rate').value) || 0,

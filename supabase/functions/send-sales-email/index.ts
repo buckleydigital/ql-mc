@@ -119,6 +119,12 @@ Deno.serve(async (req: Request) => {
     const kind    = String(body.kind ?? "").trim();
     const subject = String(body.subject ?? "").trim();
     const text    = String(body.body ?? "").trim();
+    // Optional, from the send window: the name the email comes from and where
+    // replies go, for this one email. Blank uses the settings below.
+    const fromNameIn = String(body.from_name ?? "").replace(/[<>"\r\n]/g, "").trim();
+    const replyToIn  = String(body.reply_to ?? "").trim().toLowerCase();
+    if (fromNameIn.length > 80) return json({ error: "The from name is too long (80 characters at most)" }, 400);
+    if (replyToIn && !EMAIL_RE.test(replyToIn)) return json({ error: "The reply-to address does not look right" }, 400);
 
     if (!leadId) return json({ error: "lead_id is required" }, 400);
     // campaign: a bulk email from Jarvis's outbox. Not the Send Info / Follow
@@ -224,7 +230,7 @@ Deno.serve(async (req: Request) => {
     // Falls back to the env var so nothing breaks before it is filled in.
     const { data: bset } = await admin
       .from("business_settings")
-      .select("sales_from_email, sales_reply_to_email")
+      .select("sales_from_email, sales_reply_to_email, sales_from_name")
       .limit(1).maybeSingle();
     const fromEmail = String(bset?.sales_from_email ?? "").trim() || Deno.env.get("RESEND_FROM_EMAIL");
 
@@ -234,8 +240,9 @@ Deno.serve(async (req: Request) => {
     // answers away from them without anyone noticing. The configured default is
     // therefore what applies to sends with no rep behind them, which is exactly
     // Jarvis's follow-ups.
+    // A reply-to typed into the send window wins over all of them.
     const replyTo = String(
-      rep?.reply_to_email || rep?.email || bset?.sales_reply_to_email || user.email || "",
+      replyToIn || rep?.reply_to_email || rep?.email || bset?.sales_reply_to_email || user.email || "",
     ).trim();
     const apiKey    = Deno.env.get("RESEND_API_KEY");
     const release = () => admin.rpc("outreach_release", {
@@ -246,8 +253,14 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Email is not configured" }, 500);
     }
 
-    // Sent on the verified domain, under the rep's name, replying to the rep.
-    const fromName = repName ? `${repName} at QuoteLeads` : "QuoteLeads";
+    // Sent on the verified domain. The name is the one typed into the send
+    // window, else the From name in Business Settings with {rep_name} filled in
+    // ("{rep_name} at QuoteLeads" when that is blank). With no rep name the
+    // placeholder and its " at " are dropped, so it never reads " at QuoteLeads".
+    const nameTpl = String(bset?.sales_from_name ?? "").replace(/[<>"\r\n]/g, "").trim() || "{rep_name} at QuoteLeads";
+    const fromName = fromNameIn || (repName
+      ? nameTpl.replace(/\{rep_name\}/g, repName)
+      : nameTpl.replace(/\{rep_name\}\s*(at\s+)?/gi, "").replace(/\s{2,}/g, " ").replace(/^[\s|,:\-]+/, "").trim()) || "QuoteLeads";
 
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",

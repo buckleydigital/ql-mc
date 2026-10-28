@@ -1828,9 +1828,10 @@ async function repIdentity() {
  * index.html does - same table, same single-brace placeholders.
  */
 async function composeEmail(lead_id, kind) {
-  const [{ rows: leads }, { rows: templates }, me] = await Promise.all([
-    select('leads', { select: 'id,name,company,email,stage', id: `eq.${lead_id}` }, { limit: 1 }),
+  const [{ rows: leads }, { rows: templates }, { rows: nicheTemplates }, me] = await Promise.all([
+    select('leads', { select: 'id,name,company,email,stage,niche', id: `eq.${lead_id}` }, { limit: 1 }),
     select('sales_email_templates', { select: 'kind,subject,body' }, { limit: 20 }),
+    select('sales_email_template_niches', { select: 'kind,niche,subject,body', kind: `eq.${kind}` }, { limit: 200 }),
     repIdentity(),
   ])
 
@@ -1850,7 +1851,9 @@ async function composeEmail(lead_id, kind) {
       .replace(/[ \t]+([,.;:!?])/g, '$1')
       .trim()
 
-  const tpl = templates.find((x) => x.kind === kind)
+  // The lead's niche has its own version of this email, or it gets the default.
+  const niche = String(lead.niche || '').trim().toLowerCase()
+  const tpl = (niche && nicheTemplates.find((x) => x.niche === niche)) || templates.find((x) => x.kind === kind)
   return {
     lead,
     rep: me,
