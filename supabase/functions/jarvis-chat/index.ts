@@ -1269,16 +1269,31 @@ async function getSalesMetrics({ from, to, rep } = {}) {
 async function getChurn({ type = 'managed', month } = {}) {
   const months = await rpc('churn_by_month', { p_type: type === 'ppl' ? 'ppl' : 'managed' })
   if (!months.length) return ok(`No ${type} clients have a start date yet.`, { months })
+  const pct = (r) => (r == null ? 'no rate' : `${r}%`)
+
+  // The overall average: every completed month added together, so a month
+  // with one client weighs less than a month with twenty.
+  const done = months.filter((x) => !x.month_in_progress)
+  const lostAll = done.reduce((t, x) => t + Number(x.lost || 0), 0)
+  const startAll = done.reduce((t, x) => t + Number(x.clients_at_start || 0), 0)
+  const overall = {
+    churn_rate_pct: startAll ? Math.round((lostAll / startAll) * 1000) / 10 : null,
+    lost: lostAll, clients_at_start: startAll,
+    from: done[0]?.label ?? null, to: done[done.length - 1]?.label ?? null,
+  }
+  const overallLine = `Average monthly churn ${done.length ? `${overall.from} to ${overall.to}` : 'so far'}: ${pct(overall.churn_rate_pct)} (${lostAll} lost out of ${startAll} clients at the start of those months).`
+
+  if (month === 'all') return ok(overallLine, { type, overall, by_month: months })
+
   const pick = month
     ? months.find((x) => x.month === month)
     : [...months].reverse().find((x) => !x.month_in_progress) || months[months.length - 1]
-  const pct = (r) => (r == null ? 'no rate' : `${r}%`)
   const summary = pick
     ? `${pick.label}${pick.month_in_progress ? ' so far' : ''}: ${pct(pick.churn_rate_pct)} churn, ${pick.lost} of the ${pick.clients_at_start} ${type} clients at the start of the month lost.`
     : `No ${type} churn figures for ${month}.`
   return ok(summary, {
-    type, month: pick ?? null, by_month: months.slice(-12),
-    definition: 'Churn % = clients lost in the month / clients at the start of the month. A client who joins mid-month counts from the next month. Always give the percentage.',
+    type, month: pick ?? null, overall, by_month: months,
+    definition: 'Churn % = clients lost in the month / clients at the start of the month. A client who joins mid-month counts from the next month. The overall average adds all completed months together. Always give the percentage.',
   })
 }
 
@@ -2000,12 +2015,12 @@ const TOOLS = [
   },
   {
     name: 'get_churn',
-    description: 'Monthly client churn: clients lost in the month divided by clients at the start of the month, month by month. Answers "what was our churn last month". Defaults to the last full month for managed clients.',
+    description: 'Monthly client churn: clients lost in the month divided by clients at the start of the month, month by month. Answers "what was our churn last month", "what was churn in June" and, with month "all", "what is our average churn". Defaults to the last full month for managed clients.',
     inputSchema: {
       type: 'object',
       properties: {
         type: str('managed (default) or ppl.'),
-        month: str('Month as YYYY-MM. Omit for the last full month.'),
+        month: str('Month as YYYY-MM, or "all" for the overall average. Omit for the last full month.'),
       },
     },
     handler: getChurn,
@@ -2416,7 +2431,8 @@ contrast the two. Pay per lead is reported only when they name it.
 - "How many leads" -> get_lead_totals. "How many closes" -> get_closes.
 - "Are we ahead of goal" -> get_revenue_vs_goal.
 - Churn ("what was our churn last month") -> get_churn. Managed clients unless
-  they say pay per lead.
+  they say pay per lead. "Average churn" or "churn overall" -> get_churn with
+  month "all". A named month -> get_churn with that month.
 - Any of the 15 sales metrics for a period (CAC, CPL, ROAS, AOV, LTV, offers
   sent, contactable, days to sale, gross profit, revenue from deals) ->
   get_sales_metrics with from/to for the period they mean.

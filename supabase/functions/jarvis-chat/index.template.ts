@@ -219,7 +219,8 @@ contrast the two. Pay per lead is reported only when they name it.
 - "How many leads" -> get_lead_totals. "How many closes" -> get_closes.
 - "Are we ahead of goal" -> get_revenue_vs_goal.
 - Churn ("what was our churn last month") -> get_churn. Managed clients unless
-  they say pay per lead.
+  they say pay per lead. "Average churn" or "churn overall" -> get_churn with
+  month "all". A named month -> get_churn with that month.
 - Any of the 15 sales metrics for a period (CAC, CPL, ROAS, AOV, LTV, offers
   sent, contactable, days to sale, gross profit, revenue from deals) ->
   get_sales_metrics with from/to for the period they mean.
