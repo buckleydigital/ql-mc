@@ -147,7 +147,7 @@ Deno.serve(async (req: Request) => {
         campaign ? `Trade / campaign: ${campaign}.` : null,
         goal ? `Volume they want: ${goal}.` : null,
         postcode ? `Service area: ${postcode}.` : null,
-        '$2,500 one-off build + first 30 days management, then $600/mo optional.',
+        '$2,500 one-off build + first 30 days management, then $600/mo + GST optional.',
       ].filter(Boolean).join('\n')
 
       // A double-tap on the button, or a second try minutes later, should land
