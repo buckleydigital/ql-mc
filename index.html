@@ -6,7 +6,8 @@
 <title>Mission Control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co ws://localhost:8787 ws://127.0.0.1:8787 http://localhost:8787 http://127.0.0.1:8787 https://*.twilio.com wss://*.twilio.com https://graph.facebook.com 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://sdk.twilio.com https://esm.sh; img-src * data: blob:; media-src * blob:;">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -3971,9 +3972,9 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
   --primary-h:linear-gradient(135deg,#5ea5ff 0%,#3a88f5 55%,#2a72e6 100%);
 }
 :root{
-  --font:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-  --mono:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;
-  --display:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --mono:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --display:'General Sans','Inter',-apple-system,BlinkMacSystemFont,sans-serif;
   --r:12px; --r2:18px; --r3:24px;
 }
 
@@ -4065,6 +4066,9 @@ select:not([multiple]):not([size]){-webkit-appearance:none;appearance:none;paddi
 
 /* Scrollbars that stay visible but soft. */
 ::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--ink3) 35%,transparent);border-radius:999px;border:3px solid transparent;background-clip:padding-box}
+
+/* Website type: General Sans for headings and big numbers, Inter for text. */
+h1,h2,h3,.ph-left h1,.tb-name,.kval,.sl,.tcol-title,.login-box h1,.login-box h2{font-family:'General Sans','Inter',-apple-system,BlinkMacSystemFont,sans-serif}
 </style>
 <script>
 function updateBnavPadding(){
