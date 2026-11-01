@@ -6,7 +6,7 @@
 <title>Mission Control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:opsz,wght@9..40,300..700&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; connect-src https://wmegoygrancfwxagqskh.supabase.co wss://wmegoygrancfwxagqskh.supabase.co ws://localhost:8787 ws://127.0.0.1:8787 http://localhost:8787 http://127.0.0.1:8787 https://*.twilio.com wss://*.twilio.com https://graph.facebook.com 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://sdk.twilio.com https://esm.sh; img-src * data: blob:; media-src * blob:;">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -3928,6 +3928,143 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
   .panel{padding:16px 16px calc(var(--bnav-h, 200px) + 40px + env(safe-area-inset-bottom,0px)) !important;}
 }
 
+
+/* ═══ 2026 THEME ═══
+   A modern skin over the same markup: deep navy with a soft blue glow
+   (brand #4797FF), glassy rounded cards, pill buttons, one friendly typeface
+   in sentence case instead of uppercase mono labels. Dark and light each get
+   their own colours here; sizes that the phone layout changes (--sw, --th,
+   --fs-*) are left alone so mobile keeps working. Appearance only. */
+:root:not([data-theme="light"]){
+  --bg:#060a14; --bg2:#0a1020;
+  --s1:#0c1322; --s2:#111a2d; --s3:#17223a; --s4:#1e2b47;
+  --bd:rgba(148,180,255,.08); --bd2:rgba(148,180,255,.13); --bd3:rgba(148,180,255,.22);
+  --ink:#eef3ff; --ink2:#a6b2cc; --ink3:#7f8ba6; --ink4:#47516b;
+  --acc:#4797ff; --acc2:#2f80f5; --acc3:#1f6ae0;
+  --acc-dim:rgba(71,151,255,.13); --acc-glow:rgba(71,151,255,.4); --acc-ink:#a9cdff;
+  --acc-fill:#2a6fe0;
+  --red:#ff5c7a; --red-dim:rgba(255,92,122,.1);
+  --grn:#34d399; --grn-dim:rgba(52,211,153,.1);
+  --amb:#fbbf4b;
+  --glass:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.016));
+  --glass-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 24px 48px -26px rgba(0,0,0,.75);
+  --btn-bg:rgba(255,255,255,.04); --btn-bg-h:rgba(255,255,255,.08);
+  --field-bg:rgba(255,255,255,.035);
+  --chrome:rgba(8,12,24,.6);
+  --primary:linear-gradient(135deg,#6cb0ff 0%,#4797ff 50%,#2f7ff0 100%);
+  --primary-h:linear-gradient(135deg,#7dbaff 0%,#57a1ff 50%,#3a88f5 100%);
+}
+[data-theme="light"]{
+  --bg:#f3f6fc; --bg2:#eaf0fa;
+  --s1:#ffffff; --s2:#f6f9fe; --s3:#edf2fb; --s4:#e2e9f6;
+  --bd:rgba(20,40,90,.08); --bd2:rgba(20,40,90,.13); --bd3:rgba(20,40,90,.2);
+  --ink:#0b1530; --ink2:#4a5675; --ink3:#66718e; --ink4:#b5bfd3;
+  --acc:#1f6fe5; --acc2:#1a5fcf; --acc3:#154fb0;
+  --acc-dim:rgba(31,111,229,.08); --acc-glow:rgba(31,111,229,.28); --acc-ink:#1a5ccc;
+  --acc-fill:#1f6fe5;
+  --glass:#ffffff;
+  --glass-shadow:0 1px 2px rgba(15,30,70,.05),0 14px 34px -18px rgba(15,30,70,.2);
+  --btn-bg:#ffffff; --btn-bg-h:#f2f6fd;
+  --field-bg:#ffffff;
+  --chrome:rgba(255,255,255,.72);
+  --primary:linear-gradient(135deg,#4f9bff 0%,#2f7ff0 55%,#1f6ae0 100%);
+  --primary-h:linear-gradient(135deg,#5ea5ff 0%,#3a88f5 55%,#2a72e6 100%);
+}
+:root{
+  --font:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --mono:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+  --display:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+  --r:12px; --r2:18px; --r3:24px;
+}
+
+/* Type: one face, sentence case, no robotic tracking. Real code keeps its font. */
+body *:not(code):not(pre):not(kbd){text-transform:none!important;letter-spacing:0!important}
+h1,h2,h3,.ph-left h1,.kval,.tb-name{letter-spacing:-.02em!important}
+html,body{font-feature-settings:"tnum" 1}
+
+/* The glow behind everything. */
+body,#login-screen{background:
+  radial-gradient(1100px 640px at 88% -14%,rgba(71,151,255,.17),transparent 62%),
+  radial-gradient(900px 560px at -10% 110%,rgba(99,102,241,.08),transparent 60%),
+  var(--bg)}
+[data-theme="light"] body,[data-theme="light"] #login-screen{background:
+  radial-gradient(1100px 640px at 88% -14%,rgba(71,151,255,.12),transparent 62%),
+  radial-gradient(900px 560px at -10% 110%,rgba(99,102,241,.05),transparent 60%),var(--bg)}
+.content{background:transparent}
+
+/* Top bar, sidebar, mobile bottom nav: frosted glass. */
+.topbar,.sidebar,.bnav{background:var(--chrome);-webkit-backdrop-filter:blur(18px) saturate(140%);
+  backdrop-filter:blur(18px) saturate(140%)}
+.tb-name{font-size:15px;font-weight:700}
+.ibtn{border-radius:999px;border:1px solid var(--bd);background:var(--btn-bg)}
+.ibtn:hover{background:var(--acc-dim);border-color:color-mix(in srgb,var(--acc) 35%,transparent);color:var(--acc-ink)}
+.uname-chip{background:var(--btn-bg);border-color:var(--bd2);font-weight:600}
+.sb-status{border-radius:999px;background:var(--acc-dim);border-color:color-mix(in srgb,var(--acc) 22%,transparent);
+  color:var(--acc-ink);font-weight:600;padding:7px 12px}
+.sb-group-label{font-size:12px;font-weight:600;color:var(--ink3)}
+.navbtn{border-radius:14px;padding:10px 12px;gap:11px}
+.navbtn:hover{background:var(--btn-bg-h)}
+.navbtn.active{color:var(--ink);font-weight:650;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--acc) 26%,transparent),color-mix(in srgb,var(--acc) 9%,transparent));
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--acc) 30%,transparent),0 10px 26px -14px var(--acc-glow)}
+.navbtn.active .ni{color:var(--acc)}
+
+/* Page header. */
+.ph-left h1{font-size:26px;font-weight:700}
+.ph-left p{font-size:14px}
+
+/* Surfaces: glass, generous corners. */
+.kpi,.kcard,.task-item,.twrap,.chart-card,.modal,.files-list,.file-editor,.ld-client-card,.or-card,
+.or-step,.or-preview,.or-batch-bar,.login-box,.daily-tab,.jv-note{
+  background:var(--glass);border:1px solid var(--bd);box-shadow:var(--glass-shadow)}
+.kpi,.twrap,.chart-card,.files-list,.file-editor,.or-card,.ld-client-card{border-radius:var(--r2)}
+.kpi{padding:18px 20px}
+.kpi:hover,.kcard:hover,.task-item:hover{border-color:var(--bd3)}
+.klabel{font-weight:600}
+.kval{font-size:28px;font-weight:700}
+.kcard{border-radius:16px;padding:14px}
+.task-item{border-radius:16px;padding:14px 16px;margin-bottom:8px}
+.modal{border-radius:var(--r3)}
+.overlay{background:rgba(3,6,14,.55);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+[data-theme="light"] .overlay{background:rgba(20,30,60,.25)}
+.file-editor-head{background:transparent}
+
+/* Section labels: quiet sentence-case headings. */
+.sl{font-size:15px;font-weight:700;color:var(--ink);margin-top:34px}
+.sl-line{background:linear-gradient(90deg,var(--bd2),transparent)}
+.tcol-title{font-size:13.5px;font-weight:700;color:var(--ink2)}
+.files-list-title,.files-cat,.hud-h{font-weight:700}
+thead th{background:transparent;font-size:12px;font-weight:600;color:var(--ink3)}
+tbody tr:hover td{background:color-mix(in srgb,var(--acc) 5%,transparent)}
+
+/* Buttons: pills, gradient for the main action. */
+.btn,.pager button{border-radius:999px;font-weight:600;background:var(--btn-bg);border-color:var(--bd2)}
+.btn:hover,.pager button:hover{background:var(--btn-bg-h);border-color:var(--bd3)}
+.btn-p{color:#fff!important;border-color:transparent!important;background:var(--primary)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 10px 26px -10px var(--acc-glow)}
+.btn-p:hover{background:var(--primary-h)!important;transform:translateY(-1px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 14px 32px -10px var(--acc-glow)}
+.files-tabs button{border-radius:999px}
+
+/* Fields: soft, rounded, a blue ring on focus. */
+.fi,.fs,.fta,.qinput,.lf input,.file-rename input{background:var(--field-bg);border:1px solid var(--bd2);border-radius:14px}
+.fi,.fs{min-height:40px;padding:9px 13px}
+.fta{padding:11px 13px}
+.fi:focus,.fs:focus,.fta:focus,.qinput:focus,.lf input:focus{border-color:color-mix(in srgb,var(--acc) 60%,transparent);
+  box-shadow:0 0 0 4px var(--acc-dim);background:var(--field-bg)}
+.flabel{font-weight:600}
+.fs option{background:var(--s2);color:var(--ink)}
+
+/* Dropdowns: our own chevron instead of the browser's. */
+select:not([multiple]):not([size]){-webkit-appearance:none;appearance:none;padding-right:34px!important;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238893ad' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")!important;
+  background-repeat:no-repeat!important;background-position:right 11px center!important;background-size:14px!important}
+
+/* Pills and chips. */
+.cpill,.kcard-cpill,.or-pill,.or-fit,.or-live,.hud-core-label{border-radius:999px}
+
+/* Scrollbars that stay visible but soft. */
+::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--ink3) 35%,transparent);border-radius:999px;border:3px solid transparent;background-clip:padding-box}
 </style>
 <script>
 function updateBnavPadding(){
