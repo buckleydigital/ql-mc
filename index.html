@@ -10344,7 +10344,7 @@ async function loadInvoices() {
         <button class="btn btn-xs" onclick="redownloadInvoice('${esc(String(inv.id))}')">PDF</button>
         <button class="btn btn-xs" style="color:var(--blu)" onclick="openSendInvoice('${esc(String(inv.id))}')">${inv.sent_at?'Resend':'Send'}</button>
         <button class="btn btn-xs" style="color:var(--grn)" onclick="downloadReceiptPDF('${esc(String(inv.id))}')">Receipt</button>
-        ${inv.status!=='paid'?`<button class="btn btn-xs" style="color:var(--grn);border-color:rgba(46,204,138,.35)" onclick="markInvoicePaid('${esc(String(inv.id))}')">Paid</button>`:''}
+        ${inv.status!=='paid'?`<button class="btn btn-xs" style="color:var(--grn);border-color:rgba(46,204,138,.35)" onclick="markInvoicePaid('${esc(String(inv.id))}')">Paid</button>`:(IS_REP?'':`<button class="btn btn-xs" style="color:var(--amb)" title="Marked paid by mistake? Put it back to unpaid" onclick="undoInvoicePaid('${esc(String(inv.id))}','${esc(inv.invoice_number||'')}')">Undo paid</button>`)}
         <button class="btn btn-xs" style="color:var(--red)" onclick="deleteInvoice('${esc(String(inv.id))}','${esc(inv.invoice_number||'')}')">Del</button>
       </td>
     </tr>`).join('');
@@ -10356,6 +10356,19 @@ async function markInvoicePaid(id) {
   loadInvoices();
   // Paid also ticks the month and moves the next payment date (database
   // trigger), so the client cards change too.
+  if (typeof loadManaged === 'function') loadManaged();
+}
+
+// Marked paid by mistake: the database puts the invoice back to sent/overdue,
+// unticks the month on the client, resets its payment dates, and withdraws
+// the CSM's "send us your invoice" task (emailing them to hold off if they
+// were already told). Operators only.
+async function undoInvoicePaid(id, num) {
+  if (!confirm('Undo paid on ' + (num || 'this invoice') + '?\n\nIt goes back to unpaid, the month is unticked on the client, and their CSM is told to hold off on invoicing.')) return;
+  const {data, error} = await db.rpc('undo_invoice_paid', { p_invoice_id: id });
+  if (error) { alert(error.message); return; }
+  toast((num || 'Invoice') + ' is back to ' + ((data && data.status) || 'unpaid') + ' ✓');
+  loadInvoices();
   if (typeof loadManaged === 'function') loadManaged();
 }
 
