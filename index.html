@@ -3185,8 +3185,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
       <div id="em-csm-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;font-size:12px;color:var(--ink3)"></div>
       <div style="display:flex;gap:6px"><select class="fi" id="em-csm-pick" style="flex:1"><option value="">Assign a team member…</option></select><button type="button" class="btn btn-xs" id="em-csm-add" onclick="addClientCsm()">Assign</button></div></div>
     <div class="frow"><label class="flabel">Guarantee <span style="font-size:12px;color:var(--ink3);font-weight:400">what they were promised · leave empty if none · also set from the Team Panel</span></label>
-      <textarea class="fta" id="em-guarantee-terms" oninput="syncGuaranteeFields()" placeholder="e.g. 10 quote-ready leads in 30 days, or next month free"></textarea>
-      <div style="margin-top:6px"><button type="button" class="btn btn-xs" onclick="fillStdGuarantee()">Fill in the 10-lead offer</button></div></div>
+      <textarea class="fta" id="em-guarantee-terms" oninput="syncGuaranteeFields()" placeholder="e.g. what was promised, and what happens if it isn't met"></textarea></div>
     <div class="frow" id="em-guarantee-dates" style="display:none;gap:10px">
       <div style="flex:1"><label class="flabel">Guarantee starts <span style="font-size:12px;color:var(--ink3);font-weight:400">usually ads live</span></label><input class="fi" id="em-guarantee-start" type="date"></div>
       <div style="flex:1"><label class="flabel">Guarantee ends</label><input class="fi" id="em-guarantee-end" type="date"></div></div>
@@ -8300,7 +8299,6 @@ async function removeClientCsm(vaId) {
 }
 
 // Guarantee in the client modal: free text (empty = none) plus its dates.
-// "Fill in the 10-lead offer" writes the standard promo wording and dates.
 const STD_GUARANTEE = '10 quote-ready leads in the first 30 days, or the next month of management is free and we keep going until they have them (up to 60 extra days). Terms: quoteleads.com.au/10-lead-guarantee';
 function addDaysIso(iso, n) { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
 function syncGuaranteeFields() {
@@ -8308,13 +8306,6 @@ function syncGuaranteeFields() {
   $('em-guarantee-dates').style.display = has ? 'flex' : 'none';
   $('em-guarantee-meta').style.display = has && $('em-guarantee-meta').textContent ? '' : 'none';
   if (has && !$('em-guarantee-start').value && $('em-ads-live').value) $('em-guarantee-start').value = $('em-ads-live').value;
-}
-function fillStdGuarantee() {
-  $('em-guarantee-terms').value = STD_GUARANTEE;
-  const start = $('em-guarantee-start').value || $('em-ads-live').value || new Date().toISOString().slice(0, 10);
-  $('em-guarantee-start').value = start;
-  $('em-guarantee-end').value = addDaysIso(start, 29);
-  syncGuaranteeFields();
 }
 function guaranteePatch(id) {
   const terms = $('em-guarantee-terms').value.trim() || null;
