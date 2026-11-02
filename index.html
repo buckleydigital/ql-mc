@@ -5790,7 +5790,7 @@ function togglePrivateKpis() {
 
 async function loadCrmLtv() {
   const [cR, pR, mR] = await Promise.all([
-    db.from('clients').select('id,type,company_name,management_fee,active_months'),
+    db.from('clients').select('id,type,company_name,management_fee,active_months,retainer_payment_dates,retainer_amounts'),
     db.from('ppl_order_log').select('client_id,leads_qty,lead_price'),
     db.from('managed_order_log').select('client_id,amount'),
   ]);
@@ -5800,8 +5800,7 @@ async function loadCrmLtv() {
     const biz = String(c.company_name || c.id).toLowerCase().replace(/[^a-z0-9]/g, '') || c.id;
     bizOf[c.id] = biz;
     if (c.type === 'managed') {
-      let months = []; try { months = JSON.parse(c.active_months || '[]'); } catch (e) {}
-      total[biz] = (total[biz] || 0) + (Array.isArray(months) ? months.length : 0) * Number(c.management_fee || 0);
+      total[biz] = (total[biz] || 0) + mgPayments(c).reduce((a, p) => a + p.amt, 0);
     }
   });
   const add = (clientId, v) => { const biz = bizOf[clientId]; if (biz && v) total[biz] = (total[biz] || 0) + Number(v); };
@@ -7385,6 +7384,24 @@ function getActiveMgMonths(){
 // managed client, mapped to the month the retainer was *paid* (recorded when the
 // month was toggled on) rather than the month it covers. Falls back to the
 // covered month for legacy rows that have no recorded payment date.
+// What each paid month actually brought in, on the same cash basis: one
+// {m: "YYYY-MM" paid in, amt} per active month. The amount is what was really
+// paid for that month (retainer_amounts: the invoice total, or the Stripe
+// charge), falling back to the client's management fee for a month ticked by
+// hand. Rates vary, so the fee alone over- or under-counts.
+function mgPayments(client){
+  let months=[];try{months=JSON.parse(client.active_months||'[]');}catch(e){}
+  let pd={};try{pd=JSON.parse(client.retainer_payment_dates||'{}');}catch(e){}
+  let am={};try{am=typeof client.retainer_amounts==='string'?JSON.parse(client.retainer_amounts||'{}'):(client.retainer_amounts||{});}catch(e){}
+  const fee=Number(client.management_fee||0);
+  return months.map(m=>({m:(pd&&pd[m])?String(pd[m]).slice(0,7):m, amt:(am&&am[m]!=null&&isFinite(Number(am[m])))?Number(am[m]):fee}));
+}
+// Sum of mgPayments in the months that pass `keep`; clients with no month
+// list at all fall back to payments_made x fee, as before.
+function mgRetainerSum(client, keep){
+  if (client.active_months==null) return (client.payments_made||0)*(client.management_fee||0);
+  return mgPayments(client).filter(p=>keep(p.m)).reduce((a,p)=>a+p.amt,0);
+}
 function mgPaymentMonths(client){
   let months=[];try{months=JSON.parse(client.active_months||'[]');}catch(e){}
   let pd={};try{pd=JSON.parse(client.retainer_payment_dates||'{}');}catch(e){}
@@ -7408,7 +7425,7 @@ function renderManagedPayments(clients, orderLog=[]) {
     const overdue = np && np < today;
     const paysMade = c.payments_made || 0;
     const fee = c.management_fee || 0;
-    const retainerTotal = paysMade * fee;
+    const retainerTotal = c.active_months!=null ? mgPayments(c).reduce((a,p)=>a+p.amt,0) : paysMade * fee;
     const customOrders = orderLog.filter(o => o.client_id === c.id).reduce((s,o) => s + (o.amount||0), 0);
     const lifetime = retainerTotal + customOrders;
     return `<tr style="cursor:pointer" data-client-id="${esc(String(c.id))}" data-client-type="managed" class="client-row">
@@ -8832,7 +8849,7 @@ async function loadFinance() {
     db.from('ad_spend_daily').select('date,account_type,spend,leads').gte('date',from).lt('date',next).order('date',{ascending:false}),
     db.from('subscriptions').select('*').order('created_at'),
     db.from('clients').select('leads_delivered,lead_price,leads_mtd,pct_sold,meta_cpl,true_cpl,stage,total_leads_purchased').eq('type','ppl'),
-    db.from('clients').select('id,company_name,management_fee,payments_made,stage,active_months,retainer_payment_dates,next_payment_date').eq('type','managed'),
+    db.from('clients').select('id,company_name,management_fee,payments_made,stage,active_months,retainer_payment_dates,retainer_amounts,next_payment_date').eq('type','managed'),
     db.from('managed_order_log').select('client_id,amount,order_date').gte('order_date',from).lte('order_date',next),
     db.from('ppl_order_log').select('leads_qty,lead_price,order_date').gte('order_date',from).lte('order_date',next),
     spendLogQ,
@@ -8858,9 +8875,7 @@ async function loadFinance() {
   const priorMgRetainer = mgR.data ? (() => {
     const pFrom=priorFrom, pNext=priorNext;
     return (mgR.data||[]).reduce((s,c)=>{
-      const inRange=mgPaymentMonths(c).filter(m=>m+'-01'>=pFrom&&m+'-01'<pNext);
-      const cnt=c.active_months!=null?inRange.length:0;
-      return s+(cnt*(c.management_fee||0));
+      return s+(c.active_months!=null?mgRetainerSum(c,m=>m+'-01'>=pFrom&&m+'-01'<pNext):0);
     },0);
   })() : 0;
   const priorTotalRev = priorPplRev + priorMgRetainer + priorMgCustom;
@@ -8876,8 +8891,7 @@ async function loadFinance() {
   // Extras for sections migrated from Command Center
   const curMonthKey = today.slice(0,7);
   const mgRetainerThisMonth = (mgR.data||[]).reduce((s,c)=>{
-    const cnt=mgPaymentMonths(c).filter(m=>m===curMonthKey).length;
-    return s+(cnt*(c.management_fee||0));
+    return s+mgPayments(c).filter(p=>p.m===curMonthKey).reduce((a,p)=>a+p.amt,0);
   },0);
   const mtdPplRev = (pplOrdMtdR.data||[]).reduce((s,o)=>s+((o.leads_qty||0)*(o.lead_price||0)),0);
   const mtdMgRev = (mgOrdMtdR.data||[]).reduce((s,o)=>s+(o.amount||0),0);
@@ -8914,17 +8928,13 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
     // upcoming months still feed into Total Revenue. Falls back to `next` for
     // monthly views where the upper bound matches the period.
     const mgUpper=prior.mgRevNext||next;
-    const inRange=mgPaymentMonths(c).filter(m=>(!from||m+'-01'>=from)&&(!mgUpper||m+'-01'<mgUpper));
-    const cnt=c.active_months!=null?inRange.length:(c.payments_made||0);
-    return s+(cnt*(c.management_fee||0));
+    return s+mgRetainerSum(c,m=>(!from||m+'-01'>=from)&&(!mgUpper||m+'-01'<mgUpper));
   },0);
   // Period-bound retainer (jan-to-today for YTD) - used only for the
   // run-rate annualisation so future-booked months don't artificially
   // inflate the projection.
   const mgRetainerRevPeriod=mgClients.reduce((s,c)=>{
-    const inRange=mgPaymentMonths(c).filter(m=>(!from||m+'-01'>=from)&&(!next||m+'-01'<next));
-    const cnt=c.active_months!=null?inRange.length:(c.payments_made||0);
-    return s+(cnt*(c.management_fee||0));
+    return s+mgRetainerSum(c,m=>(!from||m+'-01'>=from)&&(!next||m+'-01'<next));
   },0);
   const mgCustomRev=mgOrders.reduce((s,o)=>s+(o.amount||0),0);
   const mgTotalRev=mgRetainerRev+mgCustomRev;
@@ -9240,7 +9250,7 @@ async function loadGoals() {
   const [goalsR, pplOrdR, mgR, mgOrdR, expR, spendLogR, priorPplOrdR, priorMgOrdR, priorExpR, priorSpendLogR] = await Promise.all([
     db.from('monthly_goals').select('*').gte('month', `${year}-01`).lte('month', `${year}-12`).order('month'),
     db.from('ppl_order_log').select('leads_qty,lead_price,order_date').gte('order_date', `${year}-01-01`).lte('order_date', `${year}-12-31`),
-    db.from('clients').select('id,company_name,management_fee,payments_made,stage,active_months,retainer_payment_dates').eq('type','managed'),
+    db.from('clients').select('id,company_name,management_fee,payments_made,stage,active_months,retainer_payment_dates,retainer_amounts').eq('type','managed'),
     db.from('managed_order_log').select('client_id,amount,order_date').gte('order_date', `${year}-01-01`).lte('order_date', `${year}-12-31`),
     db.from('expenses').select('amount,date').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),
     db.from('campaign_spend_log').select('period,spend').gte('period',`${year}-01`).lte('period',`${year}-12`),
@@ -9306,8 +9316,7 @@ async function loadGoals() {
     // Managed retainer revenue for this month (cash basis: attributed to the
     // month the retainer was paid, not the month it covers).
     const mgRetainer = mgClients.reduce((s, c) => {
-      const cnt = mgPaymentMonths(c).filter(mo => mo === key).length;
-      return s + (cnt * (c.management_fee || 0));
+      return s + mgPayments(c).filter(p => p.m === key).reduce((a, p) => a + p.amt, 0);
     }, 0);
 
     // Managed custom orders for this month
