@@ -3180,6 +3180,10 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
     <div class="frow"><label class="flabel">Last Payment Date</label><input class="fi" id="em-last-pay" type="date" oninput="calcNextPayment()"></div>
     <div class="frow"><label class="flabel">Next Payment Due</label><input class="fi" id="em-next-pay" type="date"></div>
     <div class="frow"><label class="flabel">Billing</label><div id="em-billing-mode" style="font-size:12px;color:var(--ink3);padding-top:6px">Manual (invoice)</div></div>
+    <div class="frow"><label class="flabel" style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="checkbox" id="em-reminders-paused" style="width:15px;height:15px;cursor:pointer"> Pause payment reminder emails <span style="font-size:12px;color:var(--ink3);font-weight:400">e.g. while a payment plan is agreed</span></label></div>
+    <div class="frow"><label class="flabel">CSM <span style="font-size:12px;color:var(--ink3);font-weight:400">gets a Team Panel task to invoice QuoteLeads each time this client pays</span></label>
+      <div id="em-csm-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;font-size:12px;color:var(--ink3)"></div>
+      <div style="display:flex;gap:6px"><select class="fi" id="em-csm-pick" style="flex:1"><option value="">Assign a team member…</option></select><button type="button" class="btn btn-xs" id="em-csm-add" onclick="addClientCsm()">Assign</button></div></div>
     <div class="frow"><label class="flabel">Guarantee <span style="font-size:12px;color:var(--ink3);font-weight:400">what they were promised · leave empty if none · also set from the Team Panel</span></label>
       <textarea class="fta" id="em-guarantee-terms" oninput="syncGuaranteeFields()" placeholder="e.g. 10 quote-ready leads in 30 days, or next month free"></textarea>
       <div style="margin-top:6px"><button type="button" class="btn btn-xs" onclick="fillStdGuarantee()">Fill in the 10-lead offer</button></div></div>
@@ -8063,6 +8067,8 @@ async function openEditClient(type,c) {
       ? 'Automatic (card) · Stripe charges on the payment date, no invoice is drafted · change in the Team Panel'
       : 'Manual (invoice) · drafted 7 days before the payment date · change in the Team Panel');
     if ((c.ads_first_live_date || c.last_payment_date) && !c.next_payment_date) calcNextPayment();
+    $('em-reminders-paused').checked=!!c.billing_reminders_paused;
+    renderClientCsms(c);
     setVal('em-payments-made',c.payments_made||0);
     setVal('em-guarantee-terms',c.guarantee_terms||'');
     setVal('em-guarantee-start',c.guarantee_start||'');
@@ -8188,7 +8194,7 @@ async function updateClient(type) {
     const _todayStr=new Date().toISOString().split('T')[0];
     const _payDates={};_activeMo.forEach(m=>{_payDates[m]=(_prevPayDates&&_prevPayDates[m])||_todayStr;});
     const _emStage=$('em-stage').value;
-    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),retainer_payment_dates:JSON.stringify(_payDates),stage:_emStage,...churnedPatch('em'),...(_mgFulfilMirrored?{}:{onboarding_sub_stage:_emStage==='onboarding'?($('em-onboarding-sub-stage').value||null):null}),active_status:_emStage==='active'?($('em-active-status').value||'Ads Live'):null,cx_score:$('em-cx').value!==''?parseInt($('em-cx').value):null,start_date:$('em-start').value||null,ads_first_live_date:$('em-ads-live').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),...guaranteePatch(id),client_webhook:$('em-client-webhook').value.trim()||null,webhook_auth_mode:(($('em-webhook-auth').value!=='none'&&$('em-webhook-secret').value.trim())?$('em-webhook-auth').value:'none'),webhook_auth_header:($('em-webhook-auth').value==='header'?($('em-webhook-header').value.trim()||'Authorization'):null),webhook_auth_enabled:$('em-webhook-auth').value==='signature'&&!!$('em-webhook-secret').value.trim(),webhook_secret:$('em-webhook-secret').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
+    d={company_name:$('em-co').value.trim(),contact_name:$('em-cn').value.trim(),email:$('em-em').value.trim(),phone:$('em-ph').value.trim(),ad_account_id:$('em-acc').value.trim(),monthly_budget:parseFloat($('em-budget').value)||0,management_fee:parseFloat($('em-fee').value)||0,payments_made:_activeMo.length,active_months:JSON.stringify(_activeMo),retainer_payment_dates:JSON.stringify(_payDates),stage:_emStage,billing_reminders_paused:$('em-reminders-paused').checked,...churnedPatch('em'),...(_mgFulfilMirrored?{}:{onboarding_sub_stage:_emStage==='onboarding'?($('em-onboarding-sub-stage').value||null):null}),active_status:_emStage==='active'?($('em-active-status').value||'Ads Live'):null,cx_score:$('em-cx').value!==''?parseInt($('em-cx').value):null,start_date:$('em-start').value||null,ads_first_live_date:$('em-ads-live').value||null,last_payment_date:$('em-last-pay').value||null,next_payment_date:$('em-next-pay').value||null,notes:$('em-notes').value.trim(),...guaranteePatch(id),client_webhook:$('em-client-webhook').value.trim()||null,webhook_auth_mode:(($('em-webhook-auth').value!=='none'&&$('em-webhook-secret').value.trim())?$('em-webhook-auth').value:'none'),webhook_auth_header:($('em-webhook-auth').value==='header'?($('em-webhook-header').value.trim()||'Authorization'):null),webhook_auth_enabled:$('em-webhook-auth').value==='signature'&&!!$('em-webhook-secret').value.trim(),webhook_secret:$('em-webhook-secret').value.trim()||null,has_custom_integration:$('em-has-custom-integration').value==='true',updated_at:now()};
     if (!d.company_name) { toast('Company name required',true); return; }
     if (d.guarantee_start && d.guarantee_end && d.guarantee_end < d.guarantee_start) { toast('Guarantee ends before it starts',true); return; }
   }
@@ -8229,6 +8235,56 @@ async function deleteClient(type) {
   closeModal(type==='ppl'?'m-edit-ppl':'m-edit-managed');
   type==='ppl'?loadPPL():loadManaged(); toast('Client deleted');
 }
+// CSM on a managed client: who is assigned to it in ql-hq (team_assignments).
+// Whoever is on it gets the "client has paid, send us your invoice" task in the
+// Team Panel when an invoice is marked paid. Assign and remove save straight
+// away; they don't wait for the Save button.
+let _csmTeam = null;
+async function loadCsmTeam(force) {
+  if (_csmTeam && !force) return _csmTeam;
+  const out = await callHq('list_vas', {});
+  _csmTeam = out.vas || [];
+  return _csmTeam;
+}
+async function renderClientCsms(c) {
+  const list = $('em-csm-list'), sel = $('em-csm-pick'), add = $('em-csm-add');
+  if (!list) return;
+  const hqId = c && c.ql_hq_company_id;
+  if (!hqId) {
+    list.textContent = 'No QuoteLeadsHQ account linked to this client yet.';
+    sel.disabled = true; add.disabled = true; return;
+  }
+  list.textContent = 'Loading…'; sel.disabled = false; add.disabled = false;
+  try {
+    const team = await loadCsmTeam(true);
+    if (($('em-id').value || '') !== String(c.id)) return; // another client opened meanwhile
+    const on = team.filter(v => (v.company_ids || []).includes(hqId));
+    list.innerHTML = on.length
+      ? on.map(v => `<span class="badge bg-blu" style="display:inline-flex;gap:6px;align-items:center">${esc(v.name || 'Team member')}<button type="button" class="btn btn-xs" style="padding:0 6px;min-height:0" title="Remove from this client" onclick="removeClientCsm('${esc(v.id)}')">✕</button></span>`).join('')
+      : 'Nobody assigned yet.';
+    sel.innerHTML = '<option value="">Assign a team member…</option>' +
+      team.filter(v => !on.includes(v)).map(v => `<option value="${esc(v.id)}">${esc(v.name || v.id)} (${v.assigned} client${v.assigned === 1 ? '' : 's'})</option>`).join('');
+  } catch (e) { list.textContent = 'Could not load the team: ' + e.message; }
+}
+async function addClientCsm() {
+  const c = CLIENT_CACHE[$('em-id').value]; const vaId = $('em-csm-pick').value;
+  if (!c || !vaId) { toast('Pick a team member first', true); return; }
+  const btn = $('em-csm-add'); btn.disabled = true; btn.textContent = 'Assigning…';
+  try {
+    const out = await callHq('assign_client_va', { client_id: c.id, va_user_id: vaId });
+    toast(out.notified ? 'Assigned and emailed ✓' : 'Assigned ✓');
+  } catch (e) { toast(e.message, true); }
+  btn.disabled = false; btn.textContent = 'Assign';
+  renderClientCsms(c);
+}
+async function removeClientCsm(vaId) {
+  const c = CLIENT_CACHE[$('em-id').value]; if (!c) return;
+  if (!confirm('Take this team member off ' + (c.company_name || 'this client') + '?')) return;
+  try { await callHq('unassign_client_va', { client_id: c.id, va_user_id: vaId }); toast('Removed ✓'); }
+  catch (e) { toast(e.message, true); }
+  renderClientCsms(c);
+}
+
 // Guarantee in the client modal: free text (empty = none) plus its dates.
 // "Fill in the 10-lead offer" writes the standard promo wording and dates.
 const STD_GUARANTEE = '10 quote-ready leads in the first 30 days, or the next month of management is free and we keep going until they have them (up to 60 extra days). Terms: quoteleads.com.au/10-lead-guarantee';
