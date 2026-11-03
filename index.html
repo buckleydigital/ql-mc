@@ -6671,8 +6671,15 @@ async function saveStageNow() {
   // The move can push the follow-up date forward (leads_push_followup: 2 days
   // for Proposal). Show the new date, or Save changes writes the old one back
   // and the lead shows "follow-up due" straight away.
-  const { data: fu } = await db.from('leads').select('next_followup').eq('id', id).maybeSingle();
-  if (fu && $('el-id').value === id) setVal('el-next-followup', fu.next_followup || '');
+  // Moving out of New Lead also logs a contact (leads_contacted_on_first_move),
+  // so pick up the new last-contacted date and count as well.
+  const { data: fu } = await db.from('leads').select('next_followup,last_contact,contact_count').eq('id', id).maybeSingle();
+  if (fu && $('el-id').value === id) {
+    setVal('el-next-followup', fu.next_followup || '');
+    const lc = fu.last_contact ? fu.last_contact.split('T')[0] : '';
+    setVal('el-last-contact', lc); setVal('el-last-contact-orig', lc);
+    setVal('el-contact-count-orig', String(fu.contact_count || 0));
+  }
   toast('→ ' + stageLabel(stage));
   loadCRM();
 }
@@ -6823,7 +6830,7 @@ async function updateLead() {
   const origLastContact = $('el-last-contact-orig').value || null;
   const origCount = parseInt($('el-contact-count-orig').value||'0', 10) || 0;
   const contactIncrement = (newLastContact && (!origLastContact || newLastContact > origLastContact)) ? 1 : 0;
-  const d={name:$('el-name').value.trim(),company:$('el-company').value.trim(),niche:$('el-niche').value.trim(),email:$('el-email').value.trim(),phone:$('el-phone').value.trim(),stage,lead_type:'managed',value:parseFloat($('el-value').value)||null,source:$('el-source').value,notes:$('el-notes').value.trim(),contactable,last_contact:newLastContact,next_followup:$('el-next-followup').value||null,contact_count:origCount+contactIncrement,updated_at:now()};
+  const d={name:$('el-name').value.trim(),company:$('el-company').value.trim(),niche:$('el-niche').value.trim(),email:$('el-email').value.trim(),phone:$('el-phone').value.trim(),stage,value:parseFloat($('el-value').value)||null,source:$('el-source').value,notes:$('el-notes').value.trim(),contactable,last_contact:newLastContact,next_followup:$('el-next-followup').value||null,contact_count:origCount+contactIncrement,updated_at:now()};
   // Only full users can (re)assign a lead's owner; reps can't touch it.
   if (!IS_REP) d.owner_id = $('el-owner').value || null;
   if (!d.name) { toast('Name required',true); return; }
