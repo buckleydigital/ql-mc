@@ -12432,12 +12432,19 @@ function renderSequences() {
     const camp = n.instantly_campaign_id
       ? '<span class="or-pill ' + (n.campaign_state === 'active' ? 'good' : 'warn') + '">Instantly: ' + jmEsc(n.campaign_state || 'synced') + '</span>'
       : '<span class="or-pill">Not in Instantly yet</span>';
+    const auto = n.auto_followups !== false;
     const stats = n.contacted ? (n.contacted + ' emailed · ' + n.replied + ' replied · ' + n.interested + ' interested' + (n.queued ? ' · ' + n.queued + ' queued' : '')) : (n.queued ? n.queued + ' queued' : 'Nobody emailed yet');
     return '<div class="or-niche' + (n.sequence_approved_at ? ' on' : '') + '" data-seq="' + orAttr(n.key) + '">' +
       '<div class="or-head"><b style="font-size:14px;flex:1">' + jmEsc(n.label) + '</b>' + state + '</div>' +
       '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">' + camp + '<span class="or-sub">' + jmEsc(stats) + '</span></div>' +
+      '<label style="display:flex;gap:8px;align-items:center;margin:10px 0 0;text-transform:none;letter-spacing:0;font-size:13px;cursor:pointer">' +
+        '<input type="checkbox" class="sq-auto" style="width:18px;height:18px;margin:0"' + (auto ? ' checked' : '') + ' onchange="seqFollowups(\'' + n.key + '\',this.checked)">' +
+        '<span>Send follow-ups automatically</span>' +
+        (auto ? '' : '<span class="or-pill warn">First email only</span>') +
+      '</label>' +
+      (auto || steps.length < 2 ? '' : '<div class="or-sub" style="margin-top:4px">Only Email 1 is sent. The follow-ups below are kept for when you switch this back on.</div>') +
       steps.map(function (st, i) {
-        return '<div class="or-step-ed" data-i="' + i + '">' +
+        return '<div class="or-step-ed" data-i="' + i + '"' + (i && !auto ? ' style="opacity:.5"' : '') + '>' +
           '<div class="hd"><span style="flex:1">Email ' + (i + 1) + '</span>' +
             (i ? '<label style="margin:0;text-transform:none;letter-spacing:0">wait <input class="fi sq-delay" type="number" inputmode="numeric" min="1" max="30" value="' + (st.delay_days || 3) + '" style="width:58px;display:inline-block;padding:4px 6px"> days</label>' : '') +
             (steps.length > 1 ? '<button class="btn btn-xs" type="button" title="Remove this email" onclick="seqRemove(\'' + n.key + '\',' + i + ')">✕</button>' : '') +
@@ -12486,7 +12493,9 @@ async function seqPreview(key) {
   const { data } = await db.rpc('outreach_batch_candidates', { p_limit: 50 });
   const sample = (data || []).find(function (p) { return p.niche_key === key; }) ||
     { contact_name: 'Sam', business_name: 'Example Solar Co', suburb: 'Maroochydore' };
-  const steps = readSteps(key);
+  const n = orCampaigns.find(function (c) { return c.key === key; });
+  const all = readSteps(key);
+  const steps = n && n.auto_followups === false ? all.slice(0, 1) : all;
   let day = 0;
   box.textContent = steps.map(function (st, i) {
     day += i ? st.delay_days : 0;
@@ -12502,6 +12511,21 @@ async function seqSave(key, approve) {
   toast(approve ? 'Approved ✓ - press Sync to Instantly' : 'Draft saved');
   const { data } = await db.rpc('outreach_campaign_list'); orCampaigns = data || orCampaigns;
   renderSequences();
+}
+
+// Follow-ups on or off for a niche. Only Email 1 reaches Instantly while off;
+// the copy is untouched, so approval stands. Unsaved edits are kept on screen.
+async function seqFollowups(key, on) {
+  const n = orCampaigns.find(function (c) { return c.key === key; });
+  const steps = readSteps(key);
+  const { error } = await db.rpc('outreach_followups_set', { p_key: key, p_on: !!on });
+  if (error) { toast('Could not save: ' + error.message, true); renderSequences(); return; }
+  if (n) {
+    n.auto_followups = !!on;
+    if (JSON.stringify(steps) !== JSON.stringify(seqStepsFor(n))) n.sequence = steps;
+  }
+  renderSequences();
+  toast((on ? 'Follow-ups on' : 'First email only') + ' ✓ - press Sync to update Instantly');
 }
 
 async function syncInstantly() {
