@@ -655,6 +655,19 @@ td strong{font-weight:600}
 .file-editor{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r2);display:flex;flex-direction:column;overflow:hidden}
 .file-editor-head{padding:9px 13px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;gap:6px;background:var(--s2);flex-shrink:0}
 .file-editor-name{font-family:var(--code);font-size:var(--fs-sm);margin-right:10px;color:var(--acc);font-weight:500}
+#sop-view{flex:1;overflow:auto;padding:14px 16px;color:var(--ink);font-family:var(--font)}
+.sop-md{font-size:14px;line-height:1.65}
+.sop-md h2,.sop-md h3,.sop-md h4,.sop-md h5{font-family:var(--font);font-weight:600;margin:20px 0 6px;line-height:1.3}
+.sop-md h2{font-size:17px}.sop-md h3{font-size:15px}.sop-md h4,.sop-md h5{font-size:14px}
+.sop-md > :first-child{margin-top:0}
+.sop-md p{margin:6px 0}
+.sop-md ul,.sop-md ol{margin:6px 0 6px 20px;padding:0}
+.sop-md li{margin:3px 0}
+.sop-md code{font-family:var(--code);font-size:12px;background:var(--acc-dim);padding:1px 5px;border-radius:4px;word-break:break-word}
+.sop-md .sop-tw{overflow-x:auto;margin:8px 0}
+.sop-md table{border-collapse:collapse;width:100%;font-size:13px}
+.sop-md th{text-align:left;font-weight:600;border-bottom:1px solid var(--bd2);padding:6px 8px}
+.sop-md td{border-bottom:1px solid var(--bd);padding:6px 8px;vertical-align:top}
 .file-editor-ta{flex:1;background:transparent;border:none;outline:none;color:var(--ink);font-family:var(--code);font-size:var(--fs-base);line-height:1.7;padding:14px;resize:none}
 @media(max-width:700px){
   .files-layout{grid-template-columns:1fr;height:auto}
@@ -2353,6 +2366,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
               <select id="tmpl-client-sel" style="margin-left:auto;font-family:var(--mono);font-size:12px;padding:3px 7px;background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);color:var(--ink);outline:none;max-width:180px" onchange="updateTemplatePreview()"><option value="">- Preview with client -</option></select>
               <button class="btn btn-xs" onclick="renameFile()" title="Change the name and description shown in the list" style="flex-shrink:0;margin-left:6px">Rename</button>
               <button class="btn btn-xs" id="tmpl-preview-btn" onclick="toggleTemplatePreview()" style="flex-shrink:0;margin-left:6px">Preview</button>
+              <button class="btn btn-xs" id="sop-edit-btn" onclick="toggleSopEdit()" style="flex-shrink:0;margin-left:6px;display:none">Edit</button>
               <button class="btn btn-xs" id="sop-del-btn" onclick="deleteSop()" style="flex-shrink:0;margin-left:6px;display:none;color:var(--red)">Delete</button>
             </div>
             <div id="sop-tools" style="display:none;padding:10px 12px;margin-bottom:8px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);font-size:12px;line-height:1.9">
@@ -2370,6 +2384,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
               </div>
             </div>
             <textarea class="file-editor-ta" id="file-editor-ta" placeholder="Loading..."></textarea>
+            <div id="sop-view" class="sop-md" style="display:none"></div>
             <div id="tmpl-preview" style="display:none;padding:16px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);font-size:13px;line-height:1.75;white-space:pre-wrap;overflow-y:auto;max-height:520px;color:var(--ink);font-family:var(--font)"></div>
           </div>
         </div>
@@ -9803,7 +9818,75 @@ function paintFileTools() {
   $('tmpl-preview-btn').style.display = sop ? 'none' : '';
   $('sop-del-btn').style.display = sop ? '' : 'none';
   $('sop-tools').style.display = sop ? '' : 'none';
+  $('sop-edit-btn').style.display = sop ? '' : 'none';
+  _sopEditing = false;
+  applySopMode();
   if (sop) loadSopMeta();
+}
+
+// SOPs open formatted, the way the Team Panel shows them; Edit switches to the
+// Markdown. An empty SOP (a new one) opens straight in the editor.
+let _sopEditing = false;
+function applySopMode() {
+  const ta = $('file-editor-ta'), view = $('sop-view'), btn = $('sop-edit-btn');
+  if (!ta || !view) return;
+  const sop = isSop(curFile);
+  const loading = ta.value === 'Loading…';
+  const reading = sop && !_sopEditing && (loading || ta.value.trim());
+  if (reading) view.innerHTML = loading ? '<p style="color:var(--ink3)">Loading…</p>' : sopMarkdown(ta.value);
+  view.style.display = reading ? '' : 'none';
+  ta.style.display = reading ? 'none' : '';
+  if (btn) btn.textContent = reading ? 'Edit' : 'View';
+}
+function toggleSopEdit() {
+  _sopEditing = !_sopEditing;
+  applySopMode();
+  if (_sopEditing) $('file-editor-ta')?.focus();
+}
+
+// Same renderer as the Team Panel's SOPs (ql-hq team-panel.html): headings,
+// **bold**, `code`, lists (one level of nesting) and | tables |. Escapes first.
+function sopMarkdown(md) {
+  const inline = (t) => esc(t).split(/(`[^`]*`)/g).map((part) => part.startsWith('`') && part.endsWith('`') && part.length > 1
+    ? `<code>${part.slice(1, -1)}</code>`
+    : part.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')).join('');
+  const lines = String(md || '').replace(/\r/g, '').split('\n');
+  let html = '', i = 0;
+  const isRow = (l) => /^\s*\|.*\|\s*$/.test(l);
+  const cells = (l) => l.trim().replace(/^\||\|$/g, '').split(/(?<!\\)\|/).map((c) => c.replace(/\\\|/g, '|').trim());
+  while (i < lines.length) {
+    const l = lines[i];
+    if (!l.trim()) { i++; continue; }
+    let m;
+    if ((m = l.match(/^(#{1,4})\s+(.*)$/))) { const lv = Math.min(m[1].length + 1, 5); html += `<h${lv}>${inline(m[2])}</h${lv}>`; i++; continue; }
+    if (/^\s*-{3,}\s*$/.test(l)) { html += '<hr style="border:none;border-top:1px solid var(--bd);margin:14px 0">'; i++; continue; }
+    if (isRow(l)) {
+      const rows = []; while (i < lines.length && isRow(lines[i])) rows.push(lines[i++]);
+      const head = cells(rows[0]), body = rows.slice(rows[1] && /^[\s|:-]+$/.test(rows[1]) ? 2 : 1);
+      html += '<div class="sop-tw"><table><thead><tr>' + head.map((c) => `<th>${inline(c)}</th>`).join('') + '</tr></thead><tbody>' +
+        body.map((r) => '<tr>' + cells(r).map((c) => `<td>${inline(c)}</td>`).join('') + '</tr>').join('') + '</tbody></table></div>';
+      continue;
+    }
+    if (/^\s*([-*]|\d+\.)\s+/.test(l)) {
+      const ordered = /^\s*\d+\./.test(l);
+      const items = [];
+      while (i < lines.length && (/^\s*([-*]|\d+\.)\s+/.test(lines[i]) || (/^\s{2,}\S/.test(lines[i]) && items.length))) {
+        const cur = lines[i];
+        const sub = /^\s{2,}([-*]|\d+\.)\s+/.test(cur);
+        const text = cur.replace(/^\s*([-*]|\d+\.)\s+/, '').trim();
+        if (sub && items.length) (items[items.length - 1].sub ||= []).push(text);
+        else if (/^\s{2,}\S/.test(cur) && !/^\s*([-*]|\d+\.)\s+/.test(cur) && items.length) items[items.length - 1].text += ' ' + cur.trim();
+        else items.push({ text });
+        i++;
+      }
+      const tag = ordered ? 'ol' : 'ul';
+      html += `<${tag}>` + items.map((it) => `<li>${inline(it.text)}${it.sub ? '<ul>' + it.sub.map((x) => `<li>${inline(x)}</li>`).join('') + '</ul>' : ''}</li>`).join('') + `</${tag}>`;
+      continue;
+    }
+    const para = []; while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s|\s*\||\s*([-*]|\d+\.)\s|\s*-{3,}\s*$)/.test(lines[i])) para.push(lines[i++].trim());
+    html += `<p>${inline(para.join(' '))}</p>`;
+  }
+  return html;
 }
 
 // ── SOP PDFs and Team Panel access ──
@@ -9995,8 +10078,9 @@ async function loadFileContent() {
   if (!ta) return;
   ta.value = 'Loading…';
   const {data,error} = await db.from('agent_files').select('content').eq('agent','docs').eq('filename',curFile).maybeSingle();
-  if (error || !data) { ta.value = FILE_DEFAULTS[curFile] || ''; return; }
+  if (error || !data) { ta.value = FILE_DEFAULTS[curFile] || ''; applySopMode(); return; }
   ta.value = data.content || FILE_DEFAULTS[curFile] || '';
+  applySopMode();
 }
 async function saveFileContent() {
   const ta = $('file-editor-ta');
@@ -10005,6 +10089,8 @@ async function saveFileContent() {
   const {error} = await db.from('agent_files').upsert({agent:'docs',filename:curFile,content,updated_at:now()},{onConflict:'agent,filename'});
   if (error) { toast('Save failed: '+error.message, true); return; }
   toast('Saved ✓ - '+curFile);
+  // Back to the formatted view, showing what was just saved.
+  if (isSop(curFile)) { _sopEditing = false; applySopMode(); }
 }
 
 let _tmplClients = [], _tmplPreviewOn = false;
