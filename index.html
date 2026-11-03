@@ -1322,6 +1322,10 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
         <div class="kg kg-fit mb4 rep-stat-strip" style="display:none">
           <div class="kpi"><div class="klabel">Close Rate</div><div class="kval grn" id="rep-close">-</div><div class="ksub" id="rep-close-sub"></div></div>
           <div class="kpi"><div class="klabel">My Open Leads</div><div class="kval" id="rep-open">-</div></div>
+          <div class="kpi"><div class="klabel">My Commission</div><div class="kval grn" id="rep-comm">-</div><div class="ksub" id="rep-comm-sub">this month</div></div>
+          <div class="kpi"><div class="klabel">Cash Collected</div><div class="kval" id="rep-cash">-</div><div class="ksub">this month, ex GST</div></div>
+          <div class="kpi"><div class="klabel">Revenue per Lead</div><div class="kval" id="rep-rpl">-</div><div class="ksub" id="rep-rpl-sub">this month</div></div>
+          <div class="kpi"><div class="klabel">Avg Deal Value</div><div class="kval" id="rep-avg">-</div><div class="ksub" id="rep-avg-sub">this month, ex GST</div></div>
         </div>
         <div class="kg kg-fit mb4">
           <div class="kpi"><div class="klabel">Total Leads</div><div class="kval blu" id="crm-total">-</div></div>
@@ -2529,6 +2533,8 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
     <input type="hidden" id="rep-edit-uid">
     <div class="frow"><label class="flabel">Name</label><input class="fi" id="rep-edit-name"></div>
     <div class="frow"><label class="flabel">Reply-To Email <span style="font-size:12px;color:var(--ink3);font-weight:400">used on sales emails they send - blank falls back to their login email</span></label><input class="fi" id="rep-edit-replyto" type="email"></div>
+    <div class="frow"><label class="flabel">Commission role <span style="font-size:12px;color:var(--ink3);font-weight:400">sets the rate on their commission card: build fee ex GST (pay-per-lead deals use the Business Settings rate)</span></label>
+      <select class="fi" id="rep-edit-role"><option value="">Not set</option><option value="closer">Closer (20%)</option><option value="setter_closer">Setter + closer (25%)</option><option value="setter">Setter (5%)</option></select></div>
     <div class="macts">
       <button class="btn" onclick="closeModal('m-rep-edit')">Cancel</button>
       <button class="btn btn-p" onclick="saveRepEdit()">Save changes</button>
@@ -5829,6 +5835,40 @@ function loadRepStats() {
   setText('rep-close', total ? Math.round(won / total * 100) + '%' : '-');
   setText('rep-close-sub', decided ? Math.round(won / decided * 100) + '% of decided' : '');
   setText('rep-open', open);
+  repMoneyStats(leads);
+}
+// The rep's own money for this calendar month (Sydney): deals they won this
+// month, ex GST, and what they earn on them. Builds pay the SOP rate for
+// their commission role; pay-per-lead deals pay the Business Settings rate.
+let _myRates = null;
+async function repMoneyStats(leads) {
+  if (!_myRates) {
+    const { data } = await db.rpc('my_commission_rates');
+    _myRates = data || {};
+  }
+  const tz = { timeZone: 'Australia/Sydney' };
+  const month = new Date().toLocaleDateString('en-CA', tz).slice(0, 7);
+  const inMonth = ts => ts && new Date(ts).toLocaleDateString('en-CA', tz).slice(0, 7) === month;
+  const won = leads.filter(l => l.stage === 'closed_won' && inMonth(l.won_at || l.stage_changed_at));
+  const exGst = v => Number(v || 0) / 1.1;
+  const cash = won.reduce((a, l) => a + exGst(l.value), 0);
+  const came = leads.filter(l => inMonth(l.created_at)).length;
+  const r = _myRates || {};
+  let comm = 0, unknown = false;
+  won.forEach(l => {
+    if (l.lead_type === 'ppl') {
+      const base = r.ppl_base === 'inc' ? Number(l.value || 0) : exGst(l.value);
+      comm += base * Number(r.ppl_pct || 0) / 100;
+    } else if (r.build_pct != null) comm += exGst(l.value) * Number(r.build_pct) / 100;
+    else unknown = true;
+  });
+  const money = v => '$' + Math.round(v).toLocaleString('en-AU');
+  setText('rep-comm', unknown && !comm ? '-' : money(comm));
+  setText('rep-comm-sub', unknown ? 'ask your manager to set your commission role' : `this month · ${won.length} deal${won.length === 1 ? '' : 's'}`);
+  setText('rep-cash', money(cash));
+  setText('rep-rpl', came ? money(cash / came) : '-');
+  setText('rep-rpl-sub', `this month · ${came} lead${came === 1 ? '' : 's'} in`);
+  setText('rep-avg', won.length ? money(cash / won.length) : '-');
 }
 function renderCRM() {
   let allLeads = crmAllLeads;           // table + KPIs (date-filtered)
@@ -11188,6 +11228,11 @@ function openRepEdit(uid) {
   setVal('rep-edit-name', r.name || '');
   setVal('rep-edit-replyto', r.reply_to_email || '');
   setText('rep-edit-sub', r.email || '');
+  setVal('rep-edit-role', '');
+  db.rpc('rep_commission_roles').then(({ data }) => {
+    const row = (data || []).find(x => x.user_id === uid);
+    if ($('rep-edit-uid').value === uid) setVal('rep-edit-role', (row && row.commission_role) || '');
+  });
   openModal('m-rep-edit');
 }
 async function saveRepEdit() {
@@ -11196,6 +11241,8 @@ async function saveRepEdit() {
   const reply_to_email = $('rep-edit-replyto').value.trim();
   try {
     await callRepEdge('update_rep', { user_id, name, reply_to_email });
+    const { error: roleErr } = await db.rpc('set_rep_commission_role', { p_user_id: user_id, p_role: $('rep-edit-role').value || null });
+    if (roleErr) throw roleErr;
     closeModal('m-rep-edit'); toast('Rep updated ✓'); loadReps();
   } catch (e) { toast('Error: ' + e.message, true); }
 }
