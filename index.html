@@ -2339,7 +2339,8 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
             <div class="files-group" id="files-group-sop" style="display:none">
               <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
                 <button class="btn btn-sm" onclick="newSop()">+ New SOP</button>
-                <button class="btn btn-sm" onclick="$('sop-new-pdf').click()" title="Make a new SOP from a PDF">+ Upload PDF</button>
+                <!-- SOPs are Markdown only now (written here, rendered in the Team Panel); PDF upload is switched off. -->
+                <button class="btn btn-sm" style="display:none" onclick="$('sop-new-pdf').click()" title="Make a new SOP from a PDF">+ Upload PDF</button>
                 <input type="file" id="sop-new-pdf" accept="application/pdf,.pdf" style="display:none" onchange="newSopFromPdf(this)">
               </div>
               <div id="sop-list"></div>
@@ -2355,7 +2356,7 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
               <button class="btn btn-xs" id="sop-del-btn" onclick="deleteSop()" style="flex-shrink:0;margin-left:6px;display:none;color:var(--red)">Delete</button>
             </div>
             <div id="sop-tools" style="display:none;padding:10px 12px;margin-bottom:8px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);font-size:12px;line-height:1.9">
-              <div><b>PDF</b> <span id="sop-pdf-state" style="color:var(--ink3)">none attached</span>
+              <div style="display:none"><b>PDF</b> <span id="sop-pdf-state" style="color:var(--ink3)">none attached</span>
                 <button class="btn btn-xs" id="sop-pdf-view" onclick="viewSopPdf()" style="display:none;margin-left:6px">View</button>
                 <button class="btn btn-xs" onclick="$('sop-pdf-file').click()" style="margin-left:6px" id="sop-pdf-up">Upload PDF</button>
                 <button class="btn btn-xs" id="sop-pdf-del" onclick="removeSopPdf()" style="display:none;margin-left:6px;color:var(--red)">Remove</button>
