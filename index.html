@@ -6653,6 +6653,11 @@ async function saveStageNow() {
   // Mirror the auto-contactable the write just made, so a later Save changes
   // from the still-open modal does not put a stale value back.
   if (['call_back','proposal','closed_won'].includes(stage)) setVal('el-contactable','true');
+  // The move can push the follow-up date forward (leads_push_followup: 2 days
+  // for Proposal). Show the new date, or Save changes writes the old one back
+  // and the lead shows "follow-up due" straight away.
+  const { data: fu } = await db.from('leads').select('next_followup').eq('id', id).maybeSingle();
+  if (fu && $('el-id').value === id) setVal('el-next-followup', fu.next_followup || '');
   toast('→ ' + stageLabel(stage));
   loadCRM();
 }
