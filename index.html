@@ -2122,8 +2122,8 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
         <div class="sl">Team <div class="sl-line"></div></div>
         <div class="twrap">
           <table>
-            <thead><tr><th>Rep</th><th>Email</th><th>Reply-To</th><th>Status</th><th>Assigned</th><th>Open</th><th>Won</th><th>Calls</th><th>Pickup</th><th>Close</th><th></th></tr></thead>
-            <tbody id="rep-tbody"><tr><td colspan="11" class="empty">Loading...</td></tr></tbody>
+            <thead><tr><th>Rep</th><th>Email</th><th>Reply-To</th><th>Status</th><th>Assigned</th><th>Open</th><th>Won</th><th>Close</th><th></th></tr></thead>
+            <tbody id="rep-tbody"><tr><td colspan="9" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -3832,45 +3832,6 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
   </div>
 </div>
 
-<!-- Contact log modal (CRM / Sales Pipeline leads) -->
-<div class="overlay" id="m-contact-log">
-  <div class="modal" style="max-width:580px">
-    <h2>Contact Log</h2>
-    <div class="msub" id="cl-modal-title"></div>
-    <input type="hidden" id="cl-lead-id">
-    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:flex-end;flex-wrap:wrap">
-      <div style="flex:0 0 auto">
-        <div class="flabel">Method</div>
-        <select class="fs" id="cl-type" style="width:110px">
-          <option value="call">Call</option>
-          <option value="email">Email</option>
-          <option value="sms">SMS</option>
-          <option value="meeting">Meeting</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-      <div style="flex:0 0 auto">
-        <div class="flabel">Outcome</div>
-        <select class="fs" id="cl-outcome" style="width:120px">
-          <option value="positive">Positive</option>
-          <option value="neutral">Neutral</option>
-          <option value="negative">Negative</option>
-          <option value="no_answer">No answer</option>
-        </select>
-      </div>
-      <div style="flex:1;min-width:140px">
-        <div class="flabel">Notes</div>
-        <input class="fi" id="cl-notes" type="text" placeholder="Add a note…" style="width:100%;box-sizing:border-box">
-      </div>
-      <button class="btn btn-p btn-sm" onclick="addContactLogEntry()" style="flex-shrink:0;align-self:flex-end">+ Add</button>
-    </div>
-    <div id="cl-modal-body"><div class="empty">Loading…</div></div>
-    <div class="macts">
-      <button class="btn" onclick="closeModal('m-contact-log')">Close</button>
-    </div>
-  </div>
-</div>
-
 <div class="overlay" id="m-add-ppl-campaign">
   <div class="modal">
     <h2>New Client Campaign</h2><div class="msub">Create a campaign to track changes and actions</div>
@@ -5217,61 +5178,6 @@ async function addActionLogEntry() {
   await refreshActionLog(clientId);
 }
 
-async function openContactLog(leadId, leadName) {
-  $('cl-lead-id').value = leadId;
-  $('cl-modal-title').textContent = leadName || leadId;
-  $('cl-modal-body').innerHTML = '<div class="empty">Loading…</div>';
-  $('cl-notes').value = '';
-  openModal('m-contact-log');
-  await refreshContactLog(leadId);
-}
-async function refreshContactLog(leadId) {
-  const { data, error } = await db
-    .from('lead_contact_log')
-    .select('*')
-    .eq('lead_id', leadId)
-    .order('contacted_at', { ascending: false });
-  if (error) {
-    $('cl-modal-body').innerHTML = `<div class="empty" style="color:var(--red)">Error: ${esc(error.message)}</div>`;
-    return;
-  }
-  if (!data || !data.length) {
-    $('cl-modal-body').innerHTML = '<div class="empty">No contact attempts logged yet.</div>';
-    return;
-  }
-  const typeIcon = t => ({ call: '📞', email: '✉️', sms: '💬', meeting: '🤝', other: '📌' })[t] || '📌';
-  const outcomeBadge = o => {
-    const cls = { positive: 'bg-grn', neutral: 'bg-gray', negative: 'bg-red', no_answer: 'bg-amb' };
-    return `<span class="badge ${cls[o] || 'bg-gray'}">${esc(o ? o.replace('_', ' ') : '-')}</span>`;
-  };
-  const fmtTs = ts => {
-    if (!ts) return '-';
-    return new Date(ts).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
-  };
-  $('cl-modal-body').innerHTML = data.map(entry => `
-    <div style="border:1px solid var(--bd2);border-radius:var(--r2);padding:10px 14px;margin-bottom:8px;background:var(--s2)">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="font-size:14px">${typeIcon(entry.contact_type)}</span>
-        <strong style="font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.05em">${esc(entry.contact_type || '-')}</strong>
-        ${outcomeBadge(entry.outcome)}
-        <span style="font-family:var(--mono);font-size:12px;color:var(--ink3);margin-left:auto">${fmtTs(entry.contacted_at)}</span>
-      </div>
-      ${entry.notes ? `<div style="margin-top:6px;font-size:13px;color:var(--ink)">${esc(entry.notes)}</div>` : ''}
-    </div>`).join('');
-}
-async function addContactLogEntry() {
-  const leadId = $('cl-lead-id').value;
-  const type = $('cl-type').value;
-  const outcome = $('cl-outcome').value;
-  const notes = $('cl-notes').value.trim();
-  if (!notes) { toast('Please enter a note', true); return; }
-  const { error } = await db.from('lead_contact_log').insert({ lead_id: leadId, contact_type: type, outcome, notes });
-  if (error) { toast('Error: ' + error.message, true); return; }
-  $('cl-notes').value = '';
-  toast('Contact logged');
-  await refreshContactLog(leadId);
-}
-
 async function loadDeliveryLogOverview() {
   const tbody = $('dlogs-tbody');
   if (!tbody) return;
@@ -6057,11 +5963,11 @@ function renderCRM() {
       <td>${esc(l.source||'-')}</td>
       <td>${contactCell}</td>
       <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink2)">${esc(l.notes||'-')}</td>
-      <td style="white-space:nowrap"><button class="btn btn-xs contact-log-btn" data-lead-id="${esc(l.id)}" data-lead-name="${esc(l.name||l.company||'Lead')}" style="margin-right:4px">Log</button><button class="btn btn-xs edit-lead-btn" data-lead-id="${esc(l.id)}" style="margin-right:4px">Edit</button>${l.phone?`<button class="btn btn-xs sales-sms-btn" data-lead-id="${esc(l.id)}" data-phone="${esc(l.phone)}" data-name="${esc(l.name||l.company||'')}">SMS</button>`:''}</td>
+      <td style="white-space:nowrap"><button class="btn btn-xs edit-lead-btn" data-lead-id="${esc(l.id)}" style="margin-right:4px">Edit</button>${l.phone?`<button class="btn btn-xs sales-sms-btn" data-lead-id="${esc(l.id)}" data-phone="${esc(l.phone)}" data-name="${esc(l.name||l.company||'')}">SMS</button>`:''}</td>
     </tr>`}).join('');
   tb.querySelectorAll('.lead-row').forEach(row => {
     row.addEventListener('click', e => {
-      if (e.target.classList.contains('edit-lead-btn')||e.target.classList.contains('contact-log-btn')) { e.stopPropagation(); return; }
+      if (e.target.classList.contains('edit-lead-btn')) { e.stopPropagation(); return; }
       const id = row.dataset.leadId;
       if (LEAD_CACHE[id]) openEditLead(LEAD_CACHE[id]);
     });
@@ -6072,9 +5978,6 @@ function renderCRM() {
       const id = btn.dataset.leadId;
       if (LEAD_CACHE[id]) openEditLead(LEAD_CACHE[id]);
     });
-  });
-  tb.querySelectorAll('.contact-log-btn').forEach(btn => {
-    btn.addEventListener('click', e => { e.stopPropagation(); openContactLog(btn.dataset.leadId, btn.dataset.leadName); });
   });
   tb.querySelectorAll('.sales-sms-btn').forEach(btn => {
     btn.addEventListener('click', e => { e.stopPropagation(); openSalesConvThread(btn.dataset.leadId, btn.dataset.name, btn.dataset.phone); });
@@ -11330,10 +11233,9 @@ function renderReps(reps, unassigned) {
   setText('rep-kpi-active', reps.filter(r => r.active).length);
   setText('rep-kpi-assigned', reps.reduce((s, r) => s + (r.assigned || 0), 0));
   setText('rep-kpi-unassigned', unassigned);
-  if (!reps.length) { $('rep-tbody').innerHTML = '<tr><td colspan="11" class="empty">No sales reps yet. Click “New Rep” to create one.</td></tr>'; return; }
+  if (!reps.length) { $('rep-tbody').innerHTML = '<tr><td colspan="9" class="empty">No sales reps yet. Click “New Rep” to create one.</td></tr>'; return; }
   $('rep-tbody').innerHTML = reps.map(r => {
     const status = r.active ? '<span class="badge bg-grn">Active</span>' : '<span class="badge bg-gray">Inactive</span>';
-    const pickup = r.pickup_rate == null ? '-' : r.pickup_rate + '%';
     const close  = r.close_rate  == null ? '-' : r.close_rate  + '%';
     // JS-string + HTML-attribute safe (esc doesn't cover the apostrophe).
     const safeName = esc(String(r.name || r.email || 'rep').replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
@@ -11345,8 +11247,6 @@ function renderReps(reps, unassigned) {
       <td>${r.assigned || 0}</td>
       <td>${r.open || 0}</td>
       <td class="grn">${r.won || 0}</td>
-      <td>${r.calls || 0}</td>
-      <td>${pickup}</td>
       <td>${close}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-xs" onclick="impersonateRep('${r.user_id}','${safeName}',this)" title="View the dashboard exactly as this rep, then switch back">👁 View as</button>
