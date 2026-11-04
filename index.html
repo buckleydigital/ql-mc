@@ -6676,7 +6676,7 @@ async function saveStageNow() {
   const { data: fu } = await db.from('leads').select('next_followup,last_contact,contact_count').eq('id', id).maybeSingle();
   if (fu && $('el-id').value === id) {
     setVal('el-next-followup', fu.next_followup || '');
-    const lc = fu.last_contact ? fu.last_contact.split('T')[0] : '';
+    const lc = fu.last_contact ? sydneyDate(fu.last_contact) : '';
     setVal('el-last-contact', lc); setVal('el-last-contact-orig', lc);
     setVal('el-contact-count-orig', String(fu.contact_count || 0));
   }
@@ -6704,7 +6704,8 @@ function openEditLead(l) {
   setVal('el-value',l.value);
   setVal('el-source',l.source);setVal('el-notes',l.notes);
   setVal('el-contactable',l.contactable===true?'true':l.contactable===false?'false':'');
-  const lc = l.last_contact ? l.last_contact.split('T')[0] : '';
+  // Sydney date: the UTC one is the day before for any morning contact.
+  const lc = l.last_contact ? sydneyDate(l.last_contact) : '';
   setVal('el-last-contact', lc);
   setVal('el-last-contact-orig', lc);
   setVal('el-contact-count-orig', l.contact_count != null ? String(l.contact_count) : '0');
@@ -6830,7 +6831,13 @@ async function updateLead() {
   const origLastContact = $('el-last-contact-orig').value || null;
   const origCount = parseInt($('el-contact-count-orig').value||'0', 10) || 0;
   const contactIncrement = (newLastContact && (!origLastContact || newLastContact > origLastContact)) ? 1 : 0;
-  const d={name:$('el-name').value.trim(),company:$('el-company').value.trim(),niche:$('el-niche').value.trim(),email:$('el-email').value.trim(),phone:$('el-phone').value.trim(),stage,value:parseFloat($('el-value').value)||null,source:$('el-source').value,notes:$('el-notes').value.trim(),contactable,last_contact:newLastContact,next_followup:$('el-next-followup').value||null,contact_count:origCount+contactIncrement,updated_at:now()};
+  // Last Contacted is written only when it was changed, so Save never
+  // rewrites a stored time as midnight. Today means now; another day, midday.
+  const lastContactPatch = newLastContact === origLastContact ? {} : {
+    last_contact: !newLastContact ? null
+      : newLastContact === sydneyToday() ? new Date().toISOString()
+      : newLastContact + 'T12:00:00+10:00' };
+  const d={name:$('el-name').value.trim(),company:$('el-company').value.trim(),niche:$('el-niche').value.trim(),email:$('el-email').value.trim(),phone:$('el-phone').value.trim(),stage,value:parseFloat($('el-value').value)||null,source:$('el-source').value,notes:$('el-notes').value.trim(),contactable,...lastContactPatch,next_followup:$('el-next-followup').value||null,contact_count:origCount+contactIncrement,updated_at:now()};
   // Only full users can (re)assign a lead's owner; reps can't touch it.
   if (!IS_REP) d.owner_id = $('el-owner').value || null;
   if (!d.name) { toast('Name required',true); return; }
