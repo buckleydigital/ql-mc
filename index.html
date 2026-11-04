@@ -1288,6 +1288,10 @@ body[data-jv="err"]       .hud-core-label::before{background:#ff5d6c;box-shadow:
         <div id="sm-scope" style="font-size:12px;color:var(--ink3);font-family:var(--mono);margin-bottom:16px"></div>
         <div id="sales-metrics"></div>
         <div id="sm-stage-age" style="display:flex;gap:8px;flex-wrap:wrap;margin:-6px 0 24px"></div>
+        <div id="ads-section" class="admin-only-field">
+          <div class="sl">Meta ads <span id="ads-sub" style="font-size:12px;color:var(--ink3);font-family:var(--mono);margin-left:6px"></span><div class="sl-line"></div></div>
+          <div id="ads-body" style="margin-bottom:24px"><div class="empty">Loading…</div></div>
+        </div>
         <div id="gr-section" class="admin-only-field">
           <div class="sl">Guardrails <span id="gr-sub" style="font-size:12px;color:var(--ink3);font-family:var(--mono);margin-left:6px"></span><div class="sl-line"></div></div>
           <div id="gr-signal"></div>
@@ -5543,7 +5547,7 @@ async function pipelineSpend(from, to) {
 // Every lead (not just those created in the period: an offer or sale in it may
 // be from an older lead), scoped to the rep being viewed.
 let sbRange = 'month', sbRep = '';
-function refreshSalesMetrics() { return renderSalesMetrics(sbRep ? (crmPipelineLeads || []).filter(l => l.owner_id === sbRep) : (crmPipelineLeads || [])); }
+function refreshSalesMetrics() { loadAdInsights(); return renderSalesMetrics(sbRep ? (crmPipelineLeads || []).filter(l => l.owner_id === sbRep) : (crmPipelineLeads || [])); }
 function sbDateRange() {
   if (!sbRange) return null;
   if (sbRange !== 'custom') return getDateRange(sbRange);
@@ -5568,6 +5572,51 @@ async function loadScoreboard() {
   if (!IS_REP && !Object.keys(crmBizTotals).length) await loadCrmLtv();
   refreshSalesMetrics();
   loadGuardrails(false);
+}
+
+// ── Meta ads ────────────────────────────────────────────────────────────────
+// Straight from Meta by agency-spend-sync each morning, per campaign and ad,
+// for the Scoreboard's period. Owner only, like every spend figure.
+let _adsReq = 0;
+async function loadAdInsights() {
+  if (IS_REP || !$('ads-body')) return;
+  const req = ++_adsReq;
+  const r = sbDateRange();
+  const { data, error } = await db.rpc('ad_insights_report', { p_from: r?.from || null, p_to: r?.to || null });
+  if (req !== _adsReq) return;
+  if (error) { $('ads-body').innerHTML = `<div class="empty" style="color:var(--red)">${esc(error.message)}</div>`; return; }
+  renderAdInsights(data || {});
+}
+function renderAdInsights(d) {
+  const money = v => v == null ? '-' : '$' + Number(v).toLocaleString('en-AU', { minimumFractionDigits: Number(v) < 100 ? 2 : 0, maximumFractionDigits: Number(v) < 100 ? 2 : 0 });
+  const num = v => v == null ? '-' : Number(v).toLocaleString('en-AU');
+  const pct = v => v == null ? '-' : v + '%';
+  const when = d.synced_at ? new Date(d.synced_at).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : null;
+  setText('ads-sub', when ? `from Meta, synced ${when}` : '');
+  if (!d.account_id) {
+    $('ads-body').innerHTML = `<div class="empty" style="text-align:left;line-height:1.6">Add the QuoteLeads ad account ID under <strong>Guardrail settings</strong> below and press Save. Spend, clicks, cost per click, click rate, cost per 1,000 views and leads then come straight from Meta every morning, for each campaign and ad.</div>`;
+    return;
+  }
+  const err = d.error ? `<div style="font-size:12px;color:var(--red);margin-bottom:8px">${esc(d.error)}</div>` : '';
+  if (!d.has_data) {
+    $('ads-body').innerHTML = err + `<div class="empty">${when ? 'No ad activity in this period.' : 'Not synced yet - press Sync spend now under Guardrail settings.'}</div>`;
+    return;
+  }
+  const t = d.total || {};
+  const card = (label, v, sub = '') => `<div class="kpi"><div class="klabel">${label}</div><div class="kval">${v}</div><div class="ksub">${sub}</div></div>`;
+  const cards = `<div class="kg c4 mb4">
+    ${card('Spend', money(t.spend))}${card('Impressions', num(t.impressions), 'cost per 1,000: ' + money(t.cpm))}
+    ${card('Clicks', num(t.clicks), 'click rate ' + pct(t.ctr) + ' · ' + money(t.cpc) + ' a click')}
+    ${card('Meta leads', num(t.leads), t.cpl != null ? money(t.cpl) + ' a lead' : 'Meta counted none')}</div>`;
+  const row = (x, isAd) => `<tr${isAd ? ' style="font-size:12px"' : ' style="font-weight:600"'}>
+      <td style="${isAd ? 'padding-left:22px;' : ''}white-space:normal;min-width:200px">${esc((isAd ? x.ad_name : x.campaign_name) || '(unnamed)')}${isAd && x.adset_name ? `<div style="color:var(--ink3);font-weight:400">${esc(x.adset_name)}</div>` : ''}</td>
+      <td style="font-family:var(--mono)">${money(x.spend)}</td><td style="font-family:var(--mono)">${num(x.impressions)}</td>
+      <td style="font-family:var(--mono)">${num(x.clicks)}</td><td style="font-family:var(--mono)">${pct(x.ctr)}</td>
+      <td style="font-family:var(--mono)">${money(x.cpc)}</td><td style="font-family:var(--mono)">${money(x.cpm)}</td>
+      <td style="font-family:var(--mono)">${num(x.leads)}</td><td style="font-family:var(--mono)">${money(x.cpl)}</td></tr>`;
+  const rows = (d.campaigns || []).map(c => row(c, false) + (c.ads || []).map(a => row(a, true)).join('')).join('');
+  $('ads-body').innerHTML = err + cards + `<div class="twrap"><table><thead><tr><th>Campaign / ad</th><th>Spend</th><th>Impressions</th><th>Clicks</th><th>Click rate</th><th>Cost per click</th><th>Per 1,000</th><th>Meta leads</th><th>Cost per lead</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div style="font-size:12px;color:var(--ink3);margin-top:6px">Meta leads are what Meta counted (form submits and website leads), not what reached the pipeline. Today shows from tomorrow morning.</div>`;
 }
 
 // ── Guardrails ──────────────────────────────────────────────────────────────
@@ -5682,7 +5731,7 @@ async function syncSpendNow(backfill) {
     body: JSON.stringify({ backfill }),
   });
   const out = await res.json().catch(() => ({}));
-  if (!res.ok) toast('Spend sync failed: ' + (out.error || res.status), true);
+  if (!res.ok) { toast('Spend sync failed: ' + (out.error || res.status), true); loadAdInsights(); }
   else { toast(`Spend synced: ${out.days} days, ${out.since} to ${out.until}`); smSpendCache = {}; refreshSalesMetrics(); loadGuardrails(false); }
   loadSpendSync();
 }
