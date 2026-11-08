@@ -552,6 +552,66 @@
         </div>
       </div>
 
+      <!-- ══ EMAIL BLAST ══ -->
+      <div class="panel" id="panel-emailblast">
+        <div class="ph">
+          <div class="ph-left"><h1>Email Blast</h1><p>A one-off custom email to pipeline leads you choose. Warm leads only: anyone who never enquired goes through Cold Outreach instead. Sent from sales@mail.quoteleads.com.au, signed by and replying to each lead's rep, with an unsubscribe link. Do-not-contact and recently emailed leads are always left out.</p></div>
+          <div class="ph-right"><button class="btn btn-sm" onclick="loadEmailBlast()">↻ Refresh</button></div>
+        </div>
+        <div style="display:grid;grid-template-columns:minmax(0,560px) minmax(0,1fr);gap:24px;align-items:start" class="eb-grid">
+          <div>
+            <div class="frow"><label class="flabel">Blast name <span style="font-size:12px;color:var(--ink3);font-weight:400">only you see this</span></label>
+              <input class="fi" id="eb-name" maxlength="120" placeholder="e.g. Closed lost reactivation Nov">
+            </div>
+            <div class="frow"><label class="flabel">Stages</label>
+              <div id="eb-stages" style="display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px"></div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <div class="frow" style="flex:1;min-width:160px"><label class="flabel">Niche</label>
+                <select class="fs" id="eb-niche" onchange="ebFilter()"><option value="">All niches</option></select>
+              </div>
+              <div class="frow" style="flex:1;min-width:160px"><label class="flabel">Rep</label>
+                <select class="fs" id="eb-rep" onchange="ebFilter()"><option value="">All reps</option><option value="none">Unassigned</option></select>
+              </div>
+            </div>
+            <div class="frow"><label class="flabel">Leave out specific leads <span style="font-size:12px;color:var(--ink3);font-weight:400">Ctrl / Cmd-click to pick</span></label>
+              <select class="fs" id="eb-exclude" multiple size="6" onchange="ebCount()" style="height:auto;min-height:110px"></select>
+            </div>
+            <div class="frow"><label class="flabel">Subject</label>
+              <input class="fi" id="eb-subject" maxlength="300" placeholder="Quick one, {first_name}" oninput="ebDirty()">
+            </div>
+            <div class="frow"><label class="flabel">Message <span style="font-size:12px;color:var(--ink3);font-weight:400">{first_name} {company_name} {rep_name} {rep_email}</span></label>
+              <textarea class="fta" id="eb-body" rows="10" placeholder="Hi {first_name},&#10;&#10;...&#10;&#10;{rep_name}" oninput="ebDirty()"></textarea>
+              <div style="font-size:12px;color:var(--ink3);margin-top:4px">Plain text, like an email you typed. An unsubscribe line is added at the bottom automatically.</div>
+            </div>
+            <div class="frow"><label class="flabel">Leave out anyone emailed in the last</label>
+              <select class="fs" id="eb-skipdays" onchange="ebDirty()" style="max-width:160px">
+                <option value="3">3 days</option><option value="7" selected>7 days</option><option value="14">14 days</option><option value="30">30 days</option><option value="0">Don't leave anyone out</option>
+              </select>
+            </div>
+            <div style="font-size:14px;margin:12px 0"><strong id="eb-count" style="font-size:18px;color:var(--acc)">0</strong> leads selected <span id="eb-count-note" style="color:var(--ink3);font-size:12px"></span></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn" id="eb-preview-btn" onclick="ebPreview()">Preview</button>
+              <button class="btn btn-p" id="eb-send-btn" onclick="ebSend()" disabled>Send blast</button>
+            </div>
+            <div id="eb-preview" style="display:none;margin-top:14px"></div>
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <div style="font-weight:600">Recent blasts</div>
+              <button class="btn btn-xs" onclick="ebLoadRecent()">↻</button>
+            </div>
+            <div class="twrap">
+              <table>
+                <thead><tr><th>Blast</th><th>Started</th><th>Sent</th><th>Waiting</th><th>Left out</th><th>Failed</th></tr></thead>
+                <tbody id="eb-recent"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
+              </table>
+            </div>
+            <div id="eb-detail" style="margin-top:10px"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- ══ LEAD GEN & CPL ══ -->
       <div class="panel" id="panel-cpl">
         <div class="ph">
@@ -2302,9 +2362,9 @@
     <div class="frow"><label class="flabel">Default Notes / Footer</label><textarea class="fta" id="bs-notes" placeholder="Thank you for your business."></textarea></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">Sales Email</div>
     <div class="frow"><label class="flabel">From name</label><input class="fi" id="bs-sales-from-name" maxlength="80" placeholder="{rep_name} at QuoteLeads"></div>
-    <div class="frow" style="margin-top:8px"><label class="flabel">Send from</label><input class="fi" id="bs-sales-from" placeholder="contact@quoteleads.com.au" type="email"></div>
+    <div class="frow" style="margin-top:8px"><label class="flabel">Send from</label><input class="fi" id="bs-sales-from" placeholder="Leave blank for sales@mail.quoteleads.com.au" type="email"></div>
     <div class="frow" style="margin-top:8px"><label class="flabel">Replies go to</label><input class="fi" id="bs-sales-replyto" placeholder="Leave blank to use the sender's own address" type="email"></div>
-    <p style="font-size:12px;color:var(--ink3);margin:6px 0 0;line-height:1.6">From name is the name leads see the email from; {rep_name} is the rep sending it. Leave it blank for "{rep_name} at QuoteLeads". Both the name and the reply-to can also be changed on any one email before it is sent. The send-from address must be on a domain verified in Resend - anything else is rejected. Reps keep their own reply-to address, so a lead answering a rep still reaches that rep; this one applies to sends with no rep behind them, which includes QuoteLeadsAI's follow-ups.</p>
+    <p style="font-size:12px;color:var(--ink3);margin:6px 0 0;line-height:1.6">From name is the name leads see the email from; {rep_name} is the rep sending it. Leave it blank for "{rep_name} at QuoteLeads". Both the name and the reply-to can also be changed on any one email before it is sent. Send from applies to warm sales email only (offers, follow-ups, No Answer emails and blasts); lead notifications, invoices and system email keep the main domain. Leave it blank for sales@mail.quoteleads.com.au. Anything typed here must be on a domain verified in Resend. Reps keep their own reply-to address, so a lead answering a rep still reaches that rep; this one applies to sends with no rep behind them, which includes QuoteLeadsAI's follow-ups.</p>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">Twilio / SMS</div>
     <div class="frow"><label class="flabel">From Number</label><input class="fi" id="bs-twilio-from" placeholder="+61400000000" type="tel"></div>
     <div style="margin:14px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">Pay-per-lead cost cut-off</div>
@@ -2931,6 +2991,7 @@
 <script src="assets/mc/19-pcal.js"></script>
 <script src="assets/mc/20-assistant.js"></script>
 <script src="assets/mc/21-managed-ads.js"></script>
+<script src="assets/mc/22-email-blast.js"></script>
 
 </body>
 </html>
