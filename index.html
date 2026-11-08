@@ -1897,6 +1897,10 @@
         <button class="btn btn-grn btn-sm" onclick="convertLead('ppl')">→ PPL Client</button>
         <button class="btn btn-p btn-sm" onclick="convertLead('managed')">→ Managed Ads</button>
       </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+        <button class="btn btn-sm" id="el-fee-btn" type="button" onclick="logBuildFee()" style="display:none">Log build fee now</button>
+        <span id="el-fee-note" style="font-size:12px;color:var(--ink2);line-height:1.5"></span>
+      </div>
     </div>
     <div class="frow admin-only-field"><label class="flabel">Build Fee (AUD)</label><input class="fi" id="el-value" type="number"></div>
     <div class="frow"><label class="flabel">Source</label>

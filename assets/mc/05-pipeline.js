@@ -738,7 +738,41 @@ function checkConvertBanner() {
   // Converting a lead spins up a client record - out of scope for reps.
   const stage = $('el-stage').value;
   $('convert-banner').style.display = (!IS_REP && stage === 'closed_won') ? 'block' : 'none';
+  if (!IS_REP && stage === 'closed_won') refreshBuildFeeNote();
   renderHqRow();
+}
+
+// A won deal's build fee can count in Financials before the client exists:
+// it is logged to managed_order_log against the lead, with no client. Convert
+// to Managed Ads later and that same row is handed to the new client, so the
+// fee is never logged twice.
+async function refreshBuildFeeNote() {
+  const id = $('el-id').value, btn = $('el-fee-btn'), note = $('el-fee-note');
+  if (!id || !btn) return;
+  const { data } = await db.from('managed_order_log').select('amount,order_date').eq('lead_id', id).limit(1);
+  if ($('el-id').value !== id) return;
+  const row = (data || [])[0];
+  if (row) {
+    btn.style.display = 'none';
+    note.textContent = 'Build fee ' + fmt(row.amount) + ' logged ' + new Date(row.order_date + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) + ' - counted in Financials.';
+  } else {
+    btn.style.display = '';
+    note.textContent = 'Counts the Build Fee below in Financials now. Converting later will not log it twice.';
+  }
+}
+async function logBuildFee() {
+  const id = $('el-id').value;
+  const value = parseFloat($('el-value').value) || 0;
+  if (!(value > 0)) { toast('Enter the Build Fee first', true); return; }
+  const { data: have } = await db.from('managed_order_log').select('id').eq('lead_id', id).limit(1);
+  if ((have || []).length) { toast('Build fee already logged for this deal'); refreshBuildFeeNote(); return; }
+  const { error } = await db.from('managed_order_log').insert([{
+    lead_id: id, client_id: null, description: 'Build Fee', amount: value, order_date: localDateStr(), created_at: now(),
+  }]);
+  if (error) { toast('Could not log the fee: ' + error.message, true); return; }
+  await db.from('leads').update({ value, updated_at: now() }).eq('id', id);
+  toast(fmt(value) + ' build fee logged - in Financials now');
+  refreshBuildFeeNote();
 }
 // Stage saves the moment it is picked - the same write dragging the card
 // between kanban columns makes, so the two routes behave alike. Everything
@@ -894,9 +928,18 @@ async function convertLead(targetType) {
   // MRR, so a one-off charge landing there would count itself as recurring
   // revenue every month forever, on top of this order.
   let feeLogged = false;
-  if (targetType === 'managed' && value > 0 && created?.id) {
+  // A fee already logged from the pipeline goes to the new client as it is.
+  const {data: preFee} = targetType === 'managed' && created?.id
+    ? await db.from('managed_order_log').select('id').eq('lead_id', id).is('client_id', null).limit(1)
+    : {data: []};
+  if ((preFee || []).length) {
+    const {error: moveErr} = await db.from('managed_order_log').update({client_id: created.id}).eq('id', preFee[0].id);
+    if (moveErr) toast('Client created, but the logged build fee was not attached: '+moveErr.message, true);
+    else feeLogged = true;
+  } else if (targetType === 'managed' && value > 0 && created?.id) {
     const {error: ordErr} = await db.from('managed_order_log').insert([{
       client_id: created.id,
+      lead_id: id,
       description: 'Build Fee',
       amount: value,
       order_date: localDateStr(),
