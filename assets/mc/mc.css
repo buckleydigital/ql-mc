@@ -1137,6 +1137,10 @@ tbody tr:hover td{background:color-mix(in srgb,var(--acc) 5%,transparent)}
   box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 10px 26px -10px var(--acc-glow)}
 .btn-p:hover{background:var(--primary-h)!important;transform:translateY(-1px);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 14px 32px -10px var(--acc-glow)}
+/* Green action buttons (e.g. "→ PPL Client") keep their fill: the pill rule
+   above resets every .btn background, which left them white with white text. */
+.btn-grn{background:var(--grn-fill)!important;color:#fff!important;border-color:transparent!important}
+.btn-grn:hover{opacity:.9}
 .files-tabs button{border-radius:999px}
 
 /* Fields: soft, rounded, a blue ring on focus. */
