@@ -395,6 +395,7 @@ const PANEL_GROUPS = {
   'sales-conv': {label:'Messaging', members:[
     {panel:'sales-conv', label:'Conversations'},
     {panel:'broadcast',  label:'Bulk SMS', adminOnly:true},
+    {panel:'emailblast', label:'Email Blast', adminOnly:true},
     {panel:'emailtpl',   label:'Email Templates', adminOnly:true},
     {panel:'sentmail',   label:'Sent Emails'}
   ]},
@@ -538,6 +539,7 @@ function nav(panel, el) {
   if (panel === 'files') { loadFileNames(); loadFileContent(); loadTemplateClientDropdown(); }
   if (panel === 'cpl') loadCplEditorPanel();
   if (panel === 'broadcast') loadBroadcast();
+  if (panel === 'emailblast') loadEmailBlast();
   if (panel === 'pcal') loadPcal();
   if (panel === 'campaigns') { loadCampaigns(); renderMetaTokenBanner(); }
   if (panel === 'mads') loadManagedAds();

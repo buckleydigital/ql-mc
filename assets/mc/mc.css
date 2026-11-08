@@ -1162,3 +1162,4 @@ select:not([multiple]):not([size]){-webkit-appearance:none;appearance:none;paddi
 
 /* Scrollbars that stay visible but soft. */
 ::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--ink3) 35%,transparent);border-radius:999px;border:3px solid transparent;background-clip:padding-box}
+@media(max-width:900px){.eb-grid{grid-template-columns:1fr!important}}
