@@ -1,13 +1,13 @@
-# JARVIS on the hosted site
+# QUOTELEADSAI on the hosted site
 
-The panel in Mission Control talks to the **`jarvis-chat` edge function**, not
+The panel in Mission Control talks to the **`quoteleadsai-chat` edge function**, not
 to anything on your laptop. That is what makes it work from
 `https://buckleydigital.github.io/ql-mc/` — and from your phone — with nothing
 running locally.
 
 ```
 browser (the panel)        Supabase                     Anthropic
-  question  ─────────────► jarvis-chat ────────────────► claude
+  question  ─────────────► quoteleadsai-chat ────────────────► claude
   answer    ◄───────────── runs the QuoteLeads tools ◄───
                            against this database
 ```
@@ -19,16 +19,16 @@ exposing it.
 ## Memory
 
 Two kinds, both in the database, both service-role only
-(`20260930000001_jarvis_memory.sql`):
+(`20260930000001_quoteleadsai_memory.sql`):
 
-- **`jarvis_memory`** — durable facts he has been told ("Dave at Sandford
+- **`quoteleadsai_memory`** — durable facts he has been told ("Dave at Sandford
   prefers texts", "the goal this quarter is 60 closes"). Every question on every
   channel — panel, SMS — reads them into the prompt, so a fact saved by text is
   known in the panel a second later. He saves them himself with `create_memory`
   when told a preference or asked to remember, and corrects them with
   `delete_memory`. Business numbers are never memorised; they come from the
   tools every time.
-- **`jarvis_threads`** — the panel conversation, one per signed-in user. The
+- **`quoteleadsai_threads`** — the panel conversation, one per signed-in user. The
   browser sends only the new question; the function loads and saves the
   transcript, so a reload or a phone carries on the same conversation. ⟲ in the
   panel starts a new one without touching what he remembers.
@@ -46,21 +46,21 @@ never call a model.
 
 ## Texts and calls
 
-The 15-minute heartbeat (`jarvis-notify`) always leaves new alerts in the
-panel. Two switches in Jarvis settings put him on your phone as well:
+The 15-minute heartbeat (`quoteleadsai-notify`) always leaves new alerts in the
+panel. Two switches in QuoteLeadsAI settings put him on your phone as well:
 
 - **Text me new alerts** - one text per heartbeat with anything new (top three,
   plus a count), capped per day.
 - **Ring me for urgent items** - a cold proposal over 14 days or blocked
   fulfilment rings your mobile. He reads it out (Twilio's Polly voice), then
-  listens: what you say goes to `jarvis-voice-reply` -> `jarvis-reply` ->
-  `jarvis-chat`, which acts on exactly what you named and confirms in the
+  listens: what you say goes to `quoteleadsai-voice-reply` -> `quoteleadsai-reply` ->
+  `quoteleadsai-chat`, which acts on exactly what you named and confirms in the
   panel (and by text when texts are on).
 
 Both go out from the main Twilio number (`twilio_from_number`), not a separate
-Jarvis number, and only to the mobile in settings. Quiet hours hold them until
+QuoteLeadsAI number, and only to the mobile in settings. Quiet hours hold them until
 morning; the caps are the backstop. Replies **texted** to the main number go
-to the client agents in ql-hq, not to Jarvis - answer on the call or in the
+to the client agents in ql-hq, not to QuoteLeadsAI - answer on the call or in the
 panel. Calls need the main number to have the Voice capability.
 
 ## Social posts
@@ -69,7 +69,7 @@ He drafts Facebook/Instagram posts; you approve them on the ▦ Posts screen and
 post them yourself. **Not connected to any social account** - there is no
 publish tool, and approving publishes nothing.
 
-Every draft goes through `jarvis-content` before you see it:
+Every draft goes through `quoteleadsai-content` before you see it:
 
 1. **Lint** (code, free): banned AI-tell phrases, emoji/hashtag walls, client
    names, and any number not listed in the draft's `facts` with a source.
@@ -80,25 +80,25 @@ Every draft goes through `jarvis-content` before you see it:
    fails. Anything less goes back to him with the fixes.
 
 Passing drafts get a branded 4:5 card (Poppins, black, #4797ff) rendered with
-resvg-wasm into the public `jarvis-content` bucket. Fonts, the renderer's wasm
-and the logo are served from this site (`assets/jarvis/`; Poppins is OFL, its
+resvg-wasm into the public `quoteleadsai-content` bucket. Fonts, the renderer's wasm
+and the logo are served from this site (`assets/quoteleadsai/`; Poppins is OFL, its
 licence alongside; resvg-wasm 2.6.2 is MPL-2.0, unmodified), so a card never
 depends on a third-party CDN.
 
-The content brief lives in Jarvis settings. Edit a caption before approving
+The content brief lives in QuoteLeadsAI settings. Edit a caption before approving
 and he gets the before/after as a voice example next time.
 
 ## Cost
 
-Every question is costed at list price and written to `jarvis_usage` - panel,
-SMS, scheduled jobs and the SMS fallback in `jarvis-reply`. Settings → What he
+Every question is costed at list price and written to `quoteleadsai_usage` - panel,
+SMS, scheduled jobs and the SMS fallback in `quoteleadsai-reply`. Settings → What he
 costs shows today, this month, the average per question and last month.
 Anthropic spend only; Twilio is billed separately. Prices live in `PRICES` in
 `index.template.ts` - update them there if Anthropic's change.
 
 ## Model
 
-`claude-opus-5-5` by default (`JARVIS_MODEL` overrides it). On Opus 5.5 a
+`claude-opus-5-5` by default (`QUOTELEADSAI_MODEL` overrides it). On Opus 5.5 a
 thinking block is bound to the exact conversation that produced it, and this
 thread changes between questions (memory in the system prompt, the read-only
 switch, trimming), so thinking is stripped from the stored thread after each
@@ -107,8 +107,8 @@ question - `withoutThinking()` - and `drop_block` is set as a safety net.
 ## Deploy
 
 ```bash
-node tools/jarvis/build-edge.mjs     # only if you changed the tools
-supabase functions deploy jarvis-chat --project-ref wmegoygrancfwxagqskh
+node tools/quoteleadsai/build-edge.mjs     # only if you changed the tools
+supabase functions deploy quoteleadsai-chat --project-ref wmegoygrancfwxagqskh
 ```
 
 `index.ts` is **generated** and committed. This project's deploy ships only the
@@ -132,11 +132,11 @@ supabase secrets list --project-ref wmegoygrancfwxagqskh
 
 ## One implementation, two brains
 
-The tools live in `supabase/functions/jarvis-chat/quoteleads/`. Both brains use
+The tools live in `supabase/functions/quoteleadsai-chat/quoteleads/`. Both brains use
 them:
 
 - **the edge function** (hosted, this document) bundles them
-- **the MCP server** in `tools/jarvis/` imports them for the local jarvis
+- **the MCP server** in `tools/quoteleadsai/` imports them for the local quoteleadsai
   bridge, if you ever want the subscription-backed Claude Code brain at your desk
 
 So a fix to a query, or a new tool, applies to both. The modules read their
@@ -168,7 +168,7 @@ messages, so a confused turn cannot bill indefinitely.
 
 Two engines, chosen automatically per reply:
 
-1. **ElevenLabs** via the `jarvis-voice` function — the voice the jarvis
+1. **ElevenLabs** via the `quoteleadsai-voice` function — the voice the quoteleadsai
    project uses (George, a deep British voice). Requires an ElevenLabs key.
 2. **The browser's own speech** — free, instant, and a satnav. The panel picks
    the best British male voice available (`Google UK English Male` on Chrome,
@@ -183,19 +183,19 @@ one appears; nothing to toggle.
 
 ```bash
 supabase secrets set ELEVENLABS_API_KEY=... --project-ref wmegoygrancfwxagqskh
-supabase functions deploy jarvis-voice --project-ref wmegoygrancfwxagqskh
+supabase functions deploy quoteleadsai-voice --project-ref wmegoygrancfwxagqskh
 ```
 
 Reload the page and ask something. To use a different voice, set
 `ELEVENLABS_VOICE_ID` to an ElevenLabs voice id; the default is George
-(`JBFqnCBsd6RMkjVDRZzb`). `JARVIS_VOICE_ID` — the name the jarvis bridge uses —
+(`JBFqnCBsd6RMkjVDRZzb`). `QUOTELEADSAI_VOICE_ID` — the name the quoteleadsai bridge uses —
 is accepted as a fallback, so a machine already set up for that keeps working.
 
-`jarvis-voice` keeps `verify_jwt` on, so only a signed-in user can reach it —
+`quoteleadsai-voice` keeps `verify_jwt` on, so only a signed-in user can reach it —
 nobody outside the app can spend your ElevenLabs credits. It is standalone (no
 shared modules), so it needs no build step.
 
 **Cost.** ElevenLabs bills per character synthesised, so every spoken reply
-costs a little. JARVIS answers in a sentence or two by design, which keeps this
+costs a little. QUOTELEADSAI answers in a sentence or two by design, which keeps this
 small, and the function caps a line at 1200 characters. The 🔇 toggle stops
 speech entirely when you would rather just read.

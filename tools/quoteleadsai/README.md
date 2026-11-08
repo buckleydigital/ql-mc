@@ -1,11 +1,11 @@
 # QuoteLeads MCP server
 
 The QuoteLeads database, exposed as tools an assistant can call. Built for
-[JARVIS](https://github.com/adewaskar/jarvis), but it is a plain MCP server —
+[QUOTELEADSAI](https://github.com/adewaskar/quoteleadsai), but it is a plain MCP server —
 Claude Code, Claude Desktop, or anything else that speaks MCP can use it.
 
 It lives here, in the repository whose schema it queries, so a migration and the
-tool that reads it change together. JARVIS itself stays unmodified.
+tool that reads it change together. QUOTELEADSAI itself stays unmodified.
 
 ## Why not just point the assistant at Supabase?
 
@@ -18,11 +18,11 @@ tools here answer the questions actually asked, in one round trip, correctly.
 ## Install
 
 ```bash
-cp tools/jarvis/.env.example tools/jarvis/.env
+cp tools/quoteleadsai/.env.example tools/quoteleadsai/.env
 # add QL_SUPABASE_KEY
 ```
 
-Then register it. JARVIS's bridge hands every server in `~/.claude.json` to the
+Then register it. QUOTELEADSAI's bridge hands every server in `~/.claude.json` to the
 brain (`configuredServers()` in `bridge/server.mjs`), so adding it there is the
 whole integration — no fork, no patch:
 
@@ -33,19 +33,19 @@ whole integration — no fork, no patch:
     "quoteleads": {
       "command": "node",
       "args": [
-        "--env-file=/ABSOLUTE/PATH/TO/ql-mc/tools/jarvis/.env",
-        "/ABSOLUTE/PATH/TO/ql-mc/tools/jarvis/server.mjs"
+        "--env-file=/ABSOLUTE/PATH/TO/ql-mc/tools/quoteleadsai/.env",
+        "/ABSOLUTE/PATH/TO/ql-mc/tools/quoteleadsai/server.mjs"
       ]
     }
   }
 }
 ```
 
-Restart the bridge (`npm start` in the jarvis checkout) and say *"how are we
+Restart the bridge (`npm start` in the quoteleadsai checkout) and say *"how are we
 doing"*.
 
 Finally, paste `briefing.md` into the bridge's `SYSTEM_PROMPT`. That is the only
-change to jarvis itself, and it is optional — he works without it, just more
+change to quoteleadsai itself, and it is optional — he works without it, just more
 verbosely.
 
 ## Reads and writes
@@ -56,9 +56,9 @@ The bridge decides permissions by reading verbs out of tool names
 | | |
 |---|---|
 | `get_*`, `find_*` | run always, including under plain `npm run bridge` |
-| `update_*`, `send_*`, `create_*` | held back unless the bridge starts with `JARVIS_ALLOW_WRITES=1` (`npm run bridge:writes`) |
+| `update_*`, `send_*`, `create_*` | held back unless the bridge starts with `QUOTELEADSAI_ALLOW_WRITES=1` (`npm run bridge:writes`) |
 
-That split is the safety story. In the default mode JARVIS can read every
+That split is the safety story. In the default mode QUOTELEADSAI can read every
 number in the business and change nothing. Sending a customer an SMS or moving
 a deal takes a deliberately different start command.
 
@@ -79,14 +79,14 @@ credential (`*_key`, `*_token`, `*secret*`, `*password*`) comes back redacted.
 `get_email_draft`.
 
 **Memory** — `get_memories`, `create_memory`, `delete_memory`: durable facts
-kept in `jarvis_memory`, shared with the hosted panel and SMS.
+kept in `quoteleadsai_memory`, shared with the hosted panel and SMS.
 
 **Writes** — `update_lead_stage`, `update_lead_followup`, `send_lead_email`,
 `send_lead_sms`, `create_task`, `update_task`, `delete_task`.
 
 `delete_task` takes a task id and nothing else — never a title — because a
 loose name match plus a misheard sentence is how the wrong task gets deleted,
-and there is no undo. The briefing has JARVIS confirm the specific task first,
+and there is no undo. The briefing has QUOTELEADSAI confirm the specific task first,
 and offer marking it done instead.
 
 The two `send_*` tools call the existing edge functions (`send-sales-email`,
@@ -111,13 +111,13 @@ Both, deliberately. The curated tools encode business rules the raw tables do
 not state — which stages count as won, that "today" is the Australian day, that
 CPL is spend over leads — and answer the daily questions in one round trip. The
 fallback means an unanticipated question gets a real answer instead of a shrug.
-The briefing tells JARVIS to prefer a purpose-built tool when one fits.
+The briefing tells QUOTELEADSAI to prefer a purpose-built tool when one fits.
 
 ## Notes on the data
 
 - **"Leads" is two tables.** The sales pipeline is `leads`; pay-per-lead is
   `ppl_leads`. `get_lead_totals` reports both, labelled, because the spoken
-  question rarely says which — and the briefing tells JARVIS how the wording
+  question rarely says which — and the briefing tells QUOTELEADSAI how the wording
   picks one.
 - **A lead with no `owner_id` belongs to the operator**, not to nobody — most
   of the pipeline is handled directly. `get_rep_performance` gives those a

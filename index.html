@@ -108,10 +108,10 @@
         <div class="jv-more admin-only-field">
           <button class="jv-tb" id="jv-more-btn" onclick="JV.toggleMore(event)" aria-haspopup="true" aria-expanded="false">More<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
           <div class="jv-menu" id="jv-menu" role="menu">
-            <button role="menuitem" id="jv-settings" onclick="JV.toggleMore();openJarvisSettings()"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</button>
-            <button role="menuitem" id="jv-log" onclick="JV.toggleMore();openJarvisLog()"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Activity log<small>What QuoteLeadsAI has done</small></button>
-            <button role="menuitem" id="jv-mind" onclick="JV.toggleMore();openJarvisMind()"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2zM9 21h6"/></svg>Memory &amp; schedule<small>What it remembers and has scheduled</small></button>
-            <button role="menuitem" id="jv-posts" onclick="JV.toggleMore();openJarvisPosts()"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 9h16M9 9v11"/></svg>Drafted posts</button>
+            <button role="menuitem" id="jv-settings" onclick="JV.toggleMore();openQuoteLeadsAISettings()"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</button>
+            <button role="menuitem" id="jv-log" onclick="JV.toggleMore();openQuoteLeadsAILog()"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Activity log<small>What QuoteLeadsAI has done</small></button>
+            <button role="menuitem" id="jv-mind" onclick="JV.toggleMore();openQuoteLeadsAIMind()"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2zM9 21h6"/></svg>Memory &amp; schedule<small>What it remembers and has scheduled</small></button>
+            <button role="menuitem" id="jv-posts" onclick="JV.toggleMore();openQuoteLeadsAIPosts()"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 9h16M9 9v11"/></svg>Drafted posts</button>
           </div>
         </div>
       </div>
@@ -2569,7 +2569,7 @@
 <!-- QuoteLeadsAI gets his own settings rather than living inside Twilio's. SMS is
      only the channel he currently uses to reach you; what he watches and when
      he is allowed to interrupt belongs to him, not to the phone network. -->
-<div class="overlay" id="m-jarvis-settings">
+<div class="overlay" id="m-quoteleadsai-settings">
   <div class="modal" style="max-width:520px">
     <h2>◈ QuoteLeadsAI</h2>
     <div class="msub">What it watches, and how it tells you</div>
@@ -2644,8 +2644,8 @@
     <div id="js-watch" style="font-size:12px;color:var(--ink3);line-height:1.9">Loading…</div>
 
     <div class="macts">
-      <button class="btn" onclick="closeModal('m-jarvis-settings')">Cancel</button>
-      <button class="btn btn-p" id="js-save-btn" onclick="saveJarvisSettings()">Save</button>
+      <button class="btn" onclick="closeModal('m-quoteleadsai-settings')">Cancel</button>
+      <button class="btn btn-p" id="js-save-btn" onclick="saveQuoteLeadsAISettings()">Save</button>
     </div>
   </div>
 </div>
@@ -2654,7 +2654,7 @@
 <!-- Not connected to Facebook or Instagram on purpose: approving a post here
      publishes nothing. You copy the caption, save the image and post it
      yourself, then tick it off. -->
-<div class="overlay" id="m-jarvis-posts">
+<div class="overlay" id="m-quoteleadsai-posts">
   <div class="modal" style="max-width:720px">
     <h2>▦ Posts</h2>
     <div class="msub">Drafted by QuoteLeadsAI, checked by its editor, posted by you</div>
@@ -2663,7 +2663,7 @@
     </div>
     <p style="font-size:12px;color:var(--ink3);margin:12px 0 0;line-height:1.6">Nothing here is connected to your accounts - approving publishes nothing. Edit the caption before approving and he learns from the difference. Ask him for a post in the panel or by text, or schedule them ("every Tuesday, draft a post from last week").</p>
     <div class="macts">
-      <button class="btn" onclick="closeModal('m-jarvis-posts')">Close</button>
+      <button class="btn" onclick="closeModal('m-quoteleadsai-posts')">Close</button>
     </div>
   </div>
 </div>
@@ -2673,7 +2673,7 @@
      carries into every conversation, and the work he has scheduled. Both are
      his own notes, so both are editable here - you should never have to ask
      him what he believes. -->
-<div class="overlay" id="m-jarvis-mind">
+<div class="overlay" id="m-quoteleadsai-mind">
   <div class="modal" style="max-width:660px">
     <h2>✦ What QuoteLeadsAI knows</h2>
     <div class="msub">What he remembers in every conversation, and the work he has scheduled</div>
@@ -2683,15 +2683,15 @@
 
     <div style="margin:18px 0 6px;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bd);padding-bottom:7px">Remembers</div>
     <div style="display:flex;gap:8px;margin:8px 0 10px">
-      <input class="fi" id="jm-new" style="flex:1" maxlength="1000" placeholder="Tell it something to remember…" onkeydown="if(event.key==='Enter'){event.preventDefault();saveJarvisMemory(null)}">
-      <button class="btn btn-p" type="button" onclick="saveJarvisMemory(null)">Add</button>
+      <input class="fi" id="jm-new" style="flex:1" maxlength="1000" placeholder="Tell it something to remember…" onkeydown="if(event.key==='Enter'){event.preventDefault();saveQuoteLeadsAIMemory(null)}">
+      <button class="btn btn-p" type="button" onclick="saveQuoteLeadsAIMemory(null)">Add</button>
     </div>
     <div id="jm-mems" style="max-height:40vh;overflow-y:auto;margin:0 -4px;padding:0 4px;font-size:13px;color:var(--ink3)">Loading…</div>
 
     <p style="font-size:12px;color:var(--ink3);margin:12px 0 0;line-height:1.6">He adds to both himself when you tell him a preference or ask for something later. Anything wrong here is wrong in every answer he gives, so fix it or delete it.</p>
 
     <div class="macts">
-      <button class="btn" onclick="closeModal('m-jarvis-mind')">Close</button>
+      <button class="btn" onclick="closeModal('m-quoteleadsai-mind')">Close</button>
     </div>
   </div>
 </div>
@@ -2700,18 +2700,18 @@
 <!-- Deliberately its own screen rather than a section of the settings modal.
      Settings is a form you change; this is a record you read, and the two want
      different widths and different reading habits. -->
-<div class="overlay" id="m-jarvis-log">
+<div class="overlay" id="m-quoteleadsai-log">
   <div class="modal" style="max-width:660px">
     <h2>◈ QuoteLeadsAI log</h2>
     <div class="msub">Everything it has spotted, sent and done, newest first</div>
 
     <div style="display:flex;align-items:center;gap:8px;margin:14px 0 10px">
-      <select class="fi" id="jl-filter" style="flex:1" onchange="renderJarvisLog()">
+      <select class="fi" id="jl-filter" style="flex:1" onchange="renderQuoteLeadsAILog()">
         <option value="acted">Things it did (hide what it only spotted)</option>
         <option value="all">Everything, including every item spotted</option>
         <option value="client">Only what reached a client</option>
       </select>
-      <button class="btn btn-xs" onclick="loadJarvisLog()" title="Reload">↻</button>
+      <button class="btn btn-xs" onclick="loadQuoteLeadsAILog()" title="Reload">↻</button>
     </div>
 
     <div id="jl-body" style="max-height:52vh;overflow-y:auto;margin:0 -4px;padding:0 4px">
@@ -2721,7 +2721,7 @@
     <p style="font-size:12px;color:var(--ink3);margin:12px 0 0;line-height:1.6">Read straight from what was recorded at the time - nothing here is written twice, so it cannot disagree with the pipeline. A failed row means he tried and could not; that is worth knowing and shows up nowhere else.</p>
 
     <div class="macts">
-      <button class="btn" onclick="closeModal('m-jarvis-log')">Close</button>
+      <button class="btn" onclick="closeModal('m-quoteleadsai-log')">Close</button>
     </div>
   </div>
 </div>

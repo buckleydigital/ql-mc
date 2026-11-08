@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Build supabase/functions/jarvis-chat/index.ts.
+ * Build supabase/functions/quoteleadsai-chat/index.ts.
  *
  * WHY THIS EXISTS. `supabase functions deploy` ships only the entrypoint for
  * this project — a local import of a sibling file fails to bundle, whether it
@@ -11,7 +11,7 @@
  * modules in quoteleads/ — which stay the single editable source, and are what
  * the MCP server imports for the local bridge. Edit those, run this, deploy.
  *
- *     node tools/jarvis/build-edge.mjs
+ *     node tools/quoteleadsai/build-edge.mjs
  *
  * The build fails loudly if two modules declare the same top-level name, since
  * concatenation would silently let one shadow the other.
@@ -22,7 +22,7 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
-const fn = join(root, 'supabase', 'functions', 'jarvis-chat')
+const fn = join(root, 'supabase', 'functions', 'quoteleadsai-chat')
 const src = join(fn, 'quoteleads')
 
 // Dependency order: each module may only use what is already above it.
@@ -58,8 +58,8 @@ const out = shell.replace(
   [
     '// ══════════════════════════════════════════════════════════════════',
     '//  GENERATED - do not edit below this line.',
-    '//  Source: supabase/functions/jarvis-chat/quoteleads/*.mjs',
-    '//  Rebuild: node tools/jarvis/build-edge.mjs',
+    '//  Source: supabase/functions/quoteleadsai-chat/quoteleads/*.mjs',
+    '//  Rebuild: node tools/quoteleadsai/build-edge.mjs',
     '// ══════════════════════════════════════════════════════════════════',
     '',
     ...bodies,

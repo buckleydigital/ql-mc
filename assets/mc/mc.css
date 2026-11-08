@@ -856,7 +856,7 @@ body.just-loaded .kval,body.just-loaded .kcard,body.just-loaded tbody tr,body.ju
 .jv-msg b{font-weight:600}
 .jv-msg code{font-family:var(--mono);font-size:.92em;padding:0 3px;border-radius:3px;background:var(--s3)}
 .jv-msg.you{align-self:flex-end;background:var(--acc-fill);color:#fff;padding:7px 11px;border-radius:var(--r) var(--r) 2px var(--r)}
-.jv-msg.jarvis{align-self:flex-start;color:var(--ink)}
+.jv-msg.quoteleadsai{align-self:flex-start;color:var(--ink)}
 .jv-msg.sys{align-self:center;text-align:center;font-family:var(--mono);font-size:12px;color:var(--ink3);max-width:100%}
 .jv-msg.sys a{color:var(--acc)}
 .jv-tool{align-self:flex-start;font-family:var(--mono);font-size:12px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;opacity:.8}

@@ -3,7 +3,7 @@
 /* ══════════════════════════════════════════════════════════════════
    QuoteLeadsAI — the assistant panel.
 
-   The brain is the jarvis-chat edge function: it holds the Anthropic key
+   The brain is the quoteleadsai-chat edge function: it holds the Anthropic key
    as a server secret and runs the QuoteLeads tools (the same modules the
    local MCP server uses) against this database. Nothing runs on anyone's
    laptop, so this works from the deployed site on any device.
@@ -223,7 +223,7 @@ const HUD_FX = (() => {
 })();
 
 const JV = (() => {
-  // The conversation itself lives server-side (jarvis_threads), so a reload
+  // The conversation itself lives server-side (quoteleadsai_threads), so a reload
   // or another device continues it. `restored` is whether this page has
   // fetched it yet.
   let restored = false, busy = false, rec = null, micOn = false;
@@ -232,13 +232,13 @@ const JV = (() => {
   // running until its own onend - and start() in that gap throws "recognition
   // has already started". Only onend clears this.
   let recRunning = false;
-  let voice = localStorage.getItem('ql_jarvis_voice') !== '0';
+  let voice = localStorage.getItem('ql_quoteleadsai_voice') !== '0';
   // On by default. It was opt-in while the tools were unproven; the point of
   // the assistant is telling him to do things, and a switch you have to find
   // and flip every session is a switch that makes the feature look broken.
   // Still per-browser and still off-able, and the irreversible tools confirm
   // before they act.
-  let writes = localStorage.getItem('ql_jarvis_writes') !== '0';
+  let writes = localStorage.getItem('ql_quoteleadsai_writes') !== '0';
 
   const $$ = id => document.getElementById(id);
   const body = () => $$('jv-body');
@@ -268,7 +268,7 @@ const JV = (() => {
     const el = document.createElement('div');
     el.className = 'jv-msg ' + cls;
     if (cls === 'sys') el.innerHTML = text;
-    else if (cls === 'jarvis') el.innerHTML = md(text);
+    else if (cls === 'quoteleadsai') el.innerHTML = md(text);
     else el.textContent = text;
     body().appendChild(el);
     body().scrollTop = body().scrollHeight;
@@ -284,9 +284,9 @@ const JV = (() => {
       `<div class="hud-row${warn && n ? ' warn' : ''}"><span>${esc(label)}</span><b>${esc(n)}</b></div>`;
 
     try {
-      const { data } = await db.rpc('jarvis_status');
+      const { data } = await db.rpc('quoteleadsai_status');
       const byKind = (data && data.open_by_kind) || {};
-      const labels = (typeof JARVIS_WATCH_LABELS !== 'undefined') ? JARVIS_WATCH_LABELS : {};
+      const labels = (typeof QUOTELEADSAI_WATCH_LABELS !== 'undefined') ? QUOTELEADSAI_WATCH_LABELS : {};
       let html = Object.keys(labels).map((k) => row(labels[k], byKind[k] || 0, true)).join('');
       html += row('Texts queued to send', (data && data.queued) || 0, true);
       watch.innerHTML = html || row('nothing open', 0);
@@ -318,7 +318,7 @@ const JV = (() => {
     busy = true;
     status('Thinking…', 'busy');
 
-    const thinking = line('jarvis', '…');
+    const thinking = line('quoteleadsai', '…');
     try {
       // `db` is declared with `let` (index.html:2947), so it lives in the
       // global lexical scope and is NOT a property of window — checking
@@ -327,14 +327,14 @@ const JV = (() => {
       const { data: { session } } = await db.auth.getSession();
       if (!session) throw new Error('Your session has expired — sign in again.');
 
-      const res = await fetch(_ep + '/functions/v1/jarvis-chat', {
+      const res = await fetch(_ep + '/functions/v1/quoteleadsai-chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           apikey: _ak,
           Authorization: 'Bearer ' + session.access_token,
         },
-        // Only the new question. jarvis-chat keeps the conversation and what
+        // Only the new question. quoteleadsai-chat keeps the conversation and what
         // he remembers, so follow-ups like "and last month?" resolve against
         // what was said here, yesterday, or from your phone.
         body: JSON.stringify({ text, allow_writes: writes }),
@@ -542,7 +542,7 @@ const JV = (() => {
     if (typeof db === 'undefined' || !db) throw new Error('Sign in first.');
     const { data: { session } } = await db.auth.getSession();
     if (!session) throw new Error('Your session has expired — sign in again.');
-    const res = await fetch(_ep + '/functions/v1/jarvis-chat', {
+    const res = await fetch(_ep + '/functions/v1/quoteleadsai-chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: _ak, Authorization: 'Bearer ' + session.access_token },
       body: JSON.stringify(payload),
@@ -561,7 +561,7 @@ const JV = (() => {
       const { lines } = await callChat({ action: 'history' });
       if (!Array.isArray(lines) || !lines.length) return;
       body().innerHTML = '';
-      lines.forEach((l) => line(l.role === 'you' ? 'you' : 'jarvis', l.text));
+      lines.forEach((l) => line(l.role === 'you' ? 'you' : 'quoteleadsai', l.text));
     } catch (_) { /* start blank */ }
   }
 
@@ -575,7 +575,7 @@ const JV = (() => {
     open() {
       if (typeof IS_REP !== 'undefined' && IS_REP) return;
       $$('jv-panel').classList.add('open');
-      if (typeof loadJarvisInbox === 'function') loadJarvisInbox();
+      if (typeof loadQuoteLeadsAIInbox === 'function') loadQuoteLeadsAIInbox();
       if (!body().children.length) {
         line('sys', 'Ask about leads, closes, revenue, spend, a client or your tasks.<br>Tell him to remember something and he will, everywhere.');
       }
@@ -631,7 +631,7 @@ const JV = (() => {
     },
     toggleVoice() {
       voice = !voice;
-      localStorage.setItem('ql_jarvis_voice', voice ? '1' : '0');
+      localStorage.setItem('ql_quoteleadsai_voice', voice ? '1' : '0');
       paintVoice();
       if (!voice) hush();
     },
@@ -640,7 +640,7 @@ const JV = (() => {
       // even told the sending tools exist, so the switch is a real lock rather
       // than a prompt asking him nicely.
       writes = !writes;
-      localStorage.setItem('ql_jarvis_writes', writes ? '1' : '0');
+      localStorage.setItem('ql_quoteleadsai_writes', writes ? '1' : '0');
       paintWrites();
       line('sys', writes
         ? 'Sending and changes are <b>on</b>. He will confirm before anything irreversible.'

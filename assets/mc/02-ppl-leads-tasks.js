@@ -22,7 +22,7 @@ function applyRoleUI() {
     document.querySelectorAll('.rep-stat-strip').forEach(e => e.style.display = '');
     document.querySelectorAll('.admin-only-field').forEach(e => e.style.display = 'none');
     // QuoteLeadsAI reads the whole business — revenue, spend, every client. Reps see
-    // neither the button nor the panel, and jarvis-chat refuses their token
+    // neither the button nor the panel, and quoteleadsai-chat refuses their token
     // as well, because a hidden button is not a restriction.
     const jvBtn = $('jv-btn'); if (jvBtn) jvBtn.style.display = 'none';
     JV.close();
@@ -54,7 +54,7 @@ async function loadAll() {
   await loadTaskLeadDropdowns();
   loadFileNames(); loadFileContent();
   loadAlerts();
-  loadJarvisInbox();
+  loadQuoteLeadsAIInbox();
 }
 
 async function populateTestLeadNiches() {

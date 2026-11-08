@@ -1,6 +1,6 @@
-# JARVIS briefing — QuoteLeads
+# QUOTELEADSAI briefing — QuoteLeads
 
-Append this to `SYSTEM_PROMPT` in `bridge/server.mjs`. Without it JARVIS has the
+Append this to `SYSTEM_PROMPT` in `bridge/server.mjs`. Without it QUOTELEADSAI has the
 tools but not the vocabulary, and he will explore the schema out loud instead of
 answering in one sentence.
 

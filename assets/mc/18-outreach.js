@@ -262,13 +262,13 @@ async function addSuppression() {
 // Checked every minute while the dashboard is open; a note stays at the top
 // of the panel, and counted on the ◈ button, until you mark it seen.
 let jvInboxTimer = null;
-async function loadJarvisInbox() {
+async function loadQuoteLeadsAIInbox() {
   clearTimeout(jvInboxTimer);
   if (typeof IS_REP !== 'undefined' && IS_REP) return;
-  jvInboxTimer = setTimeout(loadJarvisInbox, 60000);
+  jvInboxTimer = setTimeout(loadQuoteLeadsAIInbox, 60000);
   const host = $('jv-inbox'), badge = $('jv-unread');
   if (!host || !badge) return;
-  const { data, error } = await db.rpc('jarvis_inbox', { p_limit: 20 });
+  const { data, error } = await db.rpc('quoteleadsai_inbox', { p_limit: 20 });
   if (error) return;   // not an operator, or offline: show nothing
   const rows = (data || []).filter(function (n) { return !n.read_at; });
   const unread = rows.length ? Number(rows[0].unread) : 0;
@@ -278,20 +278,20 @@ async function loadJarvisInbox() {
   host.style.display = '';
   host.innerHTML =
     '<div class="jv-inbox-head"><span style="flex:1">' + unread + ' new from QuoteLeadsAI</span>' +
-      '<button class="btn btn-xs" type="button" onclick="markJarvisInbox(null)">Mark all seen</button></div>' +
+      '<button class="btn btn-xs" type="button" onclick="markQuoteLeadsAIInbox(null)">Mark all seen</button></div>' +
     rows.map(function (n) {
       return '<div class="jv-note ' + jmEsc(n.tier) + '">' +
         '<div style="flex:1;min-width:0"><div class="t">' + jmEsc(n.body) + '</div>' +
           '<div class="w">' + (n.tier === 'job' ? 'Job · ' : n.tier === 'urgent' ? 'Urgent · ' : '') + jmEsc(fmtWhen(n.created_at)) + '</div></div>' +
-        '<button class="btn btn-xs" type="button" title="Seen" onclick="markJarvisInbox([\'' + n.id + '\'])">✓</button>' +
+        '<button class="btn btn-xs" type="button" title="Seen" onclick="markQuoteLeadsAIInbox([\'' + n.id + '\'])">✓</button>' +
       '</div>';
     }).join('');
 }
 
-async function markJarvisInbox(ids) {
-  const { error } = await db.rpc('jarvis_inbox_read', { p_ids: ids });
+async function markQuoteLeadsAIInbox(ids) {
+  const { error } = await db.rpc('quoteleadsai_inbox_read', { p_ids: ids });
   if (error) { toast('Could not mark seen: ' + error.message, true); return; }
-  loadJarvisInbox();
+  loadQuoteLeadsAIInbox();
 }
 
 // ── Cold outreach: sending (stage 4) ──────────────────────────────────────
@@ -817,15 +817,15 @@ async function loadInstantlyStats(days) {
       : '<div class="or-sub">No inboxes connected in Instantly yet.</div>');
 }
 
-async function openJarvisPosts() {
-  openModal('m-jarvis-posts');
-  await loadJarvisPosts();
+async function openQuoteLeadsAIPosts() {
+  openModal('m-quoteleadsai-posts');
+  await loadQuoteLeadsAIPosts();
 }
 
-async function loadJarvisPosts() {
+async function loadQuoteLeadsAIPosts() {
   const host = $('jp-body');
   try {
-    const { data, error } = await db.rpc('jarvis_post_list', { p_limit: 40 });
+    const { data, error } = await db.rpc('quoteleadsai_post_list', { p_limit: 40 });
     if (error) throw error;
     jpPosts = data || [];
     if (!jpPosts.length) {
@@ -843,13 +843,13 @@ async function loadJarvisPosts() {
       const editable = p.status === 'draft' || p.status === 'approved';
       const btns = [];
       if (p.status === 'draft') {
-        btns.push('<button class="btn btn-p btn-xs" type="button" onclick="approveJarvisPost(\'' + p.id + '\')">Approve</button>');
-        btns.push('<button class="btn btn-xs" type="button" onclick="setJarvisPostStatus(\'' + p.id + '\',\'rejected\')">Reject</button>');
+        btns.push('<button class="btn btn-p btn-xs" type="button" onclick="approveQuoteLeadsAIPost(\'' + p.id + '\')">Approve</button>');
+        btns.push('<button class="btn btn-xs" type="button" onclick="setQuoteLeadsAIPostStatus(\'' + p.id + '\',\'rejected\')">Reject</button>');
       } else {
-        if (p.status === 'approved') btns.push('<button class="btn btn-xs" type="button" onclick="approveJarvisPost(\'' + p.id + '\')">Save caption</button>');
-        btns.push('<button class="btn btn-xs" type="button" onclick="copyJarvisPost(\'' + p.id + '\')">Copy caption</button>');
-        if (p.image_url) btns.push('<button class="btn btn-xs" type="button" onclick="downloadJarvisPost(\'' + p.id + '\')">Download image</button>');
-        if (p.status === 'approved') btns.push('<button class="btn btn-p btn-xs" type="button" onclick="setJarvisPostStatus(\'' + p.id + '\',\'posted\')">Mark as posted</button>');
+        if (p.status === 'approved') btns.push('<button class="btn btn-xs" type="button" onclick="approveQuoteLeadsAIPost(\'' + p.id + '\')">Save caption</button>');
+        btns.push('<button class="btn btn-xs" type="button" onclick="copyQuoteLeadsAIPost(\'' + p.id + '\')">Copy caption</button>');
+        if (p.image_url) btns.push('<button class="btn btn-xs" type="button" onclick="downloadQuoteLeadsAIPost(\'' + p.id + '\')">Download image</button>');
+        if (p.status === 'approved') btns.push('<button class="btn btn-p btn-xs" type="button" onclick="setQuoteLeadsAIPostStatus(\'' + p.id + '\',\'posted\')">Mark as posted</button>');
       }
       return '<div style="display:grid;grid-template-columns:minmax(120px,190px) 1fr;gap:14px;padding:14px 0;border-bottom:1px solid var(--bd)">' +
         '<div>' + img + '</div>' +
@@ -871,23 +871,23 @@ async function loadJarvisPosts() {
   }
 }
 
-async function approveJarvisPost(id) {
+async function approveQuoteLeadsAIPost(id) {
   const box = $('jp-cap-' + id);
-  const { error } = await db.rpc('jarvis_post_approve', { p_id: id, p_caption: box ? box.value : null });
+  const { error } = await db.rpc('quoteleadsai_post_approve', { p_id: id, p_caption: box ? box.value : null });
   if (error) { toast('Could not approve: ' + error.message, true); return; }
   toast('Approved ✓ - copy the caption and save the image to post it');
-  loadJarvisPosts();
+  loadQuoteLeadsAIPosts();
 }
 
-async function setJarvisPostStatus(id, status) {
+async function setQuoteLeadsAIPostStatus(id, status) {
   if (status === 'rejected' && !confirm('Reject this draft?')) return;
-  const { error } = await db.rpc('jarvis_post_set_status', { p_id: id, p_status: status });
+  const { error } = await db.rpc('quoteleadsai_post_set_status', { p_id: id, p_status: status });
   if (error) { toast('Could not update: ' + error.message, true); return; }
   if (status === 'posted') toast('Marked as posted ✓');
-  loadJarvisPosts();
+  loadQuoteLeadsAIPosts();
 }
 
-async function copyJarvisPost(id) {
+async function copyQuoteLeadsAIPost(id) {
   const box = $('jp-cap-' + id);
   try {
     await navigator.clipboard.writeText(box ? box.value : '');
@@ -900,7 +900,7 @@ async function copyJarvisPost(id) {
 
 // Fetched as a blob: the download attribute is ignored across origins, and
 // the images live on the storage domain.
-async function downloadJarvisPost(id) {
+async function downloadQuoteLeadsAIPost(id) {
   const p = jpPosts.find(function (x) { return x.id === id; });
   if (!p || !p.image_url) return;
   try {
@@ -923,15 +923,15 @@ let jmMemories = [];
 
 function jmEsc(t) { const d = document.createElement('div'); d.textContent = String(t == null ? '' : t); return d.innerHTML; }
 
-async function openJarvisMind() {
-  openModal('m-jarvis-mind');
-  await Promise.all([loadJarvisJobs(), loadJarvisMemories()]);
+async function openQuoteLeadsAIMind() {
+  openModal('m-quoteleadsai-mind');
+  await Promise.all([loadQuoteLeadsAIJobs(), loadQuoteLeadsAIMemories()]);
 }
 
-async function loadJarvisJobs() {
+async function loadQuoteLeadsAIJobs() {
   const host = $('jm-jobs');
   try {
-    const { data, error } = await db.rpc('jarvis_job_list');
+    const { data, error } = await db.rpc('quoteleadsai_job_list');
     if (error) throw error;
     const jobs = data || [];
     if (!jobs.length) {
@@ -949,7 +949,7 @@ async function loadJarvisJobs() {
           '<div style="margin-top:2px;line-height:1.5;word-break:break-word">' + jmEsc(j.instruction) + '</div>' +
           (j.last_result ? '<div style="margin-top:3px;font-size:12px;line-height:1.5;word-break:break-word">Last: ' + jmEsc(j.last_result.slice(0, 200)) + '</div>' : '') +
         '</div>' +
-        '<button class="btn btn-xs" type="button" onclick="cancelJarvisJob(\'' + j.id + '\')">Cancel</button>' +
+        '<button class="btn btn-xs" type="button" onclick="cancelQuoteLeadsAIJob(\'' + j.id + '\')">Cancel</button>' +
       '</div>';
     }).join('');
   } catch (err) {
@@ -957,17 +957,17 @@ async function loadJarvisJobs() {
   }
 }
 
-async function cancelJarvisJob(id) {
+async function cancelQuoteLeadsAIJob(id) {
   if (!confirm('Cancel this scheduled job?')) return;
-  const { error } = await db.rpc('jarvis_job_cancel', { p_id: id });
+  const { error } = await db.rpc('quoteleadsai_job_cancel', { p_id: id });
   if (error) { toast('Could not cancel: ' + error.message, true); return; }
-  loadJarvisJobs();
+  loadQuoteLeadsAIJobs();
 }
 
-async function loadJarvisMemories() {
+async function loadQuoteLeadsAIMemories() {
   const host = $('jm-mems');
   try {
-    const { data, error } = await db.rpc('jarvis_memory_list');
+    const { data, error } = await db.rpc('quoteleadsai_memory_list');
     if (error) throw error;
     jmMemories = data || [];
     if (!jmMemories.length) {
@@ -977,8 +977,8 @@ async function loadJarvisMemories() {
     host.innerHTML = jmMemories.map(function (m) {
       return '<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--bd)">' +
         '<input class="fi" style="flex:1;font-size:13px" maxlength="1000" value="' + jmEsc(m.content).replace(/"/g, '&quot;') + '" ' +
-          'data-id="' + m.id + '" onchange="saveJarvisMemory(this.dataset.id, this.value)">' +
-        '<button class="btn btn-xs" type="button" title="Forget" onclick="deleteJarvisMemory(\'' + m.id + '\')">✕</button>' +
+          'data-id="' + m.id + '" onchange="saveQuoteLeadsAIMemory(this.dataset.id, this.value)">' +
+        '<button class="btn btn-xs" type="button" title="Forget" onclick="deleteQuoteLeadsAIMemory(\'' + m.id + '\')">✕</button>' +
       '</div>';
     }).join('');
   } catch (err) {
@@ -986,27 +986,27 @@ async function loadJarvisMemories() {
   }
 }
 
-async function saveJarvisMemory(id, value) {
+async function saveQuoteLeadsAIMemory(id, value) {
   const text = String(id ? value : $('jm-new').value).trim();
   if (!text) return;
-  const { error } = await db.rpc('jarvis_memory_save', { p_id: id || null, p_content: text });
+  const { error } = await db.rpc('quoteleadsai_memory_save', { p_id: id || null, p_content: text });
   if (error) { toast('Could not save: ' + error.message, true); return; }
   if (!id) $('jm-new').value = '';
   toast(id ? 'Updated ✓' : 'QuoteLeadsAI will remember that ✓');
-  loadJarvisMemories();
+  loadQuoteLeadsAIMemories();
 }
 
-async function deleteJarvisMemory(id) {
+async function deleteQuoteLeadsAIMemory(id) {
   const m = jmMemories.find(function (x) { return x.id === id; });
   if (!confirm('Forget "' + (m ? m.content.slice(0, 80) : 'this') + '"?')) return;
-  const { error } = await db.rpc('jarvis_memory_delete', { p_id: id });
+  const { error } = await db.rpc('quoteleadsai_memory_delete', { p_id: id });
   if (error) { toast('Could not delete: ' + error.message, true); return; }
-  loadJarvisMemories();
+  loadQuoteLeadsAIMemories();
 }
 
-// Spend, as sums from jarvis_usage_summary() - the rows themselves stay
-// unreadable from the browser, same as jarvis_events.
-async function loadJarvisSpend() {
+// Spend, as sums from quoteleadsai_usage_summary() - the rows themselves stay
+// unreadable from the browser, same as quoteleadsai_events.
+async function loadQuoteLeadsAISpend() {
   const host = $('js-spend');
   if (!host) return;
   const usd = function (n) {
@@ -1021,7 +1021,7 @@ async function loadJarvisSpend() {
   const qs = function (n) { n = Number(n || 0); return n + ' question' + (n === 1 ? '' : 's'); };
   try {
     const tz = ($('js-tz') && $('js-tz').value) || 'Australia/Sydney';
-    const { data, error } = await db.rpc('jarvis_usage_summary', { p_tz: tz });
+    const { data, error } = await db.rpc('quoteleadsai_usage_summary', { p_tz: tz });
     if (error) throw error;
     const d = data || {};
     const m = d.month || {}, t = d.today || {}, l = d.last_month || {}, a = d.all_time || {};
@@ -1049,14 +1049,14 @@ function fmtWhen(iso) {
 
 // ── QuoteLeadsAI action log ──────────────────────────────────────────────────────
 // Four tables read as one sequence. The union and the authorisation both live
-// in jarvis_action_log(); this only has to decide what a row looks like.
+// in quoteleadsai_action_log(); this only has to decide what a row looks like.
 //
 // The rows are held in memory after loading so the filter is instant and does
 // not re-query - it is at most a few hundred rows, and a log you can flick
 // through is one you will actually read.
 let _jlRows = [];
 
-const JARVIS_LOG_KINDS = {
+const QUOTELEADSAI_LOG_KINDS = {
   spotted:        { icon: '\u25CB', label: 'Spotted',      tone: 'var(--ink3)' },
   told_you:       { icon: '\u25C9', label: 'Told you',     tone: 'var(--acc)'  },
   texted_you:     { icon: '\u2709', label: 'Texted you',   tone: 'var(--acc)'  },
@@ -1066,26 +1066,26 @@ const JARVIS_LOG_KINDS = {
   emailed_client: { icon: '\u2192', label: 'Emailed client', tone: 'var(--grn)' },
 };
 
-async function openJarvisLog() {
-  openModal('m-jarvis-log');
-  await loadJarvisLog();
+async function openQuoteLeadsAILog() {
+  openModal('m-quoteleadsai-log');
+  await loadQuoteLeadsAILog();
 }
 
-async function loadJarvisLog() {
+async function loadQuoteLeadsAILog() {
   const host = $('jl-body');
   host.innerHTML = '<div style="color:var(--ink3);font-size:13px">Loading\u2026</div>';
   try {
-    const { data, error } = await db.rpc('jarvis_action_log', { p_limit: 200 });
+    const { data, error } = await db.rpc('quoteleadsai_action_log', { p_limit: 200 });
     if (error) throw error;
     _jlRows = data || [];
-    renderJarvisLog();
+    renderQuoteLeadsAILog();
   } catch (err) {
     _jlRows = [];
     host.textContent = 'Could not load the log: ' + (err.message || err);
   }
 }
 
-function renderJarvisLog() {
+function renderQuoteLeadsAILog() {
   const host = $('jl-body');
   const mode = $('jl-filter').value;
 
@@ -1109,7 +1109,7 @@ function renderJarvisLog() {
   }
 
   host.innerHTML = rows.map(function (r) {
-    const k = JARVIS_LOG_KINDS[r.kind] || { icon: '\u00B7', label: r.kind, tone: 'var(--ink3)' };
+    const k = QUOTELEADSAI_LOG_KINDS[r.kind] || { icon: '\u00B7', label: r.kind, tone: 'var(--ink3)' };
     const failed = r.status === 'failed';
     const when = new Date(r.at);
 
@@ -1141,7 +1141,7 @@ function renderJarvisLog() {
   }).join('');
 }
 
-async function saveJarvisSettings() {
+async function saveQuoteLeadsAISettings() {
   const btn = $('js-save-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
@@ -1158,17 +1158,17 @@ async function saveJarvisSettings() {
       return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : dflt;
     };
     const patch = {
-      jarvis_content_brief: $('js-brief').value.trim() || null,
-      jarvis_timezone: $('js-tz').value || 'Australia/Sydney',
-      jarvis_notify_number: raw || null,
-      jarvis_notify_enabled: textOn,
-      jarvis_call_enabled: callOn,
-      jarvis_quiet_start: $('js-quiet-start').value || '20:00',
-      jarvis_quiet_end: $('js-quiet-end').value || '07:30',
-      jarvis_daily_sms_cap: num('js-cap', 0, 100, 10),
-      jarvis_call_cap: num('js-call-cap', 0, 20, 3),
-      jarvis_call_voice: $('js-call-voice').value || 'Polly.Brian-Neural',
-      jarvis_model: $('js-model').value || null,
+      quoteleadsai_content_brief: $('js-brief').value.trim() || null,
+      quoteleadsai_timezone: $('js-tz').value || 'Australia/Sydney',
+      quoteleadsai_notify_number: raw || null,
+      quoteleadsai_notify_enabled: textOn,
+      quoteleadsai_call_enabled: callOn,
+      quoteleadsai_quiet_start: $('js-quiet-start').value || '20:00',
+      quoteleadsai_quiet_end: $('js-quiet-end').value || '07:30',
+      quoteleadsai_daily_sms_cap: num('js-cap', 0, 100, 10),
+      quoteleadsai_call_cap: num('js-call-cap', 0, 20, 3),
+      quoteleadsai_call_voice: $('js-call-voice').value || 'Polly.Brian-Neural',
+      quoteleadsai_model: $('js-model').value || null,
     };
 
     const existing = await db.from('business_settings').select('id').limit(1).single();
@@ -1181,7 +1181,7 @@ async function saveJarvisSettings() {
     }
     if (error) throw error;
     toast(textOn || callOn ? 'QuoteLeadsAI will reach you on your phone ✓' : 'QuoteLeadsAI saved - panel only');
-    closeModal('m-jarvis-settings');
+    closeModal('m-quoteleadsai-settings');
   } catch (err) {
     toast('Save failed: ' + err.message, true);
   } finally {

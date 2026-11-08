@@ -420,7 +420,7 @@ async function saveAgentSettings() {
 
     await callHq('update_sms_agent_config', { patch });
 
-    // Write the mirror through immediately. jarvis-notify refreshes it every
+    // Write the mirror through immediately. quoteleadsai-notify refreshes it every
     // 15 minutes anyway, but until it does QuoteLeadsAI would still be reasoning
     // about the old setting - and the one moment you are most likely to ask
     // him about Don is just after changing him. Best effort: the save itself
@@ -448,7 +448,7 @@ async function saveAgentSettings() {
 // ── QuoteLeadsAI settings ────────────────────────────────────────────────────────
 // His own screen, opened from his own panel. What he watches and when he may
 // interrupt is not a Twilio concern; SMS is just the channel he reaches you on.
-const JARVIS_WATCH_LABELS = {
+const QUOTELEADSAI_WATCH_LABELS = {
   proposal_cold:      'Proposals going cold',
   followup_overdue:   'Follow-up dates gone past',
   don_off:            'AI SMS off while leads wait',
@@ -478,47 +478,47 @@ function fillWebVoicePicker() {
   sel.onchange = () => { JV.setVoiceByName(sel.value); JV.sampleVoice(); };
 }
 
-async function openJarvisSettings() {
+async function openQuoteLeadsAISettings() {
   fillWebVoicePicker();
   const s = await loadBizSettings();
-  setVal('js-brief', s.jarvis_content_brief || '');
-  setVal('js-number', s.jarvis_notify_number || '');
-  $('js-enabled').checked = s.jarvis_notify_enabled === true;
-  $('js-call-enabled').checked = s.jarvis_call_enabled === true;
-  setVal('js-quiet-start', String(s.jarvis_quiet_start || '20:00').slice(0, 5));
-  setVal('js-quiet-end', String(s.jarvis_quiet_end || '07:30').slice(0, 5));
-  setVal('js-cap', s.jarvis_daily_sms_cap == null ? 10 : s.jarvis_daily_sms_cap);
-  setVal('js-call-cap', s.jarvis_call_cap == null ? 3 : s.jarvis_call_cap);
-  setVal('js-model', s.jarvis_model || 'claude-opus-5-5');
-  const cv = s.jarvis_call_voice || 'Polly.Brian-Neural';
+  setVal('js-brief', s.quoteleadsai_content_brief || '');
+  setVal('js-number', s.quoteleadsai_notify_number || '');
+  $('js-enabled').checked = s.quoteleadsai_notify_enabled === true;
+  $('js-call-enabled').checked = s.quoteleadsai_call_enabled === true;
+  setVal('js-quiet-start', String(s.quoteleadsai_quiet_start || '20:00').slice(0, 5));
+  setVal('js-quiet-end', String(s.quoteleadsai_quiet_end || '07:30').slice(0, 5));
+  setVal('js-cap', s.quoteleadsai_daily_sms_cap == null ? 10 : s.quoteleadsai_daily_sms_cap);
+  setVal('js-call-cap', s.quoteleadsai_call_cap == null ? 3 : s.quoteleadsai_call_cap);
+  setVal('js-model', s.quoteleadsai_model || 'claude-opus-5-5');
+  const cv = s.quoteleadsai_call_voice || 'Polly.Brian-Neural';
   const cvSel = $('js-call-voice');
   if (!Array.prototype.some.call(cvSel.options, function (o) { return o.value === cv; })) cvSel.add(new Option(cv, cv));
   cvSel.value = cv;
   $('js-main-number').textContent = s.twilio_from_number || '(not set)';
   // A zone set by hand is added rather than silently falling back, so opening
   // and saving this form cannot quietly relocate someone.
-  const tz = s.jarvis_timezone || 'Australia/Sydney';
+  const tz = s.quoteleadsai_timezone || 'Australia/Sydney';
   const tzSel = $('js-tz');
   if (!Array.prototype.some.call(tzSel.options, function (o) { return o.value === tz; })) {
     tzSel.add(new Option(tz, tz));
   }
   tzSel.value = tz;
-  openModal('m-jarvis-settings');
-  loadJarvisStatus();
-  loadJarvisSpend();
+  openModal('m-quoteleadsai-settings');
+  loadQuoteLeadsAIStatus();
+  loadQuoteLeadsAISpend();
 }
 
-// Counts only - jarvis_events itself stays unreadable from the browser.
-async function loadJarvisStatus() {
+// Counts only - quoteleadsai_events itself stays unreadable from the browser.
+async function loadQuoteLeadsAIStatus() {
   const host = $('js-watch');
   try {
-    const { data, error } = await db.rpc('jarvis_status');
+    const { data, error } = await db.rpc('quoteleadsai_status');
     if (error) throw error;
     const byKind = (data && data.open_by_kind) || {};
-    const rows = Object.keys(JARVIS_WATCH_LABELS).map(function (k) {
+    const rows = Object.keys(QUOTELEADSAI_WATCH_LABELS).map(function (k) {
       const n = byKind[k] || 0;
       return '<div style="display:flex;justify-content:space-between;gap:12px">' +
-        '<span>' + JARVIS_WATCH_LABELS[k] + '</span>' +
+        '<span>' + QUOTELEADSAI_WATCH_LABELS[k] + '</span>' +
         '<b style="color:' + (n ? 'var(--amb)' : 'var(--ink3)') + '">' + n + '</b></div>';
     }).join('');
     const queued = (data && data.queued) || 0;
@@ -537,7 +537,7 @@ async function loadJarvisStatus() {
 
 // ── Posts ──────────────────────────────────────────────────────────────────
 // Drafts, approvals and "posted" ticks go through gated RPCs; the images are
-// public files in the jarvis-content bucket so they open on a phone.
+// public files in the quoteleadsai-content bucket so they open on a phone.
 const JP_STATUS = {
   draft:    { label: 'Waiting for you', tone: 'var(--amb)' },
   approved: { label: 'Approved - ready to post', tone: 'var(--acc)' },
