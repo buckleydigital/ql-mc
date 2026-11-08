@@ -1301,6 +1301,7 @@
             <div class="files-tabs" role="tablist">
               <button class="active" data-files-tab="tmpl" onclick="showFilesTab('tmpl')">Templates &amp; Scripts</button>
               <button data-files-tab="sop" onclick="showFilesTab('sop')">SOPs</button>
+              <button data-files-tab="agr" onclick="showFilesTab('agr')">Agreements</button>
             </div>
             <div class="files-group" id="files-group-tmpl">
 
@@ -1346,6 +1347,13 @@
                 <input type="file" id="sop-new-pdf" accept="application/pdf,.pdf" style="display:none" onchange="newSopFromPdf(this)">
               </div>
               <div id="sop-list"></div>
+            </div>
+            <!-- Agreements: the contracts sent to closers, media buyers and other roles to sign. Mission Control only (not in the Team Panel). -->
+            <div class="files-group" id="files-group-agr" style="display:none">
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+                <button class="btn btn-sm" onclick="newAgreement()">+ New agreement</button>
+              </div>
+              <div id="agr-list"></div>
             </div>
           </div>
           <div class="file-editor">

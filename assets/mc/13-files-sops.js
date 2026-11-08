@@ -14,23 +14,30 @@ function selectFile(filename, el) {
 // SOPs are files people add themselves, saved as sop-<id>.md. Their name
 // lives only in the title column; templates and scripts are built in.
 const isSop = f => f.startsWith('sop-');
+// Agreements (agreement-<id>.md) are the contracts sent to roles to sign.
+// They work like SOPs - written here in Markdown, shown formatted - but stay
+// in Mission Control: the Team Panel only reads sop- files.
+const isAgr = f => f.startsWith('agreement-');
+const isDoc = f => isSop(f) || isAgr(f);
+const filesTabOf = f => isSop(f) ? 'sop' : isAgr(f) ? 'agr' : 'tmpl';
 
 function showFilesTab(tab) {
   document.querySelectorAll('[data-files-tab]').forEach(b => b.classList.toggle('active', b.dataset.filesTab === tab));
   $('files-group-tmpl').style.display = tab === 'tmpl' ? '' : 'none';
   $('files-group-sop').style.display  = tab === 'sop'  ? '' : 'none';
+  $('files-group-agr').style.display  = tab === 'agr'  ? '' : 'none';
 }
 
 // The client picker and Preview fill in template fields, so SOPs don't get
 // them; only SOPs can be deleted.
 function paintFileTools() {
-  const sop = isSop(curFile);
-  if (sop && _tmplPreviewOn) toggleTemplatePreview();
-  $('tmpl-client-sel').style.display = sop ? 'none' : '';
-  $('tmpl-preview-btn').style.display = sop ? 'none' : '';
-  $('sop-del-btn').style.display = sop ? '' : 'none';
+  const sop = isSop(curFile), doc = isDoc(curFile);
+  if (doc && _tmplPreviewOn) toggleTemplatePreview();
+  $('tmpl-client-sel').style.display = doc ? 'none' : '';
+  $('tmpl-preview-btn').style.display = doc ? 'none' : '';
+  $('sop-del-btn').style.display = doc ? '' : 'none';
   $('sop-tools').style.display = sop ? '' : 'none';
-  $('sop-edit-btn').style.display = sop ? '' : 'none';
+  $('sop-edit-btn').style.display = doc ? '' : 'none';
   _sopEditing = false;
   applySopMode();
   if (sop) loadSopMeta();
@@ -42,7 +49,7 @@ let _sopEditing = false;
 function applySopMode() {
   const ta = $('file-editor-ta'), view = $('sop-view'), btn = $('sop-edit-btn');
   if (!ta || !view) return;
-  const sop = isSop(curFile);
+  const sop = isDoc(curFile);
   const loading = ta.value === 'Loading…';
   const reading = sop && !_sopEditing && (loading || ta.value.trim());
   if (reading) view.innerHTML = loading ? '<p style="color:var(--ink3)">Loading…</p>' : sopMarkdown(ta.value);
@@ -185,15 +192,19 @@ async function saveSopRoles() {
 }
 
 function renderSops(rows) {
-  const list = $('sop-list');
-  if (!list) return;
-  rows = rows.filter(r => isSop(r.filename)).sort((a,b) => (a.title||'').localeCompare(b.title||''));
-  list.innerHTML = rows.length ? rows.map(r =>
-    `<div class="file-item${r.filename===curFile?' active':''}" data-file="${esc(r.filename)}">` +
-    `<div class="file-name" data-builtin="">${esc(r.title || 'Untitled SOP')}</div>` +
-    `<div class="file-desc" data-builtin="">${esc(r.description || '')}</div></div>`).join('')
-    : '<div class="files-empty">No SOPs yet. Add one to write down how something is done.</div>';
-  list.querySelectorAll('.file-item').forEach(el => el.onclick = () => selectFile(el.dataset.file, el));
+  const paint = (listId, test, untitled, empty) => {
+    const list = $(listId);
+    if (!list) return;
+    const mine = rows.filter(r => test(r.filename)).sort((a,b) => (a.title||'').localeCompare(b.title||''));
+    list.innerHTML = mine.length ? mine.map(r =>
+      `<div class="file-item${r.filename===curFile?' active':''}" data-file="${esc(r.filename)}">` +
+      `<div class="file-name" data-builtin="">${esc(r.title || untitled)}</div>` +
+      `<div class="file-desc" data-builtin="">${esc(r.description || '')}</div></div>`).join('')
+      : `<div class="files-empty">${empty}</div>`;
+    list.querySelectorAll('.file-item').forEach(el => el.onclick = () => selectFile(el.dataset.file, el));
+  };
+  paint('sop-list', isSop, 'Untitled SOP', 'No SOPs yet. Add one to write down how something is done.');
+  paint('agr-list', isAgr, 'Untitled agreement', 'No agreements yet. Add the contracts you send closers, media buyers and other roles to sign.');
 }
 
 async function newSop() {
@@ -207,19 +218,32 @@ async function newSop() {
   if (el) { selectFile(filename, el); renameFile(); }
 }
 
+async function newAgreement() {
+  if (!db) return;
+  const filename = 'agreement-' + Date.now().toString(36) + '.md';
+  const content = '# New agreement\n\n**Role:** \n\n**Between:** QuoteLeads and \n\n## Scope of work\n\n## Payment\n\n## Term and termination\n\n## Confidentiality\n\n## Signatures\n\n| | Name | Signature | Date |\n|---|---|---|---|\n| QuoteLeads | | | |\n| Contractor | | | |\n';
+  const {error} = await db.from('agent_files').insert({agent:'docs', filename, title:'New agreement', content, updated_at:now()});
+  if (error) { toast('Could not add agreement: '+error.message, true); return; }
+  curFile = filename;
+  await loadFileNames();
+  showFilesTab('agr');
+  const el = document.querySelector(`.file-item[data-file="${CSS.escape(filename)}"]`);
+  if (el) { selectFile(filename, el); renameFile(); }
+}
+
 async function deleteSop() {
-  if (!isSop(curFile)) return;
+  if (!isDoc(curFile)) return;
   const name = $('file-editor-name').textContent;
-  if (!confirm(`Delete the SOP "${name}"? This can't be undone.`)) return;
+  if (!confirm(`Delete the ${isAgr(curFile) ? 'agreement' : 'SOP'} "${name}"? This can't be undone.`)) return;
   const pdf = _sopMeta && _sopMeta.pdf_path;
   const {error} = await db.from('agent_files').delete().eq('agent','docs').eq('filename',curFile);
   if (error) { toast('Delete failed: '+error.message, true); return; }
   if (pdf) await db.storage.from('sop-files').remove([pdf]);
   toast('Deleted ✓');
-  const next = document.querySelector('#sop-list .file-item:not(.active)') || document.querySelector('#files-group-tmpl .file-item');
+  const next = document.querySelector(`#${isAgr(curFile) ? 'agr' : 'sop'}-list .file-item:not(.active)`) || document.querySelector('#files-group-tmpl .file-item');
   await loadFileNames();
   const el = next && document.querySelector(`.file-item[data-file="${CSS.escape(next.dataset.file)}"]`);
-  if (el) { showFilesTab(isSop(el.dataset.file) ? 'sop' : 'tmpl'); selectFile(el.dataset.file, el); }
+  if (el) { showFilesTab(filesTabOf(el.dataset.file)); selectFile(el.dataset.file, el); }
 }
 
 // Names shown in the list. The filename is the key the content is saved
@@ -243,7 +267,7 @@ async function loadFileNames() {
 function renameFile() {
   const item = document.querySelector(`.file-item[data-file="${CSS.escape(curFile)}"]`);
   if (!item || item.querySelector('.file-rename')) return;
-  showFilesTab(isSop(curFile) ? 'sop' : 'tmpl');
+  showFilesTab(filesTabOf(curFile));
   const nm = item.querySelector('.file-name'), ds = item.querySelector('.file-desc');
   const form = document.createElement('div');
   form.className = 'file-rename';
@@ -261,7 +285,7 @@ function renameFile() {
     if (!title) { toast('Give it a name', true); return; }
     // Blank or unchanged-from-built-in means "use the built-in one".
     // SOPs have no built-in name, so theirs is always stored.
-    const row = isSop(curFile) ? { title, description: description || null } : {
+    const row = isDoc(curFile) ? { title, description: description || null } : {
                   title: title === (nm.dataset.builtin ?? nm.textContent) ? null : title,
                   description: description && description !== (ds.dataset.builtin ?? ds.textContent) ? description : null };
     const {data:existing} = await db.from('agent_files').select('id').eq('agent','docs').eq('filename',curFile).maybeSingle();
@@ -302,7 +326,7 @@ async function saveFileContent() {
   if (error) { toast('Save failed: '+error.message, true); return; }
   toast('Saved ✓ - '+curFile);
   // Back to the formatted view, showing what was just saved.
-  if (isSop(curFile)) { _sopEditing = false; applySopMode(); }
+  if (isDoc(curFile)) { _sopEditing = false; applySopMode(); }
 }
 
 let _tmplClients = [], _tmplPreviewOn = false;
