@@ -264,8 +264,10 @@ async function renderSalesMetrics(leads) {
   const inRange = ts => { if (!ts) return false; if (!range) return true; const d = new Date(ts).toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }); return d >= range.from && d <= range.to; };
   const came = leads.filter(l => inRange(l.created_at));
   const contactable = came.filter(l => l.contactable === true).length;
-  const offers = leads.filter(l => inRange(l.offer_sent_at)).length;
   const sales = leads.filter(l => l.stage === 'closed_won' && inRange(l.won_at || l.stage_changed_at));
+  // Offers sent in the period, plus any lead won in it whose offer went out
+  // earlier, so every sale counted here is also among the offers.
+  const offers = leads.filter(l => inRange(l.offer_sent_at) || sales.includes(l)).length;
   const revenue = sales.reduce((a, l) => a + Number(l.value || 0), 0);
   const days = sales.filter(l => l.won_at).map(l => (new Date(l.won_at) - new Date(l.created_at)) / DAY_MS);
   const sp = IS_REP ? null : await pipelineSpend(range?.from, range?.to);
