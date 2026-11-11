@@ -285,9 +285,9 @@ function mergeTemplate(text, vals) {
     .trim();
 }
 // Templates by niche. sales_email_templates is the default every niche gets;
-// sales_email_template_niches holds a niche's own version of any of the three.
+// sales_email_template_niches holds a niche's own version of any of them.
 // Niches are matched in lower case, so "Solar" on a lead finds "solar".
-const TPL_KINDS = ['info', 'info_5k', 'followup'];
+const TPL_KINDS = ['info', 'info_5k', 'followup', 'onboarding'];
 const nicheKey = n => String(n || '').trim().toLowerCase();
 const NICHE_NAMES = { hvac: 'HVAC', ev: 'EV', ev_charger: 'EV Charger' };
 const nicheName = n => !n ? 'All niches' : NICHE_NAMES[n] || String(n).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());

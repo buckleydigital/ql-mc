@@ -408,16 +408,35 @@ async function redownloadInvoice(id) {
 }
 
 // --- Send invoice by email (send-invoice edge function) ---
+// Who the open invoice is for, so "Use onboarding email" can fill the template.
+let _siOnboarding = null;
+// Swaps the default message for the onboarding template (Templates tab), for
+// the build invoice a new client gets. Signed as whoever is sending.
+async function useOnboardingEmail() {
+  const tpls = await ensureEmailTemplates(); if (!tpls) return;
+  const v = _siOnboarding || {};
+  const tpl = pickTemplate(tpls, 'onboarding', v.niche);
+  if (!tpl) { alert('There is no onboarding template yet. Add one in Templates.'); return; }
+  const {data: {session}} = await db.auth.getSession();
+  const me = session ? await sendAsIdentity(session.user.id, session) : {name: '', email: ''};
+  const vals = {first_name: v.first_name || 'there', company_name: v.company_name || '', rep_name: me.name, rep_email: me.email};
+  setVal('si-subject', mergeTemplate(tpl.subject, vals));
+  setVal('si-message', mergeTemplate(tpl.body, vals));
+}
+
 // A preview first: nothing goes until Send is pressed in the modal.
 async function openSendInvoice(id) {
   const {data: inv} = await db.from('invoices').select('*').eq('id', id).single();
   if (!inv) { alert('Could not load that invoice.'); return; }
   const [biz, cl] = await Promise.all([
     loadBizSettings(),
-    inv.client_id ? db.from('clients').select('contact_name,email').eq('id', inv.client_id).maybeSingle() : Promise.resolve({data: null}),
+    inv.client_id ? db.from('clients').select('contact_name,company_name,email,niche').eq('id', inv.client_id).maybeSingle() : Promise.resolve({data: null}),
   ]);
   const c = cl.data || {};
-  const first = String(c.contact_name || '').trim().split(/\s+/)[0];
+  // "Mario Pirotta – The Pirotta Group" on an invoice raised for a lead.
+  const [nameBit, coBit] = String(inv.client_name || '').split(/\s+[–-]\s+/);
+  const first = String(c.contact_name || (coBit ? nameBit : '') || '').trim().split(/\s+/)[0];
+  _siOnboarding = { first_name: first, company_name: (c.company_name || coBit || '').trim(), niche: c.niche || inv.vertical || '' };
   const money = '$' + Number(inv.total || 0).toLocaleString('en-AU', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   const due = inv.due_date ? new Date(inv.due_date + 'T00:00:00').toLocaleDateString('en-AU', {day: 'numeric', month: 'long', year: 'numeric'}) : '';
   const from = biz.business_name || 'QuoteLeads';

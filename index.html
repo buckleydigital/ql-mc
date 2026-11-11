@@ -481,6 +481,15 @@
           <span id="tpl-followup-note" style="font-size:12px;color:var(--ink3)"></span>
         </div>
 
+        <div class="sl" style="margin-top:22px">Onboarding Email <div class="sl-line"></div></div>
+        <div style="font-size:13px;color:var(--ink2);line-height:1.6;margin-bottom:10px">Sent with the build invoice once a client says yes. Load it from the Send invoice window with "Use onboarding email"; the invoice PDF is attached for you.</div>
+        <div class="frow"><label class="flabel">Subject</label><input class="fi" id="tpl-onboarding-subject"></div>
+        <div class="frow"><label class="flabel">Body</label><textarea class="fta" id="tpl-onboarding-body" style="min-height:300px;line-height:1.6"></textarea></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-p btn-sm" onclick="saveEmailTemplate('onboarding')">Save onboarding email</button>
+          <span id="tpl-onboarding-note" style="font-size:12px;color:var(--ink3)"></span>
+        </div>
+
         <div class="sl" style="margin-top:22px">No-Answer Follow-Ups (automatic) <div class="sl-line"></div></div>
         <div style="font-size:13px;color:var(--ink2);line-height:1.6;margin-bottom:10px">When a pipeline lead is moved to No Answer, it gets a text and an email on each of the days below, each morning, until it's moved out of No Answer. The email goes out as the lead's rep (or you, if it has none). Nobody who has opted out or is on the do-not-contact list is sent anything. Use {first_name}, {company_name}, {rep_name} and {rep_email}. Leave a text or email blank to skip it on that day.</div>
         <div class="frow" style="flex:0 0 auto;margin-bottom:10px"><label class="flabel" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="tpl-na-enabled"> Switched on</label></div>
@@ -2459,6 +2468,7 @@
     <div class="msub" style="margin-top:4px">The invoice PDF is attached. Replies come back to you. Nothing is sent until you press Send.</div>
     <div class="macts">
       <button class="btn" onclick="redownloadInvoice($('si-id').value)">Download PDF</button>
+      <button class="btn" onclick="useOnboardingEmail()">Use onboarding email</button>
       <div style="flex:1"></div>
       <button class="btn" onclick="closeModal('m-send-invoice')">Cancel</button>
       <button class="btn btn-p" id="si-send" onclick="sendInvoice()">Send</button>
