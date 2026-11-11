@@ -271,6 +271,19 @@ async function renderSalesMetrics(leads) {
   const revenue = sales.reduce((a, l) => a + Number(l.value || 0), 0);
   const days = sales.filter(l => l.won_at).map(l => (new Date(l.won_at) - new Date(l.created_at)) / DAY_MS);
   const sp = IS_REP ? null : await pipelineSpend(range?.from, range?.to);
+  // Days to Paid (Monthly Invoices): managed invoices paid in the period,
+  // from the day the invoice was sent (or dated, if never sent) to the day it
+  // was paid, in Sydney days. Every client, whichever rep is selected. Admin only.
+  let paidDays = [];
+  if (!IS_REP) {
+    const { data: inv } = await db.from('invoices').select('sent_at,invoice_date,paid_at')
+      .eq('offer_type', 'managed').eq('status', 'paid').not('paid_at', 'is', null);
+    const sydDay = ts => new Date(ts).toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
+    paidDays = (inv || []).filter(i => inRange(i.paid_at) && (i.sent_at || i.invoice_date)).map(i => {
+      const from = i.sent_at ? sydDay(i.sent_at) : String(i.invoice_date).slice(0, 10);
+      return Math.max(0, Math.round((new Date(sydDay(i.paid_at)) - new Date(from)) / DAY_MS));
+    });
+  }
   const scoped = !!sbRep;
   let spend = sp ? Number(sp.spend) : null;
   if (spend != null && scoped) spend = sp.leads_total ? spend * came.length / Number(sp.leads_total) : 0;
@@ -286,7 +299,7 @@ async function renderSalesMetrics(leads) {
   const n = v => v == null ? '-' : v.toLocaleString('en-AU');
   const gp = sales.length && spend != null ? (revenue / 1.1 - spend) / sales.length : null;
   // Anything built on ad spend, and client lifetime value: a rep sees neither.
-  const SPEND_CARDS = ['Spent on Ads', 'Return on Ad Spend', 'Cost per Lead', 'Cost per Offer Sent', 'CAC', 'Avg Gross Profit', 'Average LTV'];
+  const SPEND_CARDS = ['Spent on Ads', 'Return on Ad Spend', 'Cost per Lead', 'Cost per Offer Sent', 'CAC', 'Avg Gross Profit', 'Average LTV', 'Days to Paid (Monthly Invoices)'];
   const cards = [
     ['Lead Volume', n(came.length), 'came in', 'blu'],
     ['Contactable', n(contactable), pct(contactable, came.length) && pct(contactable, came.length) + ' of leads', ''],
@@ -303,11 +316,13 @@ async function renderSalesMetrics(leads) {
     ['CAC', money(per(spend, sales.length)), 'ad spend ÷ sales', ''],
     ['Avg Gross Profit', money(gp), 'per sale: revenue ex GST less ad spend', gp != null && gp < 0 ? 'red' : 'grn'],
     ['Avg Days to Sale', days.length ? (days.reduce((a, d) => a + d, 0) / days.length).toFixed(1) : '-', 'lead in → won', ''],
+    ['Days to Paid (Monthly Invoices)', paidDays.length ? (paidDays.reduce((a, d) => a + d, 0) / paidDays.length).toFixed(1) : '-',
+      paidDays.length ? `invoice sent → paid · ${paidDays.length} invoice${paidDays.length === 1 ? '' : 's'}` : 'invoice sent → paid', ''],
   ];
   // Three rows: how leads move, what they're worth, what they cost.
   const GROUPS = [
     ['Funnel', ['Lead Volume', 'Contactable', 'Sent Offer', 'Sales', 'Avg Days to Sale']],
-    ['Money', ['Revenue', 'Spent on Ads', 'Return on Ad Spend', 'AOV', 'Average LTV', 'Avg Gross Profit']],
+    ['Money', ['Revenue', 'Spent on Ads', 'Return on Ad Spend', 'AOV', 'Average LTV', 'Avg Gross Profit', 'Days to Paid (Monthly Invoices)']],
     ['Unit economics', ['Cost per Lead', 'Value per Lead', 'Cost per Offer Sent', 'CAC']],
   ];
   const card = ([label, val, sub, cls]) =>
