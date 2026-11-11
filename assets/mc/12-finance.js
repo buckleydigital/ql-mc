@@ -150,17 +150,9 @@ function renderFinance(expenses,adSpend,subs,pplClients,mgClients,mgOrders,pplOr
   const trueCpl=acTrue.length?'$'+(acTrue.reduce((s,c)=>s+c.true_cpl,0)/acTrue.length).toFixed(2):'-';
   const totalExp=te+pplSp+agSp;
   const np=tr-totalExp,margin=tr>0?((np/tr)*100).toFixed(1):0;
-  const gst=tr>0?tr/11:0;
-  const profitAfterGst=np-gst;
-  const marginAfterGst=tr>0?((profitAfterGst/tr)*100).toFixed(1):0;
   setText('fin-rev',fmt(tr));setText('fin-exp',fmt(totalExp));setText('fin-profit',fmt(np));
   $('fin-profit').className=`kval ${np>=0?'grn':'red'}`;
   setText('fin-margin',`${margin}% margin`);setText('fin-subs',ts!==null?fmt(ts):'-');
-  if($('fin-profit-gst')){
-    $('fin-profit-gst').className=`kval ${profitAfterGst>=0?'grn':'red'}`;
-    setText('fin-profit-gst',fmt(profitAfterGst));
-    setText('fin-gst-detail',`GST on rev ${fmt(gst)} · ${marginAfterGst}% margin`);
-  }
   setText('fin-ppl-spend',fmt(pplSp));setText('fin-ag-spend',fmt(agSp));setText('fin-mg-spend',mgTotalRev>0?fmt(mgTotalRev):'-');
   setText('fin-meta-cpl',metaCpl);setText('fin-true-cpl',trueCpl);
   setText('fin-ppl-rev',pplRev>0?fmt(pplRev):'-');setText('fin-ppl-margin',pplRev>0?fmt(pplRev-pplSp):'-');
