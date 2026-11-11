@@ -490,6 +490,15 @@
           <span id="tpl-onboarding-note" style="font-size:12px;color:var(--ink3)"></span>
         </div>
 
+        <div class="sl" style="margin-top:22px">Handoff Email (CSM) <div class="sl-line"></div></div>
+        <div style="font-size:13px;color:var(--ink2);line-height:1.6;margin-bottom:10px">The CSM's first email to a new client, once they've paid, filled in the onboarding form and given Meta access. The CSM sends it from the Team Panel (Send intro email) with the sales rep who won the client CC'd. It fills in from the client's onboarding answers: {first_name}, {company_name}, {va_name} (the CSM), {rep_name}, {rep_intro} (a line introducing the rep, blank if there isn't one), {service_area}, {daily_budget}, {offers}, {brands}, {lead_delivery} and {assets_request} (a request for photos and video, only if they said they'd send some). A bullet line with nothing to fill in is left out.</div>
+        <div class="frow"><label class="flabel">Subject</label><input class="fi" id="tpl-handoff-subject"></div>
+        <div class="frow"><label class="flabel">Body</label><textarea class="fta" id="tpl-handoff-body" style="min-height:420px;line-height:1.6"></textarea></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-p btn-sm" onclick="saveEmailTemplate('handoff')">Save handoff email</button>
+          <span id="tpl-handoff-note" style="font-size:12px;color:var(--ink3)"></span>
+        </div>
+
         <div class="sl" style="margin-top:22px">No-Answer Follow-Ups (automatic) <div class="sl-line"></div></div>
         <div style="font-size:13px;color:var(--ink2);line-height:1.6;margin-bottom:10px">When a pipeline lead is moved to No Answer, it gets a text and an email on each of the days below, each morning, until it's moved out of No Answer. The email goes out as the lead's rep (or you, if it has none). Nobody who has opted out or is on the do-not-contact list is sent anything. Use {first_name}, {company_name}, {rep_name} and {rep_email}. Leave a text or email blank to skip it on that day.</div>
         <div class="frow" style="flex:0 0 auto;margin-bottom:10px"><label class="flabel" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="tpl-na-enabled"> Switched on</label></div>
