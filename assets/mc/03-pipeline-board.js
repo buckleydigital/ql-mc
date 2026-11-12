@@ -72,7 +72,7 @@ function crmNeedsFollowup(l, today = sydneyToday()) {
 }
 const CRM_FOLLOWUP_COLS = 'id,name,company,stage,next_followup,last_contact,contactable';
 
-const CRM_STAGES=[{id:'new_lead',label:'New Lead'},{id:'no_answer',label:'No Answer'},{id:'call_back',label:'Call-Back/Booked'},{id:'proposal',label:'Proposal'},{id:'closed_won',label:'Closed Won'},{id:'closed_lost',label:'Closed Lost'}];
+const CRM_STAGES=[{id:'new_lead',label:'New Lead'},{id:'no_answer',label:'No Answer'},{id:'call_back',label:'Booked'},{id:'proposal',label:'Proposal'},{id:'closed_won',label:'Closed Won'},{id:'closed_lost',label:'Closed Lost'}];
 async function loadCRM(resetPage) {
   if (resetPage) crmPage = 0;
 

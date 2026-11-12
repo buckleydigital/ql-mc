@@ -1535,7 +1535,7 @@
     <div class="frow"><label class="flabel">Stage</label>
       <select class="fs" id="l-stage">
         <option value="new_lead">New Lead</option><option value="no_answer">No Answer</option>
-        <option value="call_back">Call-Back/Booked</option><option value="proposal">Proposal / Follow-up</option>
+        <option value="call_back">Booked</option><option value="proposal">Proposal / Follow-up</option>
         <option value="closed_won">Closed Won</option><option value="closed_lost">Closed Lost</option>
       </select>
     </div>
@@ -1956,7 +1956,7 @@
     <div class="frow"><label class="flabel">Stage</label>
       <select class="fs" id="el-stage" onchange="checkConvertBanner();saveStageNow()">
         <option value="new_lead">New Lead</option><option value="no_answer">No Answer</option>
-        <option value="call_back">Call-Back/Booked</option><option value="proposal">Proposal / Follow-up</option>
+        <option value="call_back">Booked</option><option value="proposal">Proposal / Follow-up</option>
         <option value="closed_won">Closed Won</option><option value="closed_lost">Closed Lost</option>
       </select>
     </div>
@@ -2406,7 +2406,7 @@
       <div style="display:flex;gap:8px"><input class="fi" id="bs-meta-dataset" inputmode="numeric" placeholder="1323684475060326" style="flex:1"><button class="btn btn-sm" type="button" onclick="checkMetaCapi()">Check</button></div>
     </div>
     <div class="frow" style="margin-top:8px"><label class="flabel">Conversions API token</label><input class="fi" id="bs-meta-token" type="password" autocomplete="off" placeholder="Paste the token from Events Manager"></div>
-    <p style="font-size:12px;color:var(--ink3);margin:6px 0 0;line-height:1.6">When a pipeline lead moves to Call-Back/Booked, Proposal and Closed Won, that step goes to this pixel (as Schedule, QuoteSent and Purchase) so Meta learns which of our ads bring businesses that book, get a proposal and sign. Online checkouts are left out: the site pixel already reports those. It's sent with the token, not through our Meta app: in Events Manager, select the pixel, open Settings &rarr; Conversions API &rarr; Generate access token, and paste it here (Meta shows it once). The token is stored encrypted; leave it blank to keep the saved one. A blank pixel ID turns it off. <span id="bs-meta-status"></span></p>
+    <p style="font-size:12px;color:var(--ink3);margin:6px 0 0;line-height:1.6">When a pipeline lead moves to Booked, Proposal and Closed Won, that step goes to this pixel (as Schedule, QuoteSent and Purchase) so Meta learns which of our ads bring businesses that book, get a proposal and sign. Online checkouts are left out: the site pixel already reports those. It's sent with the token, not through our Meta app: in Events Manager, select the pixel, open Settings &rarr; Conversions API &rarr; Generate access token, and paste it here (Meta shows it once). The token is stored encrypted; leave it blank to keep the saved one. A blank pixel ID turns it off. <span id="bs-meta-status"></span></p>
     <p style="font-size:12px;color:var(--ink3);margin:6px 0 0;line-height:1.6">Sets the max cost per lead for every outstanding order without its own Max CPL: the most Meta can charge and still leave this margin of the price ex GST, after rep commission, replacing duds and paying Stripe. The listed price is ex-GST by default; commission is worked out on revenue ex-GST, so 15% on a $100 lead is $15, not $15 + GST. Blank margin turns it off. <a href="#" onclick="event.preventDefault();openCplCalc()" style="color:var(--acc)">Open the calculator</a></p>
     <div class="macts">
       <div style="flex:1"></div>

@@ -225,7 +225,7 @@ function stageBadge(s) {
   return 'bg-blu';
 }
 function stageLabel(s) {
-  return {active_client:'Active',paused:'Paused',churned:'Churned',lead:'Lead',onboarding:'Onboarding',active:'Active',proposal_sent:'Proposal Sent',new_lead:'New Lead',no_answer:'No Answer',call_back:'Call-Back/Booked',proposal:'Proposal',closed_won:'Closed Won',closed_lost:'Closed Lost'}[s] || s;
+  return {active_client:'Active',paused:'Paused',churned:'Churned',lead:'Lead',onboarding:'Onboarding',active:'Active',proposal_sent:'Proposal Sent',new_lead:'New Lead',no_answer:'No Answer',call_back:'Booked',proposal:'Proposal',closed_won:'Closed Won',closed_lost:'Closed Lost'}[s] || s;
 }
 
 // Shows what a click switches to: a sun in dark mode, a moon in light.
