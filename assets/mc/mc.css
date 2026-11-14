@@ -653,6 +653,22 @@ td strong{font-weight:600}
 .sop-md table{border-collapse:collapse;width:100%;font-size:13px}
 .sop-md th{text-align:left;font-weight:600;border-bottom:1px solid var(--bd2);padding:6px 8px}
 .sop-md td{border-bottom:1px solid var(--bd);padding:6px 8px;vertical-align:top}
+.sop-md .tr-subject{display:flex;gap:10px;align-items:baseline;padding:10px 12px;margin:0 0 14px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);font-weight:600}
+.sop-md .tr-subject span{font-family:var(--code);font-size:11px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em}
+.sop-md .tr-sec{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--acc);margin:22px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--bd)}
+.sop-md .tr-step{display:flex;gap:10px;align-items:center;font-size:15px;margin:24px 0 8px}
+.sop-md .tr-step span{flex-shrink:0;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:12px;background:var(--acc-dim);color:var(--acc)}
+.sop-md .tr-sub{font-size:13px;color:var(--ink2,var(--ink));margin:16px 0 6px}
+.sop-md .tr-you,.sop-md .tr-them{margin:6px 0 10px;padding:8px 12px;border-left:3px solid var(--acc);background:var(--s2);border-radius:0 var(--r) var(--r) 0}
+.sop-md .tr-them{border-left-color:var(--ink3);font-style:italic}
+.sop-md .tr-who{font-family:var(--code);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3);margin-bottom:4px;font-style:normal}
+.sop-md .tr-line{margin:3px 0}
+.sop-md .tr-li::before{content:'• ';color:var(--acc)}
+.sop-md .tr-dir{margin:4px 0;font-size:12.5px;color:var(--ink3);font-style:italic}
+.sop-md .tr-list{margin:6px 0 10px 20px}
+.sop-md .tr-hr{border:none;border-top:1px solid var(--bd);margin:16px 0}
+.sop-md .tr-var{font-family:var(--code);font-size:11.5px;padding:1px 6px;border-radius:4px;background:var(--acc-dim);color:var(--acc);white-space:nowrap}
+.sop-md a{color:var(--acc);word-break:break-all}
 .file-editor-ta{flex:1;background:transparent;border:none;outline:none;color:var(--ink);font-family:var(--code);font-size:var(--fs-base);line-height:1.7;padding:14px;resize:none}
 @media(max-width:700px){
   .files-layout{grid-template-columns:1fr;height:auto}

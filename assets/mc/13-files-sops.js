@@ -37,7 +37,7 @@ function paintFileTools() {
   $('tmpl-preview-btn').style.display = doc ? 'none' : '';
   $('sop-del-btn').style.display = doc ? '' : 'none';
   $('sop-tools').style.display = sop ? '' : 'none';
-  $('sop-edit-btn').style.display = doc ? '' : 'none';
+  $('sop-edit-btn').style.display = '';
   _sopEditing = false;
   applySopMode();
   if (sop) loadSopMeta();
@@ -49,10 +49,15 @@ let _sopEditing = false;
 function applySopMode() {
   const ta = $('file-editor-ta'), view = $('sop-view'), btn = $('sop-edit-btn');
   if (!ta || !view) return;
-  const sop = isDoc(curFile);
+  const doc = isDoc(curFile);
   const loading = ta.value === 'Loading…';
-  const reading = sop && !_sopEditing && (loading || ta.value.trim());
-  if (reading) view.innerHTML = loading ? '<p style="color:var(--ink3)">Loading…</p>' : sopMarkdown(ta.value);
+  const reading = !_sopEditing && (loading || ta.value.trim());
+  if (reading) {
+    // Templates fill in the chosen client while Preview is on.
+    const client = !doc && _tmplPreviewOn ? (_tmplClients.find(c => String(c.id) === $('tmpl-client-sel')?.value) || null) : null;
+    view.innerHTML = loading ? '<p style="color:var(--ink3)">Loading…</p>'
+      : doc ? sopMarkdown(ta.value) : tmplRender(applyTemplateVars(ta.value, client));
+  }
   view.style.display = reading ? '' : 'none';
   ta.style.display = reading ? 'none' : '';
   if (btn) btn.textContent = reading ? 'Edit' : 'View';
@@ -104,6 +109,118 @@ function sopMarkdown(md) {
     }
     const para = []; while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s|\s*\||\s*([-*]|\d+\.)\s|\s*-{3,}\s*$)/.test(lines[i])) para.push(lines[i++].trim());
     html += `<p>${inline(para.join(' '))}</p>`;
+  }
+  return html;
+}
+
+// Templates and scripts are plain text written to be copied into an email or
+// read on a call, so they aren't Markdown. This reads their own conventions
+// and lays them out like a SOP, without changing the saved text: a Subject
+// line, ━━━ CAPS ━━━ section banners, numbered script steps, short Title Case
+// subheadings, "You:" with the lines to say, the prospect's objections,
+// stage directions, bullet and numbered lists, {{fields}} / [fields] as chips,
+// and links.
+function tmplRender(text) {
+  const inline = (t) => esc(t)
+    .replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)])/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')
+    .replace(/(\{\{[^}]+\}\}|\[[A-Z][^\]]{0,40}\])/g, '<span class="tr-var">$1</span>');
+  const L = String(text || '').replace(/\r/g, '').split('\n');
+  const blank = (k) => k < 0 || k >= L.length || !L[k].trim();
+  const num = (l) => { const m = (l || '').match(/^\s*(\d{1,2})[.)]\s+\S/); return m ? +m[1] : null; };
+  const isRule = (l) => /^\s*[━—─_=\-]{6,}\s*$/.test(l || '');
+  const isQuote = (l) => /^\s*["“]/.test(l || '');
+  const isYou = (l) => /^\s*you:\s*$/i.test(l || '');
+  const isBullet = (l) => /^\s*[•●▪\-*✓✔]\s+/.test(l || '');
+  const isCaps = (l) => { const t = (l || '').trim(); return t.length > 2 && t.length < 70 && /[A-Z]{3}/.test(t) && t === t.toUpperCase() && !/^https?:/i.test(t); };
+  const greeting = /^(hi|hey|hello|dear|cheers|thanks|thank you|kind regards|regards|speak soon|best)\b/i;
+  const isTitle = (l) => {
+    const t = (l || '').trim();
+    if (!t || t.length > 60 || /[.,!?"”]$/.test(t) || isQuote(t) || greeting.test(t) || /https?:|@|\{\{/.test(t)) return false;
+    const words = t.replace(/[–—:()]/g, ' ').split(/\s+/).filter(Boolean);
+    if (words.length < 2 || words.length > 9) return false;
+    const caps = words.filter((w) => /^[A-Z0-9$]/.test(w)).length;
+    return caps / words.length >= 0.6;
+  };
+  let html = '', i = 0, inScript = false;
+  // The first non-empty line may be the email's subject.
+  while (i < L.length && blank(i)) i++;
+  const sm = (L[i] || '').match(/^\s*subject:\s*(.+)$/i);
+  if (sm) { html += `<div class="tr-subject"><span>Subject</span>${inline(sm[1])}</div>`; i++; }
+  else if (isTitle(L[i]) && blank(i + 1)) { html += `<h2>${inline(L[i].trim())}</h2>`; i++; }
+  while (i < L.length) {
+    const l = L[i], t = l.trim();
+    if (!t) { i++; continue; }
+    // ━━━ / CAPS / ━━━ banner, or a lone rule.
+    if (isRule(l)) {
+      let j = i + 1; while (j < L.length && blank(j)) j++;
+      if (j < L.length && isCaps(L[j])) {
+        html += `<h3 class="tr-sec">${inline(L[j].trim().replace(/:$/, ''))}</h3>`;
+        i = j + 1; if (isRule(L[i])) i++;
+      } else { html += '<hr class="tr-hr">'; i++; }
+      continue;
+    }
+    if (isCaps(l)) { html += `<h3 class="tr-sec">${inline(t.replace(/:$/, ''))}</h3>`; i++; continue; }
+    // A numbered script step: on its own, not followed by the next number.
+    const n = num(l);
+    if (n != null && blank(i - 1) && num(L[i + 1]) !== n + 1 && t.length <= 110 && !isQuote(t.replace(/^\d+[.)]\s+/, ''))) {
+      html += `<h3 class="tr-step"><span>${n}</span>${inline(t.replace(/^\d+[.)]\s+/, ''))}</h3>`;
+      inScript = true; i++; continue;
+    }
+    // A short Title Case line that starts a section ("Current Business",
+    // "Option 1 – Pay Per Lead", "Investment: Standard").
+    if (isTitle(l) && (blank(i - 1) || /<\/h3>$/.test(html) || isYou(L[i + 1]))) {
+      html += `<h4 class="tr-sub">${inline(t.replace(/:$/, ''))}</h4>`; i++; continue;
+    }
+    // "You:" and the lines to say, with any directions in between.
+    if (isYou(l)) {
+      inScript = true;
+      let body = ''; i++;
+      while (i < L.length && !blank(i) && !isYou(L[i]) && !(isQuote(L[i]) && isYou(L[i + 1]))) {
+        const x = L[i].trim();
+        if (isTitle(x) && isYou(L[i + 1])) break;
+        if (isQuote(x)) {
+          // A quote can run over several lines until its closing mark.
+          let q = x; while (!/["”]\s*$/.test(q) && i + 1 < L.length && !blank(i + 1)) q += '\n' + L[++i].trim();
+          body += `<div class="tr-line">${inline(q.replace(/^["“]|["”]$/g, '')).replace(/\n/g, '<br>')}</div>`;
+        } else if (isBullet(x)) {
+          body += `<div class="tr-line tr-li">${inline(x.replace(/^[•●▪\-*✓✔]\s+/, ''))}</div>`;
+        } else if (num(x) != null) {
+          body += `<div class="tr-dir"><b>${num(x)}.</b> ${inline(x.replace(/^\d+[.)]\s+/, ''))}</div>`;
+        } else {
+          body += `<div class="tr-dir">${inline(x)}</div>`;
+        }
+        i++;
+      }
+      html += `<div class="tr-you"><div class="tr-who">You</div>${body}</div>`;
+      continue;
+    }
+    // What the prospect says, just before "You:".
+    if (isQuote(l) && (isYou(L[i + 1]) || (isTitle(L[i + 1]) && isYou(L[i + 2])))) {
+      html += `<div class="tr-them"><div class="tr-who">They say</div>${inline(t.replace(/^["“]|["”]$/g, ''))}</div>`; i++; continue;
+    }
+    // Lists: bullets, or numbered items (a numbered item can carry lines under it).
+    if (isBullet(l) || n != null) {
+      const ordered = !isBullet(l);
+      const items = [];
+      while (i < L.length && !blank(i)) {
+        const x = L[i].trim();
+        if (ordered ? num(x) != null : isBullet(x)) items.push({ n: num(x), t: x.replace(ordered ? /^\d+[.)]\s+/ : /^[•●▪\-*✓✔]\s+/, ''), sub: [] });
+        else if (items.length && (ordered || /^\s{2,}/.test(L[i]))) items[items.length - 1].sub.push(x);
+        else break;
+        i++;
+      }
+      const tag = ordered ? 'ol' : 'ul';
+      html += `<${tag} class="tr-list">` + items.map((it) => `<li${it.n != null ? ` value="${it.n}"` : ''}>${inline(it.t)}${it.sub.map((x) => `<div class="${isQuote(x) ? 'tr-line' : 'tr-dir'}">${inline(x.replace(/^["“]|["”]$/g, ''))}</div>`).join('')}</li>`).join('') + `</${tag}>`;
+      continue;
+    }
+    // Inside a script, a lone instruction ("Let them explain.", "Then:").
+    if (inScript && !isQuote(l) && t.length < 90 && blank(i + 1) === false && isYou(L[i + 1]) === false && /:$|^(let|then|if|note|depending|address|before|explain)\b/i.test(t)) {
+      html += `<div class="tr-dir">${inline(t)}</div>`; i++; continue;
+    }
+    // A paragraph: its line breaks are kept, as they are in an email.
+    const para = [];
+    while (i < L.length && !blank(i) && !isRule(L[i]) && !isYou(L[i]) && !(para.length && (isBullet(L[i]) || isCaps(L[i]) || (num(L[i]) != null && para.length && /:$/.test(para[para.length - 1]))))) para.push(L[i++].trim());
+    html += `<p>${para.map(inline).join('<br>')}</p>`;
   }
   return html;
 }
@@ -326,7 +443,7 @@ async function saveFileContent() {
   if (error) { toast('Save failed: '+error.message, true); return; }
   toast('Saved ✓ - '+curFile);
   // Back to the formatted view, showing what was just saved.
-  if (isDoc(curFile)) { _sopEditing = false; applySopMode(); }
+  _sopEditing = false; applySopMode();
 }
 
 let _tmplClients = [], _tmplPreviewOn = false;
@@ -350,24 +467,15 @@ function applyTemplateVars(text, client) {
     .replace(/\{\{leads_delivered\}\}/gi, client.leads_delivered||'');
 }
 function updateTemplatePreview() {
-  if (!_tmplPreviewOn) return;
-  const sel=$('tmpl-client-sel'),ta=$('file-editor-ta'),preview=$('tmpl-preview');
-  if (!sel||!ta||!preview) return;
-  const client=_tmplClients.find(c=>String(c.id)===sel.value)||null;
-  preview.textContent = applyTemplateVars(ta.value, client);
+  if (_tmplPreviewOn) applySopMode();
 }
+// Preview shows the formatted template with the chosen client's details in.
 function toggleTemplatePreview() {
-  const sel=$('tmpl-client-sel'),ta=$('file-editor-ta'),preview=$('tmpl-preview'),btn=$('tmpl-preview-btn');
-  if (!sel||!ta||!preview) return;
-  if (!sel.value) { toast('Select a client to preview',true); return; }
+  const sel=$('tmpl-client-sel'),btn=$('tmpl-preview-btn');
+  if (!sel) return;
+  if (!_tmplPreviewOn && !sel.value) { toast('Select a client to preview',true); return; }
   _tmplPreviewOn = !_tmplPreviewOn;
-  if (_tmplPreviewOn) {
-    const client=_tmplClients.find(c=>String(c.id)===sel.value)||null;
-    preview.textContent = applyTemplateVars(ta.value, client);
-    preview.style.display='block'; ta.style.display='none';
-    if(btn) btn.textContent='Edit';
-  } else {
-    preview.style.display='none'; ta.style.display='';
-    if(btn) btn.textContent='Preview';
-  }
+  if (_tmplPreviewOn) _sopEditing = false;
+  if (btn) btn.textContent = _tmplPreviewOn ? 'Hide preview' : 'Preview';
+  applySopMode();
 }
