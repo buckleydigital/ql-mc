@@ -341,7 +341,7 @@ function renderEmail(text, p) {
     .replace(/\{company\}/g, (p && p.business_name) || 'your business')
     .replace(/\{suburb\}/g, (p && p.suburb) || 'your area')
     .replace(/\{opener\}/g, (p && p.opener) || '')
-    .replace(/\{sender\}/g, (orSender && (orSender.sender_name || orSender.business_name)) || 'QuoteLeads');
+    .replace(/\{sender\}/g, 'Jay'); // the sending inbox's first name (James, Jay or Will)
 }
 function senderFooter() {
   const s = orSender || {};
