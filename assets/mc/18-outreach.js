@@ -384,11 +384,21 @@ async function loadConnection() {
     (accts.length
       ? '<div class="or-sub" style="margin-bottom:4px">Tick the inboxes that send. Only warmed inboxes should send - give new ones 2-3 weeks.</div>' +
         accts.map(function (a) {
-          return '<label class="or-acct"><input type="checkbox" class="os-acct" value="' + orAttr(a.email) + '"' + (a.selected ? ' checked' : '') + ' style="width:18px;height:18px;margin:0">' +
+          return '<label class="or-acct"><input type="checkbox" class="os-acct" value="' + orAttr(a.email) + '"' + (a.selected ? ' checked' : '') + ' onchange="saveSendingInboxes()" style="width:18px;height:18px;margin:0">' +
             '<span class="e">' + jmEsc(a.email) + '</span>' + pill(a.state) + pill(a.warmup) +
             (a.warmup_score != null ? '<span class="or-sub">warm-up score ' + Number(a.warmup_score) + '</span>' : '') + '</label>';
         }).join('')
       : '<div class="or-sub" style="line-height:1.6">No inboxes in Instantly yet. Add your sending inboxes there (Email Accounts → Add), turn warm-up on, and they will appear here to tick.</div>');
+}
+
+// Ticking an inbox saves straight away. It used to wait for "Save sender", so
+// pressing Sync (which reloads this panel) first quietly dropped the ticks.
+async function saveSendingInboxes() {
+  const accounts = Array.prototype.map.call(document.querySelectorAll('.os-acct:checked'), function (c) { return c.value; });
+  const { error } = await db.rpc('outreach_settings_update', { p: { sending_accounts: accounts } });
+  if (error) { toast('Could not save the inboxes: ' + error.message, true); return; }
+  orSender.sending_accounts = accounts;
+  toast('Sending inboxes saved ✓ (' + accounts.length + ') - press Sync to update Instantly');
 }
 
 async function saveSender() {
