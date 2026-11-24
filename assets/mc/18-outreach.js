@@ -106,8 +106,10 @@ async function runOutreachSearch() {
   const live = orNiches.filter(function (n) { return n.enabled && n.daily_target > 0; });
   if (!live.length) { toast('Switch a niche on first', true); return; }
   const n = live.reduce(function (a, x) { return a + Number(x.daily_target); }, 0);
+  if (!orSender) { const r = await db.rpc('outreach_settings_get'); orSender = r.data || {}; }
+  const cap = orSender.find_daily_searches != null ? orSender.find_daily_searches : 100;
   if (!confirm('Search for up to ' + n + ' new prospects in ' + live.map(function (x) { return x.label; }).join(', ') +
-    '?\n\nClaude searches the web for them (at most 300 web searches a day, about US$3-4), then emails are checked and each one scored. Nothing is sent.')) return;
+    '?\n\nClaude searches the web for them (at most ' + cap + ' web searches a day, about US$' + (cap / 100).toFixed(2) + ' plus tokens; change it under Sending), then emails are checked and each one scored. Nothing is sent.')) return;
   const btn = $('or-run-btn');
   btn.disabled = true; btn.textContent = 'Starting…';
   const { error } = await db.rpc('outreach_run_now');
@@ -352,6 +354,7 @@ async function loadSending() {
   setVal('os-to', orSender.send_to || '16:30');
   setVal('os-tz', orSender.timezone || 'Australia/Brisbane');
   setVal('os-limit', orSender.daily_limit || 30);
+  setVal('os-searches', orSender.find_daily_searches != null ? orSender.find_daily_searches : 100);
   loadAutopilot();
   renderSequences();
   loadOutreachEvents();
@@ -399,6 +402,7 @@ async function saveSender() {
     sender_name: $('os-name').value, business_name: $('os-biz').value, postal_address: $('os-addr').value,
     send_from: $('os-from').value, send_to: $('os-to').value, timezone: $('os-tz').value,
     daily_limit: parseInt($('os-limit').value, 10) || 30,
+    find_daily_searches: Math.max(0, parseInt($('os-searches').value, 10) || 0),
   };
   if (document.querySelectorAll('.os-acct').length) patch.sending_accounts = accounts;
   const { error } = await db.rpc('outreach_settings_update', { p: patch });
