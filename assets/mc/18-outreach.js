@@ -108,6 +108,7 @@ async function runOutreachSearch() {
   const n = live.reduce(function (a, x) { return a + Number(x.daily_target); }, 0);
   if (!orSender) { const r = await db.rpc('outreach_settings_get'); orSender = r.data || {}; }
   const cap = orSender.find_daily_searches != null ? orSender.find_daily_searches : 100;
+  if (cap === 0) { toast('Searching is paused: Web searches a day is 0 under Sending. Set it to 100 and save, then run again.', true); return; }
   if (!confirm('Search for up to ' + n + ' new prospects in ' + live.map(function (x) { return x.label; }).join(', ') +
     '?\n\nClaude searches the web for them (at most ' + cap + ' web searches a day, about US$' + (cap / 100).toFixed(2) + ' plus tokens; change it under Sending), then emails are checked and each one scored. Nothing is sent.')) return;
   const btn = $('or-run-btn');
@@ -402,7 +403,8 @@ async function saveSender() {
     sender_name: $('os-name').value, business_name: $('os-biz').value, postal_address: $('os-addr').value,
     send_from: $('os-from').value, send_to: $('os-to').value, timezone: $('os-tz').value,
     daily_limit: parseInt($('os-limit').value, 10) || 30,
-    find_daily_searches: Math.max(0, parseInt($('os-searches').value, 10) || 0),
+    // Blank keeps the default (100). Only a typed 0 pauses searching.
+    find_daily_searches: $('os-searches').value.trim() === '' ? 100 : Math.max(0, parseInt($('os-searches').value, 10) || 0),
   };
   if (document.querySelectorAll('.os-acct').length) patch.sending_accounts = accounts;
   const { error } = await db.rpc('outreach_settings_update', { p: patch });
