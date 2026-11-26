@@ -1,6 +1,6 @@
 // Notes - free-form notes for the team running Mission Control, separate from
 // Tasks (nothing is due, nothing gets ticked off). Stored in mc_notes; RLS
-// keeps sales reps and lead buyers out.
+// shows each person only their own notes, and keeps sales reps out.
 let notesAll = [], notesOpenId = null, notesDirty = false;
 
 async function loadNotes() {
@@ -27,7 +27,7 @@ function renderNotes() {
     <button type="button" class="note-card${n.id === notesOpenId ? ' on' : ''}" onclick="openNote('${n.id}')">
       <div class="note-t">${n.pinned ? '<span class="note-pin" title="Pinned">●</span>' : ''}${esc(n.title || 'Untitled')}</div>
       <div class="note-p">${esc((n.body || '').slice(0, 140)) || '<span style="opacity:.6">Empty note</span>'}</div>
-      <div class="note-m">${esc(notesWhen(n.updated_at))}${n.created_by_email ? ' · ' + esc(n.created_by_email.split('@')[0]) : ''}</div>
+      <div class="note-m">${esc(notesWhen(n.updated_at))}</div>
     </button>`).join('')
     : `<div class="notes-empty">${q ? 'No notes match.' : 'No notes yet. Press <b>New note</b> to write one.'}</div>`;
   const n = notesAll.find(x => x.id === notesOpenId);
