@@ -13,7 +13,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-<link rel="stylesheet" href="assets/mc/mc.css?v=20261118c">
+<link rel="stylesheet" href="assets/mc/mc.css?v=20261126a">
 </head>
 <body>
 
@@ -146,6 +146,9 @@
           </button>
           <button class="navbtn" data-panel="files" onclick="nav('files',this)">
             <span class="ni"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg></span>Files
+          </button>
+          <button class="navbtn" data-panel="notes" onclick="nav('notes',this)">
+            <span class="ni"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg></span>Notes
           </button>
         </div>
 
@@ -1410,6 +1413,32 @@
       </div>
 
       <!-- ══ FILES ══ -->
+      <div class="panel" id="panel-notes">
+        <div class="ph">
+          <div class="ph-left"><h1>Notes <span class="cpill" id="notes-count">0</span></h1><p>Ideas, decisions and anything worth remembering. Separate from Tasks: nothing here is due.</p></div>
+          <div class="ph-right"><button class="btn btn-p btn-sm" onclick="newNote()">+ New note</button></div>
+        </div>
+        <div class="notes-layout">
+          <div class="notes-side">
+            <input class="fi" id="notes-search" type="search" placeholder="Search notes" oninput="renderNotes()">
+            <div id="notes-list"></div>
+          </div>
+          <div class="notes-main">
+            <div id="notes-blank" class="notes-empty" style="padding:40px 20px;text-align:center">Pick a note, or start a new one.</div>
+            <div id="notes-editor" style="display:none">
+              <input class="fi note-title-in" id="note-title" type="text" placeholder="Title" maxlength="160">
+              <textarea class="fi note-body-in" id="note-body" placeholder="Write anything…"></textarea>
+              <div class="notes-actions">
+                <button class="btn btn-p btn-sm" onclick="saveNote()">Save</button>
+                <button class="btn btn-sm" id="note-pin-btn" onclick="togglePinNote()">Pin</button>
+                <span class="notes-status" id="note-status"></span>
+                <button class="btn btn-sm notes-del" onclick="deleteNote()">Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="panel" id="panel-files">
         <div class="ph">
           <div class="ph-left"><h1>Files</h1><p>Email templates, scripts &amp; SOPs - editable markdown, and SOP PDFs</p></div>
@@ -3060,7 +3089,7 @@
 
 <script src="assets/mc/00-layout.js?v=20261117b"></script>
 
-<script src="assets/mc/01-core.js?v=20261119a"></script>
+<script src="assets/mc/01-core.js?v=20261126a"></script>
 <script src="assets/mc/02-ppl-leads-tasks.js?v=20261117b"></script>
 <script src="assets/mc/03-pipeline-board.js?v=20261117b"></script>
 <script src="assets/mc/04-scoreboard.js?v=20261117b"></script>
@@ -3083,6 +3112,7 @@
 <script src="assets/mc/21-managed-ads.js?v=20261117b"></script>
 <script src="assets/mc/22-email-blast.js?v=20261117b"></script>
 <script src="assets/mc/23-calendar.js?v=20261117b"></script>
+<script src="assets/mc/24-notes.js?v=20261126a"></script>
 
 </body>
 </html>

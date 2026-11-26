@@ -540,6 +540,7 @@ function nav(panel, el) {
   renderSubtabs(panel);
   if (panel === 'files') { if (IS_REP) { repFilesView(); } else { loadFileNames(); loadFileContent(); loadTemplateClientDropdown(); } }
   if (panel === 'cpl') loadCplEditorPanel();
+  if (panel === 'notes') loadNotes();
   if (panel === 'broadcast') loadBroadcast();
   if (panel === 'emailblast') loadEmailBlast();
   if (panel === 'pcal') loadPcal();
