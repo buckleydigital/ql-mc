@@ -428,8 +428,13 @@ async function repMoneyStats(leads) {
     if (l.lead_type === 'ppl') {
       const base = r.ppl_base === 'inc' ? Number(l.value || 0) : exGst(l.value);
       comm += base * Number(r.ppl_pct || 0) / 100;
-    } else if (r.build_pct != null) comm += exGst(l.value) * Number(r.build_pct) / 100;
-    else unknown = true;
+    } else if (r.closer_flat || r.build_pct != null) {
+      const v = exGst(l.value), a = r.closer_amounts || {};
+      // Closers: a flat amount per build. Growth is $2,500+ (full $3,500),
+      // Standard below that (full $1,750); under full price pays the floor.
+      if (r.closer_flat && v > 0) comm += v >= 3500 ? a.growth_full : v >= 2500 ? a.growth_floor : v >= 1750 ? a.standard_full : a.standard_floor;
+      if (r.build_pct != null) comm += v * Number(r.build_pct) / 100;
+    } else unknown = true;
   });
   const money = v => '$' + Math.round(v).toLocaleString('en-AU');
   setText('rep-comm', unknown && !comm ? '-' : money(comm));
