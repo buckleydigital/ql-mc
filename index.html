@@ -1065,6 +1065,62 @@
         <div class="or-card" id="or-events"><div class="empty">Loading...</div></div>
       </div>
 
+      <!-- Inboxes: Mission Control's own sending engine (the mail worker on
+           Railway sends from these and reads their replies). -->
+      <div class="panel" id="panel-outreach-inboxes">
+        <div class="ph">
+          <div class="ph-left"><h1>Inboxes</h1><p>Our own sending engine: inboxes it sends from, and a test you can send yourself</p></div>
+          <div class="ph-right"><button class="btn btn-sm" onclick="loadInboxes()">↻ Refresh</button></div>
+        </div>
+
+        <div class="or-card mb4" id="mi-status"><div class="empty">Loading…</div></div>
+
+        <div class="sl">Inboxes <div class="sl-line"></div></div>
+        <div class="or-card mb4">
+          <div id="mi-list"><div class="empty">Loading…</div></div>
+          <div style="margin-top:12px"><button class="btn btn-sm" type="button" id="mi-add-btn" onclick="miEdit(null)">+ Add an inbox</button></div>
+          <div id="mi-form" style="display:none;margin-top:14px;border-top:1px solid var(--bd);padding-top:14px">
+            <input type="hidden" id="mi-id">
+            <div class="or-grid" style="margin-top:0">
+              <div class="frow" style="margin:0"><label class="flabel">Email address</label><input class="fi" id="mi-email" type="email" autocomplete="off" placeholder="jay@getquoteleads.com"></div>
+              <div class="frow" style="margin:0"><label class="flabel">Name it sends as</label><input class="fi" id="mi-sender" autocomplete="off" placeholder="Jay Buckley"></div>
+              <div class="frow" style="margin:0"><label class="flabel">Login username (blank = the email)</label><input class="fi" id="mi-user" autocomplete="off"></div>
+              <div class="frow" style="margin:0"><label class="flabel" id="mi-pass-label">Password</label><input class="fi" id="mi-pass" type="password" autocomplete="new-password"></div>
+            </div>
+            <div class="or-grid">
+              <div class="frow" style="margin:0"><label class="flabel">SMTP server (sending)</label><input class="fi" id="mi-smtp-host" autocomplete="off" placeholder="smtp.example.com"></div>
+              <div class="frow" style="margin:0"><label class="flabel">SMTP port</label><select class="fi" id="mi-smtp-port"><option value="465">465 (SSL)</option><option value="587">587 (STARTTLS)</option></select></div>
+              <div class="frow" style="margin:0"><label class="flabel">IMAP server (replies)</label><input class="fi" id="mi-imap-host" autocomplete="off" placeholder="imap.example.com"></div>
+              <div class="frow" style="margin:0"><label class="flabel">IMAP port</label><input class="fi" id="mi-imap-port" type="number" inputmode="numeric" value="993"></div>
+              <div class="frow" style="margin:0"><label class="flabel">Emails a day (new inboxes: start at 20)</label><input class="fi" id="mi-limit" type="number" inputmode="numeric" min="1" max="100" value="20"></div>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <button class="btn btn-p btn-sm or-save" type="button" onclick="miSave()">Save inbox</button>
+              <button class="btn btn-sm" type="button" onclick="miEdit(false)">Cancel</button>
+              <span class="or-sub">The password is stored encrypted and never shown again. Mailpool lists the SMTP and IMAP details for each inbox.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sl">Send a test to yourself <div class="sl-line"></div></div>
+        <div class="or-card mb4">
+          <div class="or-grid" style="margin-top:0">
+            <div class="frow" style="margin:0"><label class="flabel">Your email (a different address from the inboxes)</label><input class="fi" id="mi-test-to" type="email" placeholder="you@gmail.com"></div>
+            <div class="frow" style="margin:0"><label class="flabel">From inbox</label><select class="fi" id="mi-test-inbox"></select></div>
+            <div class="frow" style="margin:0"><label class="flabel">Sequence</label><select class="fi" id="mi-test-niche"><option value="">A simple 3-step test</option></select></div>
+            <div class="frow" style="margin:0"><label class="flabel">Minutes between steps</label><input class="fi" id="mi-test-mins" type="number" inputmode="numeric" min="1" max="60" value="3"></div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-p btn-sm" type="button" onclick="miTestSequence()">Send the test</button>
+            <span class="or-sub">Step 1 goes now, the next ones a few minutes apart in the same thread. Reply to step 1 and the rest should stop, and the reply shows below with what the AI made of it. Try "unsubscribe" or "not interested" too.</span>
+          </div>
+          <div id="mi-test-out" style="margin-top:12px"></div>
+        </div>
+
+        <div class="sl">Recent activity <div class="sl-line"></div></div>
+        <div class="or-card" id="mi-recent"><div class="empty">Loading…</div></div>
+      </div>
+
       <!-- Stats: our own funnel (works from day one) plus Instantly's numbers
            and inbox health once campaigns run. -->
       <div class="panel" id="panel-outreach-stats">
@@ -3089,7 +3145,7 @@
 
 <script src="assets/mc/00-layout.js?v=20261117b"></script>
 
-<script src="assets/mc/01-core.js?v=20261126a"></script>
+<script src="assets/mc/01-core.js?v=20261127a"></script>
 <script src="assets/mc/02-ppl-leads-tasks.js?v=20261117b"></script>
 <script src="assets/mc/03-pipeline-board.js?v=20261117b"></script>
 <script src="assets/mc/04-scoreboard.js?v=20261126b"></script>
@@ -3113,6 +3169,7 @@
 <script src="assets/mc/22-email-blast.js?v=20261117b"></script>
 <script src="assets/mc/23-calendar.js?v=20261117b"></script>
 <script src="assets/mc/24-notes.js?v=20261126b"></script>
+<script src="assets/mc/25-inboxes.js?v=20261127a"></script>
 
 </body>
 </html>

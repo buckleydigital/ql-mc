@@ -406,6 +406,7 @@ const PANEL_GROUPS = {
     {panel:'outreach-prospects', label:'Prospects'},
     {panel:'outreach-batch',     label:"Today's Batch"},
     {panel:'outreach-sending',   label:'Sending'},
+    {panel:'outreach-inboxes',   label:'Inboxes'},
     {panel:'outreach-stats',     label:'Stats'},
     {panel:'outreach-dnc',       label:'Do Not Contact'}
   ]},
@@ -564,6 +565,7 @@ function nav(panel, el) {
   if (panel === 'outreach-dnc') loadSuppressions();
   if (panel === 'outreach-batch') loadBatch();
   if (panel === 'outreach-sending') loadSending();
+  if (panel === 'outreach-inboxes') loadInboxes();
   if (panel === 'outreach-stats') loadOutreachStats();
 }
 
