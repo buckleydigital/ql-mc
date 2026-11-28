@@ -1020,7 +1020,7 @@
         </div>
       </div>
 
-      <!-- Sending: Instantly connection, sender details, sequences per niche. -->
+      <!-- Sending: engine status, sender details, sequences per niche. -->
       <div class="panel" id="panel-outreach-sending">
         <div class="ph">
           <div class="ph-left"><h1>Sending</h1><p>Inboxes, who the emails are from, and what each niche is sent</p></div>
@@ -1048,7 +1048,6 @@
             <div class="frow" style="margin:0"><label class="flabel">Send until</label><input class="fi" id="os-to" type="time"></div>
             <div class="frow" style="margin:0"><label class="flabel">Timezone</label>
               <select class="fi" id="os-tz"><option value="Australia/Brisbane">Brisbane (QLD)</option><option value="Australia/Melbourne">Sydney / Melbourne</option><option value="Australia/Adelaide">Adelaide</option><option value="Australia/Darwin">Darwin</option><option value="Australia/Perth">Perth</option></select></div>
-            <div class="frow" style="margin:0"><label class="flabel">Emails a day per inbox</label><input class="fi" id="os-limit" type="number" inputmode="numeric" min="1" max="200"></div>
             <div class="frow" style="margin:0"><label class="flabel">Web searches a day (finding, US$0.01 each; 0 pauses)</label><input class="fi" id="os-searches" type="number" inputmode="numeric" min="0" max="2000"></div>
           </div>
           <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -1139,7 +1138,7 @@
         <div class="or-card" id="mi-recent"><div class="empty">Loading…</div></div>
       </div>
 
-      <!-- Stats: our own funnel (works from day one) plus Instantly's numbers
+      <!-- Stats: our own funnel plus each inbox's numbers
            and inbox health once campaigns run. -->
       <div class="panel" id="panel-outreach-stats">
         <div class="ph">
@@ -1174,7 +1173,7 @@
           </table>
         </div>
         <div class="sl">Inboxes <div class="sl-line"></div></div>
-        <div class="or-card mb4" id="ost-instantly"><div class="empty">Loading...</div></div>
+        <div class="or-card mb4" id="ost-inboxes"><div class="empty">Loading...</div></div>
         <div class="sl">Cost of finding <div class="sl-line"></div></div>
         <div class="or-card" id="ost-spend"><div class="empty">Loading...</div></div>
       </div>

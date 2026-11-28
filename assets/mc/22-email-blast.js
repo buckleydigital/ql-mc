@@ -3,7 +3,7 @@
 // ── Email Blast ─────────────────────────────────────────────────────────────
 // A one-off custom email to pipeline leads picked by stage, niche and rep.
 // Warm leads only: cold email to people who never enquired is Cold Outreach
-// (Instantly), never this.
+// (our own engine, Cold outreach), never this.
 //
 // The page only chooses who and what. The email-blast edge function decides
 // who is actually emailed (do-not-contact, recently emailed, no address, the

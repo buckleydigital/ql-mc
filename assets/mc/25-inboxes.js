@@ -172,13 +172,6 @@ async function miDelete(id) {
   loadInboxes();
 }
 
-async function miSetShare(v) {
-  const { error } = await db.rpc('mail_engine_share_set', { p_share: Number(v) });
-  if (error) { toast('Could not save: ' + error.message, true); return; }
-  toast(Number(v) ? v + '% of each batch now sends from here ✓' : 'All sending back on Instantly ✓');
-}
-
-/** Waits for a worker job, calling back with its state each time it changes. */
 async function miWatchJob(id, onUpdate, untilDone) {
   clearTimeout(miJobTimer);
   const started = Date.now();

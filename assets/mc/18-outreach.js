@@ -298,7 +298,7 @@ async function markQuoteLeadsAIInbox(ids) {
 }
 
 // ── Cold outreach: sending (stage 4) ──────────────────────────────────────
-// outreach-send talks to Instantly; it is called with the signed-in session
+// outreach-send hands approved prospects to our own engine; it is called with the signed-in session
 // and checks the caller is an operator, like every outreach RPC.
 async function orSend(action, extra) {
   const { data: { session } } = await db.auth.getSession();
@@ -354,7 +354,6 @@ async function loadSending() {
   setVal('os-from', orSender.send_from || '08:30');
   setVal('os-to', orSender.send_to || '16:30');
   setVal('os-tz', orSender.timezone || 'Australia/Brisbane');
-  setVal('os-limit', orSender.daily_limit || 30);
   setVal('os-searches', orSender.find_daily_searches != null ? orSender.find_daily_searches : 100);
   loadAutopilot();
   renderSequences();
@@ -376,26 +375,13 @@ async function loadConnection() {
     '<a href="#" onclick="nav(\'outreach-inboxes\');return false" style="color:var(--acc)">Inboxes</a> tab.</span></div>';
 }
 
-// Ticking an inbox saves straight away. It used to wait for "Save sender", so
-// pressing Sync (which reloads this panel) first quietly dropped the ticks.
-async function saveSendingInboxes() {
-  const accounts = Array.prototype.map.call(document.querySelectorAll('.os-acct:checked'), function (c) { return c.value; });
-  const { error } = await db.rpc('outreach_settings_update', { p: { sending_accounts: accounts } });
-  if (error) { toast('Could not save the inboxes: ' + error.message, true); return; }
-  orSender.sending_accounts = accounts;
-  toast('Sending inboxes saved ✓ (' + accounts.length + ')');
-}
-
 async function saveSender() {
-  const accounts = Array.prototype.map.call(document.querySelectorAll('.os-acct:checked'), function (c) { return c.value; });
   const patch = {
     sender_name: $('os-name').value, business_name: $('os-biz').value, postal_address: $('os-addr').value,
     send_from: $('os-from').value, send_to: $('os-to').value, timezone: $('os-tz').value,
-    daily_limit: parseInt($('os-limit').value, 10) || 30,
     // Blank keeps the default (100). Only a typed 0 pauses searching.
     find_daily_searches: $('os-searches').value.trim() === '' ? 100 : Math.max(0, parseInt($('os-searches').value, 10) || 0),
   };
-  if (document.querySelectorAll('.os-acct').length) patch.sending_accounts = accounts;
   const { error } = await db.rpc('outreach_settings_update', { p: patch });
   if (error) { toast('Could not save: ' + error.message, true); return; }
   toast('Sender saved ✓');
@@ -498,7 +484,7 @@ async function seqSave(key, approve) {
   renderSequences();
 }
 
-// Follow-ups on or off for a niche. Only Email 1 reaches Instantly while off;
+// Follow-ups on or off for a niche. Only Email 1 is sent while off;
 // the copy is untouched, so approval stands. Unsaved edits are kept on screen.
 async function seqFollowups(key, on) {
   const n = orCampaigns.find(function (c) { return c.key === key; });
@@ -511,24 +497,6 @@ async function seqFollowups(key, on) {
   }
   renderSequences();
   toast((on ? 'Follow-ups on' : 'First email only') + ' ✓');
-}
-
-async function syncInstantly() {
-  const btn = $('or-sync-btn');
-  btn.disabled = true; btn.textContent = 'Syncing…';
-  try {
-    const r = await orSend('sync');
-    const lines = Object.keys(r.campaigns || {}).map(function (k) {
-      const n = orCampaigns.find(function (c) { return c.key === k; });
-      return (n ? n.label : k) + ': ' + r.campaigns[k];
-    });
-    toast('Synced ✓ ' + (lines.length ? lines.join(' · ') : 'no approved sequences yet'));
-  } catch (err) {
-    toast(err.message, true);
-  } finally {
-    btn.disabled = false; btn.textContent = '⇅ Sync to Instantly';
-    loadSending();
-  }
 }
 
 async function campaignState(key, to) {
@@ -561,7 +529,7 @@ let orBatch = [];
 // "nothing happened".
 let orLastApproval = '';
 
-// When Instantly will next send, in words. Campaigns send Monday to Friday
+// When the engine will next send, in words. It sends Monday to Friday
 // between send_from and send_to in the sender's timezone (campaignBody in
 // outreach-send), so an approval outside those hours waits for the next one.
 function orNextSendText(s) {
@@ -739,7 +707,7 @@ async function loadOutreachStats() {
     Number(sp.verified || 0) + ' emails checked · AI scoring US$' + Number(sp.ai_cost_usd || 0).toFixed(2) +
     (T.interested ? ' · about US$' + (Number(sp.ai_cost_usd || 0) / T.interested).toFixed(2) + ' of AI per interested reply' : '') + '</div>';
 
-  loadInstantlyStats(days);
+  loadInboxStats(days);
 }
 
 function drawOutreachDaily() {
@@ -771,8 +739,8 @@ function toggleDailyTable() {
   b.textContent = showTable ? 'Chart' : 'Table';
 }
 
-async function loadInstantlyStats(days) {
-  const host = $('ost-instantly');
+async function loadInboxStats(days) {
+  const host = $('ost-inboxes');
   const { data, error } = await db.rpc('mail_inboxes_list');
   if (error) { host.innerHTML = '<div class="empty" style="color:var(--red)">' + jmEsc(error.message) + '</div>'; return; }
   const rows = data || [];
@@ -1200,7 +1168,7 @@ async function saveTwilioSettings() {
 // ── Autopilot ──────────────────────────────────────────────────────────────
 // outreach-auto (every 15 minutes) runs the day's search at the set time and,
 // inside the send window, approves and pushes the best-scored prospects to
-// Instantly up to the daily cap. Weekdays only. It stops itself on a bounce
+// our own engine up to the daily cap. Weekdays only. It stops itself on a bounce
 // rate over 5%.
 let orAuto = null;
 async function loadAutopilot() {
