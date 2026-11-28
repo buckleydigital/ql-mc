@@ -1,10 +1,10 @@
 'use strict';
 
 // ── Cold outreach > Inboxes: Mission Control's own sending engine ─────────
-// The mail worker (ql-backend/mc/mail-worker, on Railway) sends from these
-// inboxes and reads their replies; this screen adds them, tests them, sends a
-// test sequence to yourself, and sets how much of each day's batch it sends
-// instead of Instantly.
+// The mail engine (ql-backend/mc/mail-engine, a Cloudflare Worker running every
+// minute) sends from these inboxes, reads their replies and warms them up; this
+// screen adds them, tests them, sends a test sequence to yourself, and manages
+// warm-up. Everything approved on Today's batch is sent from here.
 
 let miInboxes = [];
 let miJobTimer = null;
@@ -30,6 +30,7 @@ async function loadInboxes() {
   miRenderStatus(statR.data || {});
   miRenderList();
   miRenderRecent((statR.data || {}).recent || []);
+  miLoadWarmup();
 
   const sel = $('mi-test-inbox');
   const keep = sel.value;
@@ -48,29 +49,21 @@ async function loadInboxes() {
 function miRenderStatus(st) {
   const seen = st.worker_seen_at ? new Date(st.worker_seen_at).getTime() : 0;
   const alive = seen && Date.now() - seen < 10 * 60000 && !st.jobs_waiting;
-  const share = Number(st.share || 0);
   $('mi-status').innerHTML =
     '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
-      '<span class="or-pill ' + (alive ? 'good' : 'bad') + '">' + (alive ? 'Worker running' : 'Worker not running') + '</span>' +
+      '<span class="or-pill ' + (alive ? 'good' : 'bad') + '">' + (alive ? 'Engine running' : 'Engine not running') + '</span>' +
       '<span class="or-sub">' + (alive
-        ? 'Last checked the inboxes ' + miAgo(st.worker_seen_at) + '.'
-        : (st.jobs_waiting ? 'Tests are waiting and nothing has picked them up. ' : '') + 'Nothing sends or reads replies until the mail worker is running on Railway.') + '</span>' +
+        ? 'Last ran ' + miAgo(st.worker_seen_at) + '.'
+        : (st.jobs_waiting ? 'Tests are waiting and nothing has picked them up. ' : '') + 'Nothing sends, reads replies or warms up until the ql-mail-engine Worker is running on Cloudflare.') + '</span>' +
     '</div>' +
-    '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px">' +
-      '<label class="flabel" style="margin:0">Share of each day\'s approved batch sent from here (the rest goes to Instantly)</label>' +
-      '<select class="fi" id="mi-share" style="width:auto" onchange="miSetShare(this.value)">' +
-        [0, 25, 50, 75, 100].map(function (v) {
-          return '<option value="' + v + '"' + (v === share ? ' selected' : '') + '>' + v + '%' + (v === 0 ? ' - all Instantly' : v === 100 ? ' - all ours' : '') + '</option>';
-        }).join('') + (share && [25, 50, 75, 100].indexOf(share) < 0 ? '<option value="' + share + '" selected>' + share + '%</option>' : '') +
-      '</select>' +
-      '<span class="or-sub">' + Number(st.active || 0) + ' in a sequence here' + (st.due_now ? ', ' + Number(st.due_now) + ' due now' : '') + '. Sends inside the Sending tab\'s window, each inbox 3-8 minutes apart.</span>' +
-    '</div>';
+    '<div class="or-sub" style="margin-top:10px">' + Number(st.active || 0) + ' in a sequence' + (st.due_now ? ', ' + Number(st.due_now) + ' due now' : '') +
+      '. Sends Monday to Friday inside the Sending tab\'s window, each inbox 3-8 minutes apart and up to its daily limit.</div>';
 }
 
 function miRenderList() {
   const host = $('mi-list');
   if (!miInboxes.length) {
-    host.innerHTML = '<div class="or-sub" style="line-height:1.6">No inboxes yet. Add each Mailpool inbox here with its SMTP and IMAP details. Leave Instantly\'s warm-up running on them.</div>';
+    host.innerHTML = '<div class="or-sub" style="line-height:1.6">No inboxes yet. Add each sending inbox (Mailpool for now) with its SMTP and IMAP details, test the connection, then Start sending.</div>';
     return;
   }
   host.innerHTML = miInboxes.map(function (i) {
@@ -268,4 +261,65 @@ function miRenderTest(j, ms) {
     (!done ? '<div class="or-sub" style="margin-top:6px">Replies are read every 30 seconds while a test runs.</div>' : '');
   // Keep watching a little after it stops, in case the reply is still being read.
   return !done || inbound.length === 0 && e.status === 'finished' && ms < 20 * 60000;
+}
+
+
+// ── Warm-up ─────────────────────────────────────────────────────────────────
+async function miLoadWarmup() {
+  const { data, error } = await db.rpc('mail_warmup_view');
+  if (error) { $('mi-seeds').innerHTML = '<div class="empty">' + jmEsc(error.message) + '</div>'; return; }
+  const seeds = (data && data.seeds) || [], rows = (data && data.inboxes) || [];
+  $('mi-seeds').innerHTML = seeds.length ? seeds.map(function (s) {
+    return '<div class="or-acct">' +
+      '<span class="e" style="flex:1">' + jmEsc(s.email) + '</span>' +
+      (s.last_error ? '<span class="or-sub" style="color:var(--red)">' + jmEsc(s.last_error) + '</span>' : '') +
+      '<span class="or-pill ' + (s.warmup ? 'good' : 'warn') + '">' + (s.warmup ? 'on' : 'off') + '</span>' +
+      '<button class="btn btn-sm" type="button" onclick="miSeedToggle(\'' + orAttr(s.id) + '\',' + (!s.warmup) + ')">' + (s.warmup ? 'Turn off' : 'Turn on') + '</button>' +
+      '<button class="btn btn-sm" type="button" style="color:var(--red)" onclick="miSeedDelete(\'' + orAttr(s.id) + '\')">Remove</button>' +
+    '</div>';
+  }).join('') : '<div class="or-sub">No warm-up accounts yet. Add 2-3 Gmail addresses: until then inboxes only warm up with each other.</div>';
+  $('mi-warm').innerHTML = rows.length ? '<div class="twrap"><table><thead><tr>' +
+    '<th style="text-align:left">Inbox</th><th>Today</th><th>Landed in inbox (7 days)</th><th>Spam</th><th>Missing</th><th>Replies back</th><th></th></tr></thead><tbody>' +
+    rows.map(function (w) {
+      const seen = Number(w.inbox_7d) + Number(w.spam_7d) + Number(w.missing_7d);
+      const pct = seen ? Math.round((Number(w.inbox_7d) / seen) * 100) : null;
+      return '<tr><td style="font-family:var(--mono)">' + jmEsc(w.email) + '</td>' +
+        '<td style="text-align:center">' + Number(w.sent_today) + '/' + Number(w.warm_daily) + '</td>' +
+        '<td style="text-align:center">' + (pct === null ? '<span class="or-sub">-</span>' : '<span class="or-pill ' + (pct >= 90 ? 'good' : pct >= 70 ? 'warn' : 'bad') + '">' + pct + '%</span>') + '</td>' +
+        '<td style="text-align:center">' + Number(w.spam_7d) + '</td><td style="text-align:center">' + Number(w.missing_7d) + '</td><td style="text-align:center">' + Number(w.replies_7d) + '</td>' +
+        '<td style="text-align:right"><button class="btn btn-sm" type="button" onclick="miWarmToggle(\'' + orAttr(w.id) + '\',' + (!w.warmup) + ')">' + (w.warmup ? 'Pause warm-up' : 'Resume warm-up') + '</button></td></tr>';
+    }).join('') + '</tbody></table></div>' : '';
+}
+
+function miSeedForm(show) {
+  $('mi-seed-form').style.display = show ? '' : 'none';
+  if (show) { $('mi-seed-email').value = ''; $('mi-seed-pass').value = ''; $('mi-seed-email').focus(); }
+}
+
+async function miSeedSave() {
+  const email = $('mi-seed-email').value.trim(), pass = $('mi-seed-pass').value.replace(/\s+/g, '');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !pass) { toast('Enter the Gmail address and its app password', true); return; }
+  const { error } = await db.rpc('mail_seed_save', { p: { label: 'Gmail', email: email, imap_host: 'imap.gmail.com', smtp_host: 'smtp.gmail.com', password: pass } });
+  if (error) { toast('Could not save: ' + error.message, true); return; }
+  toast('Warm-up account added ✓');
+  miSeedForm(false); miLoadWarmup();
+}
+
+async function miSeedToggle(id, on) {
+  const { error } = await db.rpc('mail_seed_save', { p: { id: id, warmup: on } });
+  if (error) { toast(error.message, true); return; }
+  miLoadWarmup();
+}
+
+async function miSeedDelete(id) {
+  if (!confirm('Remove this warm-up account? Its password is deleted too.')) return;
+  const { error } = await db.rpc('mail_seed_delete', { p_id: id });
+  if (error) { toast(error.message, true); return; }
+  miLoadWarmup();
+}
+
+async function miWarmToggle(id, on) {
+  const { error } = await db.rpc('mail_warmup_set', { p_inbox: id, p_on: on });
+  if (error) { toast(error.message, true); return; }
+  miLoadWarmup();
 }

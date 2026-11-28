@@ -328,7 +328,7 @@ function defaultSequence() {
 let orSender = null;
 let orCampaigns = [];
 
-/** The email as a prospect would read it (the footer is added by Instantly sync). */
+/** The email as a prospect would read it (the engine adds the footer). */
 function renderEmail(text, p) {
   return String(text || '')
     .replace(/\{first_name\}/g, (p && p.contact_name) || 'there')
@@ -364,27 +364,16 @@ async function loadSending() {
 
 async function loadConnection() {
   const host = $('or-conn');
-  host.innerHTML = '<div class="empty">Checking Instantly…</div>';
-  let st;
-  try { st = await orSend('status'); }
-  catch (err) { host.innerHTML = '<div class="empty" style="color:var(--red)">' + jmEsc(err.message) + '</div>'; return; }
-  const accts = st.accounts || [];
-  const pill = function (t) {
-    const cls = /active|warming/.test(t) ? 'good' : /paused|maintenance/.test(t) ? 'warn' : 'bad';
-    return '<span class="or-pill ' + cls + '">' + jmEsc(t) + '</span>';
-  };
-  host.innerHTML =
-    '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">' +
-      '<span class="or-pill good">Connected</span><b>' + jmEsc(st.workspace || 'Instantly') + '</b>' +
-      '<span class="or-sub">' + (st.webhook ? 'Replies and bounces report back here.' : 'Reporting back is set up on the first Sync.') + '</span></div>' +
-    (accts.length
-      ? '<div class="or-sub" style="margin-bottom:4px">Tick the inboxes that send. Only warmed inboxes should send - give new ones 2-3 weeks.</div>' +
-        accts.map(function (a) {
-          return '<label class="or-acct"><input type="checkbox" class="os-acct" value="' + orAttr(a.email) + '"' + (a.selected ? ' checked' : '') + ' onchange="saveSendingInboxes()" style="width:18px;height:18px;margin:0">' +
-            '<span class="e">' + jmEsc(a.email) + '</span>' + pill(a.state) + pill(a.warmup) +
-            (a.warmup_score != null ? '<span class="or-sub">warm-up score ' + Number(a.warmup_score) + '</span>' : '') + '</label>';
-        }).join('')
-      : '<div class="or-sub" style="line-height:1.6">No inboxes in Instantly yet. Add your sending inboxes there (Email Accounts → Add), turn warm-up on, and they will appear here to tick.</div>');
+  const [st, li] = await Promise.all([db.rpc('mail_engine_status'), db.rpc('mail_inboxes_list')]);
+  if (st.error || li.error) { host.innerHTML = '<div class="empty" style="color:var(--red)">' + jmEsc((st.error || li.error).message) + '</div>'; return; }
+  const seen = st.data && st.data.worker_seen_at ? new Date(st.data.worker_seen_at).getTime() : 0;
+  const alive = seen && Date.now() - seen < 10 * 60000;
+  const active = (li.data || []).filter(function (i) { return i.status === 'active'; });
+  host.innerHTML = '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+    '<span class="or-pill ' + (alive ? 'good' : 'bad') + '">' + (alive ? 'Engine running' : 'Engine not running') + '</span>' +
+    '<b>' + active.length + ' inbox' + (active.length === 1 ? '' : 'es') + ' sending</b>' +
+    '<span class="or-sub">' + active.reduce(function (a, i) { return a + Number(i.daily_limit || 0); }, 0) + ' emails a day. Add, test and warm up inboxes on the ' +
+    '<a href="#" onclick="nav(\'outreach-inboxes\');return false" style="color:var(--acc)">Inboxes</a> tab.</span></div>';
 }
 
 // Ticking an inbox saves straight away. It used to wait for "Save sender", so
@@ -394,7 +383,7 @@ async function saveSendingInboxes() {
   const { error } = await db.rpc('outreach_settings_update', { p: { sending_accounts: accounts } });
   if (error) { toast('Could not save the inboxes: ' + error.message, true); return; }
   orSender.sending_accounts = accounts;
-  toast('Sending inboxes saved ✓ (' + accounts.length + ') - press Sync to update Instantly');
+  toast('Sending inboxes saved ✓ (' + accounts.length + ')');
 }
 
 async function saveSender() {
@@ -409,7 +398,7 @@ async function saveSender() {
   if (document.querySelectorAll('.os-acct').length) patch.sending_accounts = accounts;
   const { error } = await db.rpc('outreach_settings_update', { p: patch });
   if (error) { toast('Could not save: ' + error.message, true); return; }
-  toast('Sender saved ✓ - press Sync to update Instantly');
+  toast('Sender saved ✓');
   const { data } = await db.rpc('outreach_settings_get'); orSender = data || orSender;
 }
 
@@ -426,9 +415,8 @@ function renderSequences() {
     const state = n.sequence_approved_at
       ? '<span class="or-pill good">Approved</span>'
       : written ? '<span class="or-pill warn">Draft - not approved</span>' : '<span class="or-pill">Suggested draft</span>';
-    const camp = n.instantly_campaign_id
-      ? '<span class="or-pill ' + (n.campaign_state === 'active' ? 'good' : 'warn') + '">Instantly: ' + jmEsc(n.campaign_state || 'synced') + '</span>'
-      : '<span class="or-pill">Not in Instantly yet</span>';
+    const camp = n.campaign_state === 'paused' ? '<span class="or-pill warn">Paused</span>'
+      : n.sequence_approved_at ? '<span class="or-pill good">Sending</span>' : '<span class="or-pill">Not sending yet</span>';
     const auto = n.auto_followups !== false;
     const stats = n.contacted ? (n.contacted + ' emailed · ' + n.replied + ' replied · ' + n.interested + ' interested' + (n.queued ? ' · ' + n.queued + ' queued' : '')) : (n.queued ? n.queued + ' queued' : 'Nobody emailed yet');
     return '<div class="or-niche' + (n.sequence_approved_at ? ' on' : '') + '" data-seq="' + orAttr(n.key) + '">' +
@@ -455,7 +443,7 @@ function renderSequences() {
         '<button class="btn btn-sm" type="button" onclick="seqPreview(\'' + n.key + '\')">Preview</button>' +
         '<button class="btn btn-sm" type="button" onclick="seqSave(\'' + n.key + '\',false)">Save draft</button>' +
         '<button class="btn btn-p btn-sm" type="button" onclick="seqSave(\'' + n.key + '\',true)">Approve</button>' +
-        (n.instantly_campaign_id ? (n.campaign_state === 'active'
+        (n.sequence_approved_at ? (n.campaign_state !== 'paused'
           ? '<button class="btn btn-sm" type="button" onclick="campaignState(\'' + n.key + '\',\'pause\')">Pause sending</button>'
           : '<button class="btn btn-sm" type="button" onclick="campaignState(\'' + n.key + '\',\'resume\')">Resume sending</button>') : '') +
       '</div>' +
@@ -505,7 +493,7 @@ async function seqSave(key, approve) {
   const steps = readSteps(key);
   const { error } = await db.rpc('outreach_sequence_save', { p_key: key, p_steps: steps, p_approve: !!approve });
   if (error) { toast('Could not save: ' + error.message, true); return; }
-  toast(approve ? 'Approved ✓ - press Sync to Instantly' : 'Draft saved');
+  toast(approve ? 'Approved ✓' : 'Draft saved');
   const { data } = await db.rpc('outreach_campaign_list'); orCampaigns = data || orCampaigns;
   renderSequences();
 }
@@ -522,7 +510,7 @@ async function seqFollowups(key, on) {
     if (JSON.stringify(steps) !== JSON.stringify(seqStepsFor(n))) n.sequence = steps;
   }
   renderSequences();
-  toast((on ? 'Follow-ups on' : 'First email only') + ' ✓ - press Sync to update Instantly');
+  toast((on ? 'Follow-ups on' : 'First email only') + ' ✓');
 }
 
 async function syncInstantly() {
@@ -590,11 +578,11 @@ function orNextSendText(s) {
     return h + (m ? ':' + String(m).padStart(2, '0') : '') + ap;
   };
   const place = tz.split('/').pop().replace(/_/g, ' ') + ' time';
-  if (isWeekday(d) && now >= from && now < to) return 'Instantly is sending now, until ' + fmt(to) + ' ' + place;
+  if (isWeekday(d) && now >= from && now < to) return 'Sending now, until ' + fmt(to) + ' ' + place;
   let ahead = 0;
   if (!(isWeekday(d) && now < from)) { do { d = (d + 1) % 7; ahead++; } while (!isWeekday(d)); }
   const when = ahead === 0 ? 'today' : ahead === 1 ? 'tomorrow (' + NAMES[d] + ')' : NAMES[d];
-  return 'first emails go out ' + when + ' from ' + fmt(from) + ' ' + place + ' (Instantly sends Mon to Fri, ' + fmt(from) + ' to ' + fmt(to) + ')';
+  return 'first emails go out ' + when + ' from ' + fmt(from) + ' ' + place + ' (we send Mon to Fri, ' + fmt(from) + ' to ' + fmt(to) + ')';
 }
 
 async function loadBatch() {
@@ -609,11 +597,11 @@ async function loadBatch() {
   if (!orNiches.length) { const nr = await db.rpc('outreach_niche_list'); orNiches = nr.data || []; }
   const byKey = Object.fromEntries(orCampaigns.map(function (c) { return [c.key, c]; }));
   const targets = Object.fromEntries((orNiches.length ? orNiches : []).map(function (n) { return [n.key, Number(n.daily_target || 25)]; }));
-  const ready = orCampaigns.filter(function (c) { return c.sequence_approved_at && c.instantly_campaign_id; });
+  const ready = orCampaigns.filter(function (c) { return c.sequence_approved_at; });
   note.innerHTML = ready.length
     ? 'Sending for: ' + ready.map(function (c) { return '<b>' + jmEsc(c.label) + '</b>'; }).join(', ') + '. Each niche\'s best ' +
       'prospects are ticked up to its daily target.'
-    : 'No niche is ready to send yet: write and approve its sequence, then Sync, on the <a href="#" onclick="nav(\'outreach-sending\');return false" style="color:var(--acc)">Sending</a> tab.';
+    : 'No niche is ready to send yet: write and approve its sequence on the <a href="#" onclick="nav(\'outreach-sending\');return false" style="color:var(--acc)">Sending</a> tab.';
   if (orLastApproval) {
     note.innerHTML = '<div style="margin-bottom:8px;padding:8px 10px;border:1px solid var(--line,rgba(127,127,127,.25));border-radius:var(--r);color:var(--ink)"><b>Last approval:</b> ' +
       jmEsc(orLastApproval) + '</div>' + note.innerHTML;
@@ -676,7 +664,7 @@ async function approveBatch() {
   const ids = Array.prototype.map.call(document.querySelectorAll('.ob-pick:checked'), function (c) { return c.value; });
   if (!ids.length) return;
   if (!confirm('Send the sequence to ' + ids.length + ' business' + (ids.length === 1 ? '' : 'es') + '?\n\n' +
-    'Each is checked once more against the do-not-contact list, the pipeline and your clients. The first emails go out through Instantly over your sending hours.')) return;
+    'Each is checked once more against the do-not-contact list, the pipeline and your clients. The first emails go out from our inboxes over your sending hours.')) return;
   const btn = $('or-batch-btn');
   btn.disabled = true; btn.textContent = 'Sending…';
   try {
@@ -689,7 +677,7 @@ async function approveBatch() {
       const res = r.results || {};
       const uploaded = Object.values(res).reduce(function (a, v) { return a + (typeof v === 'object' && v ? Number(v.uploaded || 0) : 0); }, 0);
       const problems = Object.keys(res).filter(function (k) { return typeof res[k] === 'string'; }).map(function (k) { return k + ': ' + res[k]; });
-      msg += ' · ' + uploaded + ' in Instantly' + (problems.length ? ' · ' + problems.join('; ') : '');
+      msg += ' · ' + uploaded + ' sending' + (problems.length ? ' · ' + problems.join('; ') : '');
       if (uploaded) msg += ' · ' + orNextSendText(orSender);
     }
     if (skipped.length) msg += ' · ' + skipped.length + ' skipped (' + skipped.slice(0, 3).map(function (s) { return s.business + ': ' + s.reason; }).join('; ') + (skipped.length > 3 ? '…' : '') + ')';
@@ -785,44 +773,20 @@ function toggleDailyTable() {
 
 async function loadInstantlyStats(days) {
   const host = $('ost-instantly');
-  host.innerHTML = '<div class="empty">Asking Instantly…</div>';
-  setText('ost-sent', '…');
-  let r;
-  try { r = await orSend('stats', { days: days }); }
-  catch (err) {
-    host.innerHTML = '<div class="empty" style="color:var(--red)">' + jmEsc(err.message) + '</div>';
-    setText('ost-sent', '-'); setText('ost-sent-sub', 'Instantly unavailable');
-    return;
-  }
-  const camps = r.campaigns || [], accts = r.accounts || [];
-  // Every email Instantly has sent across all campaigns, follow-ups included,
-  // for the selected period. "Businesses Emailed" counts each business once.
-  const sentTotal = camps.reduce(function (a, c) { return a + Number(c.sent || 0); }, 0);
-  const reached = camps.reduce(function (a, c) { return a + Number(c.contacted || 0); }, 0);
-  setText('ost-sent', sentTotal);
-  setText('ost-sent-sub', 'incl. follow-ups · to ' + reached + ' business' + (reached === 1 ? '' : 'es'));
-  const pill = function (t) {
-    const cls = /active|warming/.test(t) ? 'good' : /paused|draft|maintenance|completed/.test(t) ? 'warn' : 'bad';
-    return '<span class="or-pill ' + cls + '">' + jmEsc(t) + '</span>';
-  };
-  host.innerHTML =
-    (camps.length
-      ? camps.map(function (c) {
-          const bounce = c.contacted ? c.bounced / c.contacted : 0;
-          return '<div class="or-acct"><b style="min-width:130px">' + jmEsc(c.label) + '</b>' + pill(c.state) +
-            '<span class="or-sub" style="flex:1;min-width:220px">' + Number(c.sent) + ' emails sent to ' + Number(c.contacted) + ' · ' +
-              Number(c.replies) + ' replies (' + ostPct(c.replies, c.contacted) + ') · ' + Number(c.unsubscribed) + ' unsubscribed · ' +
-              '<span style="color:' + (bounce > 0.03 ? 'var(--red)' : 'inherit') + '">' + Number(c.bounced) + ' bounced (' + ostPct(c.bounced, c.contacted) + ')</span>' +
-              (c.opportunities ? ' · ' + Number(c.opportunities) + ' opportunities' : '') + '</span></div>';
-        }).join('')
-      : '<div class="or-sub">No campaigns yet - they appear here after the first Sync on the Sending tab.</div>') +
-    '<div class="or-sub" style="margin:10px 0 6px">A niche pauses itself if more than 3% of a week\'s emails bounce (once 20 have gone), and QuoteLeadsAI tells you.</div>' +
-    (accts.length
-      ? accts.map(function (a) {
-          return '<div class="or-acct"><span class="e">' + jmEsc(a.email) + '</span>' + pill(a.state) + pill(a.warmup) +
-            (a.warmup_score != null ? '<span class="or-sub">warm-up score ' + Number(a.warmup_score) + '</span>' : '') + '</div>';
-        }).join('')
-      : '<div class="or-sub">No inboxes connected in Instantly yet.</div>');
+  const { data, error } = await db.rpc('mail_inboxes_list');
+  if (error) { host.innerHTML = '<div class="empty" style="color:var(--red)">' + jmEsc(error.message) + '</div>'; return; }
+  const rows = data || [];
+  const sent = rows.reduce(function (a, i) { return a + Number(i.sent_7d || 0); }, 0);
+  setText('ost-sent', sent);
+  setText('ost-sent-sub', 'last 7 days, incl. follow-ups');
+  host.innerHTML = rows.length ? rows.map(function (i) {
+    const bounce = i.sent_7d ? i.bounces_7d / i.sent_7d : 0;
+    return '<div class="or-acct"><span class="e" style="min-width:200px">' + jmEsc(i.email) + '</span>' +
+      '<span class="or-pill ' + (i.status === 'active' ? 'good' : i.status === 'error' ? 'bad' : 'warn') + '">' + jmEsc(i.status) + '</span>' +
+      '<span class="or-sub">' + Number(i.sent_7d) + ' sent · ' + Number(i.replies_7d) + ' replies · <span style="color:' + (bounce > 0.03 ? 'var(--red)' : 'inherit') + '">' +
+      Number(i.bounces_7d) + ' bounced (' + ostPct(i.bounces_7d, i.sent_7d) + ')</span> · 7 days</span></div>';
+  }).join('') + '<div class="or-sub" style="margin-top:8px">An inbox pauses itself past 5% bounces over 7 days (once 40 have gone).</div>'
+    : '<div class="or-sub">No inboxes yet: add them on the Inboxes tab.</div>';
 }
 
 async function openQuoteLeadsAIPosts() {
@@ -1261,7 +1225,7 @@ function renderAutopilot() {
       <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer">
         <input type="checkbox" id="oa-on" ${a.enabled ? 'checked' : ''}> Autopilot ${a.enabled ? '<span class="badge bg-grn">On</span>' : '<span class="badge bg-gray">Off</span>'}
       </label>
-      <span class="or-sub">Weekdays. Finds, verifies and scores new businesses each morning, then sends the best ones through Instantly during the send window.</span>
+      <span class="or-sub">Weekdays. Finds, verifies and scores new businesses each morning, then sends the best ones from our inboxes during the send window.</span>
     </div>
     <div class="or-grid">
       <div class="frow" style="margin:0"><label class="flabel">New businesses a day (cap)</label><input class="fi" id="oa-cap" type="number" min="0" max="1000" value="${Number(a.daily_cap || 0)}"></div>
@@ -1270,7 +1234,7 @@ function renderAutopilot() {
     <div class="or-sub" style="margin-top:10px;line-height:1.7">
       Inbox capacity: <b>${a.inboxes || 0} inboxes × ${a.per_inbox || 0} a day = ${capacity} emails a day</b>, follow-ups included.
       Each business gets ${seqLen} email${seqLen === 1 ? '' : 's'}, so ${a.daily_cap || 0} new a day settles at about <b>${steady} emails a day</b>${over
-        ? `: <span style="color:var(--amb)">more than the inboxes can send, so Instantly spreads the rest over later days. About ${sustainable} new a day fits today's capacity; add inboxes or raise "Emails a day per inbox" below to go higher.</span>`
+        ? `: <span style="color:var(--amb)">more than the inboxes can send, so the engine spreads the rest over later days. About ${sustainable} new a day fits today's capacity; add inboxes or raise inbox daily limits on the Inboxes tab to go higher.</span>`
         : '.'}
     </div>
     <div class="or-sub" style="margin-top:6px">Sent in today: <b>${a.pushed_today || 0}</b> of ${a.daily_cap || 0} · Scored and ready: <b>${a.ready || 0}</b>${a.last_run_at ? ` · Last check ${esc(fmtDate(a.last_run_at, true))}` : ''}</div>

@@ -980,7 +980,7 @@
           <div class="or-step done"><span class="st">Ready</span><b>1 · Niches &amp; safeguards</b>Niches on or off, and one do-not-contact list every sender checks.</div>
           <div class="or-step done"><span class="st">Ready</span><b>2 · Find &amp; verify</b>Press Run: businesses found per niche, with where each email was published, then verified.</div>
           <div class="or-step done"><span class="st">Ready</span><b>3 · Qualify &amp; personalise</b>Each one scored for fit from its website and given an opening line written for them. 6/10 and up is ready for review.</div>
-          <div class="or-step done"><span class="st">Ready</span><b>4 · Send &amp; replies</b>Approve each sequence and today's batch; Instantly sends from your warmed inboxes, and replies, bounces and unsubscribes come back here.</div>
+          <div class="or-step done"><span class="st">Ready</span><b>4 · Send &amp; replies</b>Approve each sequence and today's batch; our engine sends from your warmed inboxes, and replies, bounces and unsubscribes come back here.</div>
           <div class="or-step"><span class="st">Later</span><b>5 · Daily batch</b>On the days you run it, QuoteLeadsAI builds the batch and you approve it before anything sends.</div>
         </div>
       </div>
@@ -1026,15 +1026,15 @@
           <div class="ph-left"><h1>Sending</h1><p>Inboxes, who the emails are from, and what each niche is sent</p></div>
           <div class="ph-right">
             <button class="btn btn-sm" onclick="loadSending()">↻ Refresh</button>
-            <button class="btn btn-p btn-sm" id="or-sync-btn" onclick="syncInstantly()">⇅ Sync to Instantly</button>
+            
           </div>
         </div>
 
         <div class="sl">Autopilot <div class="sl-line"></div></div>
         <div class="or-card mb4" id="or-auto"><div class="empty">Loading…</div></div>
 
-        <div class="sl">Instantly <div class="sl-line"></div></div>
-        <div class="or-card mb4" id="or-conn"><div class="empty">Checking Instantly…</div></div>
+        <div class="sl">Sending engine <div class="sl-line"></div></div>
+        <div class="or-card mb4" id="or-conn"><div class="empty">Loading…</div></div>
 
         <div class="sl">Sender <div class="sl-line"></div></div>
         <div class="or-card mb4">
@@ -1061,12 +1061,12 @@
         <p class="or-sub" style="margin:-4px 0 12px;line-height:1.6">Placeholders: <code>{first_name}</code> (or "there"), <code>{company}</code>, <code>{suburb}</code>, <code>{sender}</code>. Leave a follow-up's subject blank to send it as a reply in the same thread. Any edit needs approving again before it is synced.</p>
         <div class="or-niches" id="or-seqs"><div class="empty">Loading...</div></div>
 
-        <div class="sl">What Instantly reported <div class="sl-line"></div></div>
+        <div class="sl">What came back <div class="sl-line"></div></div>
         <div class="or-card" id="or-events"><div class="empty">Loading...</div></div>
       </div>
 
-      <!-- Inboxes: Mission Control's own sending engine (the mail worker on
-           Railway sends from these and reads their replies). -->
+      <!-- Inboxes: Mission Control's own sending engine (the mail engine on
+           Cloudflare sends from these, reads their replies and warms them up). -->
       <div class="panel" id="panel-outreach-inboxes">
         <div class="ph">
           <div class="ph-left"><h1>Inboxes</h1><p>Our own sending engine: inboxes it sends from, and a test you can send yourself</p></div>
@@ -1117,6 +1117,22 @@
           <div id="mi-test-out" style="margin-top:12px"></div>
         </div>
 
+        <div class="sl">Warm-up <div class="sl-line"></div></div>
+        <div class="or-card mb4">
+          <div class="or-sub" style="line-height:1.6;margin-bottom:10px">Each inbox emails our warm-up accounts (real Gmail addresses we own) and the other inboxes a few times a day, starting at 4 and adding 2 a day up to 20. The engine then logs into the receiving account, opens the email, moves it out of spam if it landed there, and replies to about a third. Healthy: mostly Inbox, very little Spam.</div>
+          <div id="mi-seeds"><div class="empty">Loading…</div></div>
+          <div style="margin-top:10px"><button class="btn btn-sm" type="button" onclick="miSeedForm(true)">+ Add a warm-up account</button></div>
+          <div id="mi-seed-form" style="display:none;margin-top:12px;border-top:1px solid var(--bd);padding-top:12px">
+            <div class="or-sub" style="margin-bottom:8px">A Gmail address with 2-step verification on and an <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener" style="color:var(--acc)">app password</a>. Never your main account.</div>
+            <div class="g2" style="gap:10px">
+              <div class="frow" style="margin:0"><label class="flabel">Gmail address</label><input class="fi" id="mi-seed-email" type="email" autocomplete="off" placeholder="warmup1@gmail.com"></div>
+              <div class="frow" style="margin:0"><label class="flabel">App password</label><input class="fi" id="mi-seed-pass" type="password" autocomplete="new-password"></div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-p btn-sm" type="button" onclick="miSeedSave()">Save</button><button class="btn btn-sm" type="button" onclick="miSeedForm(false)">Cancel</button></div>
+          </div>
+          <div id="mi-warm" style="margin-top:14px"></div>
+        </div>
+
         <div class="sl">Recent activity <div class="sl-line"></div></div>
         <div class="or-card" id="mi-recent"><div class="empty">Loading…</div></div>
       </div>
@@ -1155,7 +1171,7 @@
             <tbody id="ost-funnel-body"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
           </table>
         </div>
-        <div class="sl">In Instantly <div class="sl-line"></div></div>
+        <div class="sl">Inboxes <div class="sl-line"></div></div>
         <div class="or-card mb4" id="ost-instantly"><div class="empty">Loading...</div></div>
         <div class="sl">Cost of finding <div class="sl-line"></div></div>
         <div class="or-card" id="ost-spend"><div class="empty">Loading...</div></div>
