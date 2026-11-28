@@ -57,7 +57,7 @@ function miRenderStatus(st) {
         : (st.jobs_waiting ? 'Tests are waiting and nothing has picked them up. ' : '') + 'Nothing sends, reads replies or warms up until the ql-mail-engine Worker is running on Cloudflare.') + '</span>' +
     '</div>' +
     '<div class="or-sub" style="margin-top:10px">' + Number(st.active || 0) + ' in a sequence' + (st.due_now ? ', ' + Number(st.due_now) + ' due now' : '') +
-      '. Sends every day, weekends included, inside the Sending tab\'s window, each inbox 3-8 minutes apart and up to its daily limit.</div>';
+      '. Sends Monday to Friday inside the Sending tab\'s window, each inbox 3-8 minutes apart and up to its daily limit.</div>';
 }
 
 function miRenderList() {
