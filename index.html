@@ -1078,7 +1078,9 @@
         <div class="sl">Inboxes <div class="sl-line"></div></div>
         <div class="or-card mb4">
           <div id="mi-list"><div class="empty">Loading…</div></div>
-          <div style="margin-top:12px"><button class="btn btn-sm" type="button" id="mi-add-btn" onclick="miEdit(null)">+ Add an inbox</button></div>
+          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm" type="button" id="mi-add-btn" onclick="miEdit(null)">+ Add an inbox</button>
+            <label class="btn btn-sm" style="cursor:pointer;margin:0">⬆ Import a CSV<input type="file" id="mi-csv" accept=".csv,text/csv" style="display:none" onchange="miCsvPick(this.files[0]);this.value=''"></label></div>
+          <div id="mi-csv-out" style="display:none;margin-top:12px;border-top:1px solid var(--bd);padding-top:12px"></div>
           <div id="mi-form" style="display:none;margin-top:14px;border-top:1px solid var(--bd);padding-top:14px">
             <input type="hidden" id="mi-id">
             <div class="or-grid" style="margin-top:0">

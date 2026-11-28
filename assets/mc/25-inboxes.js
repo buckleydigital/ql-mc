@@ -323,3 +323,109 @@ async function miWarmToggle(id, on) {
   if (error) { toast(error.message, true); return; }
   miLoadWarmup();
 }
+
+
+// ── CSV import (e.g. Mailpool's export) ─────────────────────────────────────
+// Columns are matched by name in any order. Passwords go straight to the
+// encrypted store (mail_inbox_save) and are dropped from the page afterwards.
+let miCsvRows = [];
+
+function miParseCsv(text) {
+  const rows = []; let row = [], field = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"' && text[i + 1] === '"') { field += '"'; i++; } else if (c === '"') q = false; else field += c; }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(field); field = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(field); field = '';
+      if (row.some(function (f) { return f.trim(); })) rows.push(row);
+      row = [];
+    } else field += c;
+  }
+  row.push(field);
+  if (row.some(function (f) { return f.trim(); })) rows.push(row);
+  return rows;
+}
+
+const MI_CSV_FIELDS = {
+  email: ['email', 'emailaddress', 'address', 'mailbox', 'inbox', 'fromemail'],
+  sender_name: ['sendername', 'fromname', 'displayname', 'name', 'fullname'],
+  first_name: ['firstname', 'first'],
+  last_name: ['lastname', 'last', 'surname'],
+  username: ['smtpusername', 'smtpuser', 'imapusername', 'imapuser', 'username', 'user', 'login'],
+  smtp_password: ['smtppassword', 'smtppass'],
+  password: ['password', 'pass', 'apppassword', 'imappassword', 'imappass'],
+  smtp_host: ['smtphost', 'smtpserver', 'outgoingserver', 'smtp'],
+  smtp_port: ['smtpport', 'outgoingport'],
+  imap_host: ['imaphost', 'imapserver', 'incomingserver', 'imap'],
+  imap_port: ['imapport', 'incomingport'],
+  daily_limit: ['dailylimit', 'maxdaily', 'sendinglimit', 'limit', 'dailysendinglimit'],
+};
+
+async function miCsvPick(file) {
+  if (!file) return;
+  const out = $('mi-csv-out');
+  const all = miParseCsv((await file.text()).replace(/^﻿/, ''));
+  const head = all[0] || [], data = all.slice(1);
+  const keys = head.map(function (h) { return h.toLowerCase().replace(/[^a-z]/g, ''); });
+  const col = {};
+  Object.keys(MI_CSV_FIELDS).forEach(function (f) {
+    const i = MI_CSV_FIELDS[f].map(function (n) { return keys.indexOf(n); }).find(function (x) { return x >= 0; });
+    if (i !== undefined && i >= 0 && Object.values(col).indexOf(i) < 0) col[f] = i;
+  });
+  const get = function (r, f) { return col[f] !== undefined ? String(r[col[f]] || '').trim() : ''; };
+  miCsvRows = data.map(function (r) {
+    const email = get(r, 'email').toLowerCase();
+    const smtp_host = get(r, 'smtp_host'), imap_host = get(r, 'imap_host');
+    const password = get(r, 'smtp_password') || get(r, 'password');
+    const name = get(r, 'sender_name') || [get(r, 'first_name'), get(r, 'last_name')].filter(Boolean).join(' ');
+    const row = {
+      email: email, sender_name: name, username: get(r, 'username') || email, password: password,
+      smtp_host: smtp_host, smtp_port: Number(get(r, 'smtp_port')) || 465,
+      imap_host: imap_host, imap_port: Number(get(r, 'imap_port')) || 993,
+      daily_limit: Math.max(1, Math.min(100, Number(get(r, 'daily_limit')) || 20)),
+    };
+    row.problem = !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? 'no valid email' : !password ? 'no password' : (!smtp_host || !imap_host) ? 'missing SMTP or IMAP server' : '';
+    row.existing = (miInboxes.find(function (i) { return String(i.email).toLowerCase() === email; }) || {}).id || null;
+    return row;
+  });
+  const good = miCsvRows.filter(function (r) { return !r.problem; }).length;
+  out.style.display = '';
+  out.innerHTML = '<div class="or-sub" style="margin-bottom:8px">' + jmEsc(file.name) + ': matched ' +
+    Object.keys(col).map(function (f) { return jmEsc(head[col[f]]) + ' → ' + f.replace(/_/g, ' '); }).join(' · ') + '</div>' +
+    miCsvRows.map(function (r, i) {
+      return '<div class="or-sub" id="mi-csv-' + i + '" style="margin:3px 0"><b style="color:var(--ink)">' + jmEsc(r.email || '(no email)') + '</b> ' +
+        jmEsc((r.sender_name ? r.sender_name + ' · ' : '') + r.smtp_host + ':' + r.smtp_port + ' · ' + r.imap_host + ':' + r.imap_port + ' · ' + r.daily_limit + '/day') +
+        (r.existing ? ' · already added (will update)' : '') +
+        (r.problem ? ' <span style="color:var(--red)">· skipped: ' + jmEsc(r.problem) + '</span>' : '') + ' <span class="st"></span></div>';
+    }).join('') +
+    '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-p btn-sm" type="button" id="mi-csv-go" onclick="miCsvImport()"' + (good ? '' : ' disabled') + '>Import ' + good + ' inbox' + (good === 1 ? '' : 'es') + '</button>' +
+    '<button class="btn btn-sm" type="button" onclick="$(\'mi-csv-out\').style.display=\'none\';miCsvRows=[]">Cancel</button></div>' +
+    '<div class="or-sub" style="margin-top:8px">Passwords go straight to the encrypted store. New inboxes start paused: each one\'s connection is tested, then press Start sending.</div>';
+}
+
+async function miCsvImport() {
+  const btn = $('mi-csv-go'); btn.disabled = true; btn.textContent = 'Importing…';
+  for (let i = 0; i < miCsvRows.length; i++) {
+    const r = miCsvRows[i];
+    if (r.problem) continue;
+    const st = document.querySelector('#mi-csv-' + i + ' .st');
+    const p = {
+      email: r.email, sender_name: r.sender_name || null, username: r.username, password: r.password,
+      smtp_host: r.smtp_host, smtp_port: r.smtp_port, smtp_secure: r.smtp_port === 465,
+      imap_host: r.imap_host, imap_port: r.imap_port, imap_secure: r.imap_port !== 143, daily_limit: r.daily_limit,
+    };
+    if (r.existing) p.id = r.existing;
+    const { data, error } = await db.rpc('mail_inbox_save', { p: p });
+    if (error) { st.innerHTML = '<span style="color:var(--red)">· failed: ' + jmEsc(error.message) + '</span>'; continue; }
+    await db.rpc('mail_job_create', { p_kind: 'test_connection', p_payload: { inbox_id: data || r.existing } });
+    st.textContent = '· ' + (r.existing ? 'updated' : 'added') + ', testing connection';
+  }
+  miCsvRows.forEach(function (r) { r.password = ''; });   // don't keep passwords on the page
+  btn.textContent = 'Done';
+  toast('Inboxes imported ✓ - connection tests take about a minute');
+  setTimeout(loadInboxes, 1500);
+  setTimeout(loadInboxes, 70000);
+}
