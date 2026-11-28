@@ -529,28 +529,23 @@ let orBatch = [];
 // "nothing happened".
 let orLastApproval = '';
 
-// When the engine will next send, in words. It sends Monday to Friday
-// between send_from and send_to in the sender's timezone (campaignBody in
-// outreach-send), so an approval outside those hours waits for the next one.
+// When the engine will next send, in words. It sends every day, weekends
+// included, between send_from and send_to in the sender's timezone, so an
+// approval outside those hours waits for the next window.
 function orNextSendText(s) {
   const tz = (s && s.timezone) || 'Australia/Brisbane';
   const from = (s && s.send_from) || '08:30', to = (s && s.send_to) || '16:30';
-  const p = Object.fromEntries(new Intl.DateTimeFormat('en-AU', { timeZone: tz, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-AU', { timeZone: tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
     .formatToParts(new Date()).map(function (x) { return [x.type, x.value]; }));
-  const NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  let d = NAMES.findIndex(function (n) { return n.slice(0, 3) === p.weekday.slice(0, 3); });
   const now = p.hour + ':' + p.minute;
-  const isWeekday = function (x) { return x >= 1 && x <= 5; };
   const fmt = function (hm) {
     let [h, m] = hm.split(':').map(Number); const ap = h >= 12 ? 'pm' : 'am'; h = h % 12 || 12;
     return h + (m ? ':' + String(m).padStart(2, '0') : '') + ap;
   };
   const place = tz.split('/').pop().replace(/_/g, ' ') + ' time';
-  if (isWeekday(d) && now >= from && now < to) return 'Sending now, until ' + fmt(to) + ' ' + place;
-  let ahead = 0;
-  if (!(isWeekday(d) && now < from)) { do { d = (d + 1) % 7; ahead++; } while (!isWeekday(d)); }
-  const when = ahead === 0 ? 'today' : ahead === 1 ? 'tomorrow (' + NAMES[d] + ')' : NAMES[d];
-  return 'first emails go out ' + when + ' from ' + fmt(from) + ' ' + place + ' (we send Mon to Fri, ' + fmt(from) + ' to ' + fmt(to) + ')';
+  if (now >= from && now < to) return 'Sending now, until ' + fmt(to) + ' ' + place;
+  const when = now < from ? 'today' : 'tomorrow';
+  return 'first emails go out ' + when + ' from ' + fmt(from) + ' ' + place + ' (we send every day, ' + fmt(from) + ' to ' + fmt(to) + ')';
 }
 
 async function loadBatch() {
@@ -1212,7 +1207,7 @@ function renderAutopilot() {
 async function saveAutopilot() {
   const enabled = $('oa-on').checked;
   if (enabled && !(orAuto && orAuto.enabled) &&
-      !confirm(`Switch autopilot on? From the next weekday send window it will email up to ${$('oa-cap').value} new businesses a day without anyone approving them.`)) return;
+      !confirm(`Switch autopilot on? From the next send window (weekends included) it will email up to ${$('oa-cap').value} new businesses a day without anyone approving them.`)) return;
   const { error } = await db.rpc('outreach_auto_set', { p: { enabled, daily_cap: Number($('oa-cap').value) || 0, find_time: $('oa-time').value } });
   if (error) { toast('Could not save: ' + error.message, true); return; }
   toast(enabled ? 'Autopilot on' : 'Autopilot saved');
