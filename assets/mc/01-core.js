@@ -403,6 +403,7 @@ const PANEL_GROUPS = {
   ]},
   outreach: {label:'Cold Outreach', members:[
     {panel:'outreach',           label:'Overview'},
+    {panel:'outreach-replies',   label:'Replies'},
     {panel:'outreach-prospects', label:'Prospects'},
     {panel:'outreach-batch',     label:"Today's Batch"},
     {panel:'outreach-sending',   label:'Sending'},
@@ -566,6 +567,7 @@ function nav(panel, el) {
   if (panel === 'outreach-batch') loadBatch();
   if (panel === 'outreach-sending') loadSending();
   if (panel === 'outreach-inboxes') loadInboxes();
+  if (panel === 'outreach-replies') loadReplies();
   if (panel === 'outreach-stats') loadOutreachStats();
 }
 
